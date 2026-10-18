@@ -2033,7 +2033,7 @@ function buildKnight(){
   //  Its colours sit between the two: each livery's own colours, eased toward the new model's steel, navy and gold.
   if(typeof KNIGHT_MODEL!=='undefined'&&KNIGHT_MODEL&&!buildKnight.classic) (function(D){ const pv=D.pivots;
     const bin=(b64,T)=>{ const s=atob(b64), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return new T(u.buffer); };
-    [L.hip,L.knee,R.hip,R.knee,torso,AL.sh,AL.el,AR.sh,AR.el,head,plume].forEach(p=>p.children.forEach(o=>{ if(o.isMesh) o.visible=false; }));
+    [L.hip,L.knee,R.hip,R.knee,torso,AL.sh,AL.el,AR.sh,AR.el,head,plume].forEach(p=>p.traverse(o=>{ if(o.isMesh) o.visible=false; }));
     // the rig, moved to the model's joints
     K.hipY=pv.hipY; hips.position.y=pv.hipY; [[L,1],[R,-1]].forEach(([G,sd])=>{ G.hip.position.set(sd*pv.hipX,0,0); G.knee.position.set(0,pv.knee[1],pv.knee[2]); });
     [[AL,1],[AR,-1]].forEach(([A,sd])=>{ A.sh.position.set(sd*pv.sh[0],pv.sh[1],0); A.el.position.set(sd*pv.el[0],pv.el[1],pv.el[2]); A.hand.position.set(sd*pv.hand[0],pv.hand[1],pv.hand[2]); });
