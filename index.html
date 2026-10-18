@@ -1727,49 +1727,50 @@ function buildKnight(){
 
   // hips & legs (thigh pivots at hip, shin pivots at knee)
   const hips=pivot(0,0.62,0);
-  function leg(side){ const hip=pivot(side*0.095,0,0,hips);
-    add(cyl(0.075,0.065,0.3),M.leg,0,-0.15,0,hip);
-    const knee=pivot(0,-0.3,0,hip);
-    const kneeCap=add(new THREE.DodecahedronGeometry(0.078,0),M.paul,0,0,0.045,knee); kneeCap.scale.set(1.05,0.9,0.7); // faceted articulated knee plate
-    add(new THREE.BoxGeometry(0.09,0.018,0.015),M.trim,0,0.008,0.099,knee);
-    add(cyl(0.068,0.057,0.25),M.steel,0,-0.13,0,knee);                             // greave
-    add(new THREE.BoxGeometry(0.12,0.08,0.2),M.boot,0,-0.28,0.035,knee);
-    add(new THREE.BoxGeometry(0.095,0.025,0.018),M.trim,0,-0.285,0.14,knee);          // sabaton
+  function leg(side){ const hip=pivot(side*0.105,0,0,hips);
+    // Athletic thigh with a faceted outer cuisse plate.
+    add(new THREE.CylinderGeometry(0.078,0.064,0.31,7),M.leg,0,-0.155,0,hip);
+    const cuisse=add(new THREE.BoxGeometry(0.125,0.25,0.055),M.steel,side*0.012,-0.145,0.052,hip); cuisse.rotation.z=-side*0.035;
+    add(new THREE.BoxGeometry(0.13,0.025,0.065),M.trim,side*0.012,-0.025,0.06,hip);
+    const knee=pivot(0,-0.31,0,hip);
+    const kneeCap=add(new THREE.CylinderGeometry(0.071,0.083,0.075,6),M.paul,0,0,0.045,knee); kneeCap.rotation.x=Math.PI/2; kneeCap.scale.set(1.0,1.0,0.72);
+    add(new THREE.BoxGeometry(0.095,0.022,0.018),M.trim,0,0.0,0.091,knee);
+    add(new THREE.CylinderGeometry(0.062,0.052,0.27,7),M.steel,0,-0.145,0,knee);
+    const shin=add(new THREE.BoxGeometry(0.105,0.22,0.045),M.helm,0,-0.145,0.049,knee); shin.rotation.x=-0.05;
+    add(new THREE.BoxGeometry(0.12,0.025,0.018),M.trim,0,-0.12,0.078,knee);
+    const boot=add(new THREE.BoxGeometry(0.13,0.09,0.22),M.boot,0,-0.30,0.045,knee); boot.rotation.x=-0.06;
+    add(new THREE.BoxGeometry(0.10,0.026,0.018),M.trim,0,-0.30,0.15,knee);
     return {hip,knee}; }
   const L=leg(1), R=leg(-1);
 
-  // BOTW HEROIC REMODEL — shaped chest, fitted waist, layered cloth and articulated armor.
-  // All parts remain parented to the original torso/limb pivots so the existing rig still animates.
+  // BOTW-inspired torso: tapered waist, broad faceted breastplate and split cloth panels.
   const torso=pivot(0,0,0,hips);
-  // Fitted waist and angular skirt foundation (not the old barrel-shaped torso).
-  const waist=add(new THREE.CylinderGeometry(0.155,0.205,0.22,6,1),M.tunic,0,-0.075,0,torso);
-  waist.rotation.y=Math.PI/6;
-  const skirt=add(new THREE.CylinderGeometry(0.205,0.265,0.27,6,1),M.tunic,0,-0.265,0,torso); skirt.rotation.y=Math.PI/6;
-  const skirtFront=add(new THREE.ShapeGeometry((()=>{const q=new THREE.Shape();q.moveTo(-0.19,0.0);q.lineTo(0.19,0.0);q.lineTo(0.155,-0.36);q.lineTo(0.04,-0.42);q.lineTo(-0.155,-0.36);q.closePath();return q;})()),M.tunic,0,-0.12,0.147,torso);
-  skirtFront.scale.set(1,1,1);
-  // Tunic trim and belt.
-  add(new THREE.CylinderGeometry(0.215,0.215,0.045,10),M.trim,0,0.045,0,torso);
-  add(new THREE.CylinderGeometry(0.17,0.17,0.055,10),M.belt,0,0.055,0,torso);
-  add(new THREE.BoxGeometry(0.075,0.065,0.035),M.guard,0,0.055,0.18,torso);
-  // Tapered torso core, armored breastplate with faceted shoulders and waist.
-  const chest=add(new THREE.CylinderGeometry(0.205,0.165,0.39,6,1),M.tunic,0,0.255,0,torso); chest.rotation.y=Math.PI/6;
-  const breast=add(new THREE.DodecahedronGeometry(1,0),M.steel,0,0.27,0.145,torso); breast.scale.set(0.218,0.235,0.092); breast.rotation.y=Math.PI/6;
-  const breastLower=add(new THREE.DodecahedronGeometry(1,0),M.steel,0,0.105,0.145,torso); breastLower.scale.set(0.16,0.085,0.075); breastLower.rotation.z=Math.PI;
-  // Deep navy central surcoat panel with pointed hem; sits below the emblem instead of covering the breastplate.
-  const tabShape=new THREE.Shape(); tabShape.moveTo(-0.145,0.10);tabShape.lineTo(0.145,0.10);tabShape.lineTo(0.125,-0.36);tabShape.lineTo(0,-0.43);tabShape.lineTo(-0.125,-0.36);tabShape.closePath();
-  const tab=add(new THREE.ShapeGeometry(tabShape),M.tunic,0,-0.19,0.205,torso); tab.material.side=THREE.DoubleSide;
-  // Gold piping down the tabard edges.
-  [-1,1].forEach(sd=>{const edge=add(new THREE.BoxGeometry(0.018,0.43,0.018),M.trim,sd*0.132,-0.245,0.219,torso);edge.rotation.z=sd*0.035;});
-  // Prominent Jerusalem Cross on top of the breastplate.
-  add(new THREE.BoxGeometry(0.052,0.19,0.025),M.cross,0,0.29,0.244,torso);
-  add(new THREE.BoxGeometry(0.18,0.052,0.025),M.cross,0,0.31,0.244,torso);
-  [-1,1].forEach(sx=>[-1,1].forEach(sy=>{const c=add(new THREE.BoxGeometry(0.03,0.052,0.022),M.cross,sx*0.082,0.245+sy*0.045,0.244,torso);c.rotation.z=sx*sy*0.08;}));
-  // Raised collar/gorget and mail beneath the armor.
-  add(new THREE.CylinderGeometry(0.17,0.205,0.075,8),M.steel,0,0.465,0,torso);
-  add(new THREE.CylinderGeometry(0.205,0.22,0.055,10),M.trim,0,0.42,0,torso);
-  add(new THREE.CylinderGeometry(0.22,0.24,0.06,10),M.steel,0,-0.405,0,torso);
-  // Belt pouch.
-  const pouch=add(new THREE.BoxGeometry(0.095,0.11,0.075),M.boot,0.19,0.015,0.07,torso);pouch.rotation.y=-0.18;
+  add(new THREE.CylinderGeometry(0.185,0.235,0.22,7),M.tunic,0,-0.065,0,torso);
+  // Two long tabard tails with a notched lower edge; the original waist/leg rig remains intact.
+  const skirtGeo=new THREE.BufferGeometry();
+  const skirtVerts=new Float32Array([-0.19,-0.02,0.12, 0.19,-0.02,0.12, 0.14,-0.39,0.105, -0.14,-0.39,0.105, -0.19,-0.02,-0.10, 0.19,-0.02,-0.10, 0.14,-0.39,-0.10, -0.14,-0.39,-0.10]);
+  skirtGeo.setAttribute('position',new THREE.BufferAttribute(skirtVerts,3)); skirtGeo.setIndex([0,1,2,0,2,3,4,6,5,4,7,6]); skirtGeo.computeVertexNormals();
+  const skirt=add(skirtGeo,M.tunic,0,-0.12,0,torso); skirt.material.side=THREE.DoubleSide;
+  add(new THREE.BoxGeometry(0.035,0.34,0.018),M.trim,-0.145,-0.20,0.13,torso);
+  add(new THREE.BoxGeometry(0.035,0.34,0.018),M.trim,0.145,-0.20,0.13,torso);
+  // Sculpted breastplate: tapered central plate, shoulder facets and gold edge bands.
+  add(new THREE.CylinderGeometry(0.205,0.165,0.38,7),M.arm,0,0.225,0,torso);
+  const breastGeo=new THREE.BufferGeometry();
+  const bv=new Float32Array([-0.18,0.39,0.12, 0.18,0.39,0.12, 0.145,0.12,0.145, -0.145,0.12,0.145, -0.18,0.39,0.02, 0.18,0.39,0.02, 0.145,0.12,0.02, -0.145,0.12,0.02]);
+  breastGeo.setAttribute('position',new THREE.BufferAttribute(bv,3)); breastGeo.setIndex([0,1,2,0,2,3,4,6,5,4,7,6,0,4,5,0,5,1,3,2,6,3,6,7]); breastGeo.computeVertexNormals();
+  const breast=add(breastGeo,M.steel,0,0,0,torso); breast.material.side=THREE.DoubleSide;
+  // Prominent navy heraldic chest panel sits above the plate, not buried inside it.
+  add(new THREE.BoxGeometry(0.25,0.29,0.025),M.tunic,0,0.255,0.166,torso);
+  add(new THREE.BoxGeometry(0.052,0.19,0.025),M.cross,0,0.265,0.184,torso);
+  add(new THREE.BoxGeometry(0.17,0.05,0.025),M.cross,0,0.285,0.184,torso);
+  [-1,1].forEach(sx=>[-1,1].forEach(sy=>{ add(new THREE.BoxGeometry(0.035,0.055,0.025),M.cross,sx*0.083,0.19+sy*0.052,0.184,torso); }));
+  // articulated belt and pouches
+  add(new THREE.CylinderGeometry(0.205,0.205,0.06,8),M.belt,0,0.055,0,torso);
+  add(new THREE.BoxGeometry(0.075,0.065,0.035),M.guard,0,0.055,0.205,torso);
+  add(new THREE.BoxGeometry(0.075,0.11,0.06),M.boot,0.19,-0.015,0.13,torso);
+  add(new THREE.CylinderGeometry(0.115,0.13,0.075,7),M.steel,0,0.435,0,torso);
+  add(new THREE.CylinderGeometry(0.235,0.26,0.055,8),M.trim,0,0.425,0,torso);
+  add(new THREE.BoxGeometry(0.29,0.045,0.035),M.steel,0,0.41,0.09,torso);
 
   // cape (Armour of God): hangs from the shoulders, sways
   const capeP=pivot(0,0.42,-0.2,torso);
@@ -1777,17 +1778,18 @@ function buildKnight(){
   const cape=add(capeGeo,M.cape,0,0,0,capeP); cape.rotation.x=0.08;
 
   // arms: shoulder pivot → upper arm, elbow pivot → vambrace + gauntlet
-  function arm(side){ const sh=pivot(side*0.29,0.38,0,torso);
-    // Broad angular pauldrons: deliberately replace the old ball-shaped shoulders.
-    const pauldron=add(new THREE.DodecahedronGeometry(0.15,0),M.paul,0,0.045,0,sh); pauldron.scale.set(1.18,0.78,1.02); pauldron.rotation.z=side*0.12;
-    const topPlate=add(new THREE.BoxGeometry(0.235,0.045,0.19),M.steel,side*0.012,0.105,0.005,sh); topPlate.rotation.z=-side*0.08;
-    const pauldronRim=add(new THREE.BoxGeometry(0.225,0.018,0.19),M.trim,0,0.077,0.012,sh); pauldronRim.rotation.z=-side*0.08;
-    add(new THREE.DodecahedronGeometry(0.043,0),M.trim,side*0.065,0.085,0.103,sh);
-    const upper=add(new THREE.CylinderGeometry(0.072,0.058,0.24,6),M.arm,0,-0.12,0,sh);upper.rotation.y=Math.PI/6;
+  function arm(side){ const sh=pivot(side*0.30,0.39,0,torso);
+    // Layered angular pauldron built from bevel-like facets rather than a sphere.
+    const shoulder=add(new THREE.CylinderGeometry(0.12,0.16,0.12,6),M.paul,0,0.035,0,sh); shoulder.rotation.z=side*0.10;
+    const shoulderTop=add(new THREE.CylinderGeometry(0.10,0.13,0.055,6),M.steel,0,0.105,0,sh); shoulderTop.rotation.z=side*0.10;
+    const shoulderRim=add(new THREE.TorusGeometry(0.112,0.012,5,6),M.trim,0,0.02,0.025,sh); shoulderRim.rotation.x=Math.PI/2; shoulderRim.scale.set(1.2,0.9,1);
+    add(new THREE.OctahedronGeometry(0.045,0),M.guard,side*0.055,0.07,0.09,sh);
+    add(new THREE.CylinderGeometry(0.062,0.054,0.24,7),M.arm,0,-0.12,0,sh);
     const el=pivot(0,-0.24,0,sh);
-    const vambrace=add(new THREE.CylinderGeometry(0.073,0.052,0.2,6),M.steel,0,-0.1,0,el);vambrace.rotation.y=Math.PI/6;
-    add(new THREE.BoxGeometry(0.105,0.075,0.13),M.paul,0,-0.13,0.035,el);
-    const hand=pivot(0,-0.23,0,el); hand.box=add(new THREE.DodecahedronGeometry(0.06,0),M.hand,0,0,0,hand);
+    add(new THREE.CylinderGeometry(0.066,0.055,0.19,6),M.steel,0,-0.095,0,el);
+    const vambrace=add(new THREE.BoxGeometry(0.10,0.16,0.07),M.helm,0,-0.10,0.045,el); vambrace.rotation.z=-side*0.06;
+    add(new THREE.BoxGeometry(0.115,0.025,0.075),M.trim,0,-0.035,0.05,el);
+    const hand=pivot(0,-0.23,0,el); hand.box=add(new THREE.DodecahedronGeometry(0.058,0),M.hand,0,0,0,hand); hand.box.scale.set(0.9,0.8,0.9);
     return {sh,el,hand}; }
   const AL=arm(1), AR=arm(-1);      // facing +z, the knight's right hand is at -x
 
@@ -1812,13 +1814,15 @@ function buildKnight(){
 
   // great helm: barrel, flat-ish crown, dark visor slit and breaths, plume arcing back
   const head=pivot(0,0.6,0,torso);
-  const helmShell=add(new THREE.DodecahedronGeometry(0.17,0),M.helm,0,0.035,0,head); helmShell.scale.set(0.94,1.12,0.92);
-  add(new THREE.CylinderGeometry(0.11,0.155,0.065,8),M.helm,0,0.17,0,head);
-  [-1,1].forEach(sd=>{const cheek=add(new THREE.BoxGeometry(0.065,0.18,0.085),M.steel,sd*0.115,-0.055,0.105,head);cheek.rotation.z=sd*0.12;});
-  add(new THREE.BoxGeometry(0.285,0.04,0.045),M.trim,0,0.055,0.142,head);
-  add(new THREE.BoxGeometry(0.25,0.035,0.035),M.visor,0,0.025,0.15,head);
-  add(new THREE.BoxGeometry(0.03,0.11,0.04),M.visor,0,-0.04,0.145,head);
-  add(new THREE.BoxGeometry(0.03,0.27,0.03),M.helm,0,0.01,0.155,head);           // centre ridge
+  // Slightly taller faceted great helm with angular jaw and brow; keeps original head pivot.
+  add(new THREE.CylinderGeometry(0.145,0.17,0.29,7),M.helm,0,0.005,0,head);
+  add(new THREE.CylinderGeometry(0.12,0.145,0.07,7),M.helm,0,0.175,0,head);
+  const jaw=add(new THREE.BoxGeometry(0.245,0.13,0.12),M.steel,0,-0.09,0.075,head); jaw.rotation.x=-0.04;
+  add(new THREE.BoxGeometry(0.275,0.045,0.045),M.guard,0,0.045,0.14,head);
+  add(new THREE.BoxGeometry(0.235,0.028,0.045),M.visor,0,0.005,0.145,head);
+  add(new THREE.BoxGeometry(0.025,0.105,0.045),M.visor,0,-0.055,0.145,head);
+  add(new THREE.BoxGeometry(0.035,0.29,0.035),M.guard,0,0.02,0.155,head);
+  add(new THREE.OctahedronGeometry(0.028,0),M.guard,0,0.17,0.14,head);
   const plume=pivot(0,0.2,-0.005,head);
   // Swept-back feather-like plume: overlapping tapered, softly faceted lobes.
   [[0.015,0.075,-0.015,0.075,0.11,'plume'],[0.025,0.13,-0.095,0.068,0.13,'plumeHi'],[0.035,0.13,-0.18,0.055,0.13,'plume'],[0.045,0.095,-0.265,0.043,0.12,'plume'],[0.055,0.045,-0.335,0.028,0.09,'plumeHi']]
