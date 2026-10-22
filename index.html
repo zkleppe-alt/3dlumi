@@ -7873,7 +7873,7 @@ function forestLevels(D,spec){
     x.textAlign='center'; x.fillStyle='#f4d68a'; x.font='bold 42px Georgia,serif'; x.fillText(title,128,52); x.font='italic 19px Georgia,serif'; x.fillStyle='#ece0c4'; x.fillText(sub,128,80);
     return new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c)}); }
   // a stone arch with the road's name on a board beneath the keystone, banners in the town's colour and a lantern on each pier
-  function gate(room,an,x,z,rot,title,sub,col){ const g=group(x,0,z,room); g.rotation.y=rot; const st=i=>[0x8a8578,0x7e7a6c,0x96907f][i%3];
+  function gate(room,an,x,z,rot,title,sub,col,opt){ opt=opt||{}; const g=group(x,0,z,room); g.rotation.y=rot; const st=i=>[0x8a8578,0x7e7a6c,0x96907f][i%3];
     [-2,2].forEach(px=>{ B(1.0,0.28,1.0,0x6a665a,px,0,0,g); for(let i=0;i<5;i++) B(i%2?0.74:0.82,0.48,i%2?0.74:0.82,st(i+(px>0?1:0)),px,0.28+i*0.48,0,g); B(0.98,0.2,0.98,0x9a9488,px,2.68,0,g);
       const ban=new THREE.Mesh(new THREE.PlaneGeometry(0.5,1.15),new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide})); ban.position.set(px,1.6,0.43); g.add(ban);
       B(0.56,0.05,0.05,0x3a2a1a,px,2.17,0.44,g); B(0.16,0.16,0.02,0xe8c766,px,1.6,0.445,g);
@@ -7883,8 +7883,8 @@ function forestLevels(D,spec){
     for(let i=0;i<6;i++){ const a=Math.PI*(0.15+0.7*hsh(i,23)), l=0.35+hsh(23,i)*0.8; B(0.04,l,0.04,0x3a6a2e,Math.cos(a)*1.78,2.78+Math.sin(a)*1.78-l,0.3,g); }
     [-0.62,0.62].forEach(cx=>B(0.03,0.62,0.03,0x3a3a3a,cx,3.95,0.02,g));
     B(1.86,0.74,0.06,0x3a2814,0,3.28,0,g); const p=new THREE.Mesh(new THREE.PlaneGeometry(1.8,0.68),plaque(title,sub)); p.position.set(0,3.65,0.04); g.add(p);
-    const L=new THREE.PointLight(0xffc070,1.1,7,1.6); L.position.set(0,2.3,0.9); g.add(L);
-    B(3.0,0.02,7,0x4a3a22,0,0,-4,g); B(3.0,0.02,2.2,0x4a3a22,0,0,1.4,g);   // the road, out and in
+    if(!opt.noLight){ const L=new THREE.PointLight(0xffc070,1.1,7,1.6); L.position.set(0,2.3,0.9); g.add(L); }
+    if(!opt.noRoad){ B(3.0,0.02,7,0x4a3a22,0,0,-4,g); B(3.0,0.02,2.2,0x4a3a22,0,0,1.4,g); }   // the road, out and in
     return g; }
   // ── 🃏 the way to Robby's: playing cards dropped along the trail to his tree, and the ace of spades nailed to the trunk ──
   let CARDS=null; const cardMats=()=>CARDS||(CARDS=(()=>{ const mk=(r,s,red)=>{ const c=document.createElement('canvas'); c.width=64; c.height=90; const x=c.getContext('2d');
@@ -8128,14 +8128,23 @@ function forestLevels(D,spec){
   // ── Robby's hole in the Thornwood ──
   ENGINE.add({id:'robbycave',lazy:()=>{ const fl=D.robby.floors[0];
     const back=()=>{ const r=run.robbyFrom; ENGINE.go('forest',r?{x:r.x,z:r.z,face:r.face+Math.PI}:null); setTimeout(()=>UI.toast('🌲 Out of the tree, into the wood again.',1100),450); };
-    const lv=gridRoom({id:'robbycave',name:D.robby.name,theme:'home',pal:{wall:0x6a5a48,wallD:0x4a3a2a,floorA:0x5a4632,floorB:0x54402e,cloth:0x6a2a3a,accent:0x3a4a6a,trim:0xc8a050},grid:fl.g,npcs:[],floor:0,exit:{level:'forest'},zone:'There is a television on'});
+    // the card table's four chairs are set round it by hand (the grid's chairs sat square to the corners and faced the wall)
+    const g2=fl.g.map(r=>r.slice()); let tc=null; g2.forEach((r,y)=>r.forEach((t,x)=>{ if(t===73&&!tc) tc={x:x+1,z:y+1}; }));
+    if(tc) g2.forEach((r,y)=>r.forEach((t,x)=>{ if(t===41&&Math.hypot(x+0.5-tc.x,y+0.5-tc.z)<2.2) r[x]=12; }));
+    const pal={wall:0x6a5a48,wallD:0x4a3a2a,floorA:0x5a4632,floorB:0x54402e,cloth:0x6a2a3a,accent:0x3a4a6a,trim:0xc8a050};
+    const lv=gridRoom({id:'robbycave',name:D.robby.name,theme:'home',pal,grid:g2,npcs:[],floor:0,exit:{level:'forest'},zone:'There is a television on'});
+    const seats=[];
+    if(tc){ const BL=lv._blk=lv._blk||[]; [[0,-1],[-1,0],[0,1],[1,0]].forEach(([dx,dz])=>{ const x=tc.x+dx*1.3, z=tc.z+dz*1.3, f=Math.atan2(-dx,-dz); PROP.chair(lv.room,x,z,f,pal); BL.push({x,z,r:0.3}); seats.push({x,z,f,dx,dz}); });
+      if(!lv._blkWrapped){ lv._blkWrapped=true; const cm=lv.canMove; lv.canMove=(fx,fz,tx,tz)=>{ if(!cm(fx,fz,tx,tz)) return false; for(const b of BL){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.2&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; } return true; }; } }
     lv.spots.forEach(s=>{ if(s.label==='Leave') s.action=back; });
-    D.robby.npcs.forEach(n=>{ const look=n.robby?'woodcutter':n.cheyenne?'peasantF':'child'; let k=-1;
-      const f=addPerson(lv,lv.room,look,n.x+0.5,n.y+0.5,0,n.name,null,{rest:0}); f.label='Talk';
+    D.robby.npcs.forEach((n,i)=>{ const look=n.robby?'woodcutter':n.cheyenne?'peasantF':'child'; let k=-1;
+      const st=tc?seats[i]:null, px=st?st.x+st.dx*0.55:n.x+0.5, pz=st?st.z+st.dz*0.55:n.y+0.5;   // each stands at his own chair: Robby across from you, Cheyenne and Benji either side
+      const f=addPerson(lv,lv.room,look,px,pz,0,n.name,null,{rest:st?st.f:0}); f.label='Talk';
       f.action=n.robby?()=>robbyTalk():()=>{ k=(k+1)%n.lines.length; say(n.name,[n.lines[k]]); }; });
     for(let y=0;y<fl.g.length;y++) for(let x=0;x<fl.g[0].length;x++){ const t=fl.g[y][x];
-      if(t===73&&!(fl.g[y][x-1]===73||(fl.g[y-1]&&fl.g[y-1][x]===73))) lv.spots.push({x:x+1,z:y+1,r:1.5,label:'Sit',who:'The card table',action:()=>blackjack()});
       if(t===71) lv.spots.push({x:x+0.5,z:y+0.9,r:1.0,label:'Play',who:'The console',action:()=>blockfall()}); }
+    // your seat, the empty one: take it and Robby deals you in
+    if(tc){ const me=seats[3]; lv.spots.push({x:me.x+0.6,z:me.z,r:1.1,label:'Play cards',who:'The card table — the empty chair',action:()=>{ const P=ENGINE.P; P.x=me.x; P.z=me.z; P.face=me.f; ENGINE.hold(0.4,'sit'); setTimeout(()=>blackjack(),250); }}); }
     return lv; }});
   const fishCount=()=>['perch','trout','oasisCarp','seabass','kingfish','goldenFish'].reduce((n,k)=>n+(S().inventory[k]||0),0);
   function robbyTalk(){ const s=S(), inv=s.inventory, P=D.price;
@@ -8207,7 +8216,8 @@ function forestLevels(D,spec){
   }
 
   return { enter(mouth){ run.mouth=mouth; run.cleared={}; GAME.save(); ENGINE.go('forest',SPAWN[mouth]||SPAWN.north); setTimeout(()=>UI.toast('🌫️ The Forest of Disillusionment — a cold fog drinks the light. You can see only a few paces.',2800),450); },
-    enterCave(){ ENGINE.go('monkcave'); } };
+    enterCave(){ ENGINE.go('monkcave'); },
+    gate(lv,x,z,rot,title,sub,col){ const g=gate(lv.scene,lv.anim,x,z,rot,title,sub,col,{noRoad:true,noLight:true}); g.position.y=lv.ground?lv.ground(x,z):0; g.scale.setScalar(0.85); return g; } };
 }
 
 // ── engine/pastimes.js ──
@@ -11699,6 +11709,9 @@ const PAD=(function(){
   const forest=forestLevels(FOREST_DATA,{ caveExit:{level:'world',spawn:{x:196.5,z:8.6,face:0}},
     exit:(mouth,fell)=>{ ENGINE.go('world',MOUTH[mouth]); setTimeout(()=>UI.toast(fell?'💫 You fall… and wake at the edge of the wood.':mouth==='south'?'🌅 You break through the tree-line at last — the road to Saltmere opens ahead.':'🌅 You emerge from the wood, back on the Ironhold road.',2600),450); } });
   world._forest=forest;
+  // the arches at the forest's two hollows, on the realm's side: the way in, named, from the Ironhold road and from the Saltmere road
+  forest.gate(world,33.5,84.5,Math.PI,'THE FOREST','of Disillusionment',0x2a4a2a);
+  forest.gate(world,33.5,185.7,0,'THE FOREST','of Disillusionment',0x2a4a2a);
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
   if(typeof PASTIME_DATA!=='undefined') world._sailing=sailing(world,PASTIME_DATA);    // your boat on the open sea, the southern isles, the realm's secrets
   // ⛰ Mount Tabor in Luminar thaws when the mountain behind its gate does (_ttThawAt: the overworld follows taborProgress.thawed)
