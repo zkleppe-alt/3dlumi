@@ -6494,7 +6494,7 @@ const DGEN=(function(){
     g[plaza.y+7][cxm]=46; f.podium={x:cxm,y:plaza.y+5,risen:false};
     { const tx=cxm+4; if(g[plaza.y-1][tx]===1) g[plaza.y-1][tx]=20; }
     // the plaza's statuary (chapel_themes.js draws it): an angel either side of the dais, the guardian's mark beyond them
-    { const py=plaza.y+5; [-3,3].forEach(dx=>{ if(g[py-2][cxm+dx]===0) g[py-2][cxm+dx]=57; }); for(const s of [-1,1]) for(let dx=3;dx<=5;dx++) for(let y=py;y<=py+1;y++) if(g[y][cxm+s*dx]===0) g[y][cxm+s*dx]=57; }
+    { const py=plaza.y+5; [-3,3].forEach(dx=>{ if(g[py-2][cxm+dx]===0) g[py-2][cxm+dx]=57; }); for(const s of [-1,1]) for(let dx=3;dx<=5;dx++) for(let y=py;y<=py+1;y++) if(g[y][cxm+s*dx]===0) g[y][cxm+s*dx]=62; }   // 62: kept clear of demons' posts, but walkable — the pieces themselves are solid (their own footprint)
     // colonnades in the great rooms (aisles left clear); raised galleries up stairs from tier 2
     const ramps={};
     rooms.forEach(r=>{ if(r.kind==='stair'||r.kind==='entry') return; if(r.w<11&&r.kind!=='plaza') return;
@@ -6696,7 +6696,14 @@ const CHAPEL_DRESS=(function(){
     B(0.9,0.5,0.9,dk(T.wall,0.85),0,0,0,a); B(0.96,0.08,0.96,T.trim,0,0.5,0,a); Co(0.36,1.5,8,st,0,0.58,0,a); B(0.4,0.5,0.26,st,0,1.6,0,a); Sp(0.15,st,0,2.28,0,a,10,8);
     [-1,1].forEach(s=>{ const w=B(0.08,1.4,0.5,st,s*0.32,1.4,-0.28,a); w.rotation.z=-s*0.35; w.rotation.x=-0.25; }); B(0.06,1.3,0.04,0xc8c8d0,0,0.6,0.32,a); B(0.32,0.05,0.06,T.trim,0,1.6,0.32,a); B(0.08,0.12,0.08,T.trim,0,1.68,0.32,a); }
 
+  // how solid each piece is (its radius, before the scatter's 1.35×): you walk round these, not through them
+  const SOLIDR={pew:0.45,urn:0.25,anvil:0.38,rack:0.45,ironcrate:0.36,chainpile:0.25,coral:0.25,stump:0.34,pots:0.32,crystal:0.3,icicles:0.28,beam:0.45,rod:0.18,armour:0.28,shard:0.3,floater:0.25,knot:0.38,books:0.2,candles:0.2,rubble:0.3,shrooms:0.18};
+  // the guardian's pair in the plaza: where each one stands (offsets from the pair's centre) and how wide
+  const CENTRER=(k,S)=>({candelabra:[[-S,0,0.3],[S,0,0.3]],forge:[[-S,0,0.62],[S,0,0.62]],pools:[[-(S+0.2),0.4,0.35],[S+0.2,0.4,0.35]],rootmass:[[-S,0,0.75],[S,0,0.75]],emberpit:[[-S,0,1.0],[S,0,1.0]],spire:[[-S,0,0.55],[S,0,0.55]],
+    pyre:[[-S,0,0.8],[S,0,0.8]],tesla:[[-S,0,0.45],[S,0,0.45]],kneelers:[[-(S-0.6),-0.6,0.4],[S-0.6,-0.6,0.4],[-(S+0.7),0.8,0.4],[S+0.7,0.8,0.4]],rift:[[-S,0,0.4],[S,0,0.4]]})[k]||[];
   function dress(X){ const T=X.T, f=X.f, at=X.at, CW=X.CW, an=X.an, deco=group(0,0,0,X.room), keep=group(0,0,0,X.room);
+    const BL=X.blockers=X.blockers||[], block=(x,z,r)=>BL.push({x,z,r});
+    if(f.type==='library') return restRoom(X,deco,keep,block);   // the resting-room: the guardian's mark never reached it
     const OPEN=X.OPEN, lay=f.layout||null, rnd=(x,y,s)=>hs(x,y,s+X.i*31+X.town*97);
     const isFloor=(x,y)=>at(x,y)===0, inRoom=(x,y)=>!lay||lay.some(r=>x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h);
     // ── against the walls: the theme's growth, and banners in the rooms ──
@@ -6706,7 +6713,7 @@ const CHAPEL_DRESS=(function(){
       else if(r<0.1+(OPEN?0.24:0.1)){ const gg=group(px,0,pz,deco); gg.rotation.y=face; W[T.wallKind](gg,T,T.wallKind==='sconce'?an:CW); } });
     // ── on the floor: the theme's clutter along the walls of the rooms ──
     const H=X.H, Wd=X.W; for(let y=1;y<H-1;y++) for(let x=1;x<Wd-1;x++){ if(!isFloor(x,y)||!inRoom(x,y)) continue; const nb=[[0,1],[0,-1],[1,0],[-1,0]].filter(([a,b])=>at(x+a,y+b)===1); if(nb.length!==1) continue;
-      if(rnd(x,y,5)>(OPEN?0.22:0.06)) continue; const [a,b]=nb[0], kind=T.scatter[Math.floor(rnd(x,y,6)*T.scatter.length)], gg=group(x+0.5+a*0.15,0,y+0.5+b*0.15,deco); gg.rotation.y=Math.atan2(-a,-b); gg.scale.setScalar(1.35); P[kind](gg,T,an); }
+      if(rnd(x,y,5)>(OPEN?0.22:0.06)) continue; const [a,b]=nb[0], kind=T.scatter[Math.floor(rnd(x,y,6)*T.scatter.length)], gg=group(x+0.5+a*0.15,0,y+0.5+b*0.15,deco); gg.rotation.y=Math.atan2(-a,-b); gg.scale.setScalar(1.35); P[kind](gg,T,an); if(SOLIDR[kind]) block(gg.position.x,gg.position.z,SOLIDR[kind]*1.35); }
     // ── seams of light in the floor (embers, the void) ──
     if(T.seams){ for(let y=1;y<H-1;y++) for(let x=1;x<Wd-1;x++){ if(!isFloor(x,y)||rnd(x,y,8)>0.05) continue; let px=x+0.2+rnd(x,y,9)*0.6, pz=y+0.2+rnd(x,y,10)*0.6, a=rnd(x,y,11)*6.28; for(let k=0;k<3;k++){ const L=0.3+rnd(x,y,12+k)*0.35; a+=(rnd(x,y,15+k)-0.5)*1.4; const s=B(L,0.012,0.03,glow(T.seams),px+Math.cos(a)*L/2,0.005,pz-Math.sin(a)*L/2,deco); s.rotation.y=a; px+=Math.cos(a)*L; pz-=Math.sin(a)*L; } } }
     // ── the plaza: a runner up to the dais, light falling on it, an angel either side, the guardian's mark at its heart; a chandelier ──
@@ -6714,7 +6721,7 @@ const CHAPEL_DRESS=(function(){
     if(plaza&&f.podium){ const cx=f.podium.x+0.5, cz=f.podium.y+0.5, run=dk(T.banner,0.62);
       for(let y=plaza.y;y<plaza.y+plaza.h;y++){ if(at(f.podium.x,y)!==0) continue; B(1.5,0.02,1.0,run,cx,0.0,y+0.5,deco); B(0.08,0.025,1.0,T.trim,cx-0.78,0,y+0.5,deco); B(0.08,0.025,1.0,T.trim,cx+0.78,0,y+0.5,deco); }
       angel(deco,T,cx-3.0,cz-2.4,0); angel(deco,T,cx+3.0,cz-2.4,0);
-      const C=group(cx,0,cz+0.5,keep); CENTRE[T.centre](C,T,an,X);
+      const C=group(cx,0,cz+0.5,keep); CENTRE[T.centre](C,T,an,X); CENTRER(T.centre,SPR).forEach(([dx,dz,r])=>block(cx+dx,cz+0.5+dz,r));
       const V=vault(X,deco,keep,{x:plaza.x,y:plaza.y,w:plaza.w,h:plaza.h},false), VT=CW+V.top;
       const sh=new THREE.Mesh(new THREE.CylinderGeometry(1.0,2.4,VT,10,1,true),new THREE.MeshBasicMaterial({color:T.lamp,transparent:true,opacity:0.04,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide}));
       sh.position.set(cx,VT/2,cz); sh.renderOrder=3; keep.add(sh); an.push(t=>{ sh.material.opacity=0.035+Math.sin(t*0.7)*0.01; });
@@ -6729,10 +6736,11 @@ const CHAPEL_DRESS=(function(){
         const ring2=new THREE.Mesh(new THREE.RingGeometry(rr-0.5,rr-0.42,40),mt(dk(T.trim,0.55))); ring2.rotation.x=-Math.PI/2; ring2.position.set(cx,y0+0.012,cz); deco.add(ring2);
         if(!(f.tombs||[]).some(t=>t.x>=r.x&&t.x<r.x+r.w&&t.y>=r.y&&t.y<r.y+r.h)){ B(0.14,0.014,(rr-0.5)*2,dk(T.trim,0.72),cx,y0,cz,deco); B((rr-0.5)*1.3,0.014,0.14,dk(T.trim,0.72),cx,y0,cz-(rr-0.5)*0.3,deco); } }
       [[1.5,1.5],[r.w-1.5,1.5],[1.5,r.h-1.5],[r.w-1.5,r.h-1.5]].forEach(([dx,dz])=>{ const x=r.x+dx, z=r.y+dz; if(!isFloor(Math.floor(x),Math.floor(z))&&at(Math.floor(x),Math.floor(z))!==60) return; const g=group(x,y0,z,deco);
-        Cy(0.22,0.3,0.12,8,dk(T.wall,0.8),0,0,0,g); Cy(0.05,0.08,1.5,6,T.trim,0,0.12,0,g); Cy(0.26,0.12,0.18,8,T.trim,0,1.62,0,g); Co(0.16,0.4,6,glow(T.fire[0]),0,1.74,0,g); Co(0.09,0.28,6,glow(T.fire[1]),0,1.76,0,g); }); });
+        block(x,z,0.3); Cy(0.22,0.3,0.12,8,dk(T.wall,0.8),0,0,0,g); Cy(0.05,0.08,1.5,6,T.trim,0,0.12,0,g); Cy(0.26,0.12,0.18,8,T.trim,0,1.62,0,g); Co(0.16,0.4,6,glow(T.fire[0]),0,1.74,0,g); Co(0.09,0.28,6,glow(T.fire[1]),0,1.76,0,g); }); });
     // the stair room: the runner on to the stair
     const st=lay&&lay.find(r=>r.kind==='stair'); if(st){ for(let y=st.y+2;y<st.y+st.h;y++){ const x=f.cxm; if(at(x,y)===0) B(1.5,0.02,1.0,dk(T.banner,0.62),x+0.5,0,y+0.5,deco); } }
-    if(X.top) sanctum(X,deco,keep);
+    if(lay&&X.addSpot) interact(X,deco,keep,lay,block,isFloor);
+    if(X.top) sanctum(X,deco,keep,block);
     if(T.motes) motes(X,T);
     // the lightning: now and then the halls go white, and the thunder follows
     if(T.lightning){ let next=3+Math.random()*5, fl=0; const base=X.hemi.intensity, bgc=X.bg.clone(); an.push((t,dt)=>{ dt=dt||0.016; next-=dt; if(next<0){ fl=1; next=4+Math.random()*7; }
@@ -6741,6 +6749,135 @@ const CHAPEL_DRESS=(function(){
     return {deco,vaults:X.vaults||[]}; }
   function chandelier(g,T,an,x,z,CW,ch){ ch=ch||1.1; const c=group(x,CW-ch,z,g); const ring=new THREE.Mesh(new THREE.TorusGeometry(0.6,0.04,5,16),mt(T.trim)); ring.rotation.x=Math.PI/2; c.add(ring);
     B(0.03,ch,0.03,0x2a2a2a,0,0,0,c); for(let k=0;k<6;k++){ const a=k/6*Math.PI*2; Cy(0.03,0.03,0.12,5,0xf0e8d0,Math.cos(a)*0.6,0.02,Math.sin(a)*0.6,c); Co(0.05,0.15,5,glow(T.fire[1]),Math.cos(a)*0.6,0.14,Math.sin(a)*0.6,c); } }
+
+  // ── things to do in the halls: a stone bench in each side chamber to sit on (it mends you a little), votive jars along the
+  //    walls to smash (coins, now and then a mending draught), and a prayer-stand in the hall you arrive in (once a floor) ──
+  const VERSES=['“Come unto me, all ye that labour and are heavy laden, and I will give you rest.” — Matthew 11:28','“He giveth power to the faint; and to them that have no might he increaseth strength.” — Isaiah 40:29',
+    '“The LORD is my strength and my shield; my heart trusted in him, and I am helped.” — Psalm 28:7','“Be strong and of a good courage; be not afraid… for the LORD thy God is with thee whithersoever thou goest.” — Joshua 1:9',
+    '“God is our refuge and strength, a very present help in trouble.” — Psalm 46:1'];
+  function interact(X,deco,keep,lay,block,isFloor){ const T=X.T, at=X.at, an=X.an, R=()=>X.R()||{}, S=()=>GAME.S, I=X.i, dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex();
+    const heal=fr=>{ const s=S(), before=s.hp; s.hp=Math.min(s.maxHp,Math.round(s.hp+(s.maxHp-s.hp)*fr+1)); ENGINE.hud&&ENGINE.hud(); GAME.changed(); return s.hp-before; };
+    // a wall cell's open side: the bench or jar backs onto the wall and faces the room
+    const wallSide=(x,y)=>[[0,-1],[0,1],[-1,0],[1,0]].find(([a,b])=>at(x+a,y+b)===1&&at(x-a,y-b)===0);
+    lay.forEach((r,ri)=>{
+      if(r.kind==='room'&&!r.raised){   // the bench: centred on the chamber's far wall, if that wall is whole there
+        for(const [bx,by] of [[Math.floor(r.x+r.w/2),r.y],[Math.floor(r.x+r.w/2)-2,r.y],[Math.floor(r.x+r.w/2)+2,r.y]]){ if(!isFloor(bx,by)||!isFloor(bx-1,by)||!isFloor(bx+1,by)||at(bx,by-1)!==1||at(bx-1,by-1)!==1||at(bx+1,by-1)!==1) continue;
+          const g=group(bx+0.5,0,by+0.42,deco), st=dk(T.wall,1.2); B(1.6,0.08,0.5,st,0,0.38,0,g); [-0.62,0.62].forEach(x=>B(0.22,0.38,0.42,dk(T.wall,0.9),x,0,0,g)); B(1.4,0.06,0.44,T.banner,0,0.46,0,g);
+          block(bx+0.5,by+0.42,0.55); block(bx-0.2,by+0.42,0.45); block(bx+1.2,by+0.42,0.45);
+          X.addSpot({x:bx+0.5,z:by+1.1,r:1.1,label:'Sit',who:'A stone bench',action:()=>{ const k='b'+I+':'+bx+','+by, Rr=R(); Rr.sat=Rr.sat||{}; const fresh=!Rr.sat[k]||performance.now()-Rr.sat[k]>45000;
+            if(X.sitAt(bx+0.5,by+0.55,0,2.6,()=>{ if(fresh){ Rr.sat[k]=performance.now(); const h=heal(0.25); UI.toast(h>0?`🪑 You catch your breath. +${h} HP`:'🪑 You catch your breath.',1500); } else UI.toast('🪑 A moment\'s rest — your legs thank you.',1200); })) UI.toast('🪑 You sit a moment on the cold stone…',1200); }});
+          break; } }
+      // votive jars: two or three to a chamber, along its walls
+      if(r.kind==='room'||r.kind==='plaza'){ let n=0; const want=r.kind==='plaza'?3:2;
+        const per=[]; for(let x=r.x+1;x<r.x+r.w-1;x++){ per.push([x,r.y],[x,r.y+r.h-1]); } for(let y=r.y+1;y<r.y+r.h-1;y++){ per.push([r.x,y],[r.x+r.w-1,y]); }
+        for(let k=0;k<40&&n<want;k++){ const [x,y]=per[Math.floor(hs(ri,k,7)*per.length)]; if(!isFloor(x,y)||!isFloor(x+1,y)&&!isFloor(x-1,y)) continue; const ws=[[0,-1],[0,1],[-1,0],[1,0]].find(([a,b])=>at(x+a,y+b)===1); if(!ws) continue;
+          const id=I+':'+x+','+y, jx=x+0.5+ws[0]*0.2, jz=y+0.5+ws[1]*0.2; if((R().smashed||{})[id]) { n++; continue; }
+          const g=group(jx,0,jz,keep), clay=[0x9a5a32,0x8a6a4a,dk(T.banner,1.1)][n%3]; Cy(0.15,0.2,0.42,9,clay,0,0,0,g); Cy(0.1,0.15,0.12,9,clay,0,0.42,0,g); Cy(0.12,0.12,0.04,9,dk(clay,0.7),0,0.54,0,g); Cy(0.205,0.205,0.04,9,T.trim,0,0.22,0,g);
+          const bl={x:jx,z:jz,r:0.22}; X.blockers.push(bl);
+          const sp={x:jx,z:jz,r:0.95,label:'Smash',who:'A votive jar',action:()=>{ const Rr=R(); Rr.smashed=Rr.smashed||{}; if(Rr.smashed[id]) return; Rr.smashed[id]=true; g.visible=false; bl.r=0; const li=ENGINE.level.spots.indexOf(sp); if(li>=0) ENGINE.level.spots.splice(li,1);
+              for(let q=0;q<8;q++){ const sh=B(0.08,0.06,0.05,clay,0,0,0,X.room); sh.position.set(jx,0.3,jz); const v=[Math.cos(q*0.8)*1.6,2.2+Math.random(),Math.sin(q*0.8)*1.6]; let tt=0; const fly=(t,dt)=>{ dt=dt||0.016; tt+=dt; sh.position.x+=v[0]*dt; sh.position.z+=v[2]*dt; v[1]-=9*dt; sh.position.y=Math.max(0.03,sh.position.y+v[1]*dt); sh.rotation.x+=dt*9; if(tt>1.4){ X.room.remove(sh); an.splice(an.indexOf(fly),1); } }; an.push(fly); }
+              const roll=hs(jx*7,jz*7,I); if(roll<0.6){ const gp=Math.round((4+X.tier*3)*(0.6+roll)*(S().goldMult||1)); GAME.addGold(gp); UI.toast(`🏺 Crack! ${gp} gold in the shards.`,1300); }
+              else if(roll<0.82){ const h=heal(0.3); UI.toast(`🏺 A little flask was hidden inside — +${h} HP.`,1500); } else UI.toast('🏺 Only dust, and a dry flower.',1100); }};
+          X.addSpot(sp); n++; } }
+      // the prayer-stand, by the wall of the hall you come in by
+      if(r.kind==='entry'){ for(const [px,py] of [[r.x,Math.floor(r.y+r.h/2)],[r.x+r.w-1,Math.floor(r.y+r.h/2)]]){ const ws=[[-1,0],[1,0]].find(([a])=>at(px+a,py)===1); if(!isFloor(px,py)||!ws) continue;
+          const g=group(px+0.5+ws[0]*0.1,0,py+0.5,deco); g.rotation.y=ws[0]<0?Math.PI/2:-Math.PI/2; B(0.7,0.14,0.4,dk(T.banner,0.8),0,0,0.25,g); B(0.62,0.85,0.12,dk(T.wall,1.15),0,0,-0.12,g); B(0.66,0.06,0.3,T.trim,0,0.85,-0.05,g);
+          B(0.06,0.7,0.04,T.trim,0,1.3,-0.38,g); B(0.36,0.06,0.04,T.trim,0,1.75,-0.38,g); Co(0.03,0.08,5,glow(T.fire[1]),-0.22,0.92,-0.05,g); Co(0.03,0.08,5,glow(T.fire[1]),0.22,0.92,-0.05,g);
+          block(px+0.5+ws[0]*0.2,py+0.5,0.38);
+          X.addSpot({x:px+0.5-ws[0]*0.5,z:py+0.5,r:1.0,label:'Pray',who:'A prayer-stand',action:()=>{ const Rr=R(); Rr.prayed=Rr.prayed||{}; const v=VERSES[(I+X.tier)%VERSES.length];
+            if(Rr.prayed[I]){ ENGINE.speak('A prayer-stand',['You kneel again, and the quiet holds.',v]); return; } Rr.prayed[I]=true; ENGINE.hold(1.6,'sit'); const h=heal(0.5); ENGINE.speak('You kneel and pray',[v,`Strength comes back into your arms. (+${h} HP)`]); }});
+          break; } }
+    }); }
+  // ── the resting-room by the fire: a warm, low, timbered hall the guardian never reached. Planked floor, a great round rug,
+  //    a hearth in the middle with a copper hood, the deep wing-chair (rest: mended, and you wake here if you fall), a settle across
+  //    the fire, shelves of books to the ceiling, moonlit windows with cushioned seats, a long table laid with bread, a cat asleep
+  //    on the rug, herbs hung from the beams — and the fire crackling. ──
+  const FIRE={ ctx:null, src:null, gain:null,
+    start(){ try{ const C=this.ctx||(this.ctx=new (window.AudioContext||window.webkitAudioContext)()); if(C.state==='suspended') C.resume(); if(this.src) return;
+        const n=C.sampleRate*4, buf=C.createBuffer(1,n,C.sampleRate), d=buf.getChannelData(0); let lp=0;
+        for(let i=0;i<n;i++){ lp=lp*0.985+(Math.random()*2-1)*0.015; d[i]=lp*1.6; if(Math.random()<0.0009){ const L=40+Math.random()*260, a=0.25+Math.random()*0.5; for(let j=0;j<L&&i+j<n;j++) d[i+j]+=(Math.random()*2-1)*a*Math.exp(-j/(L*0.25)); } }
+        const s=C.createBufferSource(); s.buffer=buf; s.loop=true; const f=C.createBiquadFilter(); f.type='lowpass'; f.frequency.value=2600; const g=C.createGain(); g.gain.value=0; s.connect(f); f.connect(g); g.connect(C.destination); s.start();
+        g.gain.linearRampToValueAtTime(0.32,C.currentTime+1.5); this.src=s; this.gain=g; }catch(e){} },
+    stop(){ try{ if(!this.src) return; const s=this.src, g=this.gain, C=this.ctx; g.gain.linearRampToValueAtTime(0,C.currentTime+0.6); setTimeout(()=>{ try{ s.stop(); }catch(e){} },700); this.src=null; }catch(e){} } };
+  function rugTex(){ const c=document.createElement('canvas'); c.width=c.height=256; const x=c.getContext('2d'), o=128;
+    const rings=['#4a1a1e','#a8844a','#5e2224','#24304a','#6a2e26','#b8955a','#3e1418']; rings.forEach((col,i)=>{ x.fillStyle=col; x.beginPath(); x.arc(o,o,124-i*16,0,7); x.fill(); });
+    x.strokeStyle='#c8a868'; x.lineWidth=3; for(let i=0;i<16;i++){ const a=i/16*Math.PI*2; x.beginPath(); x.moveTo(o+Math.cos(a)*30,o+Math.sin(a)*30); x.lineTo(o+Math.cos(a)*110,o+Math.sin(a)*110); x.stroke(); }
+    x.fillStyle='#c8a868'; for(let i=0;i<24;i++){ const a=i/24*Math.PI*2; x.beginPath(); x.arc(o+Math.cos(a)*100,o+Math.sin(a)*100,4,0,7); x.fill(); } return new THREE.CanvasTexture(c); }
+  function restRoom(X,deco,keep,block){ const T=X.T, at=X.at, an=X.an, CW=X.CW, W=X.W, H=X.H, f=X.f, R=()=>X.R()||{}, S=()=>GAME.S, dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex();
+    const isF=(x,y)=>{ const t=at(x,y); return t===0; }; let hx=W>>1, hy=H>>1, cx=hx+1, cy=hy; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=at(x,y); if(t===22){ hx=x; hy=y; } if(t===23){ cx=x; cy=y; } }
+    const HX=hx+0.5, HZ=hy+0.5;
+    // the light: warm through and through
+    X.bg.setHex(0x1a0f08); if(X.scene.fog){ X.scene.fog.color.setHex(0x1a0f08); X.scene.fog.near=12; X.scene.fog.far=34; } X.hemi.color.setHex(0xf2e2cc); X.hemi.groundColor.setHex(0x3a2a20); X.hemi.intensity=0.58;
+    const fireL=new THREE.PointLight(0xffa860,1.9,12,1.5); fireL.position.set(HX,1.3,HZ); X.scene.add(fireL); const winL=new THREE.PointLight(0x8aa8e8,0.5,9,1.6); winL.position.set(W/2,2.4,2); X.scene.add(winL);
+    an.push(t=>{ fireL.intensity=1.8+Math.sin(t*7.3)*0.16+Math.sin(t*13.1)*0.12+Math.sin(t*2.1)*0.1; });
+    // the floor: planks, warm and worn
+    const PL=[0x5a3e2a,0x63452e,0x523824,0x6a4a32,0x5c4028];
+    for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++){ if(at(x,y)===1) continue; for(let k=0;k<2;k++){ const c=PL[Math.floor(hs(x,y,k)*PL.length)]; B(1.0,0.03,0.48,c,x+0.5,0.0,y+0.25+k*0.5,deco); } }
+    // the timbered roof: boards, and beams across every two paces
+    { const rf=new THREE.Mesh(new THREE.PlaneGeometry(W,H),mt(0x3a2416)); rf.rotation.x=Math.PI/2; rf.position.set(W/2,CW,H/2); deco.add(rf);
+      for(let y=1;y<H;y+=2) B(W,0.24,0.26,0x4a2e18,W/2,CW-0.24,y,deco); B(0.3,0.3,H,0x54341c,W/2,CW-0.3,H/2,deco); }
+    // herbs and lanterns hung from the beams
+    for(let i=0;i<14;i++){ const x=2+hs(i,1,3)*(W-4), z=2+hs(i,2,3)*(H-4); if(Math.hypot(x-HX,z-HZ)<2) continue; const y0=CW-0.24; const g=group(x,0,Math.round(z/2)*2,deco);
+      if(i%3===0){ B(0.015,0.5,0.015,0x2a2a2a,0,y0-0.5,0,g); Cy(0.09,0.11,0.18,6,0x3a2a1a,0,y0-0.7,0,g); Co(0.04,0.1,5,glow(0xffd27a),0,y0-0.66,0,g); }
+      else for(let k=0;k<3;k++){ B(0.01,0.25,0.01,0x6a5a3a,(k-1)*0.08,y0-0.25,0,g); Co(0.05,0.28,5,[0x4a6a2a,0x6a7a3a,0x8a6a8a][(i+k)%3],(k-1)*0.08,y0-0.55,0,g).rotation.x=Math.PI; } }
+    // the rug
+    { const rug=new THREE.Mesh(new THREE.CircleGeometry(3.1,40),new THREE.MeshLambertMaterial({map:rugTex()})); rug.rotation.x=-Math.PI/2; rug.position.set(HX+0.5,0.04,HZ); rug.userData.keep=true; keep.add(rug); }
+    // the hearth: a ring of stones, logs, the fire, a copper hood and its chimney up through the roof, a kettle hung over it
+    { const g=group(HX,0,HZ,keep); for(let i=0;i<12;i++){ const a=i/12*Math.PI*2; const st=B(0.26,0.2,0.2,[0x6a6260,0x5a5452,0x7a7068][i%3],Math.cos(a)*0.62,0.04,Math.sin(a)*0.62,g); st.rotation.y=-a; }
+      const bed=new THREE.Mesh(new THREE.CircleGeometry(0.55,16),new THREE.MeshBasicMaterial({color:0xff6a1a})); bed.rotation.x=-Math.PI/2; bed.position.y=0.06; g.add(bed);
+      [0,1.1,2.2].forEach(a=>{ const l=Cy(0.07,0.08,0.9,6,0x4a2e18,0,0.12,0,g); l.rotation.set(Math.PI/2,0,0); l.rotation.y=a; l.position.y=0.14; });
+      themeFire(g,an,0,0.12,0,2.6,{fire:[0xff8a2a,0xffe08a]}); themeFire(g,an,0.18,0.12,0.1,1.2,{fire:[0xff6a1a,0xffd060]}); themeFire(g,an,-0.16,0.12,-0.08,1.3,{fire:[0xff7a2a,0xffe08a]});
+      const hood=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.95,0.8,14,1,true),new THREE.MeshPhongMaterial({color:0xb8703a,shininess:70,specular:0x8a5a3a,side:THREE.DoubleSide})); hood.position.y=2.25; g.add(hood);
+      Cy(0.22,0.22,CW-2.6,12,0x9a5a2e,0,2.65,0,g); Cy(0.97,0.97,0.06,14,0x8a5028,0,1.84,0,g);
+      B(0.02,0.5,0.02,0x2a2a2a,0,1.35,0,g); const kt=Sp(0.16,0x2a2a2e,0,1.18,0,g,10,8); kt.scale.y=0.8; Co(0.05,0.14,6,0x2a2a2e,0.17,1.2,0,g).rotation.z=-1.2; block(HX,HZ,0.85);
+      X.addSpot({x:HX,z:HZ,r:1.4,label:'Warm',who:'The hearth',action:()=>{ FIRE.start(); UI.toast('🔥 You hold your hands to the fire. The cold of the halls goes out of them.',2000); }}); }
+    // the wing-chair (the rest), its side table with a candle and a cup — and, the first time, something left for you
+    { const g=group(cx+0.5,0,cy+0.5,keep); g.rotation.y=-Math.PI/2; const red=0x7a2028, rd=0x5a161c;
+      B(0.78,0.42,0.7,rd,0,0,0,g); B(0.66,0.12,0.6,red,0,0.42,0.02,g); B(0.78,0.9,0.18,red,0,0.42,-0.3,g); [-1,1].forEach(sd=>{ B(0.12,0.3,0.62,red,sd*0.39,0.42,0,g); B(0.12,0.55,0.26,red,sd*0.37,0.75,-0.2,g); [-1,1].forEach(z=>Cy(0.03,0.025,0.1,6,0x3a2214,sd*0.32,-0.05,z*0.28,g)); });
+      B(0.5,0.1,0.42,T.banner,0,0.54,-0.02,g); const q=B(0.5,0.03,0.7,0xd8c8a0,0.39,0.6,0.02,g); q.rotation.z=-0.5; block(cx+0.5,cy+0.5,0.5);
+      const tb=group(cx+0.5,0,cy+1.45,keep); Cy(0.24,0.24,0.04,12,0x5a3a20,0,0.62,0,tb); Cy(0.04,0.06,0.62,6,0x4a2e18,0,0,0,tb); Cy(0.03,0.035,0.16,6,0xf0e8d0,-0.1,0.66,0,tb); themeFlame(-0.1,0.86,0,tb,an,1.3,{fire:[0xff9a3a,0xffe08a]});
+      Cy(0.05,0.04,0.08,8,0xe8e0d0,0.08,0.66,0.05,tb); block(cx+0.5,cy+1.45,0.28);
+      const fl=group(0.06,0.66,-0.1,tb); Sp(0.06,0xc0303a,0,0.06,0,fl,8,6); Cy(0.02,0.025,0.06,6,0xc0303a,0,0.12,0,fl); Cy(0.025,0.025,0.02,6,0x8a5a2a,0,0.17,0,fl);
+      if(R().gift) fl.visible=false;
+      const sp={x:cx+0.5,z:cy+1.45,r:0.9,label:'Take',who:'A flask on the side table',action:()=>{ const Rr=R(); if(Rr.gift||!fl.visible){ UI.toast('Just the candle and an empty cup now.',1100); return; } Rr.gift=true; fl.visible=false; const s=S(); s.inventory.potion=(s.inventory.potion||0)+1; GAME.changed(); ENGINE.speak('A flask, and a note',['🧪 A healing draught, stoppered with wax. The note under it, in a careful hand:','“For whoever comes up from below. Sit as long as you need. — the keeper of the fire”']); }};
+      X.addSpot(sp); }
+    // the settle across the fire, to sit a while
+    { const sx=HX-2.0, g=group(sx,0,HZ,deco); g.rotation.y=Math.PI/2; B(1.6,0.08,0.5,0x5a3a20,0,0.42,0,g); B(1.6,0.9,0.08,0x5a3a20,0,0.42,-0.24,g); [-0.75,0.75].forEach(x=>B(0.08,0.42,0.5,0x4a2e18,x,0,0,g)); B(1.4,0.08,0.42,T.banner,0,0.5,0.02,g);
+      block(sx,HZ-0.55,0.42); block(sx,HZ+0.55,0.42); block(sx,HZ,0.42);
+      X.addSpot({x:sx+0.8,z:HZ,r:1.0,label:'Sit',who:'The settle by the fire',action:()=>{ FIRE.start(); if(X.sitAt(sx,HZ,Math.PI/2,4,()=>{ const s=S(); s.hp=Math.min(s.maxHp,s.hp+Math.ceil(s.maxHp*0.2)); ENGINE.hud&&ENGINE.hud(); GAME.changed(); UI.toast('🔥 Warm through. (The wing-chair is the one that keeps your place.)',1800); })) UI.toast('🔥 You sit across the fire and watch it for a while…',1600); }}); }
+    // the cat, asleep on the rug
+    { const g=group(HX+1.0,0.04,HZ-1.5,keep); g.rotation.y=0.6; const fur=0xc87a3a, fd=0x9a5a2a; const body=Sp(0.22,fur,0,0.12,0,g,12,8); body.scale.set(1.3,0.6,1);
+      const head=Sp(0.11,fur,0.22,0.1,0.12,g,10,8); [-1,1].forEach(sd=>Co(0.04,0.08,4,fd,0.22+sd*0.06,0.2,0.12,g)); const tail=new THREE.Mesh(new THREE.TorusGeometry(0.2,0.035,6,14,Math.PI*1.2),mt(fd)); tail.rotation.x=Math.PI/2; tail.position.set(0,0.05,0); g.add(tail);
+      an.push(t=>{ body.scale.y=0.6+Math.sin(t*1.8)*0.04; head.position.y=0.1+Math.sin(t*1.8)*0.008; }); block(HX+1.0,HZ-1.5,0.3);
+      X.addSpot({x:HX+1.0,z:HZ-1.5,r:0.9,label:'Pet',who:'A cat, asleep',action:()=>{ UI.toast(['🐈 It purrs without opening its eyes.','🐈 One ear turns toward you. The purring gets louder.','🐈 It stretches out a paw, and goes back to sleep.'][Math.floor(Math.random()*3)],1600);
+        for(let i=0;i<4;i++){ const h=new THREE.Mesh(new THREE.CircleGeometry(0.05,10),new THREE.MeshBasicMaterial({color:0xff8aa0,transparent:true,depthWrite:false})); h.position.set(HX+1.0+(Math.random()-0.5)*0.3,0.4,HZ-1.5); X.scene.add(h); let tt=0; const up=(t,dt)=>{ tt+=dt||0.016; h.position.y+=0.5*(dt||0.016); h.lookAt(ENGINE.cam.position); h.material.opacity=1-tt/1.5; if(tt>1.5){ X.scene.remove(h); an.splice(an.indexOf(up),1); } }; setTimeout(()=>an.push(up),i*180); } }}); }
+    // the long table, laid
+    { const tx=Math.max(3,hx-7)+0.5, tz=H-5.5, g=group(tx,0,tz,deco); B(2.4,0.08,0.9,0x6a4428,0,0.78,0,g); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>B(0.1,0.78,0.1,0x4a2e18,a*1.08,0,b*0.36,g));
+      [-1,1].forEach(b=>{ B(2.2,0.06,0.3,0x5a3a20,0,0.44,b*0.75,g); [-0.95,0.95].forEach(a=>B(0.08,0.44,0.26,0x4a2e18,a,0,b*0.75,g)); });
+      const bread=Sp(0.18,0xc8904a,-0.5,0.92,0,g,10,6); bread.scale.set(1.4,0.6,0.9); Cy(0.12,0.12,0.1,10,0xf0d070,0.1,0.82,0.1,g); Cy(0.07,0.09,0.24,8,0x8a6a4a,0.6,0.82,-0.1,g); Cy(0.05,0.05,0.1,8,0xd8d0c0,0.3,0.82,0.25,g); Cy(0.05,0.05,0.1,8,0xd8d0c0,-0.2,0.82,-0.25,g);
+      Cy(0.03,0.035,0.2,6,0xf0e8d0,1.0,0.82,0,g); themeFlame(1.0,1.06,0,g,an,1.2,{fire:[0xff9a3a,0xffe08a]});
+      block(tx-0.6,tz,0.6); block(tx+0.6,tz,0.6);
+      X.addSpot({x:tx,z:tz+1.0,r:1.2,label:'Eat',who:'The long table',action:()=>{ const Rr=R(); const s=S(); if(Rr.ate){ UI.toast('🍞 You have eaten your fill. There will be more next time.',1300); return; } Rr.ate=true; s.hp=Math.min(s.maxHp,s.hp+Math.ceil(s.maxHp*0.4)); ENGINE.hud&&ENGINE.hud(); GAME.changed();
+        ENGINE.speak('Bread, and honey, and clean water',['You break the bread. It is still warm.','“I am the bread of life: he that cometh to me shall never hunger.” — John 6:35']); }}); }
+    // shelves of books to the ceiling, down both long walls
+    { const BK=[0x7a2a22,0x2a4a6a,0x4a5a2a,0x6a4a22,0x5a2a5a,0x8a6a3a,0x2a2a3a,0x6a2a3a];
+      [[1,1],[W-2,-1]].forEach(([wx,sd])=>{ for(let y=3;y<H-3;y+=1){ if(!isF(wx,y)||at(wx-sd,y)!==1) continue; if(Math.abs(y-hy)<2) continue; const g=group(wx+0.5-sd*0.3,0,y+0.5,deco); g.rotation.y=sd>0?Math.PI/2:-Math.PI/2;
+          B(1.0,2.5,0.36,0x4a2e18,0,0,-0.02,g); for(let k=0;k<5;k++){ B(0.96,0.04,0.34,0x5a3a20,0,0.08+k*0.5,0.02,g); let bx=-0.44; while(bx<0.42){ const w=0.05+hs(y,k,bx*10)*0.05, h=0.28+hs(bx*20,k,y)*0.14; B(w,h,0.26,BK[Math.floor(hs(y*3,k,bx*31)*BK.length)],bx+w/2,0.12+k*0.5,0.04,g); bx+=w+0.008; } }
+          block(wx+0.5-sd*0.3,y+0.5,0.42); } }); }
+    // the windows in the north wall, moonlit, each with a cushioned seat beneath it
+    { const glass=new THREE.MeshBasicMaterial({color:0x8aa8d8}); const sx=[W/2-5,W/2+4];
+      sx.forEach((x,k)=>{ if(at(Math.floor(x),1)===undefined) return; const g=group(x+0.5,0,1.02,deco); B(1.2,1.6,0.04,glass,0,1.1,0,g); const top=new THREE.Mesh(new THREE.CircleGeometry(0.6,16,0,Math.PI),glass); top.position.set(0,2.7,0.0); g.add(top);
+        B(0.08,1.6,0.08,0x3a2416,0,1.1,0.03,g); B(1.2,0.08,0.08,0x3a2416,0,1.9,0.03,g); B(1.4,0.1,0.14,0x3a2416,0,1.05,0.05,g);
+        B(1.4,0.42,0.5,0x5a3a20,0,0,0.3,g); B(1.3,0.12,0.44,T.banner,0,0.42,0.3,g); [-0.45,0.45].forEach(cx2=>Sp(0.14,dk(T.banner,1.3),cx2,0.6,0.18,g,8,6).scale.set(1,0.8,0.6));
+        const shaft=new THREE.Mesh(new THREE.BoxGeometry(1.1,3.2,0.9),new THREE.MeshBasicMaterial({color:0xa8c0f0,transparent:true,opacity:0.06,depthWrite:false,blending:THREE.AdditiveBlending})); shaft.position.set(x+0.5,1.2,2.3); shaft.rotation.x=0.55; keep.add(shaft);
+        block(x+0.5,1.32,0.5); block(x-0.1,1.32,0.4); block(x+1.1,1.32,0.4);
+        X.addSpot({x:x+0.5,z:2.0,r:1.0,label:'Sit',who:'The window seat',action:()=>{ if(X.sitAt(x+0.5,1.4,0,3.5,()=>UI.toast(k?'🌙 The stars are out over the hills. Somewhere down there is home.':'🌙 Moonlight on the roofs of the town below. All is quiet.',2400))) UI.toast('🌙 You sit in the window and look out…',1500); }}); }); }
+    // plants in the corners
+    [[2,2],[W-3,2],[2,H-3],[W-3,H-3]].forEach(([x,y])=>{ if(!isF(x,y)) return; const g=group(x+0.5,0,y+0.5,deco); Cy(0.22,0.17,0.36,8,0xa85a32,0,0,0,g); for(let i=0;i<7;i++){ const l=Co(0.07,0.6+hs(x,y,i)*0.4,5,i%2?0x3a7a3a:0x4a8a42,Math.cos(i)*0.08,0.3,Math.sin(i)*0.08,g); l.rotation.set(Math.sin(i*2)*0.5,0,Math.cos(i*2)*0.5); } block(x+0.5,y+0.5,0.3); });
+    // the warm motes over the fire, and the sound of it
+    motes(Object.assign({},X,{CW:CW}),{motes:{c:0xffc070,vy:0.3,n:50,s:0.05}});
+    if(typeof mergeStatic==='function') mergeStatic(deco);
+    return {deco,vaults:[],warmRoof:true,rest:{enter:()=>FIRE.start(),leave:()=>FIRE.stop()}}; }
 
   // ── a vault over a great room: the walls carried up past the halls' roof (a clerestory with lit windows), a barrel
   //    vault along the room, ribs across it every two paces, and a rose window in the far lunette ──
@@ -6778,7 +6915,7 @@ const CHAPEL_DRESS=(function(){
     return RW[key]=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),side:THREE.DoubleSide}); }
 
   // ── the sanctum: the guardian's throne-hall, the general bound at its head ──
-  function sanctum(X,deco,keep){ const T=X.T, f=X.f, CW=X.CW, an=X.an, at=X.at, W=X.W, H=X.H; let gx=W>>1, gy=1;
+  function sanctum(X,deco,keep,block){ const T=X.T, f=X.f, CW=X.CW, an=X.an, at=X.at, W=X.W, H=X.H; let gx=W>>1, gy=1;
     for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(at(x,y)===7){ gx=x; gy=y; }
     const cx=gx+0.5, r={x:1,y:1,w:W-2,h:H-2}, V=vault(X,deco,keep,r,true);
     // three lancets of stained glass in the wall behind the general, light pouring down from them onto the dais
@@ -6792,7 +6929,7 @@ const CHAPEL_DRESS=(function(){
     for(let y=gy+1;y<H-1;y++){ if(at(gx,y)!==0) continue; B(2.2,0.02,1.0,dk(T.banner,0.62),cx,0,y+0.5,deco); B(0.1,0.025,1.0,T.trim,cx-1.12,0,y+0.5,deco); B(0.1,0.025,1.0,T.trim,cx+1.12,0,y+0.5,deco); }
     // the angels at the general's side, the guardian's pair out in the hall
     angel(deco,T,cx-3,gy+0.7,0); angel(deco,T,cx+3,gy+0.7,0);
-    SPR=8; const C=group(cx,0,gy+2.6,keep); CENTRE[T.centre](C,T,an,X); SPR=3.6;
+    SPR=8; const C=group(cx,0,gy+2.6,keep); CENTRE[T.centre](C,T,an,X); CENTRER(T.centre,8).forEach(([dx,dz,r])=>block(cx+dx,gy+2.6+dz,r)); SPR=3.6;
     // the seal in the floor: the guardian's mark burning in it — gold, once the guardian falls
     { const rr=Math.min(W,H)*0.26, mz=H*0.55, ringM=new THREE.MeshBasicMaterial({color:T.mark}), r1=new THREE.Mesh(new THREE.RingGeometry(rr-0.14,rr,48),ringM), r2=new THREE.Mesh(new THREE.RingGeometry(rr*0.62-0.1,rr*0.62,40),ringM);
       [r1,r2].forEach(m=>{ m.rotation.x=-Math.PI/2; m.position.set(cx,0.014,mz); m.userData.keep=true; keep.add(m); });
@@ -6801,6 +6938,37 @@ const CHAPEL_DRESS=(function(){
     chandelier(keep,T,an,cx,H*0.55,CW+V.vh,2.2); chandelier(keep,T,an,cx,H*0.25,CW+V.vh,2.0); }
   return dress;
 })();
+
+// ── the key chest: an iron-bound coffer on a plinth that rises out of the dais when the last demon falls; Ⓐ throws back
+//    its domed lid on a hinge, light spills out, and the iron key lifts, turns in the air and comes to your hand ──
+function CHAPEL_CHEST(T){ const dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex(), g=new THREE.Group(), wood=0x5a3418, iron=0x2e2a2c, gold=T?T.trim:0xe8c766;
+  const plinth=group(0,0,0,g); Cy(0.55,0.62,0.32,8,dk(T?T.stair:0x8a8494,1.0),0,0,0,plinth); Cy(0.6,0.6,0.05,8,gold,0,0.32,0,plinth);
+  const ch=group(0,0.37,0,g);
+  B(0.78,0.4,0.5,wood,0,0,0,ch); [-0.3,0,0.3].forEach(x=>B(0.06,0.42,0.52,iron,x,-0.01,0,ch)); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>B(0.1,0.1,0.1,gold,a*0.37,0.32,b*0.23,ch));
+  B(0.14,0.16,0.03,gold,0,0.16,0.26,ch); const hole=B(0.03,0.06,0.02,new THREE.MeshBasicMaterial({color:0xffe9a0}),0,0.18,0.275,ch);
+  const inner=B(0.7,0.02,0.42,new THREE.MeshBasicMaterial({color:0xffd870}),0,0.38,0,ch); inner.visible=false;
+  // the lid, hinged along the back edge
+  const lid=group(0,0.4,-0.25,ch); const dome=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,0.78,12,1,false,0,Math.PI),mt(wood)); dome.rotation.z=Math.PI/2; dome.position.set(0,0,0.25); dome.scale.set(1,1,0.55); lid.add(dome);
+  [-0.3,0,0.3].forEach(x=>{ const bnd=new THREE.Mesh(new THREE.CylinderGeometry(0.258,0.258,0.06,12,1,true,0,Math.PI),mt(iron)); bnd.rotation.z=Math.PI/2; bnd.position.set(x,0,0.25); bnd.scale.set(1,1,0.56); lid.add(bnd); });
+  B(0.16,0.12,0.03,gold,0,0.0,0.52,lid);
+  // the key inside
+  const key=group(0,0.42,0,ch); key.visible=false; const km=new THREE.MeshPhongMaterial({color:0x4a4448,emissive:0x2a1a06,shininess:60,specular:0xc8a060});
+  const bow=new THREE.Mesh(new THREE.TorusGeometry(0.06,0.018,6,14),km); bow.position.y=0.1; key.add(bow); const sh=new THREE.Mesh(new THREE.BoxGeometry(0.025,0.2,0.025),km); sh.position.y=-0.03; key.add(sh);
+  [[0.035,-0.1],[0.03,-0.06]].forEach(([w,y])=>{ const t=new THREE.Mesh(new THREE.BoxGeometry(w,0.025,0.02),km); t.position.set(w/2+0.01,y,0); key.add(t); });
+  const halo=new THREE.Mesh(new THREE.SphereGeometry(0.16,12,8),new THREE.MeshBasicMaterial({color:0xffe08a,transparent:true,opacity:0.35,depthWrite:false,blending:THREE.AdditiveBlending})); key.add(halo);
+  const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.42,3.2,12,1,true),new THREE.MeshBasicMaterial({color:0xffe9a8,transparent:true,opacity:0,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide})); beam.position.y=1.9; g.add(beam);
+  const light=new THREE.PointLight(0xffd480,0,5,1.6); light.position.y=1.0; g.add(light);
+  shade(g); let st=null;
+  const api={ g, rising:false,
+    set(state){ st=null; g.position.y=state==='down'?-0.75:0; lid.rotation.x=state==='open'?-1.95:0; inner.visible=state==='open'; key.visible=false; beam.material.opacity=0; light.intensity=state==='open'?0.4:0; hole.visible=state!=='open'; },
+    rise(){ st={k:'rise',t:0}; }, open(onGot){ st={k:'open',t:0,cb:onGot}; inner.visible=true; key.visible=true; key.position.set(0,0.42,0); },
+    tick(){ if(!st) return; const now=performance.now()/1000; if(st.t0===undefined) st.t0=now; st.t=now-st.t0; const dt=0;
+      if(st.k==='rise'){ const u=Math.min(1,st.t/1.6), e=1-Math.pow(1-u,3); g.position.y=-0.75*(1-e); beam.material.opacity=0.32*Math.sin(Math.min(1,st.t/2.4)*Math.PI); light.intensity=1.6*Math.sin(Math.min(1,st.t/2.4)*Math.PI); if(st.t>=2.4){ beam.material.opacity=0; light.intensity=0; st=null; } }
+      else if(st.k==='open'){ const t=st.t; lid.rotation.x=-1.95*Math.min(1,Math.pow(t/0.55,0.7)); light.intensity=Math.min(1.8,t*3); beam.material.opacity=Math.min(0.28,t*0.4);
+        if(t>0.45){ const u=Math.min(1,(t-0.45)/1.3); key.position.y=0.42+u*0.9; key.rotation.y=t*5; halo.scale.setScalar(1+Math.sin(t*9)*0.15); }
+        if(t>2.0){ const u=Math.min(1,(t-2.0)/0.4); key.scale.setScalar(1-u); if(u>=1&&key.visible){ key.visible=false; if(st.cb) st.cb(); } }
+        if(t>2.6){ light.intensity=0.4; beam.material.opacity=0; st=null; } } } };
+  return api; }
 
 // ── engine/chapel.js ──
 // ════════════════════════════════════════════════════════════════
@@ -6869,9 +7037,9 @@ function chapelLevels(C,spec){
   // block's corner), and every position the guardian's rules use — the demon, the way in, the chest, pages, stands,
   // bramble, grain, the altar, fires, columns and ledger cells — moves with it. Centre stays centre; the hall is twice as wide and long.
   const AREA=new Set([0,47,48]);
-  function widenSanctum(f){ if(f.type!=='sanctum'||f.wide) return; const G=f.grid, W=G[0].length, H=G.length, S=2, m=v=>1+S*(v-1);
+  function widenSanctum(f){ if((f.type!=='sanctum'&&f.type!=='library')||f.wide) return;   /* the sanctum, and the resting-room by the fire, drawn twice as broad */ const G=f.grid, W=G[0].length, H=G.length, S=2, m=v=>1+S*(v-1);
     const nW=2+S*(W-2), nH=2+S*(H-2), g=[]; for(let y=0;y<nH;y++){ const r=[]; for(let x=0;x<nW;x++){
-      if(x===0||y===0||x===nW-1||y===nH-1){ r.push(1); continue; } const ox=1+((x-1)/S|0), oy=1+((y-1)/S|0), t=G[oy][ox];
+      if(x===0||y===0||x===nW-1||y===nH-1){ const bx=x===0?0:x===nW-1?W-1:1+((x-1)/S|0), by=y===0?0:y===nH-1?H-1:1+((y-1)/S|0), bt=G[by][bx], on=(y===0||y===nH-1)?x===m(bx):y===m(by); r.push(bt!==1&&on?bt:1); continue; }   /* a door or a stair in the outer wall keeps its place */ const ox=1+((x-1)/S|0), oy=1+((y-1)/S|0), t=G[oy][ox];
       r.push(AREA.has(t)||(x===m(ox)&&y===m(oy))?t:0); } g.push(r); }
     // a point object leaves the rest of its block as the floor around it (water halls keep their water)
     for(let oy=1;oy<H-1;oy++) for(let ox=1;ox<W-1;ox++){ const t=G[oy][ox]; if(AREA.has(t)) continue; const nb=[G[oy][ox-1],G[oy][ox+1],G[oy-1][ox],G[oy+1][ox]].find(v=>AREA.has(v));
@@ -6892,13 +7060,13 @@ function chapelLevels(C,spec){
       const pts=[]; Object.values(f.extra||{}).forEach(v=>(Array.isArray(v)?v:[v]).forEach(o=>{ if(o&&typeof o.x==='number') pts.push(o); if(o&&o.cells) o.cells.forEach(([x,y])=>pts.push({x,y})); })); (f.demons||[]).forEach(d=>pts.push(d));
       const free=(x,y)=>G[y]&&G[y][x]===0&&!pts.some(p=>p.x===x&&p.y===y);
       [gx-3,gx+3].forEach(x=>{ if(free(x,gy)) G[gy][x]=57; });
-      [-8,8].forEach(dx=>{ const cells=[]; for(let y=gy+2;y<=gy+3;y++) for(let x=gx+dx-1;x<=gx+dx+1;x++) cells.push([x,y]); if(cells.every(([x,y])=>free(x,y))) cells.forEach(([x,y])=>G[y][x]=57); }); }
+      [-8,8].forEach(dx=>{ const cells=[]; for(let y=gy+2;y<=gy+3;y++) for(let x=gx+dx-1;x<=gx+dx+1;x++) cells.push([x,y]); if(cells.every(([x,y])=>free(x,y))) cells.forEach(([x,y])=>G[y][x]=62); }); }
     let g=G.map(r=>r.slice()); const at=(x,y)=>g[y]&&g[y][x];
     const OPEN=!!f.open, scene=new THREE.Scene(), bg=new THREE.Color(T.bg); scene.background=bg; scene.fog=new THREE.Fog(bg,OPEN?T.fog[0]:9,OPEN?T.fog[1]:24);
     const lv={id:idOf(i),name:`${td.general}'s Chapel`,scene,folk:[],spots:[],anim:[],cam:{pitch:0.26,dist:3.0,min:1.6,max:5.2,lookH:0.15},speed:4.6,interior:true,actorS:0.78,dmapShow:true};   // halls to roam, the camera at your shoulder   // down in the halls, close behind you: the walls stand over you
     const hemi=new THREE.HemisphereLight(T.sky,T.gnd,T.hemiI*(OPEN?1:0.92)); scene.add(hemi);
     const lamp=new THREE.PointLight(T.lamp,1.2,11,1.4); scene.add(lamp); const key=new THREE.DirectionalLight(T.sky,0.25); key.position.set(W*0.3,12,H*0.7); scene.add(key);
-    const room=group(0,0,0,scene), an=lv.anim;
+    const room=group(0,0,0,scene), an=lv.anim, BLK=[];   // BLK: the solid furnishings, each a circle you walk round
     const CW=OPEN?4.2:3.4, RP=f.ramps||{}, hgt=(x,y)=>{ const t=at(x,y); return t===45?0.3:t===46?0.15:t===47?0.2:t===60?1.0:t===61?(RP[x+','+y]?RP[x+','+y].h0:0):0; };
     const hAt=(px,pz)=>{ const x=Math.floor(px), y=Math.floor(pz), t=at(x,y); if(t!==61) return hgt(x,y); const r=RP[x+','+y]; if(!r) return 0;   // up the stair: along its rise
       const u=r.dx>0?px-x:r.dx<0?1-(px-x):r.dy>0?pz-y:1-(pz-y); return r.h0+(r.h1-r.h0)*Math.max(0,Math.min(1,u)); };
@@ -6926,7 +7094,7 @@ function chapelLevels(C,spec){
       const g=group(x+0.5+o[0]*(0.52-WI.m),fy,y+0.5+o[1]*(0.52-WI.m),room); B(0.08,0.3,0.08,0x3a3030,0,1.35,0,g); themeFlame(0,1.7,0,g,an,1.6,T); });
     // braziers in the great rooms of an open floor: a few real lights, fixed
     if(OPEN){ const BZ=[]; for(let y=2;y<H-2;y+=6) for(let x=2;x<W-2;x+=7){ if(at(x,y)!==0||[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>at(x+a,y+b)!==0)) continue; if(f.cxm!==undefined&&Math.abs(x-f.cxm)<=1) continue;
-      const b=group(x+0.5,0,y+0.5,room); Cy(0.06,0.12,1.0,6,0x3a3438,0,0,0,b); Cy(0.3,0.16,0.24,8,0x4a4450,0,1.0,0,b); themeFire(b,an,0,1.18,0,0.8,T); BZ.push([x+0.5,y+0.5]); }
+      const b=group(x+0.5,0,y+0.5,room); Cy(0.06,0.12,1.0,6,0x3a3438,0,0,0,b); Cy(0.3,0.16,0.24,8,0x4a4450,0,1.0,0,b); themeFire(b,an,0,1.18,0,0.8,T); BZ.push([x+0.5,y+0.5]); BLK.push({x:x+0.5,z:y+0.5,r:0.3}); }
       // two real lights, at the braziers nearest you (the rest burn as flames): the halls stay light enough to draw fast
       const PL=[0,1].map(()=>{ const l=new THREE.PointLight(T.fire[0],0,9,1.5); scene.add(l); return l; });
       an.push(t=>{ const P=ENGINE.P; BZ.slice().sort((a,b)=>Math.hypot(a[0]-P.x,a[1]-P.z)-Math.hypot(b[0]-P.x,b[1]-P.z)).slice(0,2).forEach((b,k)=>{ PL[k].position.set(b[0],1.7,b[1]); PL[k].intensity=0.9+Math.sin(t*9+k)*0.06; }); }); }
@@ -6937,12 +7105,12 @@ function chapelLevels(C,spec){
         const fl=Co(0.07,0.2,6,glow(0xffd27a),0,1.16,0,g); fl.visible=false; an.push(t2=>{ fl.scale.y=1+Math.sin(t2*10+x)*0.2; }); dyn.candles.push({x,y,fl}); }
       else if(t===20){ const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>!SOLID.has(at(x+a,y+b)))||[0,1]; const g=group(cx,0,cz,room); B(0.96,CW,0.96,pal.wall,0,0,0,g); const tb=B(0.6,0.7,0.04,0xc8b890,o[0]*0.5,0.45,o[1]*0.5,g); tb.rotation.y=Math.atan2(o[0],o[1]); }
       else if(t===21){ const g=group(cx,0,cz,room); B(0.3,0.9,0.3,0x5a3a22,0,0,0,g); const tp=B(0.7,0.06,0.5,0x7a5432,0,0.95,0,g); tp.rotation.x=0.4; const bk=B(0.56,0.04,0.38,0xf4eee0,0,1.0,0,g); bk.rotation.x=0.4; shade(g); }
-      else if(t===22){ const g=group(cx,0,cz,room); Cy(0.45,0.5,0.25,10,0x5a5462,0,0,0,g); fire(g,an,0,0.25,0,1.3); }
-      else if(t===23){ const g=group(cx,0,cz,room); g.rotation.y=-Math.PI/2; B(0.7,0.42,0.6,0x6a2a3a,0,0,0,g); B(0.7,0.6,0.15,0x6a2a3a,0,0.4,-0.22,g); B(0.12,0.28,0.6,0x6a2a3a,-0.3,0.42,0,g); B(0.12,0.28,0.6,0x6a2a3a,0.3,0.42,0,g); }
+      else if(t===22){ if(ftype!=='library'){ const g=group(cx,0,cz,room); Cy(0.45,0.5,0.25,10,0x5a5462,0,0,0,g); fire(g,an,0,0.25,0,1.3); } }
+      else if(t===23&&ftype!=='library'){ const g=group(cx,0,cz,room); g.rotation.y=-Math.PI/2; B(0.7,0.42,0.6,0x6a2a3a,0,0,0,g); B(0.7,0.6,0.15,0x6a2a3a,0,0.4,-0.22,g); B(0.12,0.28,0.6,0x6a2a3a,-0.3,0.42,0,g); B(0.12,0.28,0.6,0x6a2a3a,0.3,0.42,0,g); }
       else if(t===41){ const g=group(cx,0,cz,room); Cy(0.3,0.38,0.9,8,0x8a8494,0,0,0,g); const tb=B(0.5,0.05,0.4,0xc8b890,0,0.92,0,g); tb.rotation.x=0.3; }
       else if(t===42){ B(0.7,0.02,0.4,0xc8a84a,cx,0,cz,room); }
       else if(t===5){ const g=group(cx,0,cz,room); B(0.72,0.42,0.48,0x6a4424,0,0,0,g); const lid=group(0,0.42,-0.24,g); B(0.74,0.12,0.5,0x7a5030,0,0,0.25,lid); B(0.08,0.12,0.02,0xe8c766,0,0.2,0.25,g); shade(g); dyn.chests[x+','+y]=lid; }
-      else if(t===45&&f.podium&&f.podium.x===x&&f.podium.y===y){ const g=group(cx,0.3,cz,room); B(0.8,0.3,0.8,0x8a8494,0,0,0,g); const ch=group(0,0.3,0,g); B(0.62,0.38,0.42,0x6a4424,0,0,0,ch); B(0.64,0.08,0.44,0xe8c766,0,0.38,0,ch); g.visible=false; dyn.podium=g; }
+      else if(t===45&&f.podium&&f.podium.x===x&&f.podium.y===y){ const kc=CHAPEL_CHEST(T); kc.g.position.set(cx,0.3,cz); room.add(kc.g); kc.g.visible=false; dyn.podium=kc.g; dyn.kc=kc; an.push((t2,dt)=>kc.tick(dt||0.016)); }
       else if(t===46){ B(1,0.15,0.4,0x7a7488,cx,0,y+0.8,room); }
       else if(t===58){ Cy(0.34,0.4,CW,10,T.stair,cx,0,cz,room); Cy(0.46,0.46,0.18,10,T.trim,cx,CW-0.18,cz,room); Cy(0.48,0.48,0.2,10,T.top,cx,0,cz,room); }
       else if(t===59){ const m=new THREE.Mesh(new THREE.PlaneGeometry(0.98,0.98),new THREE.MeshPhongMaterial({color:0x05060c,shininess:120,specular:0x8a90b0})); m.rotation.x=-Math.PI/2; m.position.set(cx,0.02,cz); room.add(m); }
@@ -6950,7 +7118,10 @@ function chapelLevels(C,spec){
       else if(t===8){ const g=group(cx,0,cz,room); B(0.9,0.02,0.9,0x0a0810,0,0,0,g); for(let k=0;k<3;k++) B(0.86,0.05,0.18,0x5a5468,0,-0.05-k*0.05,-0.2+k*0.25,g); }
       else if(t===7){ const gg=group(cx,0.7,cz+0.25,room); const p=person('general',{tint:spec.tint||'#5a3a7a'}); gg.add(p); B(0.9,0.08,0.08,0x2a2034,0,0.9,0.12,gg); B(0.08,0.08,0.6,0x2a2034,-0.35,0.9,-0.1,gg); B(0.08,0.08,0.6,0x2a2034,0.35,0.9,-0.1,gg);
         const aura=new THREE.Mesh(new THREE.SphereGeometry(0.75,12,8),new THREE.MeshBasicMaterial({color:0x8a3ad8,transparent:true,opacity:0.18,depthWrite:false})); aura.position.y=0.8; gg.add(aura); dyn.general={g:gg,aura,x,y,fall:0}; } }
-    { const D=CHAPEL_DRESS({T,f,at,CW,an,room,OPEN,i,town:C.town,W,H,wl,WI,hemi,bg,scene,top,bossDead:()=>!!(R&&R.bossDead)}); VAULTS=D.vaults;
+    // sit somewhere a moment (a bench, the chair): held in place, then stood back up where you were
+    const sitAt=(x,z,face,secs,onDone,each)=>{ if(ENGINE.holding) return false; const P=ENGINE.P, back={x:P.x,z:P.z}; P.x=x; P.z=z; P.face=face; ENGINE.hold(secs,'sit'); let el=0;
+      const tick=(t,dt)=>{ el+=dt||0.016; P.x=x; P.z=z; P.face=face; if(each) each(Math.min(1,el/secs)); if(el>=secs){ an.splice(an.indexOf(tick),1); P.x=back.x; P.z=back.z; if(onDone) onDone(); } }; an.push(tick); return true; };
+    { const D=CHAPEL_DRESS({T,f,at,CW,an,room,OPEN,i,town:C.town,W,H,wl,WI,hemi,bg,scene,top,blockers:BLK,sitAt,addSpot:o=>lv.spots.push(o),R:()=>R,tier:C.town,bossDead:()=>!!(R&&R.bossDead)}); VAULTS=D.vaults; lv._blk=BLK; if(D.warmRoof) room.remove(ceil); if(D.rest){ lv.onLeave=D.rest.leave; lv._restIn=D.rest.enter; }
       // the dark roof over the halls, open where a vault rises
       if(VAULTS.length){ room.remove(ceil); const v=VAULTS[0], E=-2, Wx=W+2, Hz=H+2, rects=[[E,E,Wx,v.z0],[E,v.z1,Wx,Hz],[E,v.z0,v.x0,v.z1],[v.x1,v.z0,Wx,v.z1]];
         rects.forEach(([a,b,c,d])=>{ if(c-a<=0.01||d-b<=0.01) return; const m=new THREE.Mesh(new THREE.PlaneGeometry(c-a,d-b),ceil.material); m.rotation.x=Math.PI/2; m.position.set((a+c)/2,CW+0.02,(b+d)/2); room.add(m); }); } }
@@ -6958,10 +7129,10 @@ function chapelLevels(C,spec){
     const ok=(x,y)=>{ const t=at(x,y); if(t===undefined) return false; if(t===16) return !!R.opened[i]; if(t===45&&dyn.podium&&dyn.podium.visible&&f.podium.x===x&&f.podium.y===y) return false; return !SOLID.has(t); };
     lv.ground=(x,z)=>hAt(x,z); lv.stairAt=()=>{ for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(at(x,y)===2) return [x,y]; return null; };
     const okAt=(px,pz)=>{ const x=Math.floor(px), y=Math.floor(pz); return ok(x,y)||(at(x,y)===1&&WI.free(px,pz)&&(()=>{ const u=px-x, v=pz-y; return (u<WI.m&&ok(x-1,y))||(u>1-WI.m&&ok(x+1,y))||(v<WI.m&&ok(x,y-1))||(v>1-WI.m&&ok(x,y+1)); })()); };
-    lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!okAt(tx+ox,tz+oz)) return false; const air=(ENGINE.airH||0); return hAt(tx,tz)-(hAt(fx,fz)+air)<0.42; };   // no walking up a gallery's edge — take the stair, or jump it; stepping down off one is a drop
+    lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!okAt(tx+ox,tz+oz)) return false; for(const b of BLK){ const dt=Math.hypot(tx-b.x,tz-b.z); if(dt<b.r+0.24&&dt<=Math.hypot(fx-b.x,fz-b.z)) return false; } const air=(ENGINE.airH||0); return hAt(tx,tz)-(hAt(fx,fz)+air)<0.42; };   // no walking up a gallery's edge — take the stair, or jump it; stepping down off one is a drop
     lv.dmap={W,H,wall:(x,y)=>at(x,y)===1||at(x,y)===undefined,solid:(x,y)=>!ok(x,y)};   // for the map of where you've been
     lv.spawn=arrival(i,false);
-    lv.zone=()=>top?'The sanctum':`Floor ${i+1} of ${N}`;
+    lv.zone=()=>{ if(top) return 'The sanctum'; let z=`Floor ${i+1} of ${N}`; if(f.podium&&lv.combat){ const n=lv.combat.foes.filter(d=>d.alive&&!d.boss).length; z+=n?` · 👹 ${n} demon${n===1?'':'s'} left`:R.hasKey||R.opened[i]?' · the way up is open':' · 🗝 take the key from the dais'; } return z; };
     lv.follow=p=>{ lamp.position.set(p.x,p.y+1.8,p.z); };
     // ── the fight ──
     const alive=()=>lv.combat.foes.some(d=>d.alive);
@@ -6973,7 +7144,7 @@ function chapelLevels(C,spec){
           if(dyn.general) dyn.general.fall=0.001;
           setTimeout(()=>ENGINE.speak('⚔️ '+td.boss+' is defeated',[`The thing that bound this place is undone. ${td.general} is free to approach. 🙏`]),700); GAME.save(); return; }
         R.cleared[i+':'+d.post]=true;
-        if(!alive()){ if(dyn.podium&&!R.risen[i]){ R.risen[i]=true; dyn.podium.visible=true; UI.toast('✨ The hall falls quiet. A chest stands on the platform that was not there before.',2600); }
+        if(!alive()){ if(dyn.podium&&!R.risen[i]){ R.risen[i]=true; dyn.podium.visible=true; dyn.kc.set('down'); dyn.kc.rise(); UI.toast('✨ The hall falls quiet. In the great hall a chest rises from the dais — the key to the stone is inside.',3000); }
           else if(dyn.seals.length&&!R.opened[i]) UI.toast('✨ Floor cleared — but the stone still stands.',1600); } },
       onDeath:()=>{ const cp=R.checkpoint; if(cp!==null&&cp!==undefined){ ENGINE.go(idOf(cp),lv2=>chairSpot(cp)); setTimeout(()=>UI.toast('💫 You fall… and wake by the fire, where you last rested.',2200),450); }
         else leave('💫 You fall… and wake safe outside the chapel.'); },
@@ -6991,18 +7162,18 @@ function chapelLevels(C,spec){
         R.lit[i]=lit+1; showCandles(); if(lit+1>=cs.length){ UI.toast('🕯 The last lampstand takes light.',1400); openSeal(); } else UI.toast(`🕯 ${cs[k].church} burns. ${cs.length-lit-1} remain${cs.length-lit-1===1?'s':''} dark.`,1500); },0.8);
       else if(t===42){ const c=(f.candles||[]).find(q=>q.sx===x&&q.sy===y); if(c) spot(x,y,'Read','Set in the floor',()=>ENGINE.speak('Set in the floor',[c.church]),0.7); }
       else if(t===20||t===41) spot(x,y,'Read','The tablet',()=>ENGINE.speak('The tablet',tabletPages(i)),1.1);
-      else if(t===21){ const b=C.books[y===7?2:(x<(W>>1)?0:1)]; spot(x,y,'Read',b.title,()=>ENGINE.speak(b.title,b.lines.map(txt)),1.0); }
+      else if(t===21){ const b=C.books[f.wide?(y>H*0.6?2:(x<(W>>1)?0:1)):(y===7?2:(x<(W>>1)?0:1))]; spot(x,y,'Read',b.title,()=>ENGINE.speak(b.title,b.lines.map(txt)),1.0); }
       else if(t===23) spot(x,y,'Rest','The chair by the fire',()=>{ if(ENGINE.holding) return;   // the seat by the fire (CHAIR_REST_MS): sit 3.5s, strength rising
         const S0=GAME.S, hp0=S0.hp, P=ENGINE.P, back={x:P.x,z:P.z}; R.checkpoint=i; P.x=x+0.5; P.z=y+0.5; P.face=-Math.PI/2; ENGINE.hold(3.5,'sit'); let el=0;
         const tick=(t,dt)=>{ el+=dt||0.016; const u=Math.min(1,el/3.5); S0.hp=Math.max(S0.hp,Math.round(hp0+(S0.maxHp-hp0)*u)); P.x=x+0.5; P.z=y+0.5; ENGINE.hud();
           if(u>=1){ lv.anim.splice(lv.anim.indexOf(tick),1); S0.hp=S0.maxHp; P.x=back.x; P.z=back.z; GAME.changed(); GAME.save();
-            UI.toast('🙏 You rise, restored. Strength for the road below — should you fall, you will wake here.',2400); } };
+            UI.toast('🙏 You rise, restored. Should you fall, you will wake here by the fire.',2600); if(!R.restVerse){ R.restVerse=true; ENGINE.speak('By the fire',['“He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul.” — Psalm 23:2–3','Rest as long as you like. The fire will keep.']); } } };
         lv.anim.push(tick); UI.toast('🔥 You sink into the chair by the fire…',1600); },1.1);
-      else if(t===22) spot(x,y,'Look','The hearth',()=>UI.toast('🔥 The fire is kept up. Someone still comes here.',1400),1.0);
+      else if(t===22&&ftype!=='library') spot(x,y,'Look','The hearth',()=>UI.toast('🔥 The fire is kept up. Someone still comes here.',1400),1.0);
       else if(t===8) spot(x,y,i?'Down':'Leave',i?'The stair down':'The door',()=>{ if(i) ENGINE.go(idOf(i-1),()=>arrival(i-1,true)); else leave('🌿 You step back outside.'); },0.8);
       else if(t===7) spot(x,y+0.6,'Talk',td.general,()=>{ if(!R.bossDead){ ENGINE.speak(td.general,[`The demon ${td.boss} binds me — strike it down first!`]); return; } if(dyn.general&&dyn.general.fall<1){ UI.toast('…he is still coming down.',900); return; } trial(lv); },1.4); }
-    if(dyn.podium) lv.spots.push({x:f.podium.x+0.5,z:f.podium.y+0.5,r:1.2,label:'Open',who:'A chest',action:()=>{ if(!dyn.podium.visible) return; if(R.chests['podium:'+i]){ UI.toast('📭 Empty — already taken.',900); return; }
-      R.chests['podium:'+i]=true; R.hasKey=true; ENGINE.speak('An iron key',['Black with age. It will not last — use it on the stone above.']); }});
+    if(dyn.podium) lv.spots.push({x:f.podium.x+0.5,z:f.podium.y+0.5,r:1.3,label:'Open',who:'The chest on the dais',action:()=>{ if(!dyn.podium.visible) return; if(R.chests['podium:'+i]){ UI.toast('📭 Empty — the key is already yours.',900); return; }
+      R.chests['podium:'+i]=true; GAME.save(); dyn.kc.open(()=>{ R.hasKey=true; ENGINE.speak('An iron key',['Black with age, warm from the light it lay in. It will not last — use it on the stone that seals the stair.']); }); }});
     function openSeal(){ R.opened[i]=true; dyn.seals.forEach(s=>{ let k=0; const f2=t=>{ k+=0.02; s.position.y=-k*1.5; if(k<1) requestAnimationFrame(f2); else s.visible=false; }; f2(); }); UI.toast('⛓ The wall grinds back — a way opens beyond.',1600); }
     function showCandles(){ const lit=R.lit[i]||0; dyn.candles.forEach(c=>{ const k=f.candles.findIndex(q=>q.x===c.x&&q.y===c.y); c.fl.visible=k>=0&&k<lit; }); }
     // the stair up: step onto it (the game's rule — and only once the floor is clear)
@@ -7012,15 +7183,16 @@ function chapelLevels(C,spec){
       if(i+1<N){ R.opened[i]=true; ENGINE.go(idOf(i+1),()=>arrival(i+1,false)); } });
     // the general comes down when the guardian falls
     an.push((t,dt)=>{ const g=dyn.general; if(!g) return; g.aura.visible=!R.bossDead; if(R.bossDead&&g.fall===0) g.fall=1; if(g.fall>0&&g.fall<1){ g.fall=Math.min(1,g.fall+(dt||0.016)/1.5); } g.g.position.y=0.7*(1-(g.fall||0)); g.g.position.z=g.y+0.5+0.25+0.6*(g.fall||0); });
-    lv.onEnter=sp=>{ COMBAT.clear(lv); onStair=true; g=G.map(r=>r.slice());
-      dyn.seals.forEach(s=>{ s.visible=!R.opened[i]; s.position.y=0; }); showCandles(); if(dyn.podium) dyn.podium.visible=!!R.risen[i];
+    lv.onEnter=sp=>{ if(lv._restIn) setTimeout(lv._restIn,600); COMBAT.clear(lv); onStair=true; g=G.map(r=>r.slice());
+      dyn.seals.forEach(s=>{ s.visible=!R.opened[i]; s.position.y=0; }); showCandles(); if(dyn.podium){ dyn.podium.visible=!!R.risen[i]; dyn.kc.set(R.chests['podium:'+i]?'open':'up'); }
       Object.entries(dyn.chests).forEach(([k,l])=>l.rotation.x=R.chests[i+':'+k]?-1.9:0); if(dyn.general){ dyn.general.fall=R.bossDead?1:0; }
       f.demons.forEach(d=>{ const post=d.x+','+d.y; if(d.boss?R.bossDead:R.cleared[i+':'+post]) return; const dirs=[[1,0],[-1,0],[0,1],[0,-1]][Math.random()*4|0];
         COMBAT.foe(lv,Object.assign({x:d.x+0.5,z:d.y+0.5,hx:d.x+0.5,hz:d.y+0.5,post,pdx:dirs[0],pdz:dirs[1],form:(d.x+d.y)%4},d,d.boss?{pat:C.boss,look:C.town===8?'paladin':'demon',tint:C.boss.color,bossForm:C.town,x:d.x+0.5,z:d.y+0.5}:{x:d.x+0.5,z:d.y+0.5})); });
       if(M.onEnter) M.onEnter();
       if(top&&!R.bossDead) setTimeout(()=>ENGINE.speak('⬆ The general\'s sanctum',[`⚠️ ${td.boss} guards it. Read its telegraphed attacks and dodge with Ⓑ (tap Guard twice) — it cannot turn once it has committed.`]),450);
       else if(ftype==='doctrine'&&!R.briefed){ R.briefed=true; setTimeout(()=>ENGINE.speak('Five lampstands, and a stone that will not move',['They stand in a ring, each with its name set in the floor before it. The stone above the stair holds fast while they are cold.','Read the tablet on the pedestal at the centre. The order is in the verse — light them as it names them, and skip the two that are not here.']),500); }
-      else setTimeout(()=>UI.toast(`⬆ Floor ${i+1}/${N}`,1200),400); };
+      else if(f.podium&&!R.hinted){ R.hinted=true; setTimeout(()=>ENGINE.speak('The chapel is bound',['Demons hold these halls, and a stone seals the stair to the next floor.','Hunt down every demon on the floor. When the last one falls, a chest rises from the dais in the great hall — the iron key inside opens the stone.','(The count of demons left is up in the corner, under the floor number.)']),450); }
+      else setTimeout(()=>UI.toast(f.podium&&!R.opened[i]?`⬆ Floor ${i+1}/${N} — 👹 slay every demon to raise the key`:`⬆ Floor ${i+1}/${N}`,1800),400); };
     return lv; }
   return { enter, get run(){ return R; } };
 }
