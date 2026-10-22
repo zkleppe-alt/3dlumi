@@ -4982,7 +4982,7 @@ function siGrid(R){ const g=[]; for(let y=0;y<R.H;y++){ g.push([]); for(let x=0;
   (R.door||[]).forEach(x=>g[R.H-1][x]=9); (R.stairs||[]).forEach(([x,y,t])=>g[y][x]=t);
   if(R.rooms){ for(let y=1;y<=4;y++) for(const x of [5,10,13]) g[y][x]=5; for(let x=1;x<=13;x++) if(![2,7,11].includes(x)) g[5][x]=5; }
   return g; }
-function objectRoom(spec){
+function objectRoom(spec){ if(typeof ROOMSTYLE_EXTRA!=='undefined') spec=ROOMSTYLE_EXTRA(spec);   // the shared templates, filled out for 3D
   const R=spec.room, G=siGrid(R), lv=roomShell(spec,G), {room,pal}=lv, solid=G.map(r=>r.map(t=>t===5));
   const tables=R.objs.filter(o=>o[0]==='table'||o[0]==='btable').map(([k,x,y,w,h])=>({x:x+(w||1)/2,z:y+(h||1)/2}));
   R.objs.forEach(([k,x,y,w,h,s])=>{ w=w||1; h=h||1; const cx=x+w/2, cz=y+h/2;
@@ -4991,6 +4991,8 @@ function objectRoom(spec){
   (R.wall||[]).forEach(([k,x,w])=>{ const O=WALL_PIECES[k]; if(O) O(room,{x,w:w||1,cx:x+(w||1)/2,pal,lv,spec}); });
   lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0.2,0],[-0.2,0],[0,0.2],[0,-0.2]]){ const X=Math.floor(tx+ox),Y=Math.floor(tz+oz); if(!solid[Y]||solid[Y][X]===undefined||solid[Y][X]) return false; } return true; };
   propsToScale(lv); placeNpcs(lv,spec.npcs,spec.floor||0); landings(lv);
+  // anyone the new furniture has landed on steps to the nearest open floor
+  lv.folk.forEach(f=>{ if(lv.canMove(f.x,f.z,f.x,f.z)) return; let best=null,bd=9; for(let y=1;y<lv.H-1;y++) for(let x=1;x<lv.W-1;x++){ const cx=x+0.5, cz=y+0.5, d=Math.hypot(cx-f.x,cz-f.z); if(d<bd&&lv.canMove(cx,cz,cx,cz)){ bd=d; best=[cx,cz]; } } if(best){ f.x=best[0]; f.z=best[1]; f.g.position.x=f.x; f.g.position.z=f.z; } });
   lv.folk.forEach(f=>{ const behind=R.keep&&Math.floor(f.x)===R.keep[0]&&Math.floor(f.z)===R.keep[1]; if(behind||spec.keeper===f.who){ f.reach=1.0; f.rest=0; } });
   if(typeof ROOMLIFE!=='undefined'){ const items=[], M={chair:'chair',armchair:'armchair',booth:'booth',bed:'bed',barrel:'barrel',kegs2:'barrel',crates:'crate',crate:'crate',plant:'plant',palm:'plant',pot:'plant',anvil:'anvil',grind:'grind',bard:'bard',shelf:'shelf',chest:'chest',rack:'rack',plate:'armour',table:'table',btable:'table'};
     R.objs.forEach(([k,x,y,w,h])=>{ w=w||1; h=h||1; const cx=x+w/2, cz=y+h/2, m=M[k]; if(!m) return; let face=0;
@@ -5198,6 +5200,7 @@ const ROOMLIFE=(function(){
     // the fire's voice: louder as you come near the hearth, gone when you leave
     if(hearths.length){ an.push(()=>{ if(ENGINE.level!==lv) return; const P=ENGINE.P; let d=99; hearths.forEach(h=>d=Math.min(d,Math.hypot(P.x-h.x,P.z-h.z-0.5))); AMBI.fire(Math.max(0,Math.min(0.28,0.34-d*0.045))); });
       const ol=lv.onLeave; lv.onLeave=()=>{ AMBI.fire(0); if(ol) ol(); }; }
+    if(typeof ROOMSTYLE!=='undefined'&&!home) try{ ROOMSTYLE(lv,spec,items,spot); }catch(e){ console.warn('roomstyle',e); }
   }
   return make;
 })();
@@ -5299,6 +5302,140 @@ const HOMESTEAD=(function(){
     return items; }
   return {pre,post};
 })();
+
+// ── engine/roomstyle.js ──
+// ════════════════════════════════════════════════════════════════
+//  ROOM STYLE — each kind of public room dressed for its trade, and given a thing or two to do:
+//   the tavern (antlers and shields, a shelf of tankards, hops and tankards hung from the beams, the slate of today's fare,
+//     a dartboard), the inn's upper floor (candles and basins by the beds), the general store (shelves of jars and bolts,
+//     baskets and garlic from the rafters, a barrel of apples, brooms, the bell on the counter), the forge (chains and
+//     horseshoes overhead, shields on the wall, ingots stacked — and the anvil ringing with sparks while the smith works),
+//     the fish market (fish hung on lines, oars and a life-ring, crates on ice, rope), the bazaar (bunting under the roof,
+//     patterned rugs, an incense burner smoking), the fine goods house (gilt frames, crystal drops), the keep's hall (shields
+//     and crossed swords, stag heads, iron candle-wheels, burning wall torches, the war table) and the barracks (the duty roll).
+//  ROOMSTYLE(lv, spec, items, spot) — called by ROOMLIFE once the room is furnished.
+// ════════════════════════════════════════════════════════════════
+const ROOMSTYLE=(function(){
+  const dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex();
+  function kindOf(spec,items){ const R=spec.room, ks=new Set(R?R.objs.map(o=>o[0]):[]);
+    if(spec.theme==='inn') return ks.has('bed')?'innrooms':'tavern'; if(spec.theme==='keep') return items.filter(i=>i.k==='bed').length>=3?'barracks':'hall';
+    if(ks.has('furnace')) return 'forge'; if(ks.has('ice')) return 'fish'; if(ks.has('spice')||ks.has('cushions')) return 'bazaar'; if(ks.has('perfume')||ks.has('vitrine')) return 'fine'; if(spec.theme==='shop') return 'store'; return null; }
+  // ── canvas pictures for the boards ──
+  const TX={}; function slate(key,lines,bg,fg){ if(TX[key]) return TX[key]; const c=document.createElement('canvas'); c.width=128; c.height=96; const x=c.getContext('2d'); x.fillStyle=bg; x.fillRect(0,0,128,96); x.strokeStyle='#8a6440'; x.lineWidth=6; x.strokeRect(0,0,128,96);
+    x.fillStyle=fg; x.textAlign='center'; lines.forEach((l,i)=>{ x.font=(i===0?'bold 15px':'12px')+' serif'; x.fillText(l,64,24+i*17); }); return TX[key]=new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c)}); }
+  function dartTex(){ if(TX.dart) return TX.dart; const c=document.createElement('canvas'); c.width=c.height=96; const x=c.getContext('2d'); [['#1a1a1a',46],['#e8dcc0',40],['#c0392e',30],['#e8dcc0',24],['#2a7a3a',12],['#c0392e',5]].forEach(([col,r])=>{ x.fillStyle=col; x.beginPath(); x.arc(48,48,r,0,7); x.fill(); });
+    x.strokeStyle='#1a1a1a'; for(let i=0;i<20;i++){ const a=i/20*Math.PI*2; x.beginPath(); x.moveTo(48,48); x.lineTo(48+Math.cos(a)*40,48+Math.sin(a)*40); x.stroke(); } return TX.dart=new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c)}); }
+  function rugTex(seed,a,b,c2){ const key='rug'+seed; if(TX[key]) return TX[key]; const c=document.createElement('canvas'); c.width=128; c.height=96; const x=c.getContext('2d'); x.fillStyle=a; x.fillRect(0,0,128,96); x.fillStyle=b; x.fillRect(8,8,112,80); x.fillStyle=a; x.fillRect(14,14,100,68);
+    x.fillStyle=c2; for(let i=0;i<5;i++){ x.beginPath(); x.moveTo(30+i*17,48); x.lineTo(38+i*17,34); x.lineTo(46+i*17,48); x.lineTo(38+i*17,62); x.fill(); } x.fillStyle=b; for(let i=0;i<14;i++){ x.fillRect(4+i*9,1,4,5); x.fillRect(4+i*9,90,4,5); } return TX[key]=new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c)}); }
+
+  function style(lv,spec,items,spot){ const kind=kindOf(spec,items); if(!kind) return; const room=lv.room, an=lv.anim, pal=lv.pal, W=lv.W, H=lv.H, G=lv.G, Rm=spec.room;
+    const deco=group(0,0,0,room), keep=group(0,0,0,room); deco.userData.keepScale=keep.userData.keepScale=true; const WH=typeof WALL_H!=='undefined'?WALL_H:2.75;
+    const free=(x,z)=>lv.canMove(x,z,x,z); const BL=lv._blk=lv._blk||[];
+    // the north wall's bare stretches (no window, no wall-piece, floor open before it), and the side walls'
+    const used=new Set(); (Rm&&Rm.wall||[]).forEach(([k,x,w])=>{ for(let i=-1;i<(w||1)+1;i++) used.add(x+i); }); for(let x=0;x<W;x++) if(G[0]&&G[0][x]!==5) { used.add(x-1); used.add(x); used.add(x+1); }
+    const north=[]; for(let x=1;x<W-1;x++) if(G[0][x]===5&&!used.has(x)&&free(x+0.5,1.5)) north.push(x+0.5);
+    const sides=[]; for(let y=2;y<H-2;y++){ if(G[y][0]===5&&free(1.5,y+0.5)) sides.push([1.0,y+0.5,Math.PI/2]); if(G[y][W-1]===5&&free(W-1.5,y+0.5)) sides.push([W-1.0,y+0.5,-Math.PI/2]); }
+    const take=(arr,n,seed)=>{ const out=[]; const a=arr.slice(); for(let i=0;i<n&&a.length;i++){ const k=Math.floor(hsh(seed+i*7,W+H)*a.length); out.push(a.splice(k,1)[0]); } return out; };
+    // something hung on the wall: g faces into the room
+    const onNorth=(x,fn)=>{ const g=group(x,0,1.02,deco); fn(g); return g; }, onSide=([x,z,r],fn)=>{ const g=group(x+(r>0?0.02:-0.02),0,z,deco); g.rotation.y=r; fn(g); return g; };
+    const onWall=(slot,fn)=>typeof slot==='number'?onNorth(slot,fn):onSide(slot,fn);
+    const slotXZ=slot=>typeof slot==='number'?{x:slot,z:1.6}:{x:slot[0]+(slot[2]>0?0.6:-0.6),z:slot[1]};
+    // under the roof: points between the beams
+    const rafters=[]; for(let x=2;x<W-1;x+=2) for(let z=2;z<H-1.5;z+=2.2) rafters.push([x+(hsh(x,z*3)-0.5)*0.4,z]);
+    const hang=(x,z,len,fn)=>{ const g=group(x,0,z,deco); B(0.012,len,0.012,0x3a2a1a,0,WH-0.2-len,0,g); const h=group(0,WH-0.2-len,0,g); fn(h); return g; };
+    // a floor piece against a wall, out of the way: a cell open, its wall behind it, and the cells either side open too
+    const floorSlots=[]; for(let y=1;y<H-3;y++) for(let x=1;x<W-1;x++){ const cx=x+0.5, cz=y+0.5; if(!free(cx,cz)) continue; const back=[[0,-1],[-1,0],[1,0]].find(([a,b])=>G[y+b]&&G[y+b][x+a]===5); if(!back) continue; if(!free(cx-back[1],cz-back[0])&&!free(cx+back[1],cz+back[0])) continue; if(!free(cx-back[0],cz-back[1])) continue; floorSlots.push([cx+back[0]*0.15,cz+back[1]*0.15,back]); }
+    const onFloor=(n,seed,fn,r)=>take(floorSlots,n,seed).forEach(([x,z,b])=>{ const g=group(x,0,z,deco); g.rotation.y=Math.atan2(-b[0],-b[1]); fn(g,x,z); BL.push({x,z,r:r||0.32}); });
+    // ── pieces ──
+    const P={
+      antlers:g=>{ B(0.3,0.36,0.05,0x5a3a20,0,1.6,0,g); [-1,1].forEach(s=>{ for(let i=0;i<4;i++){ const t=Cy(0.012,0.02,0.22,5,0xe8dcc0,s*(0.08+i*0.06),1.85+i*0.05,0.04,g); t.rotation.z=-s*(0.5-i*0.15); } }); },
+      shields:g=>{ [-0.22,0.22].forEach((x,i)=>{ const s=Cy(0.2,0.2,0.04,12,i?pal.accent:0x8a2a2a,x,1.55,0.03,g); s.rotation.x=Math.PI/2; Cy(0.05,0.05,0.06,8,0xc9a94a,x,1.55,0.05,g).rotation.x=Math.PI/2; }); [-1,1].forEach(s=>{ const b=B(0.04,0.9,0.02,0xd8dce4,0,1.25,0.07,g); b.rotation.z=s*0.6; }); },
+      mugs:g=>{ B(1.1,0.05,0.22,0x5a3a20,0,1.4,0.1,g); for(let i=0;i<6;i++) Cy(0.05,0.045,0.12,8,i%2?0xa8a8b0:0x8a6a42,-0.45+i*0.18,1.45,0.1,g); B(1.1,0.05,0.22,0x5a3a20,0,1.75,0.1,g); for(let i=0;i<4;i++) Cy(0.04,0.06,0.2,8,[0x3a6a3a,0x6a2a2a,0x2a4a6a,0x6a5a2a][i],-0.35+i*0.24,1.8,0.1,g); },
+      jars:g=>{ for(let r=0;r<2;r++){ B(1.2,0.05,0.24,0x5a3a20,0,1.1+r*0.45,0.1,g); for(let i=0;i<5;i++) Cy(0.06,0.07,0.16+(i%2)*0.06,8,[0xc8a070,0x6a8ab8,0xe8dcc8,0x8a5a3a,0x9ab06a][(i+r)%5],-0.45+i*0.22,1.15+r*0.45,0.1,g); } },
+      bolts:g=>{ B(1.2,0.05,0.3,0x5a3a20,0,1.0,0.12,g); for(let i=0;i<5;i++){ const c=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,0.28,8),mt([0x8a2a5a,0x2f4a8f,0xe8c766,0x3a8a6a,0xc8402e][i])); c.rotation.x=Math.PI/2; c.position.set(-0.46+i*0.23,1.13,0.12); g.add(c); } },
+      shoes:g=>{ for(let i=0;i<6;i++){ const h=new THREE.Mesh(new THREE.TorusGeometry(0.06,0.014,4,10,Math.PI*1.4),mt(0x4a4a52)); h.position.set(-0.4+(i%3)*0.4,1.3+Math.floor(i/3)*0.3,0.03); h.rotation.z=Math.PI*0.8; g.add(h); } },
+      oars:g=>{ [-1,1].forEach(s=>{ const o=B(0.05,1.3,0.03,0x8a6a42,0,1.5,0.04,g); o.rotation.z=s*0.45; const bl=B(0.12,0.3,0.02,0x8a6a42,s*-0.26,2.05,0.04,g); bl.rotation.z=s*0.45; }); const r=new THREE.Mesh(new THREE.TorusGeometry(0.17,0.05,6,16),mt(0xe8e0d0)); r.position.set(0,1.45,0.06); g.add(r); [0,1,2,3].forEach(i=>{ const q=B(0.05,0.11,0.11,0xc0392e,Math.cos(i*Math.PI/2)*0.17,1.45+Math.sin(i*Math.PI/2)*0.17,0.06,g); q.rotation.z=i*Math.PI/2; }); },
+      frame:g=>{ B(0.6,0.75,0.05,0xc9a94a,0,1.45,0,g); B(0.5,0.65,0.02,0x5a6a8a,0,1.5,0.03,g); },
+      stag:g=>{ B(0.28,0.34,0.05,0x5a3a20,0,1.75,0,g); Sp(0.1,0x7a5232,0,1.8,0.1,g,8,6).scale.set(0.8,1,1.3); [-1,1].forEach(s=>{ for(let i=0;i<3;i++){ const t=Cy(0.012,0.02,0.24,5,0xe8dcc0,s*(0.07+i*0.06),1.98+i*0.07,0.08,g); t.rotation.z=-s*(0.6-i*0.2); } }); },
+      torch:g=>{ B(0.06,0.3,0.06,0x2a2a2a,0,1.35,0.06,g); const f=Co(0.05,0.16,6,glow(0xffb050),0,1.7,0.08,g); f.userData.keep=true; an.push(t=>{ f.scale.y=1+Math.sin(t*12+g.position.x)*0.25; }); },
+      tapestry:g=>{ B(0.8,1.3,0.03,pal.accent,0,0.9,0.02,g); B(0.84,0.06,0.05,pal.trim,0,2.2,0.02,g); B(0.5,0.5,0.035,pal.trim,0,1.6,0.03,g); }
+    };
+    const LIFE={
+      menu:(slot)=>{ const g=onWall(slot,g=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(0.7,0.52),slate('menu',['Today’s Fare','Lamb & barley stew','Brown bread, butter','Cider · Ale · Milk'],'#2a2a28','#f0ecd8')); m.position.set(0,1.55,0.03); m.userData.keep=true; g.add(m); }); const p=slotXZ(slot);
+        spot(p.x,p.z,'Read','The slate',()=>ENGINE.speak('Today’s fare',['Lamb and barley stew, with brown bread and butter.','Cider, ale, or warm milk with honey.','“Every man should eat and drink, and enjoy the good of all his labour, it is the gift of God.” — Ecclesiastes 3:13'])); },
+      dart:(slot)=>{ onWall(slot,g=>{ const d=new THREE.Mesh(new THREE.CircleGeometry(0.22,24),dartTex()); d.position.set(0,1.55,0.03); d.userData.keep=true; g.add(d); }); const p=slotXZ(slot); let best=0;
+        spot(p.x,p.z+(typeof slot==='number'?0.6:0),'Throw','The dartboard',()=>{ const sc=[0,0,5,10,20,25,50]; const r=[0,1,2].map(()=>sc[Math.floor(Math.random()*Math.random()*sc.length*1.3)%sc.length]); const t=r.reduce((a,b)=>a+b,0); best=Math.max(best,t);
+          UI.toast(`🎯 Thunk, thunk, thunk — ${r.join(' + ')} = ${t}${t>=60?'. The room cheers!':t===0?'. A patron hides a smile.':'.'} (Best tonight: ${best})`,2200); },1.3); },
+      map:(x,z)=>{ const g=group(x,0,z,deco); B(1.6,0.08,1.0,0x5a3a20,0,0.76,0,g); [[-0.7,-0.4],[0.7,-0.4],[-0.7,0.4],[0.7,0.4]].forEach(([a,b])=>B(0.08,0.76,0.08,0x4a2e18,a,0,b,g));
+        const c=document.createElement('canvas'); c.width=160; c.height=100; const q=c.getContext('2d'); q.fillStyle='#e8dcb0'; q.fillRect(0,0,160,100); q.fillStyle='#8ab06a'; q.beginPath(); q.moveTo(10,80); q.quadraticCurveTo(40,10,90,20); q.quadraticCurveTo(150,25,150,80); q.fill(); q.fillStyle='#7aa8d0'; q.fillRect(60,40,18,30);
+        q.fillStyle='#c0392e'; for(let i=0;i<10;i++){ q.beginPath(); q.arc(24+i*12,40+Math.sin(i)*18,3,0,7); q.fill(); } const m=new THREE.Mesh(new THREE.PlaneGeometry(1.5,0.92),new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c)})); m.rotation.x=-Math.PI/2; m.position.y=0.81; m.userData.keep=true; g.add(m);
+        [[0.3,0.2],[-0.4,-0.1],[0.1,-0.3]].forEach(([a,b],i)=>Co(0.03,0.1,5,i?0x2f4a8f:0xc0392e,a,0.81,b,g)); BL.push({x,z,r:0.75});
+        spot(x,z+0.9,'Study','The war table',()=>ENGINE.speak('The war table',['Luminar, from Hearthvale to Hellgate, with a red pin in every chapel.','The pins come out one by one as the chapels are cleansed. Someone has been keeping count.'])); },
+      roster:(slot)=>{ onWall(slot,g=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(0.6,0.75),slate('roster',['Duty Roll','First watch — Gareth','Second — Hollis','Dawn — Bram','“Be watchful” 1 Cor 16:13'],'#e8dcb0','#3a2a1a')); m.position.set(0,1.5,0.03); m.userData.keep=true; g.add(m); }); const p=slotXZ(slot);
+        spot(p.x,p.z,'Read','The duty roll',()=>ENGINE.speak('The duty roll',['First watch: Gareth. Second: Hollis. Dawn: Bram.','Underneath, in a different hand: “Watch ye, stand fast in the faith, quit you like men, be strong.” — 1 Corinthians 16:13'])); },
+      bell:(x,z)=>{ const g=group(x,0.95*PROP_IN+0.03,z,deco); Cy(0.05,0.05,0.02,10,0x5a3a20,0,0,0,g); const b=Co(0.045,0.07,10,0xd8b04a,0,0.02,0,g); spot(x,z+0.8,'Ring','The counter bell',()=>{ AMBI.clang&&AMBI.clang(); UI.toast('🔔 Ding! “Coming, coming — what can I get you?”',1500); },0.9); },
+      apples:(x,z)=>{ const g=group(x,0,z,deco); Cy(0.28,0.24,0.5,10,0x7a5432,0,0,0,g); for(let i=0;i<9;i++) Sp(0.07,i%3?0xc0392e:0x8ab04a,Math.cos(i*2.2)*0.15,0.52,Math.sin(i*2.2)*0.15,g,6,5); spot(x,z+0.4,'Look','A barrel of apples',()=>UI.toast('🍎 Red and green, a copper for three. The keeper keeps count.',1500),0.95); },
+      incense:(x,z)=>{ const g=group(x,0,z,deco); Cy(0.04,0.15,0.6,8,0xc9a94a,0,0,0,g); Cy(0.14,0.08,0.12,8,0xc9a94a,0,0.6,0,g); const sm=[]; for(let i=0;i<6;i++){ const p=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,5),new THREE.MeshBasicMaterial({color:0xd8d0e0,transparent:true,opacity:0.3,depthWrite:false})); p.position.y=0.75; keep.add(p); p.position.x=x; p.position.z=z; sm.push(p); }
+        an.push(t=>sm.forEach((p,i)=>{ const k=(t*0.25+i/6)%1; p.position.set(x+Math.sin(t+i)*0.08*k,0.75+k*1.3,z+Math.cos(t*0.7+i)*0.08*k); p.scale.setScalar(1+k*2.5); p.material.opacity=0.3*(1-k); })); BL.push({x,z,r:0.25});
+        spot(x,z+0.5,'Smell','The incense',()=>UI.toast('🌫 Frankincense and myrrh. You think of the wise men, and a long road under a star.',2000),0.9); }
+    };
+    // ── by kind ──
+    const N=take(north,north.length,3), S=take(sides,sides.length,5);
+    if(kind==='tavern'){ const ws=N.concat(S); if(ws.length) LIFE.menu(ws.shift()); const di=ws.findIndex(s=>typeof s!=='number'); if(di>=0) LIFE.dart(ws.splice(di,1)[0]); else if(ws.length) LIFE.dart(ws.shift()); ws.slice(0,4).forEach((s,i)=>onWall(s,[P.antlers,P.mugs,P.shields,P.antlers][i]));
+      take(rafters,8,1).forEach(([x,z],i)=>hang(x,z,0.35,h=>{ if(i%2){ for(let k=0;k<4;k++) Cy(0.04,0.035,0.1,8,0x8a6a42,(k-1.5)*0.1,-0.1-(k%2)*0.05,0,h); B(0.45,0.02,0.02,0x5a3a20,0,0,0,h); } else for(let k=0;k<5;k++) Sp(0.05,0x8ab04a,(k-2)*0.08,-0.05-Math.abs(k-2)*0.03,0,h,6,4); })); }
+    if(kind==='innrooms'){ items.filter(i=>i.k==='bed').forEach(b=>{ const x=b.x+0.75, z=b.z-0.5; if(!free(x,z)) return; const g=group(x,0,z,deco); B(0.36,0.5,0.32,0x5a3a20,0,0,0,g); Cy(0.025,0.03,0.12,6,0xf0e8d0,0,0.5,0,g); const f=Co(0.025,0.07,5,glow(0xffd27a),0,0.64,0,g); f.userData.keep=true; an.push(t=>{ f.scale.y=1+Math.sin(t*12+x)*0.25; }); BL.push({x,z,r:0.22}); }); }
+    if(kind==='store'){ N.concat(S).slice(0,5).forEach((s,i)=>onWall(s,[P.jars,P.bolts,P.jars,P.frame,P.bolts][i]));
+      take(rafters,9,2).forEach(([x,z],i)=>hang(x,z,0.4,h=>{ if(i%3===0){ const b=Cy(0.16,0.12,0.16,10,0xb8945a,0,-0.2,0,h); } else if(i%3===1){ for(let k=0;k<6;k++) Sp(0.045,0xf0e8d8,0,-0.05-k*0.07,0,h,6,4); } else for(let k=0;k<4;k++) Co(0.04,0.22,5,[0xc04a6a,0xe8c040,0x8a5ab8,0xe8e0d0][k],(k-1.5)*0.06,-0.25,0,h).rotation.x=Math.PI; }));
+      const fs=take(floorSlots,2,9); if(fs[0]) LIFE.apples(fs[0][0],fs[0][1]), BL.push({x:fs[0][0],z:fs[0][1],r:0.3}); if(fs[1]){ const g=group(fs[1][0],0,fs[1][1],deco); Cy(0.2,0.18,0.5,10,0x7a5432,0,0,0,g); for(let i=0;i<3;i++){ B(0.03,1.1,0.03,0x8a6a42,(i-1)*0.07,0.3,0,g); Co(0.08,0.28,6,0xc8a868,(i-1)*0.07,1.32,0,g); } BL.push({x:fs[1][0],z:fs[1][1],r:0.25}); }
+      const ctr=(Rm.objs||[]).find(o=>o[0]==='counter'); if(ctr){ const [k,x,y,w,h]=ctr; LIFE.bell(x+(w||1)-0.4,y+(h||1)/2); } }
+    if(kind==='forge'){ N.concat(S).slice(0,4).forEach((s,i)=>onWall(s,[P.shields,P.shoes,P.shields,P.shoes][i]));
+      take(rafters,6,3).forEach(([x,z],i)=>hang(x,z,0.6,h=>{ for(let k=0;k<6;k++){ const r=new THREE.Mesh(new THREE.TorusGeometry(0.035,0.01,4,8),mt(0x4a4a52)); r.position.y=-k*0.06; r.rotation.y=k%2?Math.PI/2:0; h.add(r); } if(i%2) { const hk=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.012,4,10,Math.PI*1.3),mt(0x4a4a52)); hk.position.y=-0.4; h.add(hk); } }));
+      const fs=take(floorSlots,1,7); if(fs[0]){ const g=group(fs[0][0],0,fs[0][1],deco); for(let i=0;i<6;i++) B(0.24,0.07,0.1,0x8a8a92,(i%3-1)*0.12,Math.floor(i/3)*0.07,(i%2)*0.02,g); BL.push({x:fs[0][0],z:fs[0][1],r:0.25}); }
+      // the smith at work: the anvil rings and the sparks fly, every few seconds, while you are in the room
+      const av=items.find(i=>i.k==='anvil'); if(av){ let nx=2; an.push((t,dt)=>{ if(ENGINE.level!==lv||ENGINE.busy) return; nx-=dt||0.016; if(nx<0){ nx=2.5+Math.random()*3; const P0=ENGINE.P, d=Math.hypot(P0.x-av.x,P0.z-av.z); if(d<9&&AMBI.clang) AMBI.clang();
+          for(let i=0;i<8;i++){ const m=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,0.02),new THREE.MeshBasicMaterial({color:i%2?0xffd060:0xff8a2a})); m.position.set(av.x,0.62*PROP_IN,av.z); room.add(m); const v=[(Math.random()-0.5)*2,1.2+Math.random(),(Math.random()-0.5)*2]; let tt=0; const fly=(t2,d2)=>{ d2=d2||0.016; tt+=d2; m.position.x+=v[0]*d2; m.position.z+=v[2]*d2; v[1]-=6*d2; m.position.y+=v[1]*d2; if(tt>0.6){ room.remove(m); an.splice(an.indexOf(fly),1); } }; an.push(fly); } } }); } }
+    if(kind==='fish'){ N.concat(S).slice(0,3).forEach(s=>onWall(s,P.oars));
+      take(rafters,8,4).forEach(([x,z],i)=>hang(x,z,0.5,h=>{ for(let k=0;k<3;k++){ const f=Sp(0.06,[0x8ab0c8,0x9a8a6a,0xb8c8d0][k],(k-1)*0.1,-0.12-k*0.03,0,h,8,5); f.scale.set(0.6,1.8,0.4); Co(0.04,0.06,3,0x6a8aa0,(k-1)*0.1,-0.32-k*0.03,0,h).rotation.x=Math.PI; } }));
+      take(floorSlots,2,5).forEach(([x,z])=>{ const g=group(x,0,z,deco); B(0.6,0.32,0.45,0x8a6a42,0,0,0,g); B(0.56,0.04,0.41,0xdff2fa,0,0.3,0,g); for(let i=0;i<4;i++){ const f=Sp(0.06,0x9ab0c0,-0.18+i*0.12,0.36,0,g,8,5); f.scale.set(0.5,0.5,2.2); } BL.push({x,z,r:0.32});
+        spot(x,z+0.5,'Look','A crate of fish',()=>UI.toast('🐟 Herring and mackerel on ice, caught this morning. The gulls are furious about it.',1800),0.9); }); }
+    if(kind==='bazaar'){ // bunting under the roof, and the incense
+      for(let z=2;z<H-2;z+=2.4){ const cols=[0xc8402e,0xe8c766,0x2f6a8a,0x8a5ab8,0x3a8a6a]; for(let x=1.2;x<W-1.2;x+=0.45){ const t=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.22,3),new THREE.MeshLambertMaterial({color:cols[Math.floor(x*2.2)%5],side:THREE.DoubleSide})); t.rotation.x=Math.PI; t.scale.z=0.15; t.position.set(x,WH-0.55-Math.sin((x-1)/(W-2.4)*Math.PI)*0.35,z); deco.add(t); } }
+      const fs=take(floorSlots,1,8); if(fs[0]) LIFE.incense(fs[0][0],fs[0][1]);
+      (Rm.objs||[]).filter(o=>o[0]==='rugs'||o[0]==='carpet').forEach(([k,x,y,w,h],i)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry((w||1)-0.25,(h||1)-0.25),rugTex(i%3,['#8a2a3a','#2a3a6a','#6a3a1a'][i%3],'#d8a040','#e8dcc0')); m.rotation.x=-Math.PI/2; m.position.set(x+(w||1)/2,0.025,y+(h||1)/2); keep.add(m); }); }
+    if(kind==='fine'){ N.concat(S).slice(0,4).forEach(s=>onWall(s,P.frame)); take(rafters,5,6).forEach(([x,z])=>hang(x,z,0.3,h=>{ for(let k=0;k<5;k++) Co(0.03,0.1,6,0xd8ecff,(k-2)*0.06,-0.08-Math.abs(k-2)*0.04,0,h).rotation.x=Math.PI; })); }
+    if(kind==='hall'||kind==='barracks'){ const ws=N.concat(S); if(kind==='barracks'&&ws[0]!==undefined) LIFE.roster(ws.shift()); ws.slice(0,6).forEach((s,i)=>onWall(s,[P.shields,P.torch,P.stag,P.torch,P.tapestry,P.shields][i]));
+      // iron candle-wheels from the beams
+      take(rafters,2,7).forEach(([x,z])=>hang(x,z,0.5,h=>{ const r=new THREE.Mesh(new THREE.TorusGeometry(0.4,0.03,5,16),mt(0x2a2a30)); r.rotation.x=Math.PI/2; h.add(r); for(let k=0;k<6;k++){ const a=k/6*Math.PI*2; Cy(0.02,0.02,0.09,5,0xf0e8d0,Math.cos(a)*0.4,0.01,Math.sin(a)*0.4,h); const f=Co(0.02,0.06,5,glow(0xffd27a),Math.cos(a)*0.4,0.1,Math.sin(a)*0.4,h); f.userData.keep=true; } }));
+      if(kind==='hall'){ // the war table, where there is room for it
+        let spotM=null; for(let y=2;y<H-3&&!spotM;y++) for(let x=2;x<W-3&&!spotM;x++){ let ok=true; for(let dy=-1;dy<=1&&ok;dy++) for(let dx=-1;dx<=1&&ok;dx++) if(!free(x+0.5+dx,y+0.5+dy)) ok=false; if(ok) spotM=[x+0.5,y+0.5]; }
+        if(spotM) LIFE.map(spotM[0],spotM[1]); } }
+    if(typeof mergeStatic==='function') mergeStatic(deco);
+    // the pieces on the floor are solid
+    if(BL.length&&!lv._blkWrapped){ lv._blkWrapped=true; const cm=lv.canMove; lv.canMove=(fx,fz,tx,tz)=>{ if(!cm(fx,fz,tx,tz)) return false; for(const b of BL){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.2&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; } return true; }; }
+  }
+  return style;
+})();
+
+// ── more to the trade's floor: the templates the shops and inns share were laid out for a 2D screen and stand half empty
+//    in 3D; these pieces fill their floors with goods and seats, keeping the aisle to the door clear ──
+const ROOMSTYLE_EXTRA=(function(){
+  const X={
+    store:[['display',3,5,2,1],['display',9,5,2,1],['crate',11,8]],
+    forge:[['crates',9,4,2,1],['swordbarrel',3,8]],
+    fish:[['icetable',10,5,2,1],['crate',3,8]],
+    bazaar:[['spice',3,5,2,1],['pot',11,8]],
+    tavern:[['table',9,8,2,1],['chair',8,8],['chair',11,8]] };
+  return function(spec){ const R=spec.room; if(!R||R._extra) return spec; const ks=new Set(R.objs.map(o=>o[0]));
+    const kind=spec.theme==='inn'?(ks.has('bed')?null:'tavern'):ks.has('furnace')?'forge':ks.has('ice')?'fish':ks.has('spice')?'bazaar':ks.has('perfume')?null:spec.theme==='shop'?'store':null;
+    if(!kind||!X[kind]) return spec; return Object.assign({},spec,{room:Object.assign({},R,{objs:R.objs.concat(X[kind]),_extra:true})}); };
+})();
+// the new pieces' drawings
+Object.assign(OBJECTS,{
+  display:(p,o)=>{ const g=PROP.table(p,o.cx,o.cz,o.w,o.h,o.pal);
+    const goods=[t=>{ for(let i=0;i<7;i++) Sp(0.06,i%3?0xc0392e:0x8ab04a,-0.2+(i%4)*0.12,0.06,(i>3?0.08:-0.06),t,6,5); }, t=>{ for(let i=0;i<3;i++){ const b=Sp(0.1,0xc8904a,-0.22+i*0.2,0.05,0,t,8,6); b.scale.set(1.4,0.6,0.8); } }, t=>{ for(let i=0;i<4;i++) Cy(0.05,0.07,0.16+(i%2)*0.06,8,[0xb86a4a,0x6a8ab8,0xe8dcc8,0x8a5a3a][i],-0.24+i*0.16,0,0,t); }, t=>{ for(let i=0;i<3;i++) Cy(0.1,0.1,0.07,10,0xf0d070,-0.2+i*0.2,0,0,t); }];
+    const k=Math.floor(o.cx*3); goods[k%4](group(-o.w*0.25,0.68,0,g)); goods[(k+1)%4](group(o.w*0.25,0.68,0,g)); },
+  swordbarrel:(p,o)=>{ const g=group(o.cx,0,o.cz,p); Cy(0.24,0.22,0.6,10,0x7a5432,0,0,0,g); [0.1,0.45].forEach(y=>Cy(0.25,0.25,0.04,10,0x3a3a40,0,y,0,g)); for(let i=0;i<4;i++){ const s=B(0.04,0.9,0.015,0xd8dce4,Math.cos(i*1.6)*0.08,0.35,Math.sin(i*1.6)*0.08,g); s.rotation.z=(i%2?0.1:-0.1); B(0.16,0.03,0.04,0xc9a94a,Math.cos(i*1.6)*0.08,1.2,Math.sin(i*1.6)*0.08,g); } }
+});
 
 // ── engine/world.js ──
 // ════════════════════════════════════════════════════════════════
@@ -10543,91 +10680,145 @@ function rogues(world,R,DD){
 
 // ── engine/sanctuary.js ──
 // ════════════════════════════════════════════════════════════════
-//  SANCTUARY — any town's cleansed chapel, from the game's own data:
-//  the layout is buildSanctuary() tile for tile; colours, glass and pulpit sign are SANCT[town];
-//  the priest, his teachings, the redeemed general and Ezra come from extract.py's `town` block.
+//  SANCTUARY — any town's cleansed chapel, made a church to stand in: a high nave between two arcades of columns, side aisles,
+//  a raised chancel with the altar, the pulpit with the town's sign and an altar rail to kneel at; pews down both sides of a
+//  centre aisle; tall lancets throwing coloured light, the rose window over the altar, candle-wheels down the nave.
+//  Things to do: kneel at the rail and pray (a verse, and mending), light a votive candle (they stay lit, one for each you've
+//  lit here, up to a stand-full), sit in a pew, look into the font, play the organ (the Old Hundredth), toll the bell by the
+//  door. The priest teaches from the pulpit; the redeemed general stands before the chancel; Ezra keeps the books.
+//  The colours, glass and sign are the town's (SANCT[town]); the people and their words are the game's.
 //  sanctuaryLevel(town, {id, exit}) → level
 // ════════════════════════════════════════════════════════════════
 function sanctuaryLevel(T,spec){
   const S=T.sanct, n=k=>hexn(S[k]), wall=n('wall'), wallL=n('wallL'), wallD=n('wallD'), fA=n('fA'), fB=n('fB'), pew=n('pew'), pewLc=n('pewL'), cloth=n('cloth'), clothL=n('clothL'), glass=S.glass;
-  const SW=13, SH=18, g=[];
+  const SW=17, SH=26, CX=8.5, g=[];
+  // 12 floor · 15 chancel · 14 step · 17 altar · 13 pew · 58 column · 19 font/stand/organ (solid) · 9 door
   for(let y=0;y<SH;y++){ g.push([]); for(let x=0;x<SW;x++) g[y].push(y===0||y===SH-1||x===0||x===SW-1?5:12); }
-  for(let x=1;x<SW-1;x++){ g[1][x]=15; g[2][x]=15; g[3][x]=15; }
-  [3,4,8,9].forEach(x=>g[1][x]=17); [5,6,7].forEach(x=>g[2][x]=17); g[2][6]=18;
-  for(let x=1;x<SW-1;x++) g[4][x]=14;
-  for(const y of [6,7,9,10,12,13,15]){ [2,3,4].forEach(x=>g[y][x]=13); [8,9,10].forEach(x=>g[y][x]=13); }
-  g[SH-1][6]=9;
-  const scene=new THREE.Scene(), bg=new THREE.Color(wallD).multiplyScalar(0.18); scene.background=bg; scene.fog=new THREE.Fog(bg,20,42);
+  for(let y=1;y<=4;y++) for(let x=1;x<SW-1;x++) g[y][x]=15;
+  for(let x=1;x<SW-1;x++) g[5][x]=14;
+  for(let x=6;x<=10;x++) g[1][x]=17; for(let x=7;x<=9;x++) g[2][x]=17;
+  g[3][5]=19;                                                   // the pulpit
+  g[2][14]=19; g[2][15]=19; g[1][14]=19; g[1][15]=19;            // the organ
+  for(let y=7;y<=22;y+=3){ g[y][4]=58; g[y][12]=58; }              // the arcades
+  for(let y=8;y<=21;y++){ if(y%3===1) continue; for(let x=5;x<=7;x++) g[y][x]=13; for(let x=9;x<=11;x++) g[y][x]=13; }   // the pews
+  g[8][2]=19;                                                    // the votive stand, west aisle
+  g[22][14]=19;                                                  // the font, by the door
+  g[16][14]=19; g[16][15]=19;                                   // Ezra's table of books
+  g[SH-1][8]=9;
+  const scene=new THREE.Scene(), bg=new THREE.Color(wallD).multiplyScalar(0.18); scene.background=bg; scene.fog=new THREE.Fog(bg,24,52);
   const lv={id:spec.id,name:T.name+' Sanctuary',scene,folk:[],spots:[],anim:[],banner:'The chapel breathes again. Hear the Word; greet the redeemed.',
-    interior:true,actorS:0.88,cam:{pitch:0.2,dist:2.9,min:1.5,max:4.6,lookH:0.12}, zone:()=>T.head||''};   // inside the chapel, at your shoulder
+    interior:true,actorS:0.88,cam:{pitch:0.2,dist:3.0,min:1.5,max:4.8,lookH:0.12}, zone:()=>T.head||''};
   scene.add(new THREE.HemisphereLight(0xfff6e8,0x4a4458,0.62));
-  const sKey=new THREE.DirectionalLight(0xf4f0ff,0.32); sKey.position.set(4,12,10); scene.add(sKey);
-  const altarL=new THREE.PointLight(0xffd27a,1.2,11,1.4); altarL.position.set(6.5,2.4,2.3); scene.add(altarL);
-  const naveL=new THREE.PointLight(0xfff2dc,0.45,16,1.2); naveL.position.set(6.5,4.6,10.5); scene.add(naveL);
-  const R=group(0,0,0,scene), WH=6, an=lv.anim;
-  const fh=(x,y)=>{ const t=g[y]&&g[y][x]; return t===15||t===17||t===18?0.28:t===14?0.14:0; };
-  // floor
+  const sKey=new THREE.DirectionalLight(0xf4f0ff,0.32); sKey.position.set(4,14,12); scene.add(sKey);
+  const altarL=new THREE.PointLight(0xffd27a,1.3,13,1.4); altarL.position.set(CX,2.6,2.6); scene.add(altarL);
+  const naveL=new THREE.PointLight(0xfff2dc,0.5,20,1.2); naveL.position.set(CX,5.6,13); scene.add(naveL);
+  const R=group(0,0,0,scene), WH=8, an=lv.anim, ST=()=>GAME.S;
+  const fh=(x,y)=>{ const t=g[y]&&g[y][x]; return t===15||t===17||t===19&&y<=4?0.32:t===14?0.16:0; };
+  // the floor: flags in two shades, the chancel raised a step and a step
   const cells=[]; for(let y=1;y<SH-1;y++) for(let x=1;x<SW-1;x++) cells.push([x,y]);
   const fg=new THREE.BoxGeometry(0.98,1,0.98); fg.translate(0,0.5,0);
-  inst(cells,fg,null,([x,y],m,cc)=>{ const h=fh(x,y)+0.1, chan=g[y][x]!==12&&g[y][x]!==13; m.makeScale(1,h,1); m.setPosition(x+0.5,-0.1,y+0.5);
-    cc.setHex(chan?wallL:((x+y)%2?fB:fA)).offsetHSL(0,0,(hsh(x,y)-0.5)*0.03); },R);
-  const grout=new THREE.Mesh(new THREE.PlaneGeometry(11,16),new THREE.MeshBasicMaterial({color:new THREE.Color(fB).multiplyScalar(0.7)})); grout.rotation.x=-Math.PI/2; grout.position.set(6.5,-0.005,9); R.add(grout);
-  // runner, chancel carpet, step trim
-  B(0.8,0.012,12,cloth,6.5,0,11,R); B(0.06,0.014,12,clothL,6.13,0,11,R); B(0.06,0.014,12,clothL,6.87,0,11,R); B(0.8,0.14,1,cloth,6.5,0.005,4.5,R);
-  B(5,0.012,3,cloth,6.5,0.28,2.5,R); B(5,0.014,0.06,clothL,6.5,0.28,1.03,R); B(5,0.014,0.06,clothL,6.5,0.28,3.97,R); B(11,0.03,0.05,clothL,6.5,0.27,4.02,R);
-  // walls, door, dado, cornice, pilasters, vault, tie beams
-  B(1,WH,18,wall,0.5,0,9,R); B(1,WH,18,wall,12.5,0,9,R); B(13,WH,1,wall,6.5,0,0.5,R); B(6,WH,1,wall,3,0,17.5,R); B(6,WH,1,wall,10,0,17.5,R); B(1,WH-2.3,1,wall,6.5,2.3,17.5,R);
-  B(0.9,2.25,0.08,pewLc,6.5,0,17.06,R); B(0.04,2.1,0.1,0x4a2a18,6.5,0,17.04,R); B(0.06,0.06,0.04,clothL,6.85,1.0,17.0,R);
-  [[1.04,9,0.08,16],[11.96,9,0.08,16]].forEach(([x,z,w,d])=>{ B(w,0.55,d,wallD,x,0,z,R); B(w+0.08,0.12,d,wallL,x,WH-0.25,z,R); });
-  B(11,0.55,0.08,wallD,6.5,0,1.04,R); B(11,0.12,0.16,wallL,6.5,WH-0.25,1.04,R);
-  [4.5,7.5,10.5,13.5,16.5].forEach(z=>{ B(0.28,WH,0.42,wallL,1.14,0,z,R); B(0.28,WH,0.42,wallL,11.86,0,z,R); });
-  { const rise=2.2, half=6, len=Math.hypot(half,rise), ang=Math.atan2(rise,half), cm=flat(new THREE.Color(wall).multiplyScalar(0.88).getHex());
-    [[-1,0.5+half/2],[1,12.5-half/2]].forEach(([s,x])=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(len+0.2,0.16,18),cm); m.rotation.z=-s*ang; m.position.set(x,WH+rise/2,9); R.add(m); });
-    for(let z=1.5;z<17;z+=3){ B(11.6,0.22,0.22,pew,6.5,WH-0.1,z,R); B(0.18,rise,0.18,pew,6.5,WH,z,R); } }
-  // glass: lancets down the long walls throwing coloured light, two behind the altar, the rose above
+  inst(cells,fg,null,([x,y],m,cc)=>{ const h=fh(x,y)+0.1, chan=y<=5; m.makeScale(1,h,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex(chan?wallL:((x+y)%2?fB:fA)).offsetHSL(0,0,(hsh(x,y)-0.5)*0.03); },R);
+  const grout=new THREE.Mesh(new THREE.PlaneGeometry(SW-2,SH-2),new THREE.MeshBasicMaterial({color:new THREE.Color(fB).multiplyScalar(0.7)})); grout.rotation.x=-Math.PI/2; grout.position.set(SW/2,-0.005,SH/2); R.add(grout);
+  // the runner up the centre aisle, the chancel carpet
+  B(1.0,0.012,SH-7,cloth,CX,0,(SH+5)/2,R); B(0.06,0.014,SH-7,clothL,CX-0.47,0,(SH+5)/2,R); B(0.06,0.014,SH-7,clothL,CX+0.47,0,(SH+5)/2,R);
+  B(7,0.012,3.4,cloth,CX,0.32,2.9,R); B(7,0.014,0.06,clothL,CX,0.32,1.2,R); B(7,0.014,0.06,clothL,CX,0.32,4.6,R);
+  // the walls, the dado, the cornice
+  B(1,WH,SH,wall,0.5,0,SH/2,R); B(1,WH,SH,wall,SW-0.5,0,SH/2,R); B(SW,WH,1,wall,SW/2,0,0.5,R); B(7.5,WH,1,wall,3.75,0,SH-0.5,R); B(7.5,WH,1,wall,SW-3.75,0,SH-0.5,R); B(2,WH-2.6,1,wall,CX,2.6,SH-0.5,R);
+  B(1.6,2.55,0.08,pewLc,CX,0,SH-1.06,R); B(0.04,2.4,0.1,0x4a2a18,CX,0,SH-1.04,R); [-0.3,0.3].forEach(dx=>B(0.06,0.06,0.04,clothL,CX+dx,1.1,SH-1.0,R));
+  [[1.04,SH/2,0.08,SH-2],[SW-1.04,SH/2,0.08,SH-2]].forEach(([x,z,w,d])=>{ B(w,0.6,d,wallD,x,0,z,R); B(w+0.08,0.14,d,wallL,x,WH-0.3,z,R); });
+  B(SW-2,0.6,0.08,wallD,SW/2,0,1.04,R); B(SW-2,0.14,0.16,wallL,SW/2,WH-0.3,1.04,R);
+  // the arcades: columns with capitals and bases, round arches between them, the clerestory above
+  for(let y=7;y<=22;y+=3) [4.5,12.5].forEach(x=>{ const c=group(x,0,y+0.5,R); Cy(0.3,0.34,WH-2.6,12,wallL,0,0.3,0,c); Cy(0.46,0.46,0.3,12,wallD,0,0,0,c); Cy(0.44,0.32,0.4,12,wallL,0,WH-2.7,0,c); B(0.9,0.12,0.9,wallD,0,WH-2.3,0,c); shade(c); });
+  for(let y=7;y<22;y+=3) [4.5,12.5].forEach(x=>{ const a=new THREE.Mesh(new THREE.TorusGeometry(1.5,0.16,6,16,Math.PI),flat(wallL)); a.rotation.y=Math.PI/2; a.position.set(x,WH-2.2,y+2.0); R.add(a); });
+  [4.5,12.5].forEach(x=>B(0.5,2.2,SH-8,wall,x,WH-2.2,SH/2+1,R));
+  // the vault: a barrel over the nave, ribbed, and lower lean-to roofs over the aisles
+  { const r=4, k=0.55; const vg=new THREE.CylinderGeometry(r,r,SH-1,22,1,true,Math.PI/2,Math.PI); vg.rotateX(Math.PI/2); vg.scale(1,k,1); vg.translate(CX,WH,SH/2); R.add(new THREE.Mesh(vg,new THREE.MeshPhongMaterial({color:new THREE.Color(wall).multiplyScalar(0.92).getHex(),flatShading:true,side:THREE.DoubleSide})));
+    for(let z=1.5;z<SH-1;z+=3){ const tg=new THREE.TorusGeometry(r-0.05,0.12,4,22,Math.PI); tg.scale(1,k,1); tg.translate(CX,WH,z); R.add(new THREE.Mesh(tg,flat(pew))); }
+    B(0.24,0.18,SH-1,pew,CX,WH+r*k-0.14,SH/2,R); [[2.3,1],[SW-2.3,-1]].forEach(([x,s])=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(4.2,0.14,SH),flat(new THREE.Color(wall).multiplyScalar(0.85).getHex())); m.rotation.z=s*0.32; m.position.set(x,WH-1.0,SH/2); R.add(m); }); }
+  // the glass: lancets in the outer walls between the columns, two behind the altar, the rose over it, the clerestory row
   const shaftTex=(()=>{ const c=document.createElement('canvas'); c.width=4; c.height=64; const x=c.getContext('2d'); const gr=x.createLinearGradient(0,0,0,64); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,4,64); return new THREE.CanvasTexture(c); })();
-  function shaft(x0,z,dir,col){ const geo=new THREE.BufferGeometry(), y0=3.6, x1=x0+dir*4.4, zf=z+1.2, w=0.42;
+  function shaft(x0,z,dir,col){ const geo=new THREE.BufferGeometry(), y0=4.2, x1=x0+dir*5.0, zf=z+1.4, w=0.46;
     geo.setAttribute('position',new THREE.Float32BufferAttribute([x0,y0,z-w, x0,y0,z+w, x1,0.03,zf+w, x1,0.03,zf-w],3)); geo.setAttribute('uv',new THREE.Float32BufferAttribute([0,1,0,1,0,0,0,0],2)); geo.setIndex([0,1,2,0,2,3]);
     const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:col,map:shaftTex,transparent:true,opacity:0.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide,fog:false})); R.add(m);
-    const pool=new THREE.Mesh(new THREE.CircleGeometry(0.75,16),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.14,blending:THREE.AdditiveBlending,depthWrite:false})); pool.rotation.x=-Math.PI/2; pool.scale.set(1.3,0.8,1); pool.position.set(x1,0.025,zf); R.add(pool);
-    an.push(t=>{ const nt=typeof DAYNIGHT!=='undefined'?DAYNIGHT.state().night:0, o=(0.13+0.04*Math.sin(t*0.6+z))*(1-0.85*nt); m.material.opacity=o; pool.material.opacity=o*0.9; }); }   // the coloured light only while the sun is up
-  [6,9,12,15].forEach(ty=>{ const z=ty+0.5; pane(glassTex(glass,ty,'lancet'),0.8,2.6,1.29,3.0,z,Math.PI/2,R); shaft(1.3,z,1,glass[ty%glass.length]);
-    pane(glassTex(glass,ty+1,'lancet'),0.8,2.6,11.71,3.0,z,-Math.PI/2,R); shaft(11.7,z,-1,glass[(ty+12)%glass.length]); });
-  pane(glassTex(glass,2,'lancet'),1.0,3.4,2.5,2.9,1.06,0,R); pane(glassTex(glass,10,'lancet'),1.0,3.4,10.5,2.9,1.06,0,R);
-  pane(glassTex(glass,0,'rose'),2.4,2.4,6.5,4.55,1.06,0,R);
-  { const ring=new THREE.Mesh(new THREE.TorusGeometry(1.24,0.08,6,24),flat(wallD)); ring.position.set(6.5,4.55,1.07); R.add(ring);
-    const gl=new THREE.Mesh(new THREE.CircleGeometry(3.4,24),new THREE.MeshBasicMaterial({color:0xffe8b0,transparent:true,opacity:0.12,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})); gl.position.set(6.5,3.2,1.12); R.add(gl); }
+    an.push(t=>{ const nt=typeof DAYNIGHT!=='undefined'?DAYNIGHT.state().night:0; m.material.opacity=(0.13+0.04*Math.sin(t*0.6+z))*(1-0.85*nt); }); }
+  [8.5,11.5,14.5,17.5,20.5].forEach((z,i)=>{ pane(glassTex(glass,i*2,'lancet'),0.9,3.0,1.06,3.4,z,Math.PI/2,R); shaft(1.1,z,1,glass[(i*2)%glass.length]); pane(glassTex(glass,i*2+1,'lancet'),0.9,3.0,SW-1.06,3.4,z,-Math.PI/2,R); shaft(SW-1.1,z,-1,glass[(i*2+7)%glass.length]); });
+  [6.5,10.5].forEach((x,i)=>pane(glassTex(glass,3+i*5,'lancet'),1.1,3.8,x,3.4,1.06,0,R));
+  pane(glassTex(glass,0,'rose'),2.8,2.8,CX,6.0,1.06,0,R); { const ring=new THREE.Mesh(new THREE.TorusGeometry(1.45,0.1,6,24),flat(wallD)); ring.position.set(CX,6.0,1.07); R.add(ring);
+    const gl=new THREE.Mesh(new THREE.CircleGeometry(3.8,24),new THREE.MeshBasicMaterial({color:0xffe8b0,transparent:true,opacity:0.1,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})); gl.position.set(CX,4.2,1.12); R.add(gl); }
+  for(let z=8;z<SH-2;z+=3) [4.75,12.25].forEach((x,i)=>pane(glassTex(glass,z+i,'lancet'),0.5,1.3,x+(i?-0.26:0.26),WH-1.0,z+1.5,i?-Math.PI/2:Math.PI/2,R));
   // pews
-  for(const y of [6,7,9,10,12,13,15]) for(const x0 of [2,8]){ const p=group(x0+1.5,0,y+0.5,R);
+  for(let y=8;y<=21;y++){ if(y%3===1) continue; for(const x0 of [5,9]){ const p=group(x0+1.5,0,y+0.5,R);
     B(2.96,0.1,0.46,pewLc,0,0.42,-0.04,p); B(2.96,0.4,0.06,pew,0,0.1,0.18,p); B(2.96,0.58,0.07,pewLc,0,0.5,0.26,p); B(2.96,0.05,0.1,pew,0,1.08,0.26,p);
     [-1.47,1.47].forEach(ex=>{ B(0.08,0.98,0.62,pew,ex,0,0.05,p); const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.31,0.31,0.08,10,1,false,0,Math.PI),flat(pew)); cap.rotation.set(0,Math.PI/2,Math.PI/2); cap.position.set(ex,0.98,0.05); p.add(cap); });
-    if(hsh(x0,y)<0.4) B(0.22,0.05,0.16,cloth,(hsh(y,x0)-0.5)*2,0.52,-0.05,p); shade(p); }
-  // altar: candles on odd blocks, gold vessels on even
-  for(let y=1;y<=2;y++) for(let x=1;x<SW-1;x++){ if(g[y][x]!==17) continue; const a=group(x+0.5,0.28,y+0.5,R);
-    B(1,0.92,0.86,wallL,0,0,0,a); B(1.02,0.72,0.88,cloth,0,0.08,0,a); B(1.03,0.1,0.89,clothL,0,0.82,0,a); for(let i=-0.4;i<=0.41;i+=0.2) B(0.08,0.08,0.01,clothL,i,0.12,0.445,a);
-    if(x%2===1){ Cy(0.05,0.05,0.42,8,0xf4eee0,0,0.92,0,a); flame(0,1.42,0,a,an); } else { Cy(0.12,0.08,0.06,8,0xe8c25a,0,0.92,0,a); Cy(0.025,0.025,0.16,6,0xe8c25a,0,0.98,0,a); Cy(0.13,0.06,0.16,8,0xf8e08a,0,1.14,0,a); } shade(a); }
-  an.push(t=>{ altarL.intensity=1.15+Math.sin(t*7)*0.05+Math.sin(t*11.3)*0.04; });
-  // pulpit with the town's sign; an open Book
-  { const p=group(6.5,0.28,2.5,R); B(0.92,1.12,0.82,pew,0,0,0,p); B(0.72,0.7,0.02,pewLc,0,0.25,0.415,p); B(0.98,0.08,0.88,pewLc,0,1.12,0,p);
-    const sg=signRelief(S.sign,cloth,clothL,p); sg.position.set(0,0.62,0.43);
-    const lec=B(0.8,0.06,0.5,pewLc,0,1.22,-0.05,p); lec.rotation.x=0.35; const book=B(0.56,0.04,0.38,0xf4eee0,0,1.28,-0.04,p); book.rotation.x=0.35; shade(p); }
-  [5.5,7.5].forEach(x=>{ B(0.42,0.7,0.06,wallD,x,1.0,16.97,R); Cy(0.04,0.04,0.25,6,0xf4eee0,x,1.1,16.9,R); flame(x,1.42,16.9,R,an,0.8); });
+    if(hsh(x0,y)<0.4) B(0.22,0.05,0.16,cloth,(hsh(y,x0)-0.5)*2,0.52,-0.05,p); shade(p);
+    const sx=x0===5?7.85:9.15; lv.spots.push({x:sx,z:y+0.5,r:0.75,label:'Sit',who:'A pew',action:()=>sitAt(x0===5?7.2:9.8,y+0.35,Math.PI,5,'You sit in the quiet. The light moves slowly across the floor.')}); } }
+  // the altar: cloth, candles and gold vessels; the altar rail before the chancel with its kneelers
+  for(let y=1;y<=2;y++) for(let x=1;x<SW-1;x++){ if(g[y][x]!==17) continue; const a=group(x+0.5,0.32,y+0.5,R);
+    B(1,0.92,0.86,wallL,0,0,0,a); B(1.02,0.72,0.88,cloth,0,0.08,0,a); B(1.03,0.1,0.89,clothL,0,0.82,0,a);
+    if(x%2===0){ Cy(0.05,0.05,0.42,8,0xf4eee0,0,0.92,0,a); flame(0,1.42,0,a,an); } else { Cy(0.12,0.08,0.06,8,0xe8c25a,0,0.92,0,a); Cy(0.025,0.025,0.16,6,0xe8c25a,0,0.98,0,a); Cy(0.13,0.06,0.16,8,0xf8e08a,0,1.14,0,a); } shade(a); }
+  { const cr=group(CX,0.32,1.25,R); B(0.12,1.6,0.08,0xe8c25a,0,0.95,0,cr); B(0.8,0.12,0.08,0xe8c25a,0,1.95,0,cr); }   // the cross over the altar
+  [[6.0,2.0],[11.0,2.0]].forEach(([x,z])=>{ const f=group(x,0.32,z,R); Cy(0.16,0.12,0.4,8,0xc9a94a,0,0,0,f); for(let i=0;i<7;i++) Sp(0.08,[0xffffff,0xf4e070,0xe85a7a][i%3],Math.cos(i)*0.12,0.5+((i*3)%4)*0.06,Math.sin(i)*0.12,f,7,5); });   // flowers at the altar
+  { for(let x=1.5;x<SW-1;x+=1){ if(Math.abs(x-CX)<1.1) continue; B(0.06,0.7,0.06,pew,x,0.16,5.2,R); } B(6.8,0.08,0.14,pewLc,CX-4.65+0.75,0.86,5.2,R); B(6.8,0.08,0.14,pewLc,CX+4.65-0.75,0.86,5.2,R);
+    [CX-2.6,CX+2.6].forEach(x=>{ B(1.2,0.12,0.3,cloth,x,0.16,5.75,R); lv.spots.push({x,z:6.3,r:1.0,label:'Pray',who:'The altar rail',action:()=>pray(x)}); }); }
+  an.push(t=>{ altarL.intensity=1.25+Math.sin(t*7)*0.05+Math.sin(t*11.3)*0.04; });
+  // the pulpit with the town's sign and the Book open on it
+  { const p=group(5.5,0.32,3.5,R); B(0.96,1.12,0.86,pew,0,0,0,p); B(0.76,0.7,0.02,pewLc,0,0.25,0.435,p); B(1.02,0.08,0.92,pewLc,0,1.12,0,p);
+    const sg=signRelief(S.sign,cloth,clothL,p); sg.position.set(0,0.62,0.45); const lec=B(0.8,0.06,0.5,pewLc,0,1.22,-0.05,p); lec.rotation.x=0.35; const book=B(0.56,0.04,0.38,0xf4eee0,0,1.28,-0.04,p); book.rotation.x=0.35; shade(p); }
+  // the organ: a case of dark wood, its pipes in a fan, the keyboard
+  { const o=group(15.0,0.32,1.7,R); B(1.9,1.0,1.2,pew,0,0,0,o); B(1.8,0.1,0.4,0xf4eee0,0,1.0,0.45,o); for(let i=0;i<12;i++) B(0.06,0.04,0.3,i%2?0x1a1a1a:0xf4eee0,-0.82+i*0.15,1.08,0.45,o);
+    for(let i=0;i<11;i++){ const h=1.4+Math.sin(i/10*Math.PI)*1.6; Cy(0.07,0.07,h,10,0xd8c890,-0.85+i*0.17,1.0,-0.3,o); Co(0.07,0.12,10,0xd8c890,-0.85+i*0.17,1.0+h,-0.3,o); } B(2.0,0.2,1.3,pew,0,1.0,-0.1,o); shade(o);
+    lv.spots.push({x:13.6,z:2.6,r:1.3,label:'Play',who:'The organ',action:()=>organ()}); }
+  // the votive stand: a rack of little candles — one more lit for every one you light, and they stay lit
+  const votive=[]; { const v=group(2.5,0,8.5,R); B(1.0,0.8,0.5,wallD,0,0,0,v); B(1.1,0.06,0.6,0xc9a94a,0,0.8,0,v); B(1.1,0.06,0.6,0xc9a94a,0,1.05,-0.15,v);
+    for(let i=0;i<12;i++){ const x=-0.42+(i%6)*0.17, y=i<6?0.86:1.11, z=i<6?0.12:-0.15; Cy(0.035,0.035,0.08,8,0xc8302a,x,y,z,v); const f=Co(0.018,0.05,5,glow(0xffd27a),x,y+0.1,z,v); f.visible=false; votive.push(f); }
+    an.push(t=>votive.forEach((f,i)=>{ if(f.visible) f.scale.y=1+Math.sin(t*12+i*1.3)*0.25; })); shade(v);
+    lv.spots.push({x:2.5,z:9.6,r:1.1,label:'Light',who:'The votive candles',action:()=>{ const s=ST(); s.votives=s.votives||{}; const k=T.id, n=Math.min(12,(s.votives[k]||0)+1); s.votives[k]=n; votive.forEach((f,i)=>f.visible=i<n); GAME.changed();
+      UI.toast(n>=12?'🕯 The stand is full of light. Every one of them a prayer.':`🕯 You light a candle (${n} burning here now) and say a prayer for someone far away.`,2200); }}); }
+  // the font, by the door: a stone basin of still water
+  { const f=group(14.5,0,22.5,R); Cy(0.2,0.3,0.7,8,wallL,0,0,0,f); Cy(0.55,0.35,0.3,12,wallL,0,0.7,0,f); const w=new THREE.Mesh(new THREE.CircleGeometry(0.48,20),new THREE.MeshPhongMaterial({color:0x6a9ac8,shininess:120,specular:0xffffff})); w.rotation.x=-Math.PI/2; w.position.y=0.98; f.add(w); shade(f);
+    lv.spots.push({x:13.4,z:22.5,r:1.1,label:'Look',who:'The font',action:()=>ENGINE.speak('The font',['Still water in the stone, the windows trembling in it.','“One Lord, one faith, one baptism, one God and Father of all.” — Ephesians 4:5–6'])}); }
+  // the bell-rope by the door
+  { B(0.04,3.6,0.04,0xc8b088,3.5,0.9,SH-1.2,R); Sp(0.08,0x8a2a2a,3.5,0.85,SH-1.2,R,8,6);
+    lv.spots.push({x:3.5,z:SH-2.0,r:1.0,label:'Toll',who:'The bell-rope',action:()=>{ bell(); UI.toast('🔔 Far above, the bell answers — once, twice, three times — and the town hears it.',2200); }}); }
+  // candle-wheels down the nave
+  [9.5,14.5,19.5].forEach(z=>{ const c=group(CX,0,z,R); B(0.02,1.6,0.02,0x2a2a2a,0,WH-1.0,0,c); const ring=new THREE.Mesh(new THREE.TorusGeometry(0.8,0.05,6,20),flat(0xc9a94a)); ring.rotation.x=Math.PI/2; ring.position.y=WH-1.6; c.add(ring);
+    for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; Cy(0.03,0.03,0.12,6,0xf4eee0,Math.sin(a)*0.8,WH-1.6,Math.cos(a)*0.8,c); flame(Math.sin(a)*0.8,WH-1.4,Math.cos(a)*0.8,c,an,0.9); } });
+  // the general's colours hung either side of the chancel arch
+  [3.0,14.0].forEach(x=>{ const b=group(x,0,5.2,R); B(0.8,2.0,0.04,hexn(T.generalTint||'#5a3a7a'),0,3.6,0,b); B(0.86,0.06,0.06,0xc9a94a,0,5.6,0,b); B(0.12,0.7,0.05,0xc9a94a,0,4.4,0.03,b); B(0.46,0.12,0.05,0xc9a94a,0,4.8,0.03,b); });
+  [[6.0,24.5],[11.0,24.5]].forEach(([x,z])=>{ B(0.42,0.7,0.06,wallD,x,1.0,z+0.47,R); Cy(0.04,0.04,0.25,6,0xf4eee0,x,1.1,z+0.4,R); flame(x,1.42,z+0.4,R,an,0.8); });
   // the people
   let teach=0;
-  const pr=addPerson(lv,R,'priest',6.5,3.5,0.28,T.priest,null,{stole:cloth,rest:0}); pr.next=()=>[T.teachings[teach++%T.teachings.length]];
-  addPerson(lv,R,'general',7.5,9.5,0,T.general,[T.generalLine],{tint:T.generalTint,rest:Math.PI});
-  const ez=addPerson(lv,R,'scribe',5.5,12.5,0,'Ezra the Scribe',['The doctrine you have won is kept here. Study, or browse the wares.'],{rest:Math.PI});
-  if(typeof LIBRARY!=='undefined'&&typeof T.id==='number') ez.action=()=>LIBRARY.open(T.id);   // 📚 the town's library (openLibrary)
-  // walking: KLK's sanctuary walkable() — exit, floor, step, platform
+  const pr=addPerson(lv,R,'priest',5.5,4.4,0.32,T.priest,null,{stole:cloth,rest:0}); pr.next=()=>[T.teachings[teach++%T.teachings.length]];
+  addPerson(lv,R,'general',10.5,6.6,0.16,T.general,[T.generalLine],{tint:T.generalTint,rest:Math.PI});
+  // Ezra at his table of books in the east aisle
+  { const t=group(14.5,0,16.0,R); B(1.2,0.08,0.7,pew,0,0.72,0,t); [[-0.5,-0.28],[0.5,-0.28],[-0.5,0.28],[0.5,0.28]].forEach(([a,b])=>B(0.07,0.72,0.07,pew,a,0,b,t)); for(let i=0;i<4;i++){ const bk=B(0.28,0.06,0.2,[0x7a2a22,0x2a4a6a,0x4a5a2a,0x6a4a22][i],-0.3+(i%2)*0.5,0.8+Math.floor(i/2)*0.06,-0.1,t); bk.rotation.y=i*0.4; } shade(t); }
+  const ez=addPerson(lv,R,'scribe',14.5,17.1,0,'Ezra the Scribe',['The doctrine you have won is kept here. Study, or browse the wares.'],{rest:Math.PI});
+  if(typeof LIBRARY!=='undefined'&&typeof T.id==='number') ez.action=()=>LIBRARY.open(T.id);
+  // the things you do here
+  const VERSES=['“The LORD bless thee, and keep thee: the LORD make his face shine upon thee, and be gracious unto thee.” — Numbers 6:24–25','“Draw nigh to God, and he will draw nigh to you.” — James 4:8','“Be still, and know that I am God.” — Psalm 46:10','“Cast thy burden upon the LORD, and he shall sustain thee.” — Psalm 55:22'];
+  function sitAt(x,z,face,secs,msg){ if(ENGINE.holding) return; const P=ENGINE.P, back={x:P.x,z:P.z}; P.x=x; P.z=z; P.face=face; ENGINE.hold(secs,'sit'); let el=0; const tick=(t,dt)=>{ el+=dt||0.016; P.x=x; P.z=z; P.face=face; if(el>=secs){ an.splice(an.indexOf(tick),1); P.x=back.x; P.z=back.z; } }; an.push(tick); if(msg) UI.toast(msg,1800); }
+  function pray(x){ const s=ST(); s.hp=s.maxHp; ENGINE.hud&&ENGINE.hud(); GAME.changed(); ENGINE.hold(2.2,'sit'); ENGINE.speak('You kneel at the rail',[VERSES[Math.floor(Math.random()*VERSES.length)],'You rise with your strength renewed.']); }
+  let AC=null; const actx=()=>{ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){ AC=null; } return AC; };
+  function organ(){ const A=actx(); if(!A){ UI.toast('🎹 The organ is silent today.',1200); return; } const N={G3:196,D4:293.7,E4:329.6,Fs4:370,G4:392,A4:440,B4:493.9,C5:523.3};
+    const tune=[['G4',1],['G4',1],['Fs4',1],['E4',1],['D4',1],['G4',1],['A4',1],['B4',2],['B4',1],['B4',1],['A4',1],['G4',1],['C5',1],['B4',1],['A4',1],['G4',2]];
+    let t=A.currentTime+0.1; const out=A.createGain(); out.gain.value=0.12; out.connect(A.destination);
+    tune.forEach(([nm,d])=>{ const f=N[nm], len=d*0.5; [1,2,3,4].forEach((h,i)=>{ const o=A.createOscillator(), gg=A.createGain(); o.frequency.value=f*h; gg.gain.setValueAtTime(0.0001,t); gg.gain.linearRampToValueAtTime([0.6,0.3,0.15,0.08][i],t+0.04); gg.gain.setValueAtTime([0.6,0.3,0.15,0.08][i],t+len-0.05); gg.gain.linearRampToValueAtTime(0.0001,t+len); o.connect(gg); gg.connect(out); o.start(t); o.stop(t+len+0.02); });
+      const b=A.createOscillator(), bg2=A.createGain(); b.frequency.value=N.G3/2; bg2.gain.value=0.25; b.connect(bg2); bg2.connect(out); b.start(t); b.stop(t+len); t+=len; });
+    ENGINE.speak('You play the Old Hundredth',['🎵 Praise God, from whom all blessings flow;','🎵 Praise Him, all creatures here below…']); }
+  function bell(){ const A=actx(); if(!A) return; [0,1.4,2.8].forEach(d=>{ const t=A.currentTime+d, g0=A.createGain(); g0.gain.setValueAtTime(0.0001,t); g0.gain.exponentialRampToValueAtTime(0.3,t+0.01); g0.gain.exponentialRampToValueAtTime(0.0001,t+2.6); g0.connect(A.destination);
+    [220,440,524,660,880].forEach((f,i)=>{ const o=A.createOscillator(), gg=A.createGain(); o.frequency.value=f; gg.gain.value=[0.5,0.3,0.25,0.15,0.08][i]; o.connect(gg); gg.connect(g0); o.start(t); o.stop(t+2.7); }); }); }
+  // the lit votives this town keeps
+  lv.onEnter=()=>{ const n=((ST().votives||{})[T.id])||0; votive.forEach((f,i)=>f.visible=i<n); };
+  // walking: floor, step, chancel (not the altar, the pulpit, the organ, the font, the stand, the pews or the columns)
   const ok=(x,y)=>{ const t=g[y]&&g[y][x]; return t===9||t===12||t===14||t===15; };
   lv.ground=(x,z)=>fh(Math.floor(x),Math.floor(z));
-  lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!ok(Math.floor(tx+ox),Math.floor(tz+oz))) return false; return true; };
-  lv.clamp=v=>{ v.x=Math.min(11.6,Math.max(1.4,v.x)); v.z=Math.min(16.85,Math.max(1.4,v.z)); v.y=Math.min(5.4,Math.max(0.9,v.y)); };
-  lv.camBlock=(x,z,y)=>y>WH+0.6||x<1.2||x>11.8||z<1.2||z>16.9;
-  { const panes=[]; R.traverse(o=>{ if(o.isMesh&&o.material&&o.material.map&&o.material.isMeshBasicMaterial&&o.material.blending===THREE.NormalBlending) panes.push(o.material); });   // the glass glows by day, dims at night
+  lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!ok(Math.floor(tx+ox),Math.floor(tz+oz))) return false; if(tz<5.45&&tz>4.95&&Math.abs(tx-CX)>1.0) return false; return true; };   // (the rail: through its gate in the middle)
+  lv.clamp=v=>{ v.x=Math.min(SW-1.4,Math.max(1.4,v.x)); v.z=Math.min(SH-1.15,Math.max(1.4,v.z)); v.y=Math.min(WH-0.6,Math.max(0.9,v.y)); };
+  lv.camBlock=(x,z,y)=>y>WH+1.5||x<1.2||x>SW-1.2||z<1.2||z>SH-1.1;
+  { const panes=[]; R.traverse(o=>{ if(o.isMesh&&o.material&&o.material.map&&o.material.isMeshBasicMaterial&&o.material.blending===THREE.NormalBlending) panes.push(o.material); });
     an.push(()=>{ const nt=typeof DAYNIGHT!=='undefined'?DAYNIGHT.state().night:0; panes.forEach(m=>m.color.setScalar(1-0.62*nt)); sKey.intensity=0.32*(1-nt)+0.05; }); }
-  lv.spawn={x:6.5,z:14.5,face:Math.PI,yaw:0};
-  lv.spots.push({x:6.5,z:16.7,r:1.1,label:'Leave',who:'Leave',auto:[0,1],ar:0.8,action:()=>ENGINE.go(spec.exit.level,spec.exit.spawn)});
+  lv.spawn={x:CX,z:SH-2.5,face:Math.PI,yaw:0};
+  lv.spots.push({x:CX,z:SH-1.3,r:1.1,label:'Leave',who:'Leave',auto:[0,1],ar:0.8,action:()=>ENGINE.go(spec.exit.level,spec.exit.spawn)});
   return lv; }
 
 // ── engine/throne.js ──
@@ -10691,6 +10882,22 @@ function throneLevel(spec){
   [11,19].forEach(y=>{ const c=group(cx,0,y,R); Cy(0.01,0.01,1.6,4,goldD,0,5.4,0,c); const ring=new THREE.Mesh(new THREE.TorusGeometry(0.9,0.05,6,20),flat(gold)); ring.rotation.x=Math.PI/2; ring.position.y=5.3; c.add(ring);
     for(let i=0;i<8;i++){ const a=i/8*Math.PI*2; Cy(0.03,0.03,0.14,6,0xf4eee0,Math.sin(a)*0.9,5.33,Math.cos(a)*0.9,c); flame(Math.sin(a)*0.9,5.53,Math.cos(a)*0.9,c,an,0.9); }
     const l=new THREE.PointLight(0xffe0a8,0.5,10,1.5); l.position.y=5; c.add(l); });
+  // the tapestries of the ten chapels down both walls: each hangs veiled until its chapel is cleansed, then shows the town's
+  //  colours, its cross and its name in gold (CHAPEL_THEMES); kneel at the foot of the dais; a fanfare when you come in
+  const TAPS=[]; { const names=[]; for(let i=0;i<10;i++) names.push(typeof CHAPELS!=='undefined'&&CHAPELS[i]&&CHAPELS[i].td?CHAPELS[i].td.name:null);
+    const tapTex=(i,open)=>{ const c=document.createElement('canvas'); c.width=96; c.height=160; const x=c.getContext('2d'), th=typeof CHAPEL_THEMES!=='undefined'?CHAPEL_THEMES[i]:null, col=h=>'#'+new THREE.Color(h).getHexString();
+      if(!open){ x.fillStyle='#2a2430'; x.fillRect(0,0,96,160); x.fillStyle='#3a3440'; for(let k=0;k<6;k++) x.fillRect(8+k*14,0,4,160); x.fillStyle='#6a6070'; x.font='bold 40px serif'; x.textAlign='center'; x.fillText('?',48,92); return new THREE.CanvasTexture(c); }
+      x.fillStyle=th?col(th.banner):'#2f4a8f'; x.fillRect(0,0,96,150); x.beginPath(); x.moveTo(0,150); x.lineTo(48,160); x.lineTo(96,150); x.fill(); const gd=th?col(th.trim):'#e8c766';
+      x.fillStyle=gd; x.fillRect(0,0,96,6); x.fillRect(0,0,5,150); x.fillRect(91,0,5,150); x.fillRect(42,28,12,64); x.fillRect(26,44,44,10);
+      x.font='bold 13px serif'; x.textAlign='center'; x.fillText(names[i]||('Chapel '+(i+1)),48,118); x.font='11px serif'; x.fillText('cleansed',48,134); return new THREE.CanvasTexture(c); };
+    for(let i=0;i<10;i++){ const side=i<5?0:1, y=6+(i%5)*4.2, wx=side?W-1.06:1.06, ry=side?-Math.PI/2:Math.PI/2; const m=new THREE.Mesh(new THREE.PlaneGeometry(1.2,2.0),new THREE.MeshLambertMaterial({map:tapTex(i,false),side:THREE.DoubleSide}));
+      m.position.set(wx,3.1,y+0.5); m.rotation.y=ry; R.add(m); B(0.08,0.08,1.3,gold,wx+(side?-0.04:0.04),4.15,y+0.5,R); TAPS.push({m,i,open:false,x:wx,z:y+0.5});
+      lv.spots.push({x:side?W-3.4:3.4,z:y+0.5,r:1.6,label:'Look',who:'A tapestry',action:()=>{ const done=(GAME.S.chapels||0)>i; ENGINE.speak(done?'The tapestry of '+(names[i]||'a chapel'):'A veiled tapestry',done?[`Woven in ${names[i]}'s colours, with the cross in gold. Below it, a line of stitched names: the general, and yours.`,'“Thou hast turned for me my mourning into dancing.” — Psalm 30:11']:['Still under its veil. The weavers wait for word that this chapel is cleansed.']); }}); }
+    const showTaps=()=>{ const n=GAME.S.chapels||0; TAPS.forEach(t=>{ const o=n>t.i; if(o!==t.open){ t.open=o; t.m.material.map=tapTex(t.i,o); t.m.material.needsUpdate=true; } }); };
+    showTaps(); const oe=lv.onEnter; lv.onEnter=sp=>{ showTaps(); fanfare(); if(oe) oe(sp); }; }
+  function fanfare(){ try{ const A=window.__klkAC||(window.__klkAC=new (window.AudioContext||window.webkitAudioContext)()); if(A.state==='suspended') A.resume(); let t=A.currentTime+0.15;
+    [[392,0.18],[523,0.18],[659,0.18],[784,0.6]].forEach(([f,d])=>{ [1,1.5].forEach((h,i)=>{ const o=A.createOscillator(), g=A.createGain(), fl=A.createBiquadFilter(); o.type='sawtooth'; o.frequency.value=f*(i?1.005:1); fl.type='lowpass'; fl.frequency.value=1800; g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(0.06,t+0.03); g.gain.setValueAtTime(0.06,t+d-0.04); g.gain.linearRampToValueAtTime(0.0001,t+d); o.connect(fl); fl.connect(g); g.connect(A.destination); o.start(t); o.stop(t+d+0.02); }); t+=d; }); }catch(e){} }
+  lv.spots.push({x:cx,z:8.7,r:1.2,label:'Kneel',who:'Before the throne',action:()=>{ ENGINE.hold(1.8,'sit'); ENGINE.speak(spec.king.name||'The King',['Rise, knight. Luminar is in your debt — and it is not to me that you owe your strength.','“Fear God. Honour the king.” — 1 Peter 2:17']); }});
   // King Karl on his throne; the halberd guards
   const king=addPerson(lv,R,'king',cx,2.75,0.72,spec.king.name,spec.king.lines,{rest:0,reach:4.4}); king.still=true; king.key='king'; king.reach=5.6; king.g.scale.setScalar(1.06);
   [[cx-2,8,0],[cx+2,8,1],[cx-2,14,0],[cx+2,14,1]].forEach(([x,y,s])=>addPerson(lv,R,'royalguard',x,y+0.5,0,'Royal Guard',[spec.guardLines[s]],{rest:s?-Math.PI/2:Math.PI/2}));
