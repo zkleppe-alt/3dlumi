@@ -4318,7 +4318,7 @@ const MENU=(function(){
       if(typeof PETLOOKS!=='undefined') h+=PETLOOKS.bardingRows(S);
       return h+row('★ Skill Points to spend',S.skillPoints,'gold')+tree(SYS.PET_TREE,S); },
     Quests(S){ const lv=ENGINE.level; const here=lv&&!lv.custom&&lv.zone?(lv.zone(ENGINE.P)||lv.name):(lv?lv.name:''), nx=SYS.TOWN_DATA[S.chapels];
-      let h=quest('⚔ The Journey',`You are in: <b>${E(String(here).split(' · ')[0])}</b>`)+(S.abaddonWon?quest('✓ The Shadow Over the Realm','Abaddon is fallen. The realm draws breath again.'):quest('⚔ The Shadow Over the Realm','Defeat Abaddon in Hellgate Citadel.'))
+      let h=(typeof JOURNAL!=='undefined'?`<button class="gm-item" data-act="journal"><span>📖 The Knight’s Journal <span class="ds">${JOURNAL.count()} page${JOURNAL.count()===1?'':'s'} · the quiet moments</span></span></button>`:'')+quest('⚔ The Journey',`You are in: <b>${E(String(here).split(' · ')[0])}</b>`)+(S.abaddonWon?quest('✓ The Shadow Over the Realm','Abaddon is fallen. The realm draws breath again.'):quest('⚔ The Shadow Over the Realm','Defeat Abaddon in Hellgate Citadel.'))
         +(()=>{ const hu=S.hunt; if(!S.abaddonWon) return ''; const n=hu?hu.remaining.reduce((a,b)=>a+b,0):0;
           if(hu&&hu.done) return quest('✓ The Demon Hunt','Complete. The roads are at peace.');
           if(hu&&hu.active) return quest('⚔ The Demon Hunt',`Wandering demons remaining: <b>${n}</b> of ${hu.total}.`);
@@ -4394,6 +4394,7 @@ const MENU=(function(){
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }
+    else if(k==='journal'){ toggle(false); if(typeof JOURNAL!=='undefined') JOURNAL.open(); return; }
     else if(k==='pad'){ toggle(false); if(typeof PAD!=='undefined') PAD.open(); return; }
     else if(k==='save'){ note=GAME.save()?'Saved to Slot '+GAME.slot+'.':'This browser would not store the save — use Export Save Code.'; }
     else if(k==='slot'){ const n=+v; if(n===GAME.slot){ note='You are playing Slot '+n+'.'; } else if(GAME.peek(n)){ GAME.save(); GAME.load(n); note='Loaded Slot '+n+'.'; if(GAME.resume){ toggle(false); UI.toast(`📜 Slot ${n} — ${GAME.S.name}, Lv ${GAME.S.level}`,1600); GAME.resume(); return; } } else sub='confirm:'+n; render(true); return; }
@@ -5191,7 +5192,7 @@ const ROOMLIFE=(function(){
     let hearths=[];
     items.forEach(it=>{ const {k,x,z}=it;
       if(k==='chair'||k==='armchair'||k==='booth'||k==='bench') spot(x,z,'Sit',k==='armchair'?'An armchair':k==='booth'?'A booth':'A chair',()=>sit(x,z,it.face||0,4,k==='armchair'?'You sink into the armchair. Your shoulders come down from your ears.':null));
-      else if(k==='hearth'){ hearths.push(it); spot(x,z+0.9,'Warm','The hearth',()=>{ heal(Math.ceil(S().maxHp*0.05)); UI.toast(['🔥 You hold your hands to the fire. The cold goes out of them.','🔥 The fire snaps and settles. You could stay here all evening.','🔥 You turn a log with the iron; sparks go up the chimney.'][Math.floor(Math.random()*3)],1800); },1.3);
+      else if(k==='hearth'){ hearths.push(it); if(home&&/^in:home_house:/.test(id)&&typeof JOURNAL!=='undefined'&&hearths.length===1){ const sx=floorT(at(Math.floor(x+1.1),Math.floor(z+1.0)))?x+1.1:x-1.1; JOURNAL.spot(lv,sx,z+1.0,Math.atan2(x-sx,-1.0),'The Homestead hearth','by the fire at the Homestead',{fire:true}); } spot(x,z+0.9,'Warm','The hearth',()=>{ heal(Math.ceil(S().maxHp*0.05)); UI.toast(['🔥 You hold your hands to the fire. The cold goes out of them.','🔥 The fire snaps and settles. You could stay here all evening.','🔥 You turn a log with the iron; sparks go up the chimney.'][Math.floor(Math.random()*3)],1800); },1.3);
         // herbs drying over the mantel
         for(let i=0;i<3;i++){ const g=group(x-0.4+i*0.4,0,z+0.05,life); B(0.01,0.18,0.01,0x6a5a3a,0,1.72,0,g); Co(0.05,0.24,5,[0x4a6a2a,0x7a6a3a,0x8a5a6a][i],0,1.5,0,g).rotation.x=Math.PI; } }
       else if(k==='shelf'||k==='goods') spot(x,z+0.7,'Browse',k==='goods'?'The shelves':'The bookshelf',()=>{ if(k==='goods'){ UI.toast('🧺 Good things, neatly priced — ask at the counter.',1500); return; } const r=Math.random(); ENGINE.speak('The bookshelf',r<0.55?[BOOKS[Math.floor(Math.random()*BOOKS.length)],PROVERBS[Math.floor(Math.random()*PROVERBS.length)]]:[PROVERBS[Math.floor(Math.random()*PROVERBS.length)]]); });
@@ -8116,7 +8117,8 @@ function forestLevels(D,spec){
     CRIT.swan(room,an,17.4,19.5,1.6,0); CRIT.swan(room,an,17.4,19.5,1.6,0.6);
     [[11.5,7.5,4.6,3.6,0,0x3a6ab8],[11.5,7.5,5.2,4.0,3,0xc85a3a],[8,18,6,3.2,1,0xe8c04a]].forEach(([x,z,r,h,p,c])=>CRIT.bird(room,an,x,z,r,h,p,c));
     [[6,9,0xffa8d8],[16,10,0xfff07a],[4,20,0x9ad0ff],[18,24,0xffffff],[8,26,0xffb060],[14,13,0xd8a0ff],[3,11,0xfff07a],[20,9,0xffa8d8]].forEach(([x,z,c],i)=>CRIT.fly(room,an,x,z,c,i*1.7));
-    if(typeof GREEK!=='undefined') GREEK.place(lv,room,an,6.5,10.5,'john1_14');   // a leaf of John on a lectern under the great tree
+    if(typeof GREEK!=='undefined') GREEK.place(lv,room,an,6.5,10.5,'john1_14');
+    if(typeof JOURNAL!=='undefined') JOURNAL.spot(lv,5.6,7.9,Math.atan2(4.5-5.6,6.5-7.9),'Eldan’s Glade','under the great tree in Eldan’s glade, with the water running by,');   // a leaf of John on a lectern under the great tree
     lv.spawn=arrival(GR,8); lv.banner='Through the temple door… a hidden glade. Water sings over the stones; Eldan waits in the old rotunda.'; return lv; }});
   let sageIntro=0;
   const SAGE_INTRO=['"Ah... a knight walks the old wood. Few find my glade — fewer still by accident. Sit; the trees are patient."',
@@ -11053,7 +11055,7 @@ function sanctuaryLevel(T,spec){
   const votive=[]; { const v=group(2.5,0,8.5,R); B(1.0,0.8,0.5,wallD,0,0,0,v); B(1.1,0.06,0.6,0xc9a94a,0,0.8,0,v); B(1.1,0.06,0.6,0xc9a94a,0,1.05,-0.15,v);
     for(let i=0;i<12;i++){ const x=-0.42+(i%6)*0.17, y=i<6?0.86:1.11, z=i<6?0.12:-0.15; Cy(0.035,0.035,0.08,8,0xc8302a,x,y,z,v); const f=Co(0.018,0.05,5,glow(0xffd27a),x,y+0.1,z,v); f.visible=false; votive.push(f); }
     an.push(t=>votive.forEach((f,i)=>{ if(f.visible) f.scale.y=1+Math.sin(t*12+i*1.3)*0.25; })); shade(v);
-    lv.spots.push({x:2.5,z:9.6,r:1.1,label:'Light',who:'The votive candles',action:()=>{ const s=ST(); s.votives=s.votives||{}; const k=T.id, n=Math.min(12,(s.votives[k]||0)+1); s.votives[k]=n; votive.forEach((f,i)=>f.visible=i<n); GAME.changed();
+    lv.spots.push({x:2.5,z:9.6,r:1.1,label:'Light',who:'The votive candles',action:()=>{ if(typeof JOURNAL!=='undefined') JOURNAL.write(`I lit a candle in ${T.name}’s sanctuary, for the people of the town, and stood a while watching it burn.`,{once:'votive:'+T.id}); const s=ST(); s.votives=s.votives||{}; const k=T.id, n=Math.min(12,(s.votives[k]||0)+1); s.votives[k]=n; votive.forEach((f,i)=>f.visible=i<n); GAME.changed();
       UI.toast(n>=12?'🕯 The stand is full of light. Every one of them a prayer.':`🕯 You light a candle (${n} burning here now) and say a prayer for someone far away.`,2200); }}); }
   // the font, by the door: a stone basin of still water
   { const f=group(14.5,0,22.5,R); Cy(0.2,0.3,0.7,8,wallL,0,0,0,f); Cy(0.55,0.35,0.3,12,wallL,0,0.7,0,f); const w=new THREE.Mesh(new THREE.CircleGeometry(0.48,20),new THREE.MeshPhongMaterial({color:0x6a9ac8,shininess:120,specular:0xffffff})); w.rotation.x=-Math.PI/2; w.position.y=0.98; f.add(w); shade(f);
@@ -11078,7 +11080,8 @@ function sanctuaryLevel(T,spec){
   // the things you do here
   const VERSES=['“The LORD bless thee, and keep thee: the LORD make his face shine upon thee, and be gracious unto thee.” — Numbers 6:24–25','“Draw nigh to God, and he will draw nigh to you.” — James 4:8','“Be still, and know that I am God.” — Psalm 46:10','“Cast thy burden upon the LORD, and he shall sustain thee.” — Psalm 55:22'];
   function sitAt(x,z,face,secs,msg){ if(ENGINE.holding) return; const P=ENGINE.P, back={x:P.x,z:P.z}; P.x=x; P.z=z; P.face=face; ENGINE.hold(secs,'sit'); let el=0; const tick=(t,dt)=>{ el+=dt||0.016; P.x=x; P.z=z; P.face=face; if(el>=secs){ an.splice(an.indexOf(tick),1); P.x=back.x; P.z=back.z; } }; an.push(tick); if(msg) UI.toast(msg,1800); }
-  function pray(x){ const s=ST(); s.hp=s.maxHp; ENGINE.hud&&ENGINE.hud(); GAME.changed(); ENGINE.hold(2.2,'sit'); ENGINE.speak('You kneel at the rail',[VERSES[Math.floor(Math.random()*VERSES.length)],'You rise with your strength renewed.']); }
+  function pray(x){ if(typeof JOURNAL!=='undefined') JOURNAL.write(`I knelt at the altar rail in ${T.name}’s sanctuary. Not long ago this chapel was full of darkness; now there is only the light through the glass, and the quiet.`,{once:'pray:'+T.id});
+    const s=ST(); s.hp=s.maxHp; ENGINE.hud&&ENGINE.hud(); GAME.changed(); ENGINE.hold(2.2,'sit'); ENGINE.speak('You kneel at the rail',[VERSES[Math.floor(Math.random()*VERSES.length)],'You rise with your strength renewed.']); }
   let AC=null; const actx=()=>{ try{ AC=AC||new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){ AC=null; } return AC; };
   function organ(){ const A=actx(); if(!A){ UI.toast('🎹 The organ is silent today.',1200); return; } const N={G3:196,D4:293.7,E4:329.6,Fs4:370,G4:392,A4:440,B4:493.9,C5:523.3};
     const tune=[['G4',1],['G4',1],['Fs4',1],['E4',1],['D4',1],['G4',1],['A4',1],['B4',2],['B4',1],['B4',1],['A4',1],['G4',1],['C5',1],['B4',1],['A4',1],['G4',2]];
@@ -11645,6 +11648,83 @@ function petTourneyLevel(spec){
   lv.spawn={x:0,z:0}; lv.ground=()=>0;
   return lv; }
 
+// ── engine/journal.js ──
+// ════════════════════════════════════════════════════════════════
+//  JOURNAL — the Knight's Journal, and study as rest (V97). The game's quiet moments write themselves down, a page at a
+//  time, in the knight's own voice: a lesson learned at Old Man Mario's desk, a manuscript read for the first time, a candle
+//  lit or a prayer at a sanctuary rail, an evening's study by the fire. Dated by the realm's own days. ☰ → Quests → 📖.
+//  Study: sit at a quiet place (Mario's desk, the Homestead hearth, under the great tree in Eldan's glade) and read a little:
+//  a passage you can read in Greek (or, before that, a verse in your own tongue), with a quiet thought to sit with. An hour
+//  passes; you rise mended; the journal remembers. The first time you study each passage, it settles in (+25 XP).
+//  State: GAME.S.journal = [{d (day), h (hour), p (place), x (text)}], S.journalOnce = {key:true}, S.jDay, S.studied.
+// ════════════════════════════════════════════════════════════════
+const JOURNAL=(function(){
+  const S=()=>GAME.S;
+  // the realm's days: count each time the clock comes round past midnight
+  setInterval(()=>{ const s=S(); if(!s||typeof s.dayFrac!=='number') return; const f=((s.dayFrac%1)+1)%1; if(s.jLastF!==undefined&&f<s.jLastF-0.5) s.jDay=(s.jDay||1)+1; s.jLastF=f; if(!s.jDay) s.jDay=1; },4000);
+  const hourName=()=>{ const f=((S().dayFrac%1)+1)%1, h=f*24; return h<5?'late at night':h<8?'at first light':h<12?'in the morning':h<14?'at midday':h<18?'in the afternoon':h<21?'in the evening':'at night'; };
+  const placeName=()=>{ const L=ENGINE.level; if(!L) return ''; const z=L.zone?L.zone(ENGINE.P):''; return L.id==='world'?String(z||'').split(' · ')[0]||'the open road':L.name||''; };
+  function write(text,o){ o=o||{}; const s=S(); if(!s) return; s.journal=s.journal||[]; s.journalOnce=s.journalOnce||{};
+    if(o.once){ if(s.journalOnce[o.once]) return; s.journalOnce[o.once]=true; }
+    s.journal.push({d:s.jDay||1,h:hourName(),p:o.place||placeName(),x:text}); if(s.journal.length>240) s.journal.splice(0,s.journal.length-240);
+    GAME.changed&&GAME.changed(); if(!o.quiet) UI.toast('📖 A new page in your journal',1600); }
+  // ── reading it ──
+  function open(){ const s=S(), J=(s.journal||[]).slice().reverse();
+    let h=`<p class="gm-intro">${J.length?`${J.length} page${J.length>1?'s':''}, newest first.`:'The pages are still blank. They fill in the quiet moments — at Old Man Mario’s desk, by a fire, at a sanctuary rail.'}</p>`;
+    J.forEach(e=>{ h+=`<div style="margin:10px 0;padding:10px 12px;border-radius:8px;background:linear-gradient(135deg,rgba(239,224,184,.10),rgba(216,192,138,.06));border:1px solid rgba(232,199,102,.25)">
+      <div class="ds" style="margin-bottom:4px">Day ${e.d} · ${UI.esc(e.h)}${e.p?' · '+UI.esc(e.p):''}</div><div style="font:italic 15px/1.5 Georgia,'Times New Roman',serif">${e.x}</div></div>`; });
+    UI.sheet({title:'📖 The Knight’s Journal',html:h}); }
+  // ── things to read when studying, and a thought to sit with ──
+  const THOUGHT={ john1:'Before anything was made, the Word already was. What would it mean to give Him the first hour of the day?',
+    john14_6:'Not a way, but the way — and not only the truth, but the life as well.',
+    john1_14:'ἐσκήνωσεν — He pitched His tent among us. God did not stay far off.',
+    john3_16:'Οὕτω — so, in this way. The measure of the love is in what was given.',
+    matt6a:'The prayer begins not with our needs, but with His name, His kingdom, His will.',
+    matt6b:'Bread enough for today. And forgiven, as we forgive.',
+    john8_12:'Whoever follows Him will not walk in darkness: the light goes with the one who follows.',
+    john10_11:'The good shepherd lays down his life for the sheep — not for himself.',
+    john11_25:'He said it to a grieving sister, beside a tomb: I am the resurrection and the life.',
+    matt5_3:'The kingdom belongs to the poor in spirit — to those who know they need it.',
+    john1_29:'Ἴδε — look! The Lamb who takes away the sin of the world.',
+    matt5_8:'The pure in heart will see God; the peacemakers will be called His sons.',
+    john8_32:'The truth is not only known. It sets free.',
+    john11_35:'Two words. The Lord who would raise Lazarus still stopped to weep with those who wept.' };
+  // before any Greek: verses in the King James wording (public domain)
+  const PLAIN=[['Psalm 119:105','Thy word is a lamp unto my feet, and a light unto my path.','A lamp for the feet — enough light for the next step, not the whole road.'],
+    ['Psalm 23:1','The LORD is my shepherd; I shall not want.','Rest is not idleness. Even a knight is a sheep before he is a soldier.'],
+    ['Proverbs 3:5','Trust in the LORD with all thine heart; and lean not unto thine own understanding.','All thine heart — not the part left over after the fighting.'],
+    ['Isaiah 40:31','But they that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles; they shall run, and not be weary; and they shall walk, and not faint.','Waiting is part of the work. Strength comes back to those who wait on Him.'],
+    ['Joshua 1:9','Be strong and of a good courage; be not afraid, neither be thou dismayed: for the LORD thy God is with thee whithersoever thou goest.','Whithersoever — the dungeons too.']];
+  let vig=null; function vignette(on){ if(!vig){ vig=document.createElement('div'); vig.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:2;opacity:0;transition:opacity 1.2s;background:radial-gradient(ellipse at center,rgba(0,0,0,0) 35%,rgba(20,12,4,.72) 100%)'; document.body.appendChild(vig); } vig.style.opacity=on?'1':'0'; }
+  function study(lv,o){ if(ENGINE.holding||(lv.combat&&lv.combat.foes&&lv.combat.foes.some(d=>d.alive&&Math.hypot(d.x-ENGINE.P.x,d.z-ENGINE.P.z)<8))) return;
+    const s=S(); s.studied=s.studied||{}; const G=typeof GREEK!=='undefined'?GREEK:null, gs=G?G.st():{done:[],read:{}};
+    const can=G?Object.keys(G.passages).filter(id=>id==='john1'?gs.done.includes('l10'):(gs.read||{})[id]):[];
+    // prefer one not studied yet, else the one studied longest ago
+    let pick=null; if(can.length){ const fresh=can.filter(id=>!s.studied[id]); pick=fresh.length?fresh[(Math.random()*fresh.length)|0]:can.slice().sort((a,b)=>(s.studied[a]||0)-(s.studied[b]||0))[0]; }
+    const P=ENGINE.P, back={x:P.x,z:P.z}; P.x=o.x; P.z=o.z; P.face=o.face||0; ENGINE.hold(9999,'sit'); const lock=()=>{ P.x=o.x; P.z=o.z; P.face=o.face||0; }; lv.anim.push(lock);
+    vignette(true); if(typeof AMBI!=='undefined'&&AMBI.fire&&o.fire) AMBI.fire(0.3);
+    let h, ref, txt;
+    if(pick){ const p=G.passages[pick], v=p.verses[0], gr=v[1].map(w=>w[0]).join(' '), en=p.en; ref=p.ref;
+      h=`<p class="gm-hint">${UI.esc(o.place)} · ${hourName()}</p><div lang="el" style="text-align:center;font:600 21px/1.6 'Gentium Plus','Noto Serif','Times New Roman',serif;margin:10px 0">${gr}${p.verses.length>1?' …':''}</div>`
+        +`<p style="text-align:center;font:italic 15px/1.5 Georgia,serif">${UI.esc(en)}</p><p class="gm-note" style="text-align:center">${UI.esc(THOUGHT[pick]||'')}</p><p class="gm-hint" style="text-align:center">— ${UI.esc(p.ref)}</p>`;
+      const AGAIN=['It reads differently each time.','Some small word I had passed over stopped me this time.','I am beginning to hear it, not only to read it.','Mario says the old words are like wells: you never reach the bottom.','I closed my eyes after and could still see the letters.'];
+      txt=!s.studied[pick]?`I sat ${o.where} and read ${p.ref} slowly, in Greek, word by word. ${THOUGHT[pick]||''}`:`I sat ${o.where} and read ${p.ref} again. ${AGAIN[(Math.random()*AGAIN.length)|0]}`; }
+    else { const q=PLAIN[(s.jDay||1)%PLAIN.length]; ref=q[0];
+      h=`<p class="gm-hint">${UI.esc(o.place)} · ${hourName()}</p><p style="text-align:center;font:italic 17px/1.6 Georgia,serif;margin:12px 0">“${UI.esc(q[1])}”</p><p class="gm-hint" style="text-align:center">— ${UI.esc(q[0])}</p><p class="gm-note" style="text-align:center">${UI.esc(q[2])}</p>`
+        +(G&&!(gs.done||[]).length?`<p class="gm-hint" style="text-align:center">(Old Man Mario, by the Homestead, could teach you to read the Scriptures in Greek.)</p>`:'');
+      txt=`I sat ${o.where} with ${q[0]}: “${q[1]}” ${q[2]}`; }
+    h+=`<button class="gm-item" data-act="done"><span>📖 Close the book and rise</span></button>`;
+    let closed=false; const end=()=>{ if(closed) return; closed=true; const i=lv.anim.indexOf(lock); if(i>=0) lv.anim.splice(i,1); ENGINE.hold(0); P.x=back.x; P.z=back.z; vignette(false);
+      s.hp=s.maxHp; ENGINE.hud&&ENGINE.hud(); s.dayFrac=(s.dayFrac||0)+1/24;   // an hour passes
+      const first=pick&&!s.studied[pick]; if(pick) s.studied[pick]=Date.now(); else s.studied['plain:'+ref]=Date.now();
+      write(txt,{place:o.place,quiet:true}); if(first){ const r=GAME.gainXp(25); if(r&&r.up) setTimeout(()=>UI.toast(`Level ${S().level}! A skill point to spend.`,2400),1600); }
+      GAME.changed(); GAME.save(); UI.toast(first?'📖 An hour passes. The word settles in. (+25 XP · a page in your journal)':'📖 An hour passes. You rise rested. (a page in your journal)',2600); };
+    setTimeout(()=>UI.sheet({title:'📖 '+(pick?'Study — ':'')+ref,html:h,act:a=>{ if(a==='done'){ UI.close(); end(); } },close:end}),900); }
+  // a quiet place to study: a spot labelled Study
+  function spot(lv,x,z,face,place,where,o){ o=o||{}; lv.spots.push({x:o.sx!==undefined?o.sx:x,z:o.sz!==undefined?o.sz:z,r:o.r||0.9,label:'Study',who:place,action:()=>study(lv,{x,z,face,place,where,fire:o.fire})}); }
+  return { write, open, study, spot, count:()=>((S()&&S().journal)||[]).length };
+})();
+
 // ── engine/greek.js ──
 // ════════════════════════════════════════════════════════════════
 //  GREEK — Old Man Mario's hut, at the edge of the wood east of the Homestead. Once the Homestead is yours (Abaddon
@@ -11888,7 +11968,7 @@ const GREEK=(function(){
   // a manuscript found in the world: read it if your Greek is good enough (the first reading is rewarded)
   function readFound(id){ const p=PASS[id], g=st(); g.read=g.read||{};
     if(level()<p.need){ UI.sheet({title:'📜 An old manuscript',html:`<p class="gm-intro">${UI.esc(p.title)}. The letters are Greek — you can make out a few of them — but not enough to read it.</p><div lang="el" style="text-align:center;margin:10px 0;opacity:.75">${big(p.verses[0][1].slice(0,6).map(w=>w[0]).join(' ')+' …')}</div><p class="gm-hint">You need Greek level <b>${p.need}</b> (you have ${level()}). Old Man Mario, east of the Homestead, can teach you.</p>`}); return; }
-    const first=!g.read[id]; RD=null; reader(id);
+    const first=!g.read[id]; RD=null; reader(id); if(first) jw(`I found ${p.title.charAt(0).toLowerCase()+p.title.slice(1)} — ${p.ref} — and read it for myself, without anyone’s help: “${p.en}”`,{once:'ms:'+id});
     if(first){ g.read[id]=true; const r=GAME.gainXp(150); GAME.addGold(100); GAME.changed(); GAME.save(); UI.toast(`📜 You read ${p.ref} for yourself! +150 XP · +100 gold`,3200); if(r&&r.up) setTimeout(()=>UI.toast(`Level ${S().level}! A skill point to spend.`,2400),3400); } }
   // set a manuscript somewhere: a little stand with a glowing scroll, and a Read spot
   function place(lv,par,an,x,z,id,o){ o=o||{}; const g=group(x,o.y||0,z,par);
@@ -11900,6 +11980,23 @@ const GREEK=(function(){
   const S=()=>GAME.S, st=()=>{ const s=S(); s.greek=s.greek||{done:[],best:{}}; s.greek.done=s.greek.done||[]; s.greek.best=s.greek.best||{}; return s.greek; };
   const level=()=>st().done.length, nextL=()=>LESSONS.find(l=>!st().done.includes(l.id));
   const say=(lines,then)=>ENGINE.speak('Old Man Mario',lines,null,then);
+  // V97: what the knight writes in his journal after each lesson
+  const JLINE={l1:'Mario made me say the first twelve letters aloud until the lamp guttered. Lambda looks like a little tent. I will remember it that way.',
+    l2:'Alpha to omega, all twenty-four. Mario tapped the last letter and said, “You know who called Himself this.” I did.',
+    l3:'Breathing marks — a rough breath before ὁ, a smooth one before ἐν. Tonight I read “in the beginning … the Word” with my own eyes.',
+    l4:'Endings, not word order. A Greek word can stand anywhere in the sentence and still be known by its work. There is a kind of freedom in that.',
+    l5:'εἰμί — “I am.” Mario was quiet for a while after he said it.',
+    l6:'πιστεύω — I believe. Mario says it is a verb: something one does, not only something one holds.',
+    l7:'ζωή, ἀγάπη, ἀλήθεια — life, love, truth. The most beautiful words all seem to wear the same ending.',
+    l8:'Through him. Without him. With God. The smallest words held the first verses of John together.',
+    l9:'The past has a doorway: a small ἐ at the front of a word. ἐγένετο — it came to be.',
+    l10:'Tonight I read the first five verses of John in the tongue he wrote them in. The light shines in the darkness. Mario said nothing. He poured us both tea.',
+    l11:'Plurals. “Our Father in the heavens” — not one heaven, but heavens.',
+    l12:'μου, σου, ἡμῶν — my, your, our. The Lord taught us to pray “our”, never “my”.',
+    l13:'Let Your kingdom come; let Your will be done. Mario says that in prayer the command becomes a plea — a servant asking the King for what the King has promised.',
+    l14:'ὁ πιστεύων — “the one who believes.” Not one who once believed: one who goes on believing. Mario underlined it twice.'};
+  const jw=(t,o)=>{ if(typeof JOURNAL!=='undefined') JOURNAL.write(t,o); };
+
   // ── the test ──
   let T=null;
   function quiz(lesson,practice){ const qs=practice?shuffle(LESSONS.filter(l=>st().done.includes(l.id)).flatMap(l=>l.quiz())).slice(0,8):lesson.quiz(); T={lesson,practice,qs,i:0,right:0,picked:null}; drawQ(); }
@@ -11912,7 +12009,7 @@ const GREEK=(function(){
   function finish(){ const t=T, n=t.qs.length, r=t.right; T=null; UI.close();
     if(t.practice){ const g=r*5; if(g) GAME.addGold(g); GAME.changed(); GAME.save(); say([`“${r} of ${n}. ${r>=7?'Your old teacher is proud.':r>=5?'Good — the letters are settling in.':'Hm. Again tomorrow, eh? Little and often.'}”`,g?`🪙 ${g} gold for your trouble.`:''].filter(Boolean)); return; }
     const g=st(), L=t.lesson; g.best[L.id]=Math.max(g.best[L.id]||0,r);
-    if(r>=6){ const first=!g.done.includes(L.id); if(first){ g.done.push(L.id); const res=GAME.gainXp(L.reward); if(res&&res.up) setTimeout(()=>UI.toast(`Level ${S().level}! A skill point to spend.`,2400),1200); }
+    if(r>=6){ const first=!g.done.includes(L.id); if(first){ g.done.push(L.id); jw(JLINE[L.id]||('Another lesson learned: '+L.title+'.'),{once:'gk:'+L.id,place:'Old Man Mario’s Hut'}); const res=GAME.gainXp(L.reward); if(res&&res.up) setTimeout(()=>UI.toast(`Level ${S().level}! A skill point to spend.`,2400),1200); }
       GAME.changed(); GAME.save(); const nx=nextL();
       say([`“${r} of ${n}! ${r===n?'Every one!':'Well done.'} ${first?'That lesson is yours now — no one can take it from you.':''}”`,first?`📜 Greek level ${level()} · +${L.reward} XP`:'',nx?`“Come back when you are ready for the next: ${nx.title}.”`:'“That is all I have written for now. I am working on the next lessons — and I hear there are old manuscripts in this realm that want reading…”'].filter(Boolean)); }
     else say([`“${r} of ${n}. Not yet — you need six. No shame in it; I failed my first test too, a very long time ago.”`,'“Look over the page again, say them aloud, and try once more.”']); }
@@ -11921,7 +12018,7 @@ const GREEK=(function(){
     if(L.id==='l10'){ RD=null; reader('john1',{teach:true,after:btn,act:a=>{ if(a==='test') quiz(L); }}); return; }
     UI.sheet({title:'📜 '+L.title,html:L.teach()+`<button class="gm-item" data-act="test"><span>✎ I’m ready — test me (6 of 8 to pass)</span></button>`,act:a=>{ if(a==='test') quiz(L); }}); }
   function talk(){ const g=st(), nx=nextL();
-    if(!g.met){ g.met=true; GAME.save(); say(['“Eh? A visitor! Come in, come in, mind the scrolls.”','“They call me Old Man Mario. I have spent my life copying the old words — the Scriptures as the apostles wrote them, in Greek.”','“There are writings in this realm older than any king — and no one left who can read them. You have done great things with a sword, knight. Shall I teach you to do something with your eyes?”'],menu); return; }
+    if(!g.met){ g.met=true; jw('An old man in a hut at the wood’s edge offered to teach me Greek, so that I could read the Scriptures as the apostles wrote them. He calls himself Old Man Mario. His hands are stained with ink to the wrist.',{once:'mario',place:'Old Man Mario’s Hut'}); GAME.save(); say(['“Eh? A visitor! Come in, come in, mind the scrolls.”','“They call me Old Man Mario. I have spent my life copying the old words — the Scriptures as the apostles wrote them, in Greek.”','“There are writings in this realm older than any king — and no one left who can read them. You have done great things with a sword, knight. Shall I teach you to do something with your eyes?”'],menu); return; }
     menu(); }
   function menu(){ const g=st(), nx=nextL(); let h=`<p class="gm-intro">Old Man Mario taps the open scroll on his desk. “Koine Greek — the common tongue, the language of the New Testament. Little and often, that is the way.”</p><p class="gm-hint">📜 Your Greek level: <b>${level()}</b> of ${LESSONS.length}</p>`;
     if(nx) h+=`<button class="gm-item" data-act="next"><span>▶ Next lesson: ${UI.esc(nx.title)}</span></button>`;
@@ -11970,6 +12067,7 @@ const GREEK=(function(){
       // the alphabet on a board by the door, and a long scroll hung on the wall
       const bd=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.8),parchment(['Α Β Γ Δ Ε Ζ','Η Θ Ι Κ Λ Μ','Ν Ξ Ο Π Ρ Σ','Τ Υ Φ Χ Ψ Ω'],320,160)); bd.position.set(1.05,1.55,4.5); bd.rotation.y=Math.PI/2; room.add(bd);
       const hs=new THREE.Mesh(new THREE.PlaneGeometry(0.6,1.3),parchment(['ΠΑΤΕΡ','ΗΜΩΝ','Ο ΕΝ ΤΟΙΣ','ΟΥΡΑΝΟΙΣ'],120,260)); hs.position.set(6.95,1.6,2.4); hs.rotation.y=-Math.PI/2; room.add(hs);
+      if(typeof JOURNAL!=='undefined') JOURNAL.spot(lv,2.6,4.5,Math.PI,'Old Man Mario’s Hut','at the end of Old Man Mario’s desk by lamplight');
       const f=addPerson(lv,room,'scribe',4,2.45,0,'Old Man Mario',null,{rest:0}); f.action=()=>talk(); f.label='Talk'; f.reach=1.4;
       return lv; }});
     return g; }
