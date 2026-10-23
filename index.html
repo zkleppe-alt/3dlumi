@@ -8116,6 +8116,7 @@ function forestLevels(D,spec){
     CRIT.swan(room,an,17.4,19.5,1.6,0); CRIT.swan(room,an,17.4,19.5,1.6,0.6);
     [[11.5,7.5,4.6,3.6,0,0x3a6ab8],[11.5,7.5,5.2,4.0,3,0xc85a3a],[8,18,6,3.2,1,0xe8c04a]].forEach(([x,z,r,h,p,c])=>CRIT.bird(room,an,x,z,r,h,p,c));
     [[6,9,0xffa8d8],[16,10,0xfff07a],[4,20,0x9ad0ff],[18,24,0xffffff],[8,26,0xffb060],[14,13,0xd8a0ff],[3,11,0xfff07a],[20,9,0xffa8d8]].forEach(([x,z,c],i)=>CRIT.fly(room,an,x,z,c,i*1.7));
+    if(typeof GREEK!=='undefined') GREEK.place(lv,room,an,6.5,10.5,'john1_14');   // a leaf of John on a lectern under the great tree
     lv.spawn=arrival(GR,8); lv.banner='Through the temple door… a hidden glade. Water sings over the stones; Eldan waits in the old rotunda.'; return lv; }});
   let sageIntro=0;
   const SAGE_INTRO=['"Ah... a knight walks the old wood. Few find my glade — fewer still by accident. Sit; the trees are patient."',
@@ -8172,6 +8173,7 @@ function forestLevels(D,spec){
     // glowing mushrooms along the way in, so it is not pitch black
     fl.forEach(([x,y])=>{ if(y<9||CG[y][x]!==0||hsh(x*11,y)>0.45) return; for(let k=0;k<3;k++){ const mx=x+0.15+hsh(k,x)*0.7, mz=y+0.15+hsh(y,k)*0.7; Cy(0.012,0.015,0.08,4,0xd8e8e0,mx,0,mz,room); Sp(0.04,glow(0x7affc8),mx,0.09,mz,room,5,4).scale.y=0.5; } });
     const e=find(CG,8); if(e) spot(e[0],e[1],'Leave','The way out',()=>ENGINE.go(spec.caveExit.level,spec.caveExit.spawn),0.9);
+    if(typeof GREEK!=='undefined') GREEK.place(lv,room,an,13.5,4.5,'john3_16',{r:0.9});   // the old monk's treasured scroll, by his shelf
     lv.spawn=arrival(CG,8); lv.banner='A hidden cave. A narrow way, then still water and the far glow of a fire. Someone dwells deep within…'; return lv; }});
   function monkTalk(){ const q=Q(), inv=S().inventory, monk=l=>say('The Old Monk',l);
     if(q.kindness==='done'){ monk('"You are the one who came. The bread is long eaten, the scroll read by firelight — but the kindness stays warm. Go with God, knight." 🕯️'); return; }
@@ -11648,7 +11650,8 @@ function petTourneyLevel(spec){
 //  you can read the old manuscripts for yourself. Each lesson: he teaches (a page you can study), then a short test of
 //  eight questions; six right and it's learned. Then practise any time with what you know, for a few coins a correct answer.
 //  Pronunciation is the Erasmian scheme most Greek classrooms use. Reading passages will come from the public-domain
-//  Robinson–Pierpont Byzantine text. State: GAME.S.greek = {done:[lesson ids], best:{id:score}}.
+//  Robinson–Pierpont Byzantine text. State: GAME.S.greek = {done:[lesson ids], best:{id:score}, read:{fragment:true}}.
+//  V95: ten lessons, to reading John 1:1–5; manuscripts around the realm (GREEK.place) open in a word-by-word reader.
 //  greekHut(world, {x,z}) builds the hut in the realm and its room ('marioHut').
 // ════════════════════════════════════════════════════════════════
 const GREEK=(function(){
@@ -11698,6 +11701,115 @@ const GREEK=(function(){
         +`<div class="gm-sec">First words</div>`+table(WORDS.map(([g,t,m])=>`<div>${big(g)}</div><div><b>${t}</b> — ${UI.esc(m)}</div>`),'auto 1fr')
         +`<p class="gm-hint">Already you can read three words of the Gospel of John: ${gk('ἐν ἀρχῇ … ὁ λόγος')} — <i>“in the beginning … the Word.”</i></p>`,
       quiz:wordQs } ];
+  // ── lessons 4 to 10: hand-written questions [prompt, answer, three wrong answers] ──
+  const pool=P=>()=>shuffle(P).slice(0,8).map(([q,a,...d])=>({q:/[A-Za-z]/.test(q)?q:`What does this mean?<br>${big(q)}`,a,opts:shuffle([a].concat(d))}));
+  const rows=(R,cols)=>table(R.map(r=>r.map((c,i)=>`<div>${i===0?big(c):c}</div>`).join('')),cols||'auto 1fr');
+  const MORE=[
+    { id:'l4', title:'“The” and the Endings — ὁ λόγος', reward:250,
+      intro:['“In English, the order of words tells you who did what. In Greek, the ending does. Change the ending and you change the job.”','“Today: ὁ λόγος, the word — and the four jobs it can do.”'],
+      teach:()=>`<p class="gm-intro">A Greek noun changes its ending for its job in the sentence — its <b>case</b>. The little word “the” changes with it. Here is λόγος, “word”, in its four cases:</p>`
+        +rows([['ὁ λόγος','<b>nominative</b> — the subject: <i>the word</i> (does it)'],['τοῦ λόγου','<b>genitive</b> — “of”: <i>of the word</i>'],['τῷ λόγῳ','<b>dative</b> — “to, in, with”: <i>to / in the word</i>'],['τὸν λόγον','<b>accusative</b> — the object: <i>the word</i> (has it done to it)']])
+        +`<p>So <span lang="el">${gk('ὁ υἱὸς τοῦ θεοῦ')}</span> is <i>the Son of God</i>, and <span lang="el">${gk('ὁ ἄνθρωπος βλέπει τὸν θεόν')}</span> is <i>the man sees God</i> — whoever stands in the -ον ending is the one being seen, wherever he stands in the sentence.</p>`
+        +`<div class="gm-sec">New words — they all end like λόγος</div>`+rows([['θεός','God'],['υἱός','son'],['οὐρανός','heaven'],['κόσμος','world'],['ἄνθρωπος','man, person']]),
+      quiz:pool([['τοῦ θεοῦ','of God','God (the subject)','to God','God (the object)'],['ὁ υἱός','the son (the subject)','of the son','to the son','the son (the object)'],['τὸν κόσμον','the world (the object)','of the world','to the world','the world (the subject)'],
+        ['τῷ λόγῳ','to / in the word','of the word','the word (the subject)','the word (the object)'],['ὁ υἱὸς τοῦ θεοῦ','the Son of God','the God of the son','the son to God','God is the son'],['Which ending marks the <b>object</b> (accusative) of λόγος?','-ον (λόγον)','-ος (λόγος)','-ου (λόγου)','-ῳ (λόγῳ)'],
+        ['Which ending means <b>“of”</b> (genitive)?','-ου (λόγου)','-ον (λόγον)','-ος (λόγος)','-ῳ (λόγῳ)'],['οὐρανός','heaven','son','world','man'],['υἱός','son','heaven','God','word'],['ἐν τῷ κόσμῳ','in the world','of the world','the world (the object)','out of the world'],
+        ['τοῦ οὐρανοῦ','of heaven','to heaven','heaven (the subject)','heaven (the object)'],[`In ${gk('τὸν θεὸν βλέπει ὁ ἄνθρωπος')} <span class="ds">(βλέπει = sees)</span>, who sees whom?`,'the man sees God','God sees the man','they see each other','the man is God']]) },
+    { id:'l5', title:'“I Am” — εἰμί', reward:250,
+      intro:['“The most important little verb there is. When Moses asked God His name, the answer was ‘I AM.’ And Jesus said it too — ἐγώ εἰμι.”'],
+      teach:()=>`<p class="gm-intro">The verb “to be”. Greek often leaves out “I” or “they” — the ending already says who.</p>`
+        +rows([['εἰμί','I am'],['εἶ','you are'],['ἐστί(ν)','he / she / it is'],['ἐσμέν','we are'],['ἐστέ','you (all) are'],['εἰσί(ν)','they are'],['ἦν','he / she / it <b>was</b>']])
+        +`<div class="gm-sec">I, you, we</div>`+rows([['ἐγώ','I'],['σύ','you'],['ἡμεῖς','we']])
+        +`<div class="gm-sec">In the Scriptures</div>`+rows([['ἐγώ εἰμι','I am'],['σὺ εἶ ὁ Χριστός','You are the Christ'],['ὁ θεὸς ἀγάπη ἐστίν','God is love']])
+        +`<p class="gm-hint">The little ν on ἐστί(ν) and εἰσί(ν) comes and goes — it’s added before a vowel or at the end of a sentence. It changes nothing.</p>`,
+      quiz:pool([['ἐστίν','he / she / it is','I am','they are','we are'],['εἰμί','I am','you are','he is','we are'],['ἐσμέν','we are','you (all) are','they are','I am'],['εἰσίν','they are','we are','he is','you are'],['εἶ','you are','I am','he is','they are'],
+        ['ἦν','he / she / it was','he is','they are','I will be'],['ἐστέ','you (all) are','we are','they are','he is'],['ὁ θεὸς ἀγάπη ἐστίν','God is love','God loves','Love is not God','God was love'],['ἐγώ','I','you','we','he'],
+        ['σὺ εἶ ὁ Χριστός','You are the Christ','I am the Christ','Christ is with you','You were the Christ'],['ἡμεῖς','we','I','you','they']]) },
+    { id:'l6', title:'Doing Words — the Present Tense', reward:250,
+      intro:['“Now the verbs that do things. Learn one, and you have the pattern for hundreds.”','“λύω — I loose, I set free. A good word for a knight, eh?”'],
+      teach:()=>`<p class="gm-intro">Most verbs follow λύω, “I loose, set free”. The stem stays; the ending tells you who.</p>`
+        +rows([['λύ-ω','I loose'],['λύ-εις','you loose'],['λύ-ει','he / she / it looses'],['λύ-ομεν','we loose'],['λύ-ετε','you (all) loose'],['λύ-ουσι(ν)','they loose']])
+        +`<div class="gm-sec">Verbs that go the same way</div>`+rows([['λέγω','I say'],['ἔχω','I have'],['πιστεύω','I believe, trust'],['γινώσκω','I know'],['ἀκούω','I hear'],['βλέπω','I see']])
+        +`<p class="gm-hint">So πιστεύ<b>ομεν</b> is “we believe”, and λέγ<b>ει</b> is “he says”.</p>`,
+      quiz:pool([['πιστεύομεν','we believe','they believe','I believe','you (all) believe'],['λέγει','he / she says','I say','they say','you say'],['ἔχεις','you have','I have','we have','he has'],['ἀκούουσιν','they hear','we hear','he hears','you (all) hear'],
+        ['βλέπω','I see','you see','he sees','they see'],['γινώσκετε','you (all) know','we know','they know','I know'],['Which ending means <b>“we”</b>?','-ομεν','-ετε','-ουσι(ν)','-εις'],['Which ending means <b>“they”</b>?','-ουσι(ν)','-ομεν','-ει','-ω'],
+        ['πιστεύω','I believe','I say','I have','I hear'],['γινώσκω','I know','I see','I hear','I believe'],[`${big('λέγει αὐτῷ ὁ Ἰησοῦς')}<br><span class="ds">(αὐτῷ = to him)</span>`,'Jesus says to him','He says to Jesus','Jesus said nothing','They say to Jesus']]) },
+    { id:'l7', title:'Life, Light and Glory — More Nouns', reward:250,
+      intro:['“Not every noun ends like λόγος. Many of the most beautiful words end in -η or -α — life, love, truth, glory. These take ἡ, not ὁ.”'],
+      teach:()=>`<p class="gm-intro">Nouns ending in <b>-η</b> or <b>-α</b> are mostly feminine and take <b>ἡ</b> for “the”. Here is ζωή, “life”:</p>`
+        +rows([['ἡ ζωή','life (the subject)'],['τῆς ζωῆς','of life'],['τῇ ζωῇ','to / in life'],['τὴν ζωήν','life (the object)']])
+        +`<p>See the tiny iota tucked under ῇ? That “iota subscript” is how you spot the dative: ${gk('ἐν ἀρχῇ')}, <i>in the beginning</i>.</p>`
+        +`<div class="gm-sec">New words</div>`+rows([['ἀγάπη','love'],['φωνή','voice'],['ἀλήθεια','truth'],['ἡμέρα','day'],['δόξα','glory'],['καρδία','heart']])
+        +`<div class="gm-sec">A third kind: neuter (“it”), with τό</div>`+rows([['τὸ φῶς','the light'],['τὸ ἔργον','the work, deed'],['τὸ πνεῦμα','the Spirit, breath']])+`<p class="gm-hint">A neuter noun looks the same as subject and object — the sentence tells you which.</p>`,
+      quiz:pool([['ἐν ἀρχῇ','in the beginning','of the beginning','the beginning (the object)','out of the beginning'],['τῆς ζωῆς','of life','life (the subject)','to life','life (the object)'],['ἡ ἀλήθεια','the truth','the day','the glory','the heart'],['δόξα','glory','truth','heart','voice'],
+        ['καρδία','heart','day','love','beginning'],['ἡμέρα','day','heart','light','work'],['τὴν ἀγάπην','love (the object)','of love','love (the subject)','to love'],['The little iota under ῃ in ἀρχῇ marks…','the dative (“in, to”)','a plural','a question','a name'],
+        ['τὸ φῶς','the light','the life','the word','the world'],[`${big('ἡ · τῆς · τῇ · τήν')}<br>These are all…`,'“the” with a feminine noun','“the” with a masculine noun','forms of “to be”','forms of “and”'],['ἔργον','work, deed','word','world','spirit']]) },
+    { id:'l8', title:'Him, This, and the Little Words', reward:250,
+      intro:['“Little words carry great weight. Through. Without. With. In. Read John’s first verses without them and you’d be lost.”'],
+      teach:()=>`<p class="gm-intro"><b>αὐτός</b> means “he”, and changes its ending like λόγος:</p>`+rows([['αὐτός','he'],['αὐτοῦ','his, of him'],['αὐτῷ','to him, in him'],['αὐτόν','him'],['αὐτό','it'],['οὗτος','this one, he'],['ἡμῖν','to us, among us'],['ἐμοῦ','of me']])
+        +`<div class="gm-sec">Prepositions — each takes a certain case after it</div>`+rows([['ἐν','in (+ dative)'],['εἰς','into (+ accusative)'],['ἐκ / ἐξ','out of (+ genitive)'],['πρός','toward, with (+ accusative)'],['διά (δι᾽)','through (+ genitive)'],['χωρίς','without (+ genitive)'],['παρά','from (+ genitive)']])
+        +`<div class="gm-sec">Little words</div>`+rows([['οὐ / οὐκ','not'],['οὐδέ','not even'],['καί','and'],['ἀλλά','but'],['γάρ','for (because)'],['ἵνα','so that'],['πάντα','all things'],['ὅ','which']]),
+      quiz:pool([['αὐτοῦ','his / of him','him (the object)','to him','he'],['αὐτῷ','to / in him','his','he','him (the object)'],['εἰς τὸν κόσμον','into the world','out of the world','in the world','without the world'],['ἐκ τοῦ οὐρανοῦ','out of heaven','into heaven','in heaven','toward heaven'],
+        ['δι᾽ αὐτοῦ','through him','without him','toward him','in him'],['χωρὶς αὐτοῦ','without him','through him','with him','his'],['πρὸς τὸν θεόν','with (toward) God','out of God','without God','God’s'],['οὐ','not','and','but','for'],
+        ['ἀλλά','but','for','so that','not'],['γάρ','for (because)','but','and','not'],['πάντα','all things','nothing','one thing','this one'],['οὗτος','this one (he)','all things','not','which']]) },
+    { id:'l9', title:'The Past — Augment and Aorist', reward:250,
+      intro:['“Things that happened. Watch for the little ἐ- at the front of a verb — it is a doorway into the past.”'],
+      teach:()=>`<p class="gm-intro">A verb that looks back usually grows an <b>ἐ-</b> at the front, the <b>augment</b>. The <b>aorist</b> tells of something that simply happened.</p>`
+        +rows([['ἦν','he / she / it was'],['ἐγένετο','came to be, became, was made'],['ἐπίστευσα','I believed'],['ἔδωκεν','he gave'],['ἠγάπησεν','he loved <span class="ds">(ἀ- grows into ἠ-)</span>'],['κατέλαβεν','overcame, grasped <span class="ds">(κατ- + ἐ + λαβεν)</span>'],['ἐσκήνωσεν','dwelt — <i>pitched his tent</i>']])
+        +`<div class="gm-sec">Two more you’ll meet in John</div>`+rows([['γέγονεν','has come to be <span class="ds">(the perfect: done, and it stands)</span>'],['φαίνει','shines <span class="ds">(present — no augment)</span>']])
+        +`<p class="gm-hint">${gk('ὁ λόγος σὰρξ ἐγένετο')} — <i>the Word became flesh</i> (σάρξ = flesh).</p>`,
+      quiz:pool([['ἐγένετο','came to be / became','comes to be','will come','has not come'],['ἔδωκεν','he gave','he gives','he will give','they gave'],['ἠγάπησεν','he loved','he loves','love','he was loved'],['ἐπίστευσα','I believed','I believe','we believed','he believes'],
+        ['The ἐ- at the front of ἐγένετο marks…','the past (the augment)','a question','a plural','“not”'],['φαίνει','shines','shone','will shine','light'],['κατέλαβεν','overcame / grasped','shines','came','said'],['γέγονεν','has come to be','will come to be','is not','was not'],
+        ['ἦν','was','is','will be','were not'],['σὰρξ ἐγένετο','became flesh','became light','made the world','was not flesh'],['ἐσκήνωσεν','dwelt (pitched his tent)','spoke','gave','saw']]) },
+    { id:'l10', title:'Reading John 1:1–5', reward:500,
+      intro:['“Well. Here we are. The first words of John’s Gospel — the very words on my desk. You know every piece of them now.”','“Read them slowly. Tap any word you’ve forgotten. Then tell me what they say.”'],
+      teach:()=>readerHtml('john1',{teach:true}),
+      quiz:pool([['Ἐν ἀρχῇ ἦν ὁ λόγος','In the beginning was the Word','In the end was the Word','The beginning was a word','The Word was not in the beginning'],['ὁ λόγος ἦν πρὸς τὸν Θεόν','the Word was with God','God was with the Word','the Word was without God','the Word came out of God'],
+        ['Θεὸς ἦν ὁ λόγος','the Word was God','God was a word','God spoke the word','the Word is with God'],['πάντα δι᾽ αὐτοῦ ἐγένετο','all things came to be through him','all things were without him','he came through all things','nothing came to be'],
+        ['χωρὶς αὐτοῦ ἐγένετο οὐδὲ ἕν','without him not even one thing came to be','with him everything came to be','without him all things came','one thing came without him'],['ἐν αὐτῷ ζωὴ ἦν','in him was life','he was in life','life was without him','he gave life'],
+        ['ἡ ζωὴ ἦν τὸ φῶς τῶν ἀνθρώπων','the life was the light of men','men were the light of life','the light was the life of God','the life of men was dark'],['τὸ φῶς ἐν τῇ σκοτίᾳ φαίνει','the light shines in the darkness','the darkness shines in the light','the light shone out of darkness','the light is darkness'],
+        ['ἡ σκοτία αὐτὸ οὐ κατέλαβεν','the darkness did not overcome it','the darkness overcame it','the light did not overcome the darkness','the darkness is not light']]) } ];
+  MORE.forEach(l=>LESSONS.push(l));
+  // ── the manuscripts: the text is the Robinson–Pierpont Byzantine Greek New Testament (2018), public domain; the
+  //    word glosses and the translations are KLK's own, word for word ──
+  const PASS={
+    john1:{ ref:'John 1:1–5', title:'The Gospel of John, the beginning', need:10, verses:[
+      ['1',[['Ἐν','in'],['ἀρχῇ','beginning (dative of ἀρχή)'],['ἦν','was'],['ὁ','the'],['λόγος,','Word — nominative: the subject'],['καὶ','and'],['ὁ','the'],['λόγος','Word'],['ἦν','was'],['πρὸς','with, toward'],['τὸν','the (accusative)'],['Θεόν,','God (accusative, after πρός)'],['καὶ','and'],['Θεὸς','God — no article: it says what the Word was'],['ἦν','was'],['ὁ','the'],['λόγος.','Word']]],
+      ['2',[['οὗτος','this one, he'],['ἦν','was'],['ἐν','in'],['ἀρχῇ','beginning'],['πρὸς','with'],['τὸν','the'],['Θεόν.','God']]],
+      ['3',[['πάντα','all things'],['δι᾽','through (διά)'],['αὐτοῦ','him (genitive)'],['ἐγένετο,','came to be (aorist)'],['καὶ','and'],['χωρὶς','without'],['αὐτοῦ','him'],['ἐγένετο','came to be'],['οὐδὲ','not even'],['ἓν','one thing'],['ὃ','which'],['γέγονεν.','has come to be (perfect)']]],
+      ['4',[['ἐν','in'],['αὐτῷ','him (dative)'],['ζωὴ','life'],['ἦν,','was'],['καὶ','and'],['ἡ','the'],['ζωὴ','life'],['ἦν','was'],['τὸ','the (neuter)'],['φῶς','light'],['τῶν','of the (plural)'],['ἀνθρώπων.','men, people (genitive plural)']]],
+      ['5',[['καὶ','and'],['τὸ','the'],['φῶς','light'],['ἐν','in'],['τῇ','the (dative)'],['σκοτίᾳ','darkness (dative)'],['φαίνει,','shines (present)'],['καὶ','and'],['ἡ','the'],['σκοτία','darkness'],['αὐτὸ','it (the light)'],['οὐ','not'],['κατέλαβεν.','overcame, grasped (aorist)']]] ],
+      en:'In the beginning was the Word, and the Word was with God, and the Word was God. He was in the beginning with God. All things came to be through him, and without him not even one thing came to be that has come to be. In him was life, and the life was the light of men. And the light shines in the darkness, and the darkness did not overcome it.' },
+    john14_6:{ ref:'John 14:6', title:'A scrap kept by Hearthvale’s chapel door', need:6, verses:[
+      ['6',[['λέγει','says (present)'],['αὐτῷ','to him'],['ὁ','the'],['Ἰησοῦς,','Jesus'],['Ἐγώ','I'],['εἰμι','am'],['ἡ','the'],['ὁδὸς','way'],['καὶ','and'],['ἡ','the'],['ἀλήθεια','truth'],['καὶ','and'],['ἡ','the'],['ζωή·','life'],['οὐδεὶς','no one'],['ἔρχεται','comes'],['πρὸς','to, toward'],['τὸν','the'],['πατέρα,','Father'],['εἰ','if'],['μὴ','not — εἰ μή: except'],['δι᾽','through'],['ἐμοῦ.','me']]] ],
+      en:'Jesus says to him, “I am the way and the truth and the life; no one comes to the Father except through me.”' },
+    john1_14:{ ref:'John 1:14', title:'A leaf on Eldan’s lectern', need:9, verses:[
+      ['14',[['Καὶ','and'],['ὁ','the'],['λόγος','Word'],['σὰρξ','flesh'],['ἐγένετο','became (aorist)'],['καὶ','and'],['ἐσκήνωσεν','dwelt — pitched his tent'],['ἐν','among, in'],['ἡμῖν,','us'],['καὶ','and'],['ἐθεασάμεθα','we beheld (aorist)'],['τὴν','the'],['δόξαν','glory'],['αὐτοῦ,','his'],['δόξαν','glory'],['ὡς','as'],['μονογενοῦς','of the only-begotten, the one and only'],['παρὰ','from'],['πατρός,','the Father'],['πλήρης','full'],['χάριτος','of grace'],['καὶ','and'],['ἀληθείας.','of truth']]] ],
+      en:'And the Word became flesh and dwelt among us, and we beheld his glory, glory as of the only-begotten from the Father, full of grace and truth.' },
+    john3_16:{ ref:'John 3:16', title:'The old monk’s treasured scroll', need:10, verses:[
+      ['16',[['Οὕτω','so, in this way'],['γὰρ','for'],['ἠγάπησεν','loved (aorist)'],['ὁ','the'],['Θεὸς','God'],['τὸν','the'],['κόσμον,','world (object)'],['ὥστε','that, so that'],['τὸν','the'],['υἱὸν','Son'],['αὐτοῦ','his'],['τὸν','the'],['μονογενῆ','only-begotten, one and only'],['ἔδωκεν,','he gave (aorist)'],['ἵνα','so that'],['πᾶς','everyone'],['ὁ','the one'],['πιστεύων','believing — who believes'],['εἰς','into, in'],['αὐτὸν','him'],['μὴ','not'],['ἀπόληται','should perish'],['ἀλλ᾽','but'],['ἔχῃ','should have'],['ζωὴν','life'],['αἰώνιον.','eternal']]] ],
+      en:'For God so loved the world that he gave his only-begotten Son, so that everyone who believes in him should not perish but have eternal life.' } };
+  // the reader: every word a button — tap it for its meaning; then show the whole in English
+  let RD=null;
+  function readerHtml(id,o){ const p=PASS[id]; let h=o&&o.teach?`<p class="gm-intro">${UI.esc(p.ref)}. Tap any word for its meaning; when you have it, tap “What it says”.</p>`:`<p class="gm-intro">${UI.esc(p.title)} — <b>${UI.esc(p.ref)}</b></p>`;
+    const sel=RD&&RD.id===id?RD.sel:null; if(sel){ const [v,i]=sel, w=p.verses[v][1][i]; h+=`<div class="gm-note" style="text-align:center">${big(w[0].replace(/[,.;·]$/,''))}<br>${UI.esc(w[1])}</div>`; }
+    h+=`<div lang="el" style="line-height:2.1;margin:8px 0">`+p.verses.map(([n,ws],v)=>`<sup class="ds">${n}</sup> `+ws.map(([g],i)=>`<button class="gm-item" style="display:inline-flex;width:auto;margin:2px;padding:2px 7px;${sel&&sel[0]===v&&sel[1]===i?'border-color:#e8c766':''}" data-act="w:${v}:${i}">${gk(g)}</button>`).join('')).join(' ')+`</div>`;
+    h+=RD&&RD.id===id&&RD.en?`<p class="gm-note"><i>${UI.esc(p.en)}</i></p><p class="gm-hint">Greek: Robinson–Pierpont Byzantine text (public domain). English: KLK’s own, word for word.</p>`:`<button class="gm-item" data-act="en"><span>✦ What it says</span></button>`;
+    return h; }
+  function reader(id,extra){ RD=RD&&RD.id===id?RD:{id,sel:null,en:false}; const p=PASS[id];
+    UI.sheet({title:'📜 '+p.ref,html:readerHtml(id,extra)+(extra&&extra.after||''),keepScroll:true,act:a=>{ if(a.startsWith('w:')){ const [,v,i]=a.split(':'); RD.sel=[+v,+i]; reader(id,extra); } else if(a==='en'){ RD.en=true; reader(id,extra); } else if(extra&&extra.act) extra.act(a); },close:()=>{ RD=null; }}); }
+  // a manuscript found in the world: read it if your Greek is good enough (the first reading is rewarded)
+  function readFound(id){ const p=PASS[id], g=st(); g.read=g.read||{};
+    if(level()<p.need){ UI.sheet({title:'📜 An old manuscript',html:`<p class="gm-intro">${UI.esc(p.title)}. The letters are Greek — you can make out a few of them — but not enough to read it.</p><div lang="el" style="text-align:center;margin:10px 0;opacity:.75">${big(p.verses[0][1].slice(0,6).map(w=>w[0]).join(' ')+' …')}</div><p class="gm-hint">You need Greek level <b>${p.need}</b> (you have ${level()}). Old Man Mario, east of the Homestead, can teach you.</p>`}); return; }
+    const first=!g.read[id]; RD=null; reader(id);
+    if(first){ g.read[id]=true; const r=GAME.gainXp(150); GAME.addGold(100); GAME.changed(); GAME.save(); UI.toast(`📜 You read ${p.ref} for yourself! +150 XP · +100 gold`,3200); if(r&&r.up) setTimeout(()=>UI.toast(`Level ${S().level}! A skill point to spend.`,2400),3400); } }
+  // set a manuscript somewhere: a little stand with a glowing scroll, and a Read spot
+  function place(lv,par,an,x,z,id,o){ o=o||{}; const g=group(x,o.y||0,z,par);
+    if(!o.noStand){ Cy(0.06,0.09,0.75,6,0x6a4c30,0,0,0,g); const top=B(0.42,0.04,0.3,0x5a4028,0,0.75,0,g); top.rotation.x=-0.35; }
+    const sc=new THREE.Mesh(new THREE.PlaneGeometry(0.34,0.22),parchment(['ΕΝ ΑΡΧΗ','Ο ΛΟΓΟΣ'],128,84)); sc.rotation.x=-Math.PI/2-0.35*(o.noStand?0:1); sc.position.y=o.noStand?0.02:0.8; g.add(sc);
+    const gl=new THREE.Mesh(new THREE.SphereGeometry(0.06,6,4),new THREE.MeshBasicMaterial({color:0xfff0b0,transparent:true,opacity:0.8})); gl.position.y=(o.noStand?0.02:0.8)+0.25; g.add(gl);
+    an.push(t=>{ const read=!!((st().read||{})[id]); gl.visible=!read; gl.position.y=(o.noStand?0.02:0.8)+0.25+Math.sin(t*2.2)*0.06; });
+    lv.spots.push({x,z,r:o.r||1.0,label:'Read',who:'An old manuscript',action:()=>readFound(id)}); return g; }
   const S=()=>GAME.S, st=()=>{ const s=S(); s.greek=s.greek||{done:[],best:{}}; s.greek.done=s.greek.done||[]; s.greek.best=s.greek.best||{}; return s.greek; };
   const level=()=>st().done.length, nextL=()=>LESSONS.find(l=>!st().done.includes(l.id));
   const say=(lines,then)=>ENGINE.speak('Old Man Mario',lines,null,then);
@@ -11718,16 +11830,20 @@ const GREEK=(function(){
       say([`“${r} of ${n}! ${r===n?'Every one!':'Well done.'} ${first?'That lesson is yours now — no one can take it from you.':''}”`,first?`📜 Greek level ${level()} · +${L.reward} XP`:'',nx?`“Come back when you are ready for the next: ${nx.title}.”`:'“That is all I have written for now. I am working on the next lessons — and I hear there are old manuscripts in this realm that want reading…”'].filter(Boolean)); }
     else say([`“${r} of ${n}. Not yet — you need six. No shame in it; I failed my first test too, a very long time ago.”`,'“Look over the page again, say them aloud, and try once more.”']); }
   // ── talking to Mario ──
-  function lessonSheet(L){ UI.sheet({title:'📜 '+L.title,html:L.teach()+`<button class="gm-item" data-act="test"><span>✎ I’m ready — test me (6 of 8 to pass)</span></button>`,act:a=>{ if(a==='test') quiz(L); }}); }
+  function lessonSheet(L){ const btn=`<button class="gm-item" data-act="test"><span>✎ I’m ready — test me (6 of 8 to pass)</span></button>`;
+    if(L.id==='l10'){ RD=null; reader('john1',{teach:true,after:btn,act:a=>{ if(a==='test') quiz(L); }}); return; }
+    UI.sheet({title:'📜 '+L.title,html:L.teach()+`<button class="gm-item" data-act="test"><span>✎ I’m ready — test me (6 of 8 to pass)</span></button>`,act:a=>{ if(a==='test') quiz(L); }}); }
   function talk(){ const g=st(), nx=nextL();
     if(!g.met){ g.met=true; GAME.save(); say(['“Eh? A visitor! Come in, come in, mind the scrolls.”','“They call me Old Man Mario. I have spent my life copying the old words — the Scriptures as the apostles wrote them, in Greek.”','“There are writings in this realm older than any king — and no one left who can read them. You have done great things with a sword, knight. Shall I teach you to do something with your eyes?”'],menu); return; }
     menu(); }
   function menu(){ const g=st(), nx=nextL(); let h=`<p class="gm-intro">Old Man Mario taps the open scroll on his desk. “Koine Greek — the common tongue, the language of the New Testament. Little and often, that is the way.”</p><p class="gm-hint">📜 Your Greek level: <b>${level()}</b> of ${LESSONS.length}</p>`;
     if(nx) h+=`<button class="gm-item" data-act="next"><span>▶ Next lesson: ${UI.esc(nx.title)}</span></button>`;
     LESSONS.forEach((L,i)=>{ if(g.done.includes(L.id)) h+=`<button class="gm-item" data-act="re:${i}"><span>✓ ${UI.esc(L.title)} <span class="ds">study again · best ${g.best[L.id]||0}/8</span></span></button>`; });
+    { const rd=Object.keys(PASS).filter(id=>id==='john1'?g.done.includes('l10'):(g.read||{})[id]); if(rd.length){ h+=`<div class="gm-sec">📜 Manuscripts you have read</div>`; rd.forEach(id=>h+=`<button class="gm-item" data-act="rd:${id}"><span>${UI.esc(PASS[id].ref)} <span class="ds">${UI.esc(PASS[id].title)}</span></span></button>`); }
+      const left=Object.keys(PASS).filter(id=>id!=='john1'&&!(g.read||{})[id]).length; if(left&&level()>=3) h+=`<p class="gm-hint">“There are old leaves out in the realm, knight — I have heard of one by Hearthvale’s chapel door, one where the old sage keeps his glade, and one in a hermit’s cave in the north. Find them, and read them yourself.”</p>`; }
     if(level()) h+=`<button class="gm-item" data-act="prac"><span>✎ Practise what you know <span class="ds">8 questions · 5 gold a right answer</span></span></button>`;
     if(!nx) h+=`<p class="gm-hint">More lessons are coming — Mario is still writing them.</p>`;
-    UI.sheet({title:'🕯 Old Man Mario',html:h,act:a=>{ if(a==='next'){ const L=nextL(); UI.close(); say(L.intro,()=>lessonSheet(L)); } else if(a==='prac') quiz(null,true); else if(a.startsWith('re:')) lessonSheet(LESSONS[+a.slice(3)]); }}); }
+    UI.sheet({title:'🕯 Old Man Mario',html:h,act:a=>{ if(a==='next'){ const L=nextL(); UI.close(); say(L.intro,()=>lessonSheet(L)); } else if(a==='prac') quiz(null,true); else if(a.startsWith('re:')) lessonSheet(LESSONS[+a.slice(3)]); else if(a.startsWith('rd:')){ RD=null; reader(a.slice(3)); } }}); }
   // ── a parchment painted with Greek uncials, for his desk and walls ──
   function parchment(lines,w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); const gr=x.createLinearGradient(0,0,w,h); gr.addColorStop(0,'#efe0b8'); gr.addColorStop(1,'#d8c08a'); x.fillStyle=gr; x.fillRect(0,0,w,h);
     x.fillStyle='rgba(120,80,30,.15)'; for(let i=0;i<40;i++){ x.beginPath(); x.arc(Math.random()*w,Math.random()*h,Math.random()*6,0,7); x.fill(); }
@@ -11770,7 +11886,7 @@ const GREEK=(function(){
       const f=addPerson(lv,room,'scribe',4,2.45,0,'Old Man Mario',null,{rest:0}); f.action=()=>talk(); f.label='Talk'; f.reach=1.4;
       return lv; }});
     return g; }
-  return { hut, level, lessons:LESSONS, talk, st };
+  return { hut, level, lessons:LESSONS, talk, st, place, read:readFound, reader, _t:()=>T };
 })();
 
 // ── engine/pad.js ──
@@ -11938,6 +12054,7 @@ const PAD=(function(){
   forest.gate(world,33.5,185.7,0,'THE FOREST','of Disillusionment',0x2a4a2a);
   // Old Man Mario's hut at the wood's edge east of the Homestead: once the Homestead is yours, he teaches you Koine Greek
   if(typeof GREEK!=='undefined') GREEK.hut(world,{x:40.5,z:143.5});
+  if(typeof GREEK!=='undefined'){ const gx=46.5, gz=20.5; GREEK.place(world,world.scene,world.anim,gx,gz,'john14_6',{y:world.ground?world.ground(gx,gz):0}); }   // a scrap of John by Hearthvale's chapel door
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
   if(typeof PASTIME_DATA!=='undefined') world._sailing=sailing(world,PASTIME_DATA);    // your boat on the open sea, the southern isles, the realm's secrets
   // ⛰ Mount Tabor in Luminar thaws when the mountain behind its gate does (_ttThawAt: the overworld follows taborProgress.thawed)
