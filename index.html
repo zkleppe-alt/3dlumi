@@ -2309,6 +2309,16 @@ function buildKnight(){
     if(K.air>0.02){ const u=Math.min(1,K.air*1.6); L.hip.rotation.x=-1.0*u; R.hip.rotation.x=-0.55*u; L.knee.rotation.x=1.5*u; R.knee.rotation.x=1.1*u; torso.rotation.x+=0.12*u; capeP.rotation.x=0.6*u+0.1; AL.sh.rotation.x-=0.3*u*(1-gk); }
     if(mode==='sit'){ L.hip.rotation.x=R.hip.rotation.x=-1.45; L.knee.rotation.x=R.knee.rotation.x=1.45; hips.position.set(0,K.hipY-0.2,0); hips.rotation.set(0,0,0); L.hip.rotation.z=R.hip.rotation.z=0; torso.rotation.set(-0.08,0,0); head.rotation.set(0,0,0);   // seated: thighs level, shins down
       AL.sh.rotation.x=AR.sh.rotation.x=-0.55; AR.sh.rotation.y=0; AL.el.rotation.x=AR.el.rotation.x=-0.7; capeP.rotation.x=0.05; }
+    // V99: riding — astride, not standing on its back. Thighs forward and spread round the barrel, shins down along its sides,
+    //  heels down; the seat sits the stride (rising a little out of the saddle at the gallop, the body forward), the hands low on
+    //  the reins, the head steady and looking ahead, leaning into the turns; the cape streams back with the speed
+    if(mode==='ride'){ const R0=K.ride||{}, sp=R0.speed||0, run=R0.run||0, bob=R0.bob||0, bank=R0.bank||0, wide=R0.wide||0.55, pit=R0.pitch||0;
+      [[L,1],[R,-1]].forEach(([G,sd])=>{ G.hip.rotation.set(-1.05-0.12*run,0,sd*wide); G.knee.rotation.x=1.2+0.35*run; });
+      hips.position.set(0,0.03+bob,-0.02); hips.rotation.set(0,0,0);
+      torso.rotation.set(0.06+0.2*run+0.05*sp-pit*0.5,0,-bank*0.5); head.rotation.set(-torso.rotation.x*0.85-pit*0.3,0,bank*0.25);
+      if(swing<0&&!(K.spinT>=0)&&!K.guarding){ AR.sh.rotation.set(-0.7-0.15*run,-0.25,-0.12); AR.el.rotation.x=-0.95; AR.hand.rotation.x=0.3; }
+      if(!K.guarding){ AL.sh.rotation.set(-0.7-0.15*run,0.25,0.12); AL.el.rotation.x=-0.95; AL.el.rotation.z=0; }
+      capeP.rotation.x=0.18+0.9*sp+Math.sin(t*(6+8*sp))*0.06*sp; }
     // the sheath: after a few quiet seconds the blade goes home — to the scabbard at his left hip, or across his back for the
     //  big ones (greatswords, hammers, staves, bows); a blow, the guard, a wind-up, or foes drawing near bring it back to hand
     const armBusy=swing>=0||K.raise>0||K.guarding||K.alert||K.charge>0||K.spinT>=0;
@@ -4143,6 +4153,40 @@ const PETS3D=(function(){ let m=null, key='', st={x:0,z:0,face:0}, lvId=null; co
 //  lion (mane ruff), dove (wings), dragon (fins and crest), unicorn (horn).
 //  horseModel(m, rider) → group facing +z; .userData.gallop(t, speed01, air)
 // ════════════════════════════════════════════════════════════════
+// ── V99: a gait for four legs — idle, a four-beat walk, and the gallop (a horse's transverse gallop; a lion's bounding rotary
+//    one), blended smoothly by speed. Each leg plants and pushes back through its stance, then lifts, folds and reaches
+//    forward through its swing; the body rises and rocks with the stride, the neck and head nod against it, the tail lifts
+//    and swishes. At rest: slow breathing, a weight shift, the head turning to look about, the tail flicking.
+//    gaitRig({legs:[{hip,knee,front,x}], body, neck, head, tail, tail0, kind}) → (t, speed01, air, bank) — the same call as gallop
+function gaitRig(o){ const legs=o.legs, body=o.body, head=o.head, neck=o.neck, tail=o.tail, lion=o.kind==='lion';
+  const sm=u=>{ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); }, lerp=(a,b,k)=>a+(b-a)*k;
+  // walk: left hind, left fore, right hind, right fore; gallop: hind pair then fore pair (the lion bounds: the pairs nearly together)
+  legs.forEach(L=>{ const left=(L.x||0)<0; L.pw=L.front?(left?0.25:0.75):(left?0:0.5); L.pr=lion?(L.front?(left?0.5:0.58):(left?0:0.08)):(L.front?(left?0.42:0.52):(left?0:0.12)); L.hip0=L.hip.rotation.x; L.knee0=L.knee.rotation.x; });
+  const n0=neck?neck.rotation.x:0, h0=head?head.rotation.x:0, hy0=head?head.rotation.y:0, t0=o.tail0!==undefined?o.tail0:(tail?tail.rotation.x:0), by0=body.position.y;
+  let lt=null, ph=0, sS=0, look=0, lookTo=0, lookT=2, flick=0, airS=0;
+  return (t,s,air,bank)=>{ const dt=lt===null?0.016:Math.min(0.1,Math.max(0,t-lt)); lt=t; sS+=(Math.max(0,s)-sS)*Math.min(1,dt*3.5); airS+=((air>0?1:0)-airS)*Math.min(1,dt*6);
+    const run=sm((sS-0.28)/0.3), mv=sm(sS*4), freq=lerp(0.9+1.4*sS,1.85+0.9*sS,run)*(lion?1.05:1); ph+=dt*freq;
+    const duty=lerp(0.64,0.4,run), A=lerp(0.3,0.62,run)*mv, lift=lerp(0.75,1.35,run)*mv, cyc=ph*Math.PI*2;
+    legs.forEach(L=>{ const u=(((ph+lerp(L.pw,L.pr,run))%1)+1)%1; let hp, kn;
+      if(u<duty){ const k=u/duty; hp=lerp(-A,A,k); kn=0.06*mv*Math.sin(k*Math.PI); }                          // planted: the hoof stays, the body passes over it
+      else { const k=(u-duty)/(1-duty), e=sm(k); hp=lerp(A,-A*1.08,e); kn=Math.sin(k*Math.PI)*lift; }          // the swing: lift, fold, reach
+      const tuckH=L.front?-0.9:0.8, tuckK=L.front?1.25:-0.35;
+      L.hip.rotation.x=lerp(L.hip0+hp,tuckH,airS); L.knee.rotation.x=lerp(L.knee0+(L.front?1:-0.7)*kn,tuckK,airS); });
+    // the body: two small bumps a stride at the walk, one big rise and a rocking pitch at the gallop; breathing at rest
+    const breath=Math.sin(t*1.6)*0.006*(1-mv);
+    body.position.y=by0+(1-run)*Math.abs(Math.sin(cyc*2))*0.022*mv+run*(0.5+0.5*Math.sin(cyc-0.6))*(lion?0.1:0.085)*mv+breath+airS*0.4;
+    body.rotation.x=run*Math.sin(cyc+0.9)*(lion?0.09:0.065)*mv-airS*0.1;
+    body.rotation.z=lerp(body.rotation.z,(bank||0)*0.5+(1-run)*Math.sin(cyc)*0.014*mv+Math.sin(t*0.4)*0.008*(1-mv),Math.min(1,dt*8));
+    body.scale.set(1+breath*1.5,1,1+breath*0.5);
+    // the head looks about at rest, and nods with the stride
+    lookT-=dt; if(lookT<=0){ lookTo=Math.random()<0.4?0:(Math.random()-0.5)*0.9; lookT=2.5+Math.random()*4; } look+=(lookTo-look)*Math.min(1,dt*1.8);
+    const nod=(1-run)*Math.sin(cyc*2+0.5)*0.07*mv+run*Math.sin(cyc+2.3)*0.14*mv;
+    if(neck){ neck.rotation.x=n0+nod*0.6; neck.rotation.y=look*0.5*(1-mv); }
+    if(head){ head.rotation.x=h0-nod*(neck?0.4:1)*(lion?0.6:1)-(lion?0:0.05*Math.sin(t*0.9))*(1-mv); head.rotation.y=hy0+look*(neck?0.5:1)*(1-mv); }
+    // the tail: lifted and streaming at speed, swishing at rest (and the odd flick)
+    flick=Math.max(0,flick-dt); if(Math.random()<dt*0.12) flick=0.6;
+    if(tail){ tail.rotation.x=t0+run*0.55*mv+Math.sin(cyc)*0.12*mv; tail.rotation.z=Math.sin(t*1.3)*0.18*(1-mv)+Math.sin(flick*10)*0.25*(flick>0?1:0); }
+    return {run,mv,cyc}; }; }
 function horseModel(m,rider){ if((m.kind==='lion'||m.kind==='dove'||m.kind==='dragon')&&typeof steedModel==='function') return steedModel(m,rider);   // the companions' own shapes (steeds.js)
   const c=m.coat.map(hexn), mane=hexn(m.mane||m.coat[0]), g=new THREE.Group(), body=group(0,0,0,g), legs=[];
   const E=equine(body,c[0],c[1],mane), neck=E.neck, head=E.head, tail=E.tail; E.legs.forEach(L=>legs.push(L));   // the rounded horse (pets.js)
@@ -4159,10 +4203,8 @@ function horseModel(m,rider){ if((m.kind==='lion'||m.kind==='dove'||m.kind==='dr
   // the rider: the knight's own model, or a jockey in silks
   if(rider){ rider.position.set(0,1.05,0.0); body.add(rider); }
   Object.assign(g.userData,{body,head:[2.28,1.02],neck:[1.72,0.78],back:[1.3,-0.5],ls:0.5});
-  g.userData.gallop=(t,s,air)=>{ const ph=t*(7+7*s); legs.forEach((L,i)=>{ const o=(i===0?0:i===1?0.5:i===2?0.25:0.75)*Math.PI*2, a=air>0?(L.front?-0.9:0.8):Math.sin(ph+o)*0.75*Math.min(1,s*1.4+0.15);
-      L.hip.rotation.x=a; L.knee.rotation.x=air>0?(L.front?1.3:-0.4):Math.max(0,-Math.sin(ph+o+0.6))*0.9*Math.min(1,s*1.4+0.15); });
-    body.position.y=(air>0?0.45:0)+Math.abs(Math.sin(ph))*0.08*s; body.rotation.x=air>0?-0.12:Math.sin(ph*2)*0.03*s; tail.rotation.x=-2.5+Math.sin(ph)*0.2;
-    (g.userData.wings||[]).forEach(([w,sd])=>w.rotation.z=sd*(0.3+Math.sin(ph)*0.4)); if(g.userData.fxTick) g.userData.fxTick(t); };
+  legs.forEach(L=>{ L.x=L.hip.position.x; }); const gait=gaitRig({legs,body,neck,head,tail,tail0:-2.5,kind:'horse'}); g.userData.seat=1.33;
+  g.userData.gallop=(t,s,air,bank)=>{ const r=gait(t,s,air,bank); (g.userData.wings||[]).forEach(([w,sd])=>w.rotation.z=sd*(0.3+Math.sin(r.cyc)*0.4)); if(g.userData.fxTick) g.userData.fxTick(t); };
   return inkify(shade(g),0.016); }
 // a jockey in a tourney horse's silks
 function jockey(m){ const g=new THREE.Group(); B(0.3,0.42,0.26,hexn(m.silk),0,0.2,0,g); B(0.32,0.08,0.28,hexn(m.silk2||'#f4eede'),0,0.42,0,g); Sp(0.13,0xe0b080,0,0.78,0,g); Cy(0.14,0.15,0.1,8,hexn(m.silk),0,0.84,0,g);
@@ -4186,13 +4228,14 @@ function steedModel(m,rider){ const c=m.coat.map(hexn), mane=hexn(m.mane||m.coat
   const dark=new THREE.Color(c[0]).multiplyScalar(0.55).getHex(); let tail=null, head=null, anchors;
   // ── 🦁 the Lion ──
   if(m.kind==='lion'){
-    B(0.58,0.46,1.3,c[1],0,0.66,-0.05,body);                                   // the back: seat on top at 1.12
-    Sp(0.36,c[1],0,0.9,0.45,body).scale.set(1,0.95,1.1);                      // deep chest and shoulders
-    Sp(0.31,c[1],0,0.9,-0.6,body).scale.set(1,0.95,1);                         // haunches
-    B(0.42,0.08,1.1,c[2],0,0.6,0,body);                                         // pale belly
-    Sp(0.38,mane,0,1.08,0.62,body).scale.set(1.05,1.05,0.85);                  // the mane down the neck and over the withers
+    // V99: rounded — a long barrel, deep chest, muscled haunch, a pale belly and the mane rolling over the withers
+    Sp(0.33,c[1],0,0.86,-0.05,body,16,12).scale.set(0.9,0.8,1.95);             // the barrel: seat on top at ≈1.12
+    Sp(0.37,c[1],0,0.9,0.45,body,16,12).scale.set(0.98,0.98,1.1);             // deep chest and shoulders
+    Sp(0.33,c[1],0,0.9,-0.6,body,16,12).scale.set(0.98,0.96,1.05);            // haunches
+    Sp(0.24,c[2],0,0.68,0,body,12,8).scale.set(0.95,0.45,2.2);                 // pale belly
+    Sp(0.39,mane,0,1.08,0.62,body,14,10).scale.set(1.05,1.05,0.85);           // the mane down the neck and over the withers
     head=group(0,1.24,0.9,body);
-    Sp(0.25,c[1],0,0,0,head).scale.set(1,0.95,1.05);
+    Sp(0.25,c[1],0,0,0,head,14,10).scale.set(1,0.95,1.05);
     B(0.22,0.15,0.2,c[2],0,-0.18,0.14,head); B(0.16,0.06,0.14,c[2],0,-0.25,0.12,head);   // muzzle and jaw
     Sp(0.05,0x3a2418,0,-0.05,0.3,head);                                         // nose
     [-1,1].forEach(s=>{ Sp(0.065,c[1],s*0.15,0.19,-0.02,head); Sp(0.03,0x1a1208,s*0.1,0.06,0.22,head); Sp(0.012,0xfff4c0,s*0.1+s*0.01,0.07,0.245,head); });
@@ -4200,8 +4243,8 @@ function steedModel(m,rider){ const c=m.coat.map(hexn), mane=hexn(m.mane||m.coat
       for(let i=0;i<n;i++){ const a=i/n*Math.PI*2+(layer?0.2:0), k=Co(layer?0.1:0.09,L,5,col,0,0,0,head);
         k.geometry.translate(0,0,0); k.position.set(Math.sin(a)*R,Math.cos(a)*R*0.95-0.02,-0.08-layer*0.1); k.rotation.set(-0.35,0,-a); } }
     for(const [x,z,front] of [[-0.2,0.48,1],[0.2,0.48,1],[-0.2,-0.6,0],[0.2,-0.6,0]]){ const hip=group(x,0.86,z,body);
-      Cy(0.1,0.085,0.42,6,c[1],0,-0.42,0,hip); const knee=group(0,-0.42,0,hip); Cy(0.075,0.07,0.36,6,c[1],0,-0.38,0,knee);
-      const paw=Sp(0.1,c[2],0,-0.39,0.05,knee); paw.scale.set(1,0.55,1.35); legs.push({hip,knee,front,phase:front?(x<0?0:0.07):(x<0?0.5:0.57)}); }
+      Sp(0.13,c[1],0,-0.06,0,hip,10,8).scale.set(1,1.3,1.15); Cy(0.1,0.075,0.42,10,c[1],0,-0.42,0,hip); const knee=group(0,-0.42,0,hip); Sp(0.08,c[1],0,0,0,knee,8,6); Cy(0.075,0.065,0.36,10,c[1],0,-0.38,0,knee);
+      const paw=Sp(0.1,c[2],0,-0.39,0.05,knee,10,8); paw.scale.set(1,0.55,1.35); legs.push({hip,knee,front,phase:front?(x<0?0:0.07):(x<0?0.5:0.57)}); }
     tail=group(0,1.0,-0.8,body); let tp=tail; for(let i=0;i<4;i++){ Cy(0.035,0.03,0.24,5,c[1],0,0,0,tp).rotation.x=0; const n=group(0,0.24,0,tp); n.rotation.x=0.35; tp=n; }
     Sp(0.08,mane,0,0.04,0,tp).scale.set(1,1.5,1); tail.rotation.x=-2.1;
     anchors={head:[1.48,0.9],neck:[1.25,0.6],back:[1.12,-0.3],ls:0.5};
@@ -4249,7 +4292,10 @@ function steedModel(m,rider){ const c=m.coat.map(hexn), mane=hexn(m.mane||m.coat
   // the rider sits where a horse's would
   if(rider){ rider.position.set(0,1.05,0); body.add(rider); }
   Object.assign(g.userData,{body,head:anchors.head,neck:anchors.neck,back:anchors.back,ls:anchors.ls,kind:m.kind});
-  g.userData.gallop=(t,s,air)=>{ const mv=Math.min(1,s*1.4+0.15), ph=t*(m.kind==='dove'?8+6*s:6+7*s);
+  g.userData.seat=m.kind==='lion'?1.12:m.kind==='dove'?1.15:1.16;
+  const lionGait=m.kind==='lion'?gaitRig({legs:legs.map(L=>Object.assign(L,{x:L.hip.position.x})),body,head,tail,tail0:-2.1,kind:'lion'}):null;
+  g.userData.gallop=(t,s,air,bank)=>{ if(lionGait){ lionGait(t,s,air,bank); if(g.userData.fxTick) g.userData.fxTick(t); return; }
+    const mv=Math.min(1,s*1.4+0.15), ph=t*(m.kind==='dove'?8+6*s:6+7*s); body.rotation.z=(bank||0)*0.4;
     legs.forEach(L=>{ const o=L.phase*Math.PI*2;
       if(L.fin){ L.hip.rotation.z=L.fin*(Math.sin(ph*0.8+o)*0.45*(air>0?1:mv)); L.hip.rotation.x=Math.cos(ph*0.8+o)*0.35*mv; return; }   // the flippers paddle
       if(L.bird){ if(air>0){ L.hip.rotation.x=1.25; L.knee.rotation.x=-0.6; } else { L.hip.rotation.x=Math.sin(ph+o)*0.6*mv; L.knee.rotation.x=Math.max(0,-Math.sin(ph+o+0.6))*0.5*mv; } return; }
@@ -10824,11 +10870,20 @@ function riding(world){
     const L=STEED_LOOK[p.id]||STEED_LOOK.faithful; model=horseModel({kind:L.kind,coat:L.coat,mane:L.mane}); if(typeof petLookApply!=='undefined') petLookApply(model,PETLOOKS.shown(),S().mountSkin,L.kind); model.visible=false; world.scene.add(model); modelKey=key; }
   let lx=0, lz=0;
   world.anim.push((t,dt)=>{ dt=dt||0.016; sync(); if(ENGINE.level!==world) return; if(mounted&&busy()) mounted=false; if(!mounted){ if(model) model.visible=false; return; }
-    build(); if(!model) return; const vs=VIEWMODE.ps(world), ab=ability(), sp=Math.min(1,Math.hypot(P.x-lx,P.z-lz)/Math.max(1e-3,dt)/8); lx=P.x; lz=P.z;
-    air=ab==='fly'?0.9+Math.sin(t*2)*0.12:0; model.visible=true; model.scale.setScalar(0.85*vs);
-    model.position.set(P.x,(world.ground(P.x,P.z)-(ab==='fly'?0.15:0))+air*vs,P.z); model.rotation.y=P.face; model.userData.gallop(t,sp,ab==='fly'?1:0);
-    K.position.set(P.x,model.position.y+1.12*0.85*vs,P.z); K.rotation.y=P.face; });
-  const kAnim=K.animate; K.animate=function(dt,mode,sp){ return kAnim.call(K,dt,mounted&&ENGINE.level===world&&mode==='walk'?'idle':mode,sp); };
+    build(); if(!model) return; const vs=VIEWMODE.ps(world), ab=ability(), raw=Math.min(1,Math.hypot(P.x-lx,P.z-lz)/Math.max(1e-3,dt)/8); lx=P.x; lz=P.z;
+    // V99: a smoothed speed and the rate of turn (for the lean into a bend), and the rider coupled to the steed's own back
+    spS+=(raw-spS)*Math.min(1,dt*5); let dy=P.face-lf; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); lf=P.face; yawR+=((dy/Math.max(dt,1e-3))-yawR)*Math.min(1,dt*6);
+    const bank=Math.max(-0.35,Math.min(0.35,-yawR*0.12*Math.min(1,spS*2.5)));
+    air=ab==='fly'?0.9+Math.sin(t*2)*0.12:0; model.visible=true; const sc=0.85*vs; model.scale.setScalar(sc);
+    model.position.set(P.x,(world.ground(P.x,P.z)-(ab==='fly'?0.15:0))+air*vs,P.z); model.rotation.y=P.face; model.userData.gallop(t,spS,ab==='fly'?1:0,bank);
+    const body=model.userData.body, seat=model.userData.seat||1.12, by=body?body.position.y:0, bp=body?body.rotation.x:0, bz=body?body.rotation.z:0;
+    lagY+=(by-lagY)*Math.min(1,dt*9);   // the rider's seat follows the back with a little give
+    const run=Math.max(0,Math.min(1,(spS-0.28)/0.3)), wide=model.userData.kind==='dove'?0.62:model.userData.kind==='dragon'?0.6:0.55;
+    K.ride={speed:spS,run,bob:(lagY-by)*0.6+run*0.035*(0.5+0.5*Math.sin(t*(11+4*spS))),bank:bz+bank*0.4,pitch:bp,wide};
+    K.rotation.order='YXZ'; K.position.set(P.x,model.position.y+(seat+by)*sc,P.z); K.rotation.set(bp*0.7,P.face,bz*0.8); });
+  let spS=0, lf=0, yawR=0, lagY=0;
+  const kAnim=K.animate; K.animate=function(dt,mode,sp){ const on=mounted&&ENGINE.level===world; if(!on&&K.rotation.x){ K.rotation.x=0; K.rotation.z=0; }
+    return kAnim.call(K,dt,on&&(mode==='walk'||mode==='idle')?'ride':mode,sp); };
   const prevLeave=world.onLeave; world.onLeave=()=>{ mounted=false; btn.hidden=true; if(model) model.visible=false; prevLeave&&prevLeave(); };
   // the pet follower steps aside while it carries you
   if(typeof PETS3D!=='undefined'){ const tick=PETS3D.tick; PETS3D.tick=function(dt,t,P0,lv){ if(mounted&&lv===world){ PETS3D.hide&&PETS3D.hide(true); return; } PETS3D.hide&&PETS3D.hide(false); return tick.apply(this,arguments); }; }
