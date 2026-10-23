@@ -11641,6 +11641,138 @@ function petTourneyLevel(spec){
   lv.spawn={x:0,z:0}; lv.ground=()=>0;
   return lv; }
 
+// ── engine/greek.js ──
+// ════════════════════════════════════════════════════════════════
+//  GREEK — Old Man Mario's hut, at the edge of the wood east of the Homestead. Once the Homestead is yours (Abaddon
+//  fallen), the old man teaches you Koine Greek, the Greek of the New Testament, a lesson at a time, so that one day
+//  you can read the old manuscripts for yourself. Each lesson: he teaches (a page you can study), then a short test of
+//  eight questions; six right and it's learned. Then practise any time with what you know, for a few coins a correct answer.
+//  Pronunciation is the Erasmian scheme most Greek classrooms use. Reading passages will come from the public-domain
+//  Robinson–Pierpont Byzantine text. State: GAME.S.greek = {done:[lesson ids], best:{id:score}}.
+//  greekHut(world, {x,z}) builds the hut in the realm and its room ('marioHut').
+// ════════════════════════════════════════════════════════════════
+const GREEK=(function(){
+  // ── the letters (lessons 1 and 2) ──  [capital, small, name, sound, as in]
+  const L1=[['Α','α','alpha','a','father'],['Β','β','beta','b','bat'],['Γ','γ','gamma','g','go'],['Δ','δ','delta','d','dog'],['Ε','ε','epsilon','e (short)','met'],['Ζ','ζ','zeta','z (or dz)','daze'],
+    ['Η','η','eta','ē (long e)','obey'],['Θ','θ','theta','th','thin'],['Ι','ι','iota','i','it / machine'],['Κ','κ','kappa','k','kite'],['Λ','λ','lambda','l','lamp'],['Μ','μ','mu','m','mother']];
+  const L2=[['Ν','ν','nu','n','net'],['Ξ','ξ','xi','x (ks)','axe'],['Ο','ο','omicron','o (short)','top'],['Π','π','pi','p','pie'],['Ρ','ρ','rho','r','rod'],['Σ','σ / ς','sigma','s','sit'],
+    ['Τ','τ','tau','t','tip'],['Υ','υ','upsilon','u (French u, written y)','une'],['Φ','φ','phi','ph (f)','phone'],['Χ','χ','chi','ch (as in Bach)','loch'],['Ψ','ψ','psi','ps','lips'],['Ω','ω','omega','ō (long o)','tone']];
+  const ALL=L1.concat(L2);
+  // ── lesson 3: breathings, diphthongs, first words ──
+  const BREATH=[['ὁ','ho','the'],['ἐν','en','in'],['ἡμέρα','hēmera','day'],['ἀρχή','archē','beginning'],['ὕδωρ','hydōr','water'],['ἁμαρτία','hamartia','sin']];
+  const DIPH=[['αι','ai, as in aisle'],['ει','ei, as in eight'],['οι','oi, as in oil'],['αυ','au, as in sauerkraut'],['ευ','eu, as in feud'],['ου','ou, as in soup'],['υι','ui, as in suite']];
+  const WORDS=[['θεός','theos','God'],['λόγος','logos','word'],['ἀρχή','archē','beginning'],['καί','kai','and, also'],['ἐν','en','in'],['ὁ','ho','the'],['Ἰησοῦς','Iēsous','Jesus'],
+    ['Χριστός','Christos','Christ, the Anointed One'],['κύριος','kyrios','Lord, master'],['ἄνθρωπος','anthrōpos','man, person'],['ἀγάπη','agapē','love'],['πνεῦμα','pneuma','spirit, breath, wind'],
+    ['κόσμος','kosmos','world'],['ζωή','zōē','life'],['φῶς','phōs','light']];
+  const big=t=>`<span lang="el" style="font:600 30px/1.2 'Gentium Plus','Noto Serif','Times New Roman',serif">${t}</span>`;
+  const gk=t=>`<span lang="el" style="font:600 19px 'Gentium Plus','Noto Serif','Times New Roman',serif">${t}</span>`;
+  const table=(rows,cols)=>`<div style="display:grid;grid-template-columns:${cols};gap:4px 10px;align-items:center;margin:8px 0">${rows.join('')}</div>`;
+  const letterRows=L=>table(L.map(([C,s,n,snd,ex])=>`<div>${big(C+' '+s)}</div><div><b>${n}</b><br><span class="ds">${UI.esc(snd)} · as in “${UI.esc(ex)}”</span></div>`),'auto 1fr');
+  const shuffle=a=>{ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; };
+  const pick=(a,n)=>shuffle(a).slice(0,n);
+  // a question: {q (html), a (answer text), opts (4 texts), big?}
+  const mcq=(prompt,answer,pool)=>({q:prompt,a:answer,opts:shuffle([answer].concat(pick(pool.filter(x=>x!==answer).filter((x,i,arr)=>arr.indexOf(x)===i),3)))});
+  function letterQs(L){ const out=[]; const names=ALL.map(l=>l[2]), sounds=ALL.map(l=>l[3]), smalls=ALL.map(l=>l[1]);
+    L.forEach(([C,s,n,snd])=>{ out.push(mcq(`Which letter is this?<br>${big(s)}`,n,names)); out.push(mcq(`How does <b>${n}</b> sound?<br>${big(C+' '+s)}`,snd,sounds));
+      out.push(Object.assign(mcq(`Which is <b>${n}</b>?`,s,smalls),{glyph:true})); out.push(Object.assign(mcq(`Which small letter goes with the capital?<br>${big(C)}`,s,smalls),{glyph:true})); });
+    return shuffle(out).slice(0,8); }
+  function wordQs(){ const out=[]; const means=WORDS.map(w=>w[2]), tr=WORDS.map(w=>w[1]).concat(BREATH.map(b=>b[1]));
+    pick(WORDS,4).forEach(([g,t,m])=>out.push(mcq(`What does this word mean?<br>${big(g)}`,m,means)));
+    pick(WORDS.filter(w=>!/^[ὁἐἀἸ]/.test(w[0])),1).concat(pick(BREATH,2)).forEach(([g,t])=>out.push(mcq(`Read this word aloud — which is right?<br>${big(g)}`,t,tr)));
+    const d=pick(DIPH,1)[0]; out.push(Object.assign(mcq(`How is ${big(d[0])} sounded?`,d[1],DIPH.map(x=>x[1]))));
+    return shuffle(out).slice(0,8); }
+  const LESSONS=[
+    { id:'l1', title:'The Letters, I — Alpha to Mu', reward:150,
+      intro:['“Ah — a knight who wants to read! Sit, sit. The lamp has another hour in it yet.”','“The Greek of the apostles has twenty-four letters. Today, the first twelve. Say each one aloud — your mouth must learn them as well as your eyes.”'],
+      teach:()=>`<p class="gm-intro">Twenty-four letters, and you know some already: our own alphabet came from these. Today, the first twelve. Watch the three that trick everyone: <b>η</b> is not an n but a long e, <b>ρ</b> (next lesson) is not a p, and <b>ν</b> is not a v.</p>${letterRows(L1)}<p class="gm-hint">Mario’s rule: say the name, then the sound, then draw it with your finger on the table. Three times each.</p>`,
+      quiz:()=>letterQs(L1) },
+    { id:'l2', title:'The Letters, II — Nu to Omega', reward:150,
+      intro:['“Back again! Good. The second twelve today — and with them, every word in the Gospels is yours to sound out.”','“From alpha to omega. You know who called Himself that, eh? The first and the last letter — everything between.”'],
+      teach:()=>`<p class="gm-intro">The rest of the alphabet. Mind <b>σ</b>: inside a word it is σ, but at the very end it curls into <b>ς</b> — λόγο<b>ς</b>. And mind the two o’s and two e’s: <b>ο</b> and <b>ε</b> are short, <b>ω</b> and <b>η</b> are long.</p>${letterRows(L2)}<p class="gm-hint">These are the sounds most Greek classrooms teach (the Erasmian way). Greeks today say some of them differently, and so, likely, did the apostles — but this way, every letter has its own sound, which is what a learner needs.</p>`,
+      quiz:()=>letterQs(L2) },
+    { id:'l3', title:'Breathing, Diphthongs and First Words', reward:200,
+      intro:['“Now the little marks. See this hook over the letter? That is a breathing. It tells you whether to breathe an h before the word.”','“And then — your first words. Fifteen of them, and with them you could already read pieces of John’s first verse.”'],
+      teach:()=>`<p class="gm-intro">Every word that begins with a vowel wears a <b>breathing</b> mark. The <b>rough</b> breathing ( ῾ , like a c) means say an <b>h</b> first: ${gk('ὁ')} = <i>ho</i>. The <b>smooth</b> breathing ( ᾿ , like a backward c) is silent: ${gk('ἐν')} = <i>en</i>. A word starting with υ always takes the rough: ${gk('ὕδωρ')} = <i>hydōr</i>, water.</p>`
+        +table(BREATH.map(([g,t,m])=>`<div>${big(g)}</div><div><b>${t}</b> — ${UI.esc(m)}</div>`),'auto 1fr')
+        +`<div class="gm-sec">Diphthongs — two vowels, one sound</div>`+table(DIPH.map(([g,s])=>`<div>${big(g)}</div><div>${UI.esc(s)}</div>`),'auto 1fr')
+        +`<div class="gm-sec">First words</div>`+table(WORDS.map(([g,t,m])=>`<div>${big(g)}</div><div><b>${t}</b> — ${UI.esc(m)}</div>`),'auto 1fr')
+        +`<p class="gm-hint">Already you can read three words of the Gospel of John: ${gk('ἐν ἀρχῇ … ὁ λόγος')} — <i>“in the beginning … the Word.”</i></p>`,
+      quiz:wordQs } ];
+  const S=()=>GAME.S, st=()=>{ const s=S(); s.greek=s.greek||{done:[],best:{}}; s.greek.done=s.greek.done||[]; s.greek.best=s.greek.best||{}; return s.greek; };
+  const level=()=>st().done.length, nextL=()=>LESSONS.find(l=>!st().done.includes(l.id));
+  const say=(lines,then)=>ENGINE.speak('Old Man Mario',lines,null,then);
+  // ── the test ──
+  let T=null;
+  function quiz(lesson,practice){ const qs=practice?shuffle(LESSONS.filter(l=>st().done.includes(l.id)).flatMap(l=>l.quiz())).slice(0,8):lesson.quiz(); T={lesson,practice,qs,i:0,right:0,picked:null}; drawQ(); }
+  function drawQ(){ const q=T.qs[T.i], n=T.qs.length; let h=`<p class="gm-hint">Question ${T.i+1} of ${n} · ${T.right} right so far</p><div style="text-align:center;font-size:17px;margin:10px 0 14px">${q.q}</div>`;
+    q.opts.forEach((o,k)=>{ const show=T.picked!==null, ok=o===q.a, mine=T.picked===k; const st2=show?(ok?'background:#1f4a2a;border-color:#6fdf8a':mine?'background:#4a1f24;border-color:#ff6a7a':''):'';
+      h+=`<button class="gm-item" style="justify-content:center;${st2}" data-act="o:${k}" ${show?'disabled':''}>${q.glyph?big(UI.esc(o)):UI.esc(o)}</button>`; });
+    if(T.picked!==null) h+=`<p class="gm-note">${q.opts[T.picked]===q.a?'✓ Right!':'✗ It’s <b>'+UI.esc(q.a)+'</b>.'}</p><button class="gm-item" data-act="next"><span>${T.i+1<n?'Next question ▸':'See how you did ▸'}</span></button>`;
+    UI.sheet({title:T.practice?'📜 Practice with Mario':'📜 '+T.lesson.title,html:h,act:a=>{ if(a==='next'){ T.i++; T.picked=null; if(T.i>=n) finish(); else drawQ(); return; }
+      if(a.startsWith('o:')&&T.picked===null){ T.picked=+a.slice(2); if(q.opts[T.picked]===q.a) T.right++; drawQ(); } },close:()=>{ T=null; }}); }
+  function finish(){ const t=T, n=t.qs.length, r=t.right; T=null; UI.close();
+    if(t.practice){ const g=r*5; if(g) GAME.addGold(g); GAME.changed(); GAME.save(); say([`“${r} of ${n}. ${r>=7?'Your old teacher is proud.':r>=5?'Good — the letters are settling in.':'Hm. Again tomorrow, eh? Little and often.'}”`,g?`🪙 ${g} gold for your trouble.`:''].filter(Boolean)); return; }
+    const g=st(), L=t.lesson; g.best[L.id]=Math.max(g.best[L.id]||0,r);
+    if(r>=6){ const first=!g.done.includes(L.id); if(first){ g.done.push(L.id); const res=GAME.gainXp(L.reward); if(res&&res.up) setTimeout(()=>UI.toast(`Level ${S().level}! A skill point to spend.`,2400),1200); }
+      GAME.changed(); GAME.save(); const nx=nextL();
+      say([`“${r} of ${n}! ${r===n?'Every one!':'Well done.'} ${first?'That lesson is yours now — no one can take it from you.':''}”`,first?`📜 Greek level ${level()} · +${L.reward} XP`:'',nx?`“Come back when you are ready for the next: ${nx.title}.”`:'“That is all I have written for now. I am working on the next lessons — and I hear there are old manuscripts in this realm that want reading…”'].filter(Boolean)); }
+    else say([`“${r} of ${n}. Not yet — you need six. No shame in it; I failed my first test too, a very long time ago.”`,'“Look over the page again, say them aloud, and try once more.”']); }
+  // ── talking to Mario ──
+  function lessonSheet(L){ UI.sheet({title:'📜 '+L.title,html:L.teach()+`<button class="gm-item" data-act="test"><span>✎ I’m ready — test me (6 of 8 to pass)</span></button>`,act:a=>{ if(a==='test') quiz(L); }}); }
+  function talk(){ const g=st(), nx=nextL();
+    if(!g.met){ g.met=true; GAME.save(); say(['“Eh? A visitor! Come in, come in, mind the scrolls.”','“They call me Old Man Mario. I have spent my life copying the old words — the Scriptures as the apostles wrote them, in Greek.”','“There are writings in this realm older than any king — and no one left who can read them. You have done great things with a sword, knight. Shall I teach you to do something with your eyes?”'],menu); return; }
+    menu(); }
+  function menu(){ const g=st(), nx=nextL(); let h=`<p class="gm-intro">Old Man Mario taps the open scroll on his desk. “Koine Greek — the common tongue, the language of the New Testament. Little and often, that is the way.”</p><p class="gm-hint">📜 Your Greek level: <b>${level()}</b> of ${LESSONS.length}</p>`;
+    if(nx) h+=`<button class="gm-item" data-act="next"><span>▶ Next lesson: ${UI.esc(nx.title)}</span></button>`;
+    LESSONS.forEach((L,i)=>{ if(g.done.includes(L.id)) h+=`<button class="gm-item" data-act="re:${i}"><span>✓ ${UI.esc(L.title)} <span class="ds">study again · best ${g.best[L.id]||0}/8</span></span></button>`; });
+    if(level()) h+=`<button class="gm-item" data-act="prac"><span>✎ Practise what you know <span class="ds">8 questions · 5 gold a right answer</span></span></button>`;
+    if(!nx) h+=`<p class="gm-hint">More lessons are coming — Mario is still writing them.</p>`;
+    UI.sheet({title:'🕯 Old Man Mario',html:h,act:a=>{ if(a==='next'){ const L=nextL(); UI.close(); say(L.intro,()=>lessonSheet(L)); } else if(a==='prac') quiz(null,true); else if(a.startsWith('re:')) lessonSheet(LESSONS[+a.slice(3)]); }}); }
+  // ── a parchment painted with Greek uncials, for his desk and walls ──
+  function parchment(lines,w,h){ const c=document.createElement('canvas'); c.width=w; c.height=h; const x=c.getContext('2d'); const gr=x.createLinearGradient(0,0,w,h); gr.addColorStop(0,'#efe0b8'); gr.addColorStop(1,'#d8c08a'); x.fillStyle=gr; x.fillRect(0,0,w,h);
+    x.fillStyle='rgba(120,80,30,.15)'; for(let i=0;i<40;i++){ x.beginPath(); x.arc(Math.random()*w,Math.random()*h,Math.random()*6,0,7); x.fill(); }
+    x.fillStyle='#3a2410'; x.font=`600 ${Math.round(h/(lines.length+1.6))}px 'Times New Roman',serif`; x.textAlign='center'; lines.forEach((l,i)=>x.fillText(l,w/2,(i+1.25)*h/(lines.length+1.1))); return new THREE.MeshLambertMaterial({map:new THREE.CanvasTexture(c),side:THREE.DoubleSide}); }
+  // ── the hut in the realm ──
+  function hut(world,o){ const S0=S, x=o.x, z=o.z, gy=world.ground?world.ground(x,z):0, g=group(x,gy,z,world.scene);
+    B(3.0,0.25,3.0,0x7a7468,0,0,0,g); B(2.8,1.7,2.8,0xd8c8a0,0,0.25,0,g);   // stone footing, limewashed walls
+    [[-1.4,-1.4],[1.4,-1.4],[-1.4,1.4],[1.4,1.4]].forEach(([a,b])=>B(0.18,1.75,0.18,0x5a4028,a,0.22,b,g));   // corner posts
+    B(2.84,0.12,0.12,0x5a4028,0,1.4,1.42,g); B(0.12,0.12,2.84,0x5a4028,1.42,1.4,0,g); B(0.12,0.12,2.84,0x5a4028,-1.42,1.4,0,g);
+    const roof=new THREE.Mesh(new THREE.ConeGeometry(2.55,1.7,4),flat(0x9a8048)); roof.rotation.y=Math.PI/4; roof.position.y=2.75; g.add(roof);   // thatch
+    const lip=new THREE.Mesh(new THREE.ConeGeometry(2.7,0.35,4,1,true),flat(0x8a7040)); lip.rotation.y=Math.PI/4; lip.position.y=2.05; g.add(lip);
+    B(0.4,1.0,0.4,0x6a6458,0.8,2.4,-0.6,g);   // the chimney
+    B(0.9,1.3,0.06,0x4a3020,0,0.25,1.42,g); B(0.08,0.08,0.04,0xe8c766,0.3,0.85,1.46,g);   // the door
+    B(0.5,0.4,0.05,0x2a2a30,-0.95,1.0,1.42,g); B(0.42,0.32,0.04,glow(0xffd890),-0.95,1.04,1.44,g);   // a lit window
+    const sg=new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.5),parchment(['Α Β Γ Δ','ΜΑΡΙΟΣ'],180,100)); sg.position.set(0.95,1.15,1.47); g.add(sg); B(0.04,1.2,0.04,0x5a4028,0.95,0,1.6,g);
+    const lt=group(-0.6,1.5,1.55,g); B(0.14,0.2,0.14,glow(0xffc870),0,0,0,lt); B(0.18,0.04,0.18,0x2a2420,0,0.2,0,lt);
+    B(1.0,0.08,0.3,0x6a4c30,-1.9,0.42,0.6,g); B(0.08,0.42,0.08,0x5a4028,-2.3,0,0.6,g); B(0.08,0.42,0.08,0x5a4028,-1.5,0,0.6,g);   // a bench outside
+    const bk=Cy(0.22,0.18,0.35,8,0x8a6a3a,1.9,0,0.9,g); Cy(0.05,0.05,0.4,6,0xe8dcc0,1.85,0.3,0.85,g).rotation.z=0.3; Cy(0.05,0.05,0.4,6,0xe8dcc0,1.95,0.3,0.95,g).rotation.z=-0.2;   // a basket of scrolls
+    const smoke=[]; for(let i=0;i<4;i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.18,6,4),new THREE.MeshBasicMaterial({color:0xd8d8d8,transparent:true,opacity:0.3,depthWrite:false})); g.add(m); smoke.push(m); }
+    world.anim.push(t=>{ if(!g.visible) return; smoke.forEach((m,i)=>{ const u=(t*0.25+i/4)%1; m.position.set(0.8+Math.sin(t+i)*0.15*u,2.9+u*1.6,-0.6); m.scale.setScalar(0.6+u*1.4); m.material.opacity=0.3*(1-u); }); });
+    // solid when it stands; the door when it's yours
+    const x0=x-1.5, x1=x+1.5, z0=z-1.5, z1=z+1.5, cm=world.canMove; let on=false;
+    world.canMove=(fx,fz,tx,tz)=>{ if(on&&tx>x0-0.25&&tx<x1+0.25&&tz>z0-0.25&&tz<z1+0.25&&!(fx>x0-0.25&&fx<x1+0.25&&fz>z0-0.25&&fz<z1+0.25)) return false; return cm(fx,fz,tx,tz); };
+    const door={x,z:z+2.0,r:1.2,label:'Enter',who:'Old Man Mario’s Hut',action:()=>ENGINE.go('marioHut')};
+    world.anim.push(()=>{ const now=!!(S0()&&S0().abaddonWon); if(now===on) return; on=now; g.visible=on; const i=world.spots.indexOf(door); if(on&&i<0) world.spots.push(door); if(!on&&i>=0) world.spots.splice(i,1); });
+    g.visible=false;
+    // the room within
+    ENGINE.add({id:'marioHut',lazy:()=>{ const grid=[[5,5,5,51,51,5,5,5],[5,44,44,12,12,45,49,5],[5,12,12,12,12,12,12,5],[5,47,12,40,40,12,12,5],[5,12,12,12,12,12,48,5],[5,13,13,12,12,12,12,5],[5,5,5,9,5,5,5,5]];
+      const lv=gridRoom({id:'marioHut',name:'Old Man Mario’s Hut',theme:'home',pal:Object.assign({},ROOM_PALS.home,{wall:0xe0d0a8,cloth:0x6a4a2a,accent:0x3a5a3a}),grid,npcs:[],floor:0,exit:{level:'world',spawn:{x,z:z+2.1,face:0}},zone:'Lamplight, ink and old scrolls'});
+      const room=lv.room, an=lv.anim;
+      // the desk: an open scroll of John 1:1 in uncials, an ink pot and pen, a lamp, a stack of codices
+      const scr=new THREE.Mesh(new THREE.PlaneGeometry(1.1,0.55),parchment(['ΕΝ ΑΡΧΗ ΗΝ Ο ΛΟΓΟΣ','ΚΑΙ Ο ΛΟΓΟΣ ΗΝ','ΠΡΟΣ ΤΟΝ ΘΕΟΝ'],256,128)); scr.rotation.x=-Math.PI/2; scr.position.set(4,0.79,3.5); room.add(scr);
+      Cy(0.04,0.04,0.6,6,0xd8c8a0,3.42,0.8,3.5,room).rotation.x=Math.PI/2; Cy(0.04,0.04,0.6,6,0xd8c8a0,4.58,0.8,3.5,room).rotation.x=Math.PI/2;
+      Cy(0.05,0.06,0.08,8,0x1a1a24,4.7,0.78,3.25,room); const pen=B(0.01,0.25,0.01,0xf4ecd8,4.72,0.82,3.25,room); pen.rotation.z=0.4;
+      Cy(0.08,0.1,0.06,8,0xb08040,3.25,0.78,3.3,room); flame(3.25,0.9,3.3,room,an,1.3); const L=new THREE.PointLight(0xffc880,0.9,5,1.5); L.position.set(3.3,1.3,3.3); room.add(L);
+      [0,1,2].forEach(i=>B(0.32,0.07,0.24,[0x6a2a2a,0x2a3a5a,0x3a4a2a][i],4.65,0.78+i*0.07,3.7,room));
+      // the alphabet on a board by the door, and a long scroll hung on the wall
+      const bd=new THREE.Mesh(new THREE.PlaneGeometry(1.6,0.8),parchment(['Α Β Γ Δ Ε Ζ','Η Θ Ι Κ Λ Μ','Ν Ξ Ο Π Ρ Σ','Τ Υ Φ Χ Ψ Ω'],320,160)); bd.position.set(1.05,1.55,4.5); bd.rotation.y=Math.PI/2; room.add(bd);
+      const hs=new THREE.Mesh(new THREE.PlaneGeometry(0.6,1.3),parchment(['ΠΑΤΕΡ','ΗΜΩΝ','Ο ΕΝ ΤΟΙΣ','ΟΥΡΑΝΟΙΣ'],120,260)); hs.position.set(6.95,1.6,2.4); hs.rotation.y=-Math.PI/2; room.add(hs);
+      const f=addPerson(lv,room,'scribe',4,2.45,0,'Old Man Mario',null,{rest:0}); f.action=()=>talk(); f.label='Talk'; f.reach=1.4;
+      return lv; }});
+    return g; }
+  return { hut, level, lessons:LESSONS, talk, st };
+})();
+
 // ── engine/pad.js ──
 // ════════════════════════════════════════════════════════════════
 //  PAD — plug in a controller (any the browser knows as a "standard" gamepad: Xbox, PlayStation, Switch Pro, 8BitDo…)
@@ -11804,6 +11936,8 @@ const PAD=(function(){
   // the arches at the forest's two hollows, on the realm's side: the way in, named, from the Ironhold road and from the Saltmere road
   forest.gate(world,33.5,84.5,Math.PI,'THE FOREST','of Disillusionment',0x2a4a2a);
   forest.gate(world,33.5,185.7,0,'THE FOREST','of Disillusionment',0x2a4a2a);
+  // Old Man Mario's hut at the wood's edge east of the Homestead: once the Homestead is yours, he teaches you Koine Greek
+  if(typeof GREEK!=='undefined') GREEK.hut(world,{x:40.5,z:143.5});
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
   if(typeof PASTIME_DATA!=='undefined') world._sailing=sailing(world,PASTIME_DATA);    // your boat on the open sea, the southern isles, the realm's secrets
   // ⛰ Mount Tabor in Luminar thaws when the mountain behind its gate does (_ttThawAt: the overworld follows taborProgress.thawed)
