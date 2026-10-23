@@ -1741,9 +1741,11 @@ const KEYS=(function(){
     h+=`<div class="gm-sec">Mouse</div><p class="gm-hint">Click the game to steer the view with the mouse (Esc frees the cursor). Left click swings, hold right click to guard, middle click locks on; scroll to zoom.</p>`
       +`<div class="gm-item" style="display:flex;gap:6px;align-items:center"><span style="flex:1">Look speed</span><button class="gm-item" style="width:44px;justify-content:center;margin:0" data-act="ms:-">−</button><b style="width:44px;text-align:center">${mouse.sens.toFixed(1)}×</b><button class="gm-item" style="width:44px;justify-content:center;margin:0" data-act="ms:+">+</button></div>`
       +`<button class="gm-item ${mouse.inv?'worn':''}" data-act="inv"><span>Invert up and down</span><i>${mouse.inv?'on':'off'}</i></button>`;
-    h+=`<div class="gm-sec">Controller</div><p class="gm-hint">Plug in a controller (Xbox, PlayStation, Switch Pro, 8BitDo…) and press any button. Left stick walks · right stick turns the view · Ⓐ talk / next line (or jump, when there's nothing to talk to) · Ⓑ dodge roll · Ⓧ or RT swing (hold to charge) · Ⓨ talk / open · LB or LT guard · RB or R3 lock on · L3 or ✚↓ mount · ✚↑ potion · ✚← surface · Start menu. In menus: stick or ✚ to move, Ⓐ to choose, Ⓑ to go back.</p>`;
+    h+=`<div class="gm-sec">Controller</div><p class="gm-hint">Plug in a controller (Xbox, PlayStation, Switch Pro, 8BitDo…) and press any button. Left stick walks · right stick turns the view · (defaults) Ⓐ talk / next line (or jump, when there's nothing to talk to) · Ⓑ dodge roll · Ⓧ or RT swing (hold to charge) · Ⓨ talk / open · LB or LT guard · RB or R3 lock on · L3 or ✚↓ mount · ✚↑ potion · ✚← surface · Start menu. In menus: stick or ✚ to move, Ⓐ to choose, Ⓑ to go back.</p>`;
+    h+=`<button class="gm-item" data-act="pad"><span>🎮 Change the controller's buttons</span></button>`;
     h+=`<button class="gm-item" data-act="reset"><span>↩ Reset to the defaults</span></button>`;
     UI.sheet({title:'⌨ Keyboard Controls',html:h,keepScroll:true,act:a=>{ if(a==='ms:-'||a==='ms:+'){ mouse.sens=Math.round(Math.max(0.2,Math.min(3,mouse.sens+(a==='ms:+'?0.1:-0.1)))*10)/10; saveM(); msg=''; draw(); return; } if(a==='inv'){ mouse.inv=!mouse.inv; saveM(); msg=''; draw(); return; }
+      if(a==='pad'){ open=false; listen=null; if(typeof PAD!=='undefined') PAD.open(); return; }
       if(a==='reset'){ binds=defs(); save(); msg='All keys back to the defaults.'; listen=null; }
         else { const [,id,i]=a.split(':'); listen={id,slot:+i}; msg=''; } draw(); },close:()=>{ open=false; listen=null; }}); open=true; }
   return { mouse:()=>mouse, open:()=>{ msg=''; draw(); }, keysFor:id=>(binds[id]||[]).filter(Boolean).map(name).join(' / ')||'—' };
@@ -2180,7 +2182,8 @@ function buildKnight(){
        [0.55,{x:-0.45,y:0.05,z:-0.1,e:-0.15,ty:0.35,tp:0.32,hz:0.16,lh:-0.6,rh:0.4,w:0.95}],[1,{x:-0.5,y:0,z:-0.15,e:-0.6,ty:0,tp:0,hz:0,lh:0,rh:0,w:0}]] };
   const EASE=[u=>u<0.5?4*u*u*u:1-Math.pow(-2*u+2,3)/2, u=>1-Math.pow(1-u,4), u=>{ const c1=1.2, c3=c1+1; return 1+c3*Math.pow(u-1,3)+c1*Math.pow(u-1,2); }], lerpPose=(K2,k)=>{ let i=0; while(i<K2.length-2&&k>K2[i+1][0]) i++; const [k0,a]=K2[i], [k1,b]=K2[i+1], u=(EASE[i]||EASE[0])(Math.max(0,Math.min(1,(k-k0)/(k1-k0)))), o={}; for(const n in a) o[n]=a[n]+(b[n]-a[n])*u; return o; };
   // how far the blade is turned about its own length through each blow, measured so the cutting edge leads the stroke
-  const ROLL={1:[[0,0],[0.22,-0.72],[0.6,-0.72],[1,0]],2:[[0,0],[1,0]],0:[[0,0],[0.3,-1.57],[0.66,-1.57],[1,0]]}, rollAt=(K2,k)=>{ let i=0; while(i<K2.length-2&&k>K2[i+1][0]) i++; const [k0,a]=K2[i], [k1,b]=K2[i+1], u=smooth01((k-k0)/(k1-k0)); return a+(b-a)*u; };
+  //  at rest he carries it edge up (V91), so the turn runs from there and back
+  const RR=-Math.PI/2, ROLL={1:[[0,RR],[0.22,-0.72],[0.6,-0.72],[1,RR]],2:[[0,RR],[0.24,0],[0.62,0],[1,RR]],0:[[0,RR],[1,RR]]}, rollAt=(K2,k)=>{ let i=0; while(i<K2.length-2&&k>K2[i+1][0]) i++; const [k0,a]=K2[i], [k1,b]=K2[i+1], u=smooth01((k-k0)/(k1-k0)); return a+(b-a)*u; };
   K.swing=(kind,dur)=>{ sk=kind===0||kind===2?kind:1; srate=dur?1/dur:3.2; swing=0; };
   K.hit=()=>{ flinch=1; };
   // the body in motion (V56): his feet are planted — each stride is measured against how fast he really travels, and the
@@ -2257,6 +2260,9 @@ function buildKnight(){
       L.hip.rotation.x+=o.lh; R.hip.rotation.x+=o.rh; L.knee.rotation.x+=Math.max(0,-o.lh)*0.5; R.knee.rotation.x+=o.rh*0.6;
       AL.sh.rotation.x+=Math.abs(o.ty)*0.35*(1-gk); head.rotation.y-=o.ty*0.6;                                  // the shield arm draws back as he turns; his eyes stay on the foe
       swRoll.rotation.y=rollAt(ROLL[sk],k);
+    } else { const want=(K.charge>0||(K.spinT!==undefined&&K.spinT>=0)||sword.parent!==AR.hand||K._st==='sheathing')?0:RR; swRoll.rotation.y+=(want-swRoll.rotation.y)*Math.min(1,dt*12);   // edge up in the hand; flat for the spin and the scabbard
+    }
+    if(swing>=0){
       if(swing>=1) swing=-1;
     } else if(K.raise>0){ AR.sh.rotation.set(-0.4-K.raise*2.5,0,-0.15); AR.el.rotation.x=-0.3-K.raise*0.9; hips.position.z=0; AR.hand.rotation.x=0.3*K.raise; }   // the wind-up: sword drawn back over the shoulder
     else { AR.sh.rotation.set(spr(sArmR.x,-armSw-0.12-0.2*rf-drift,48,7,dt), spr(sArmR.y,0.2*armSw,40,6,dt), spr(sArmR.z,-K.armOut-0.06*rf-0.03*breath*ia-0.05*a*stL,40,6,dt)); AR.el.rotation.x=spr(sArmR.e,-0.3-0.6*fwdR-0.9*rf,40,6,dt); hips.position.z=0; AR.hand.rotation.x=spr(sHandR,0.12*armSw-0.12*rf,45,6,dt); }
@@ -4312,6 +4318,7 @@ const MENU=(function(){
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
         +sec('Controls')+`<button class="gm-item" data-act="keys"><span>⌨ Keyboard Controls <span class="ds">see and change every key · 🧪 potion is ${typeof KEYS!=='undefined'?KEYS.keysFor('potion'):'P'}</span></span></button>`
+          +`<button class="gm-item" data-act="pad"><span>🎮 Controller Controls <span class="ds">choose the button for every action · swap sticks · invert look</span></span></button>`
         +sec('Save Profiles')+`<button class="gm-item" data-act="save"><span>💾 Save Game <span class="ds">write your progress to Slot ${slot}</span></span></button>`;
       for(let n=1;n<=GAME.SLOTS;n++){ const o=GAME.peek(n); h+=`<button class="gm-item ${n===slot?'worn':''}" data-act="slot:${n}"><span>${o?'📜':'🆕'} Slot ${n}${n===slot?' ★':''} — ${o?`${E(o.name)} · Lv ${o.level} · ${o.gold}g`:'Empty'} <span class="ds">${o?(n===slot?'playing':'tap to load'):'begin a brand-new journey'}</span></span></button>`; }
       h+=`<button class="gm-item" data-act="export"><span>📤 Export Save Code <span class="ds">back up this hero as a code you can keep</span></span></button>`
@@ -4358,6 +4365,7 @@ const MENU=(function(){
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }
+    else if(k==='pad'){ toggle(false); if(typeof PAD!=='undefined') PAD.open(); return; }
     else if(k==='save'){ note=GAME.save()?'Saved to Slot '+GAME.slot+'.':'This browser would not store the save — use Export Save Code.'; }
     else if(k==='slot'){ const n=+v; if(n===GAME.slot){ note='You are playing Slot '+n+'.'; } else if(GAME.peek(n)){ GAME.save(); GAME.load(n); note='Loaded Slot '+n+'.'; if(GAME.resume){ toggle(false); UI.toast(`📜 Slot ${n} — ${GAME.S.name}, Lv ${GAME.S.level}`,1600); GAME.resume(); return; } } else sub='confirm:'+n; render(true); return; }
     else if(k==='newgame'){ GAME.save(); GAME.newGame(+v); sub=null; note='A brand-new journey begins in Slot '+v+'.'; if(GAME.onNew) GAME.onNew(); }
@@ -11605,19 +11613,31 @@ function petTourneyLevel(spec){
 // ════════════════════════════════════════════════════════════════
 //  PAD — plug in a controller (any the browser knows as a "standard" gamepad: Xbox, PlayStation, Switch Pro, 8BitDo…)
 //  and play. Left stick walks, right stick turns the view (the same Tears-of-the-Kingdom curve as the touch look-stick).
-//    Ⓐ  talk / open / next line when there is something to talk to — otherwise jump
+//  Defaults:  Ⓐ talk / open / next line when there is something to talk to — otherwise jump
 //    Ⓑ  dodge roll  (in a menu: back)            Ⓧ / RT  swing (hold to charge)        Ⓨ  talk / open
-//    LB / LT  guard (hold)    RB / R3  lock on    L3  mount    ✚↑ potion   ✚↓ mount   ✚← surface    Start / View  menu
-//  In a menu or a panel the stick and the ✚ move a highlight between its buttons, Ⓐ presses, Ⓑ closes.
+//    LB / LT  guard (hold)    RB / R3  lock on    L3 / ✚↓  mount    ✚↑ potion   ✚← surface    Start / View  menu
+//  ☰ → 🎮 Controller Controls (V91): every action takes two buttons of your choosing — tap a slot, press the button;
+//  plus swap the sticks, invert the look, and look speed. Saved on this device (localStorage 'klk3d_pad').
+//  In a menu or a panel the stick and the ✚ move a highlight between its buttons, Ⓐ presses, Ⓑ closes (always).
 //  Each press goes in as the action's own key (marked, so keys.js leaves it be), so everything that answers a key answers the pad.
 // ════════════════════════════════════════════════════════════════
 const PAD=(function(){
-  let idx=null, prev=[], hint=false, focusEl=null, navAt=0, held={};
+  let idx=null, prev=[], focusEl=null, navAt=0, held={}, listen=null, msg='', open=false;
+  const ACTIONS=[
+    {id:'act',label:'⤴ Talk · next line · or jump',def:[0,null]}, {id:'talk',label:'💬 Talk / open',def:[3,null]},
+    {id:'strike',label:'⚔ Swing (hold to charge)',def:[2,7]}, {id:'guard',label:'🛡 Guard (hold)',def:[4,6]}, {id:'dodge',label:'💨 Dodge roll',def:[1,null]},
+    {id:'lock',label:'🎯 Lock on / let go',def:[5,11]}, {id:'potion',label:'🧪 Drink a potion',def:[12,null]}, {id:'mount',label:'🐎 Mount / dismount',def:[10,13]},
+    {id:'surface',label:'🌊 Surface (underwater)',def:[14,null]}, {id:'menu',label:'☰ Menu',def:[9,8]} ];
+  const BN=['Ⓐ','Ⓑ','Ⓧ','Ⓨ','LB','RB','LT','RT','View','Start','L3','R3','✚↑','✚↓','✚←','✚→','Home'], bname=i=>i==null?'—':(BN[i]||'Button '+i);
+  const defs=()=>{ const b={}; ACTIONS.forEach(a=>b[a.id]=a.def.slice()); return b; };
+  let binds=defs(), opt={swap:false,inv:false,sens:1};
+  try{ const s=JSON.parse(localStorage.getItem('klk3d_pad')||'null'); if(s){ if(s.binds) ACTIONS.forEach(a=>{ const v=s.binds[a.id]; if(Array.isArray(v)&&v.length===2) binds[a.id]=v.map(x=>typeof x==='number'?x:null); }); if(s.opt) opt=Object.assign(opt,s.opt); } }catch(e){}
+  const save=()=>{ try{ localStorage.setItem('klk3d_pad',JSON.stringify({v:1,binds,opt})); }catch(e){} };
   const send=(type,key)=>{ const e=new KeyboardEvent(type,{key,bubbles:true,cancelable:true}); e._pad=true; dispatchEvent(e); };
   const press=key=>send('keydown',key), release=key=>send('keyup',key);
-  addEventListener('gamepadconnected',e=>{ if(idx===null) idx=e.gamepad.index; UI.toast('🎮 Controller connected — '+(e.gamepad.mapping==='standard'?'ready to play':'(unrecognised layout: the sticks and Ⓐ Ⓑ Ⓧ Ⓨ may be swapped)'),2400); hint=true; });
-  addEventListener('gamepaddisconnected',e=>{ if(e.gamepad.index===idx){ idx=null; zero(); UI.toast('🎮 Controller disconnected',1600); } });
-  const zero=()=>{ const P=ENGINE.pad; if(P){ P.mx=P.mz=P.lx=P.ly=0; } Object.keys(held).forEach(k=>{ if(held[k]){ release(k); held[k]=false; } }); };
+  addEventListener('gamepadconnected',e=>{ if(idx===null) idx=e.gamepad.index; UI.toast('🎮 Controller connected — '+(e.gamepad.mapping==='standard'?'ready to play · ☰ → Controller Controls to change the buttons':'(unrecognised layout: the sticks and Ⓐ Ⓑ Ⓧ Ⓨ may be swapped — ☰ → Controller Controls to set them)'),2800); if(open) draw(); });
+  addEventListener('gamepaddisconnected',e=>{ if(e.gamepad.index===idx){ idx=null; zero(); UI.toast('🎮 Controller disconnected',1600); if(open) draw(); } });
+  const zero=()=>{ const P=ENGINE.pad; if(P){ P.mx=P.mz=P.lx=P.ly=0; } Object.keys(held).forEach(k=>{ if(held[k]){ release(held[k]); held[k]=null; } }); };
   const dz=(v,d)=>Math.abs(v)<d?0:(v-Math.sign(v)*d)/(1-d);
   const vis=el=>{ if(!el||el.hidden||!el.getClientRects().length) return false; const cs=getComputedStyle(el); return cs.visibility!=='hidden'&&cs.display!=='none'; };   // (fixed panels have no offsetParent)
   // ── a menu or a panel open: move a highlight between its buttons ──
@@ -11629,37 +11649,59 @@ const PAD=(function(){
     list.forEach(b=>{ if(b===focusEl) return; const r=b.getBoundingClientRect(), c={x:r.left+r.width/2,y:r.top+r.height/2}, vx=c.x-c0.x, vy=c.y-c0.y, along=vx*dx+vy*dy; if(along<=4) return;
       const across=Math.abs(vx*dy-vy*dx), d=along+across*2.2; if(d<bd){ bd=d; best=b; } });
     if(best) setFocus(best); }
+  // ── the settings sheet ──
+  function draw(){ const gp=idx!==null; let h=`<p class="gm-intro">${gp?'🎮 Controller connected.':'Plug in a controller and press any button on it.'} Tap a slot, then press the button you want on the controller. Backspace clears a slot; Esc (or tapping it again) leaves it as it was. Saved on this device only.</p>`+(msg?`<p class="gm-note">${UI.esc(msg)}</p>`:'');
+    h+='<div class="gm-sec">Buttons</div>';
+    ACTIONS.forEach(a=>{ h+=`<div class="gm-item" style="display:flex;gap:6px;align-items:center;box-sizing:border-box;max-width:100%"><span style="flex:1;min-width:0">${UI.esc(a.label)}</span>`+[0,1].map(i=>{ const on=listen&&listen.id===a.id&&listen.slot===i;
+      return `<button class="gm-item ${on?'worn':''}" style="width:62px;flex:none;justify-content:center;margin:0;padding-left:4px;padding-right:4px" data-act="b:${a.id}:${i}">${on?'press…':UI.esc(bname(binds[a.id][i]))}</button>`; }).join('')+'</div>'; });
+    h+='<div class="gm-sec">Sticks</div>'
+      +`<button class="gm-item ${opt.swap?'worn':''}" data-act="swap"><span>Swap sticks (right walks, left looks)</span><i>${opt.swap?'on':'off'}</i></button>`
+      +`<button class="gm-item ${opt.inv?'worn':''}" data-act="inv"><span>Invert looking up and down</span><i>${opt.inv?'on':'off'}</i></button>`
+      +`<div class="gm-item" style="display:flex;gap:6px;align-items:center"><span style="flex:1">Look speed</span><button class="gm-item" style="width:44px;justify-content:center;margin:0" data-act="s:-">−</button><b style="width:44px;text-align:center">${opt.sens.toFixed(1)}×</b><button class="gm-item" style="width:44px;justify-content:center;margin:0" data-act="s:+">+</button></div>`
+      +`<p class="gm-hint">In menus the ✚ or stick moves, Ⓐ chooses and Ⓑ goes back — those stay put so you can always find your way out.</p>`
+      +`<button class="gm-item" data-act="reset"><span>↩ Reset the controller to the defaults</span></button>`;
+    UI.sheet({title:'🎮 Controller Controls',html:h,keepScroll:true,act:a=>{
+      if(a==='swap'){ opt.swap=!opt.swap; } else if(a==='inv'){ opt.inv=!opt.inv; } else if(a==='s:-'||a==='s:+'){ opt.sens=Math.round(Math.max(0.3,Math.min(2.5,opt.sens+(a==='s:+'?0.1:-0.1)))*10)/10; }
+      else if(a==='reset'){ binds=defs(); opt={swap:false,inv:false,sens:1}; listen=null; msg='Controller back to the defaults.'; }
+      else { const [,id,i]=a.split(':'); if(listen&&listen.id===id&&listen.slot===+i){ listen=null; msg='Left as it was.'; } else { listen={id,slot:+i,armed:false}; msg=idx===null?'Waiting for a controller — press any button on it.':''; } }
+      save(); if(a!=='reset'&&!a.startsWith('b:')) msg=''; draw(); },close:()=>{ open=false; listen=null; }}); open=true; }
+  // the keyboard while a slot is waiting: Backspace clears it, Esc leaves it
+  addEventListener('keydown',e=>{ if(!listen||e._pad) return; const k=(e.key||'').toLowerCase();
+    if(k==='backspace'||k==='delete'){ e.preventDefault(); e.stopImmediatePropagation(); binds[listen.id][listen.slot]=null; listen=null; msg='Slot cleared.'; save(); draw(); }
+    else if(k==='escape'){ e.preventDefault(); e.stopImmediatePropagation(); listen=null; msg='Left as it was.'; draw(); } },true);
+  function assign(i){ const L=listen; listen=null; let moved='';
+    ACTIONS.forEach(a=>{ for(let s=0;s<2;s++) if(binds[a.id][s]===i&&!(a.id===L.id&&s===L.slot)){ binds[a.id][s]=null; moved=a.label; } });
+    binds[L.id][L.slot]=i; save(); msg=`${bname(i)} → ${ACTIONS.find(a=>a.id===L.id).label}${moved?` (taken from ${moved})`:''}`; draw(); }
   // ── the poll, every frame ──
+  const actPrev={};
   function poll(){ requestAnimationFrame(poll); const pads=navigator.getGamepads?navigator.getGamepads():[]; let gp=idx!==null?pads[idx]:null;
-    if(!gp){ for(const p of pads) if(p&&p.connected){ gp=p; idx=p.index; break; } } if(!gp){ return; }
-    const b=i=>{ const x=gp.buttons[i]; return !!x&&(x.pressed||x.value>0.5); }, now=b, was=i=>!!prev[i], down=i=>now(i)&&!was(i), up=i=>!now(i)&&was(i);
-    const ax=gp.axes, LX=dz(ax[0]||0,0.18), LY=dz(ax[1]||0,0.18), RX=dz(ax[2]||0,0.15), RY=dz(ax[3]||0,0.2), P=ENGINE.pad;
+    if(!gp){ for(const p of pads) if(p&&p.connected){ gp=p; idx=p.index; if(open) draw(); break; } } if(!gp){ return; }
+    const b=i=>{ const x=gp.buttons[i]; return !!x&&(x.pressed||x.value>0.5); }, was=i=>!!prev[i], down=i=>b(i)&&!was(i);
+    // a slot waiting for its button: wait until everything is let go (the Ⓐ that chose the slot), then take the next press
+    if(listen){ const any=gp.buttons.some((x,i)=>b(i)); if(!listen.armed){ if(!any) listen.armed=true; } else { for(let i=0;i<gp.buttons.length;i++) if(down(i)){ assign(i); break; } }
+      prev=gp.buttons.map(x=>x.pressed||x.value>0.5); return; }
+    const on=id=>binds[id].some(i=>i!=null&&b(i)), edge=id=>{ const n=on(id), p=!!actPrev[id]; actPrev[id]=n; return n&&!p?1:!n&&p?-1:0; };
+    const E={}; ACTIONS.forEach(a=>E[a.id]=edge(a.id));
+    const ax=gp.axes, sL=opt.swap?2:0, sR=opt.swap?0:2, LX=dz(ax[sL]||0,0.18), LY=dz(ax[sL+1]||0,0.18), RX=dz(ax[sR]||0,0.15)*opt.sens, RY=dz(ax[sR+1]||0,0.2)*opt.sens*(opt.inv?-1:1), P=ENGINE.pad;
     const root=panel(), menuOpen=!!root;
-    if(menuOpen){ if(P){ P.mx=P.mz=P.lx=P.ly=0; } const t=performance.now();
+    if(menuOpen){ if(P){ P.mx=P.mz=P.lx=P.ly=0; } Object.keys(held).forEach(k=>{ if(held[k]){ release(held[k]); held[k]=null; } }); const t=performance.now();
       let dx=(b(15)?1:0)-(b(14)?1:0), dy=(b(13)?1:0)-(b(12)?1:0); if(!dx&&!dy){ if(Math.abs(LX)>0.5) dx=Math.sign(LX); else if(Math.abs(LY)>0.5) dy=Math.sign(LY); }
       if((dx||dy)&&t-navAt>(navAt&&t-navAt<400?140:220)){ nav(root,dx,dy); navAt=t; } if(!dx&&!dy) navAt=0;
       if(Math.abs(RY)>0.2){ const sc=root.querySelector('#gmPane')||root.querySelector('[id^=sheet]:not(#sheetTitle):not(#sheetClose)')||root; sc.scrollTop+=RY*14; }
       if(down(0)){ if(focusEl&&root.contains(focusEl)) focusEl.click(); else nav(root,0,1); }
       if(down(1)){ setFocus(null); press('escape'); release('escape'); }
-      if(down(9)||down(8)){ setFocus(null); press('m'); release('m'); } }
+      if(E.menu===1){ setFocus(null); press('m'); release('m'); } }
     else { setFocus(null);
       if(P){ P.mx=LX; P.mz=LY; P.lx=RX; P.ly=RY; }
-      const say=document.getElementById('say'), talk=document.getElementById('talk'), talking=vis(say), canTalk=vis(talk);
-      // Ⓐ: the context button
-      if(down(0)){ if(talking||canTalk||(ENGINE.level&&ENGINE.level.custom)){ held.A='e'; press('e'); } else { held.A='jump'; press('jump'); } }
-      if(up(0)&&held.A){ release(held.A); held.A=null; }
-      const hold=(i,key,tag)=>{ if(down(i)){ press(key); held[tag]=key; } if(up(i)&&held[tag]){ release(key); held[tag]=null; } };
-      hold(1,(ENGINE.level&&ENGINE.level.custom)?'shift':'dodge','B');
-      hold(2,' ','X'); hold(7,' ','RT'); hold(3,'e','Y');
-      hold(4,'shift','LB'); hold(6,'shift','LT');
-      if(down(5)||down(11)){ press('f'); release('f'); }
-      if(down(10)||down(13)){ press('r'); release('r'); }
-      if(down(12)){ press('p'); release('p'); }
-      if(down(14)){ press('u'); release('u'); }
-      if(down(9)||down(8)){ press('m'); release('m'); } }
+      const say=document.getElementById('say'), talk=document.getElementById('talk'), talking=vis(say), canTalk=vis(talk), custom=!!(ENGINE.level&&ENGINE.level.custom);
+      const hold=(id,key)=>{ if(E[id]===1){ held[id]=key; press(key); } if(E[id]===-1&&held[id]){ release(held[id]); held[id]=null; } };
+      if(E.act===1){ held.act=(talking||canTalk||custom)?'e':'jump'; press(held.act); } if(E.act===-1&&held.act){ release(held.act); held.act=null; }
+      hold('dodge',custom?'shift':'dodge'); hold('strike',' '); hold('talk','e'); hold('guard','shift');
+      const tap=(id,key)=>{ if(E[id]===1){ press(key); release(key); } };
+      tap('lock','f'); tap('mount','r'); tap('potion','p'); tap('surface','u'); tap('menu','m'); }
     prev=gp.buttons.map(x=>x.pressed||x.value>0.5); }
   requestAnimationFrame(poll);
-  return { get connected(){ return idx!==null; } };
+  return { get connected(){ return idx!==null; }, open:()=>{ msg=''; listen=null; draw(); }, binds:()=>binds };
 })();
 
 // ── cities/luminar.js ──
