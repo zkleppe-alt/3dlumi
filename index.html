@@ -11098,6 +11098,8 @@ function sanctuaryLevel(T,spec){
   lv.camBlock=(x,z,y)=>y>WH+1.5||x<1.2||x>SW-1.2||z<1.2||z>SH-1.1;
   { const panes=[]; R.traverse(o=>{ if(o.isMesh&&o.material&&o.material.map&&o.material.isMeshBasicMaterial&&o.material.blending===THREE.NormalBlending) panes.push(o.material); });
     an.push(()=>{ const nt=typeof DAYNIGHT!=='undefined'?DAYNIGHT.state().night:0; panes.forEach(m=>m.color.setScalar(1-0.62*nt)); sKey.intensity=0.32*(1-nt)+0.05; }); }
+  // V96: a leaf of the Greek Scriptures on a lectern in the east aisle (greek.js), one passage to each town
+  if(typeof GREEK!=='undefined'){ const pid=GREEK.sanctPassage(T.id); if(pid){ g[10][14]=19; GREEK.place(lv,R,an,14.5,10.5,pid,{y:fh(14,10),r:1.25}); } }
   lv.spawn={x:CX,z:SH-2.5,face:Math.PI,yaw:0};
   lv.spots.push({x:CX,z:SH-1.3,r:1.1,label:'Leave',who:'Leave',auto:[0,1],ar:0.8,action:()=>ENGINE.go(spec.exit.level,spec.exit.spawn)});
   return lv; }
@@ -11652,6 +11654,7 @@ function petTourneyLevel(spec){
 //  Pronunciation is the Erasmian scheme most Greek classrooms use. Reading passages will come from the public-domain
 //  Robinson–Pierpont Byzantine text. State: GAME.S.greek = {done:[lesson ids], best:{id:score}, read:{fragment:true}}.
 //  V95: ten lessons, to reading John 1:1–5; manuscripts around the realm (GREEK.place) open in a word-by-word reader.
+//  V96: lessons 11–14 (plurals, my/your/our, commands, the future and participles); a passage on a lectern in every sanctuary.
 //  greekHut(world, {x,z}) builds the hut in the realm and its room ('marioHut').
 // ════════════════════════════════════════════════════════════════
 const GREEK=(function(){
@@ -11789,6 +11792,90 @@ const GREEK=(function(){
     john3_16:{ ref:'John 3:16', title:'The old monk’s treasured scroll', need:10, verses:[
       ['16',[['Οὕτω','so, in this way'],['γὰρ','for'],['ἠγάπησεν','loved (aorist)'],['ὁ','the'],['Θεὸς','God'],['τὸν','the'],['κόσμον,','world (object)'],['ὥστε','that, so that'],['τὸν','the'],['υἱὸν','Son'],['αὐτοῦ','his'],['τὸν','the'],['μονογενῆ','only-begotten, one and only'],['ἔδωκεν,','he gave (aorist)'],['ἵνα','so that'],['πᾶς','everyone'],['ὁ','the one'],['πιστεύων','believing — who believes'],['εἰς','into, in'],['αὐτὸν','him'],['μὴ','not'],['ἀπόληται','should perish'],['ἀλλ᾽','but'],['ἔχῃ','should have'],['ζωὴν','life'],['αἰώνιον.','eternal']]] ],
       en:'For God so loved the world that he gave his only-begotten Son, so that everyone who believes in him should not perish but have eternal life.' } };
+  // ── V96: lessons 11–14, past John 1 — plurals, “my/your/our”, commands and prayers, the future and the -ing words ──
+  const MORE2=[
+    { id:'l11', title:'Many — the Plural', reward:300,
+      intro:['“One word, one shepherd, one sheep — that was easy. But the Lord said ‘our Father in the heavens’, not ‘heaven’. Today: many.”'],
+      teach:()=>`<p class="gm-intro">In the plural, “the” and the endings change again. λόγος in the plural:</p>`
+        +rows([['οἱ λόγοι','the words (subject)'],['τῶν λόγων','of the words'],['τοῖς λόγοις','to / in the words'],['τοὺς λόγους','the words (object)']])
+        +`<div class="gm-sec">ἡμέρα, “day”, in the plural</div>`+rows([['αἱ ἡμέραι','the days (subject)'],['τῶν ἡμερῶν','of the days'],['ταῖς ἡμέραις','to / in the days'],['τὰς ἡμέρας','the days (object)']])
+        +`<div class="gm-sec">Neuters end in -α in the plural</div>`+rows([['τὰ ἔργα','the works'],['τὰ πρόβατα','the sheep']])
+        +`<p>Notice <b>τῶν</b> — “of the” — is the same for every kind of noun: ${gk('ἡ βασιλεία τῶν οὐρανῶν')}, <i>the kingdom of the heavens</i>.</p>`
+        +`<div class="gm-sec">New words</div>`+rows([['βασιλεία','kingdom'],['πρόβατον','sheep'],['ὄνομα','name'],['πατήρ','father <span class="ds">(πάτερ: “O Father!”)</span>']]),
+      quiz:pool([['οἱ λόγοι','the words (the subject)','the word (the subject)','of the words','to the words'],['τῶν οὐρανῶν','of the heavens','the heavens (the subject)','in heaven','to the heavens'],['ἐν τοῖς οὐρανοῖς','in the heavens','of the heavens','into heaven','the heavens (the object)'],
+        ['τοὺς ἀνθρώπους','the men (the object)','the man (the object)','of the men','the men (the subject)'],['τὰ πρόβατα','the sheep (many)','the sheep (one)','of the sheep','the shepherd'],['ἡ βασιλεία τῶν οὐρανῶν','the kingdom of the heavens','the heavens of the kingdom','the king of heaven','in the kingdom of heaven'],
+        ['αἱ ἡμέραι','the days','the day','of the days','the hours'],['Which is “of the” in the plural, for every kind of noun?','τῶν','τοῖς','οἱ','τάς'],['βασιλεία','kingdom','king','name','sheep'],['πατήρ','father','son','shepherd','name'],['ὄνομα','name','word','kingdom','father'],
+        ['τῶν προβάτων','of the sheep','the sheep (the subject)','to the sheep','the shepherd']]) },
+    { id:'l12', title:'My, Your, Our', reward:300,
+      intro:['“Our Father. Your name. Our bread. The prayer the Lord taught is full of these little words — let us learn them, and then you can pray it as the disciples first heard it.”'],
+      teach:()=>`<p class="gm-intro">“My”, “your” and “our” come <b>after</b> the noun in Greek: ${gk('τὸ ὄνομά σου')} is “the name of you” — <i>your name</i>.</p>`
+        +rows([['μου','my'],['σου','your (one person)'],['αὐτοῦ','his'],['ἡμῶν','our'],['ὑμῶν','your (you all)'],['αὐτῶν','their']])
+        +`<div class="gm-sec">Us and you all</div>`+rows([['ἡμεῖς','we'],['ἡμῖν','to us'],['ἡμᾶς','us'],['ὑμεῖς','you (all)'],['ὑμᾶς','you (all, object)']])
+        +`<div class="gm-sec">New words</div>`+rows([['ἄρτος','bread'],['σήμερον','today'],['ὅτι','because; that'],['ἀπό','from (+ genitive)'],['πονηρός','evil'],['ὡς','as, like']])
+        +`<p class="gm-hint">${gk('Πάτερ ἡμῶν ὁ ἐν τοῖς οὐρανοῖς')} — <i>Our Father, the one in the heavens.</i></p>`,
+      quiz:pool([['σου','your (one person)','my','our','his'],['μου','my','your','our','their'],['ἡμῶν','our','your (you all)','their','my'],['ὑμῶν','your (you all)','our','their','his'],['αὐτῶν','their','his','our','your'],['ἡμᾶς','us','we','our','to us'],
+        ['Πάτερ ἡμῶν','Our Father','My Father','Your Father','Their father'],['τὸ ὄνομά σου','your name','my name','his name','our name'],['ἄρτος','bread','water','name','day'],['σήμερον','today','tomorrow','again','always'],['ὅτι','because; that','but','and','so that'],
+        ['ἀπὸ τοῦ πονηροῦ','from the evil one','into evil','with the evil one','without evil']]) },
+    { id:'l13', title:'Commands and Prayers', reward:300,
+      intro:['“When you pray, you ask; when a king speaks, he commands. Greek has a mood for both — the imperative. Let it come! Give! Forgive! Behold!”'],
+      teach:()=>`<p class="gm-intro">The <b>imperative</b> tells or asks someone to do something. Spoken to “you” it’s simply “Do it!” — spoken of “him/it” it’s “Let it…”.</p>`
+        +rows([['δός','give!'],['ἄφες','forgive!, let go!'],['ῥῦσαι','deliver!, rescue!'],['ἴδε','look!, behold!'],['ἀκολούθει','follow!'],['προσεύχεσθε','pray! (you all)']])
+        +`<div class="gm-sec">“Let it…” — for him, her or it</div>`+rows([['ἐλθέτω','let it come'],['γενηθήτω','let it be done'],['ἁγιασθήτω','let it be hallowed (made holy)']])
+        +`<div class="gm-sec">“Do not…”</div><p>For “don’t”, Greek uses <b>μή</b> (not οὐ): ${gk('μὴ εἰσενέγκῃς ἡμᾶς')} — <i>do not lead us</i>.</p>`
+        +`<div class="gm-sec">New words</div>`+rows([['θέλημα','will (what someone wants)'],['γῆ','earth, land'],['ἐπί','on (+ genitive)'],['πειρασμός','temptation, testing'],['ὀφείλημα','debt']]),
+      quiz:pool([['δός','give!','gave','he gives','to give'],['ἄφες','forgive!','forgave','he forgives','forgiveness'],['ῥῦσαι','deliver! (rescue!)','delivered','he delivers','deliverance'],['ἴδε','behold! (look!)','he saw','idea','he sees'],
+        ['ἐλθέτω ἡ βασιλεία σου','let your kingdom come','your kingdom came','your kingdom will not come','the king is coming'],['γενηθήτω τὸ θέλημά σου','let your will be done','your will was done','do your will','your will is done'],['ἁγιασθήτω τὸ ὄνομά σου','let your name be hallowed','your name was holy','say your name','your holy name'],
+        ['μὴ εἰσενέγκῃς ἡμᾶς εἰς πειρασμόν','do not lead us into temptation','lead us out of temptation','we were not tempted','do not tempt us to lead'],['For “do not”, Greek uses…','μή','οὐ','ἀλλά','καί'],['θέλημα','will (what is wanted)','kingdom','name','debt'],['γῆ','earth','heaven','sea','bread'],
+        ['ὡς ἐν οὐρανῷ καὶ ἐπὶ τῆς γῆς','as in heaven, so also on earth','in heaven and not on earth','from heaven to earth','heaven is on earth']]) },
+    { id:'l14', title:'Things to Come, and Those Who Do', reward:400,
+      intro:['“Two last keys for now. The future — what will be. And the -ing words — ‘the one believing’, ‘the one following’ — that Greek loves so much.”','“With these, the great ‘I am’ sayings of John are open to you.”'],
+      teach:()=>`<p class="gm-intro">The <b>future</b> often adds a <b>σ</b> to the stem: λύω, “I loose” → λύ<b>σ</b>ω, “I <i>will</i> loose”. Some common verbs have their own future forms — learn them as they come:</p>`
+        +rows([['λύσω','I will loose'],['ζήσεται','he will live'],['ἕξει','he will have'],['γνώσεσθε','you (all) will know'],['ἐλευθερώσει','he / it will set free'],['ὄψονται','they will see'],['κληθήσονται','they will be called']])
+        +`<div class="gm-sec">The -ing words: participles</div><p>A <b>participle</b> is a verb used like an adjective or a noun. With “the” in front it means “the one who…”:</p>`
+        +rows([['ὁ πιστεύων','the one believing — whoever believes'],['ὁ ἀκολουθῶν','the one following — whoever follows'],['ὁ αἴρων','the one taking away'],['λέγων','saying'],['ἐρχόμενον','coming']])
+        +`<div class="gm-sec">New words</div>`+rows([['μακάριος','blessed, happy'],['ποιμήν','shepherd'],['καλός','good, fine'],['ψυχή','life, soul'],['ἀνάστασις','resurrection'],['ἀμνός','lamb'],['ἁμαρτία','sin']]),
+      quiz:pool([['λύσω','I will loose','I loose','I loosed','loose!'],['ζήσεται','he will live','he lives','he lived','life'],['ἕξει','he will have','he has','he had','have!'],['γνώσεσθε','you (all) will know','you know','you knew','know!'],['ὄψονται','they will see','they see','they saw','see!'],
+        ['ὁ πιστεύων','the one who believes','he believed','he will believe','believe!'],['ὁ ἀκολουθῶν ἐμοί','whoever follows me','I followed him','follow me!','he will follow me'],['The σ in λύσω marks…','the future','the past','a plural','a command'],
+        ['μακάριοι','blessed (ones)','sons','sheep','poor'],['ποιμήν','shepherd','sheep','father','lamb'],['ἀνάστασις','resurrection','life','truth','glory'],['ὁ ἀμνὸς τοῦ θεοῦ','the Lamb of God','the shepherd of God','the Son of God','the name of God']]) } ];
+  MORE2.forEach(l=>LESSONS.push(l));
+  Object.assign(PASS,{
+    matt6a:{ ref:'Matthew 6:9–10', title:'The Lord’s Prayer, I', need:13, verses:[
+      ['9',[['οὕτως','in this way'],['οὖν','therefore, then'],['προσεύχεσθε','pray! (you all)'],['ὑμεῖς·','you'],['Πάτερ','Father (calling out to him)'],['ἡμῶν','our'],['ὁ','the one'],['ἐν','in'],['τοῖς','the'],['οὐρανοῖς,','heavens'],['ἁγιασθήτω','let it be hallowed, made holy'],['τὸ','the'],['ὄνομά','name'],['σου.','your']]],
+      ['10',[['ἐλθέτω','let it come'],['ἡ','the'],['βασιλεία','kingdom'],['σου.','your'],['γενηθήτω','let it be done'],['τὸ','the'],['θέλημά','will'],['σου,','your'],['ὡς','as'],['ἐν','in'],['οὐρανῷ','heaven'],['καὶ','also'],['ἐπὶ','on'],['τῆς','the'],['γῆς.','earth']]] ],
+      en:'In this way, then, pray: Our Father, who is in the heavens, let your name be hallowed. Let your kingdom come. Let your will be done, as in heaven, so also on earth.' },
+    matt6b:{ ref:'Matthew 6:11–13', title:'The Lord’s Prayer, II', need:13, verses:[
+      ['11',[['τὸν','the'],['ἄρτον','bread'],['ἡμῶν','our'],['τὸν','the'],['ἐπιούσιον','daily — for the coming day (a rare word)'],['δὸς','give!'],['ἡμῖν','to us'],['σήμερον.','today']]],
+      ['12',[['καὶ','and'],['ἄφες','forgive!'],['ἡμῖν','us (to us)'],['τὰ','the'],['ὀφειλήματα','debts'],['ἡμῶν,','our'],['ὡς','as'],['καὶ','also'],['ἡμεῖς','we'],['ἀφίεμεν','forgive'],['τοῖς','the'],['ὀφειλέταις','debtors'],['ἡμῶν.','our']]],
+      ['13',[['καὶ','and'],['μὴ','not'],['εἰσενέγκῃς','lead, bring (μή + this: “do not lead”)'],['ἡμᾶς','us'],['εἰς','into'],['πειρασμόν,','temptation, testing'],['ἀλλὰ','but'],['ῥῦσαι','deliver!, rescue!'],['ἡμᾶς','us'],['ἀπὸ','from'],['τοῦ','the'],['πονηροῦ.','evil one, evil']]] ],
+      en:'Give us today our daily bread. And forgive us our debts, as we also forgive our debtors. And do not lead us into temptation, but deliver us from the evil one.' },
+    john8_12:{ ref:'John 8:12', title:'The light of the world', need:11, verses:[
+      ['12',[['Πάλιν','again'],['οὖν','then'],['αὐτοῖς','to them'],['ὁ','the'],['Ἰησοῦς','Jesus'],['ἐλάλησε','spoke (aorist)'],['λέγων,','saying'],['Ἐγώ','I'],['εἰμι','am'],['τὸ','the'],['φῶς','light'],['τοῦ','of the'],['κόσμου·','world'],['ὁ','the one'],['ἀκολουθῶν','following — whoever follows'],['ἐμοὶ','me'],['οὐ','not'],['μὴ','not — οὐ μή: never, by no means'],['περιπατήσῃ','will walk'],['ἐν','in'],['τῇ','the'],['σκοτίᾳ,','darkness'],['ἀλλ᾽','but'],['ἕξει','will have (future)'],['τὸ','the'],['φῶς','light'],['τῆς','of the'],['ζωῆς.','life']]] ],
+      en:'Then Jesus spoke to them again, saying, “I am the light of the world; whoever follows me will never walk in the darkness, but will have the light of life.”' },
+    john10_11:{ ref:'John 10:11', title:'The good shepherd', need:12, verses:[
+      ['11',[['ἐγώ','I'],['εἰμι','am'],['ὁ','the'],['ποιμὴν','shepherd'],['ὁ','the'],['καλός·','good'],['ὁ','the'],['ποιμὴν','shepherd'],['ὁ','the'],['καλὸς','good'],['τὴν','the'],['ψυχὴν','life, soul'],['αὐτοῦ','his'],['τίθησιν','lays down'],['ὑπὲρ','for, on behalf of'],['τῶν','the'],['προβάτων.','sheep']]] ],
+      en:'I am the good shepherd; the good shepherd lays down his life for the sheep.' },
+    john11_25:{ ref:'John 11:25', title:'The resurrection and the life', need:14, verses:[
+      ['25',[['εἶπεν','said (aorist)'],['αὐτῇ','to her'],['ὁ','the'],['Ἰησοῦς,','Jesus'],['Ἐγώ','I'],['εἰμι','am'],['ἡ','the'],['ἀνάστασις','resurrection'],['καὶ','and'],['ἡ','the'],['ζωή·','life'],['ὁ','the one'],['πιστεύων','believing — whoever believes'],['εἰς','into, in'],['ἐμέ,','me'],['κἂν','even if (καὶ ἐάν)'],['ἀποθάνῃ,','he dies'],['ζήσεται·','will live (future)']]] ],
+      en:'Jesus said to her, “I am the resurrection and the life; whoever believes in me, even if he dies, will live.”' },
+    matt5_3:{ ref:'Matthew 5:3', title:'The first blessing', need:12, verses:[
+      ['3',[['Μακάριοι','blessed'],['οἱ','the'],['πτωχοὶ','poor'],['τῷ','in the'],['πνεύματι,','spirit'],['ὅτι','because'],['αὐτῶν','theirs (of them)'],['ἐστιν','is'],['ἡ','the'],['βασιλεία','kingdom'],['τῶν','of the'],['οὐρανῶν.','heavens']]] ],
+      en:'Blessed are the poor in spirit, because theirs is the kingdom of the heavens.' },
+    john1_29:{ ref:'John 1:29', title:'Behold, the Lamb', need:14, verses:[
+      ['29',[['Τῇ','on the'],['ἐπαύριον','next day'],['βλέπει','he sees'],['τὸν','the'],['Ἰησοῦν','Jesus (object)'],['ἐρχόμενον','coming'],['πρὸς','toward'],['αὐτὸν','him'],['καὶ','and'],['λέγει,','says'],['Ἴδε,','behold!, look!'],['ὁ','the'],['ἀμνὸς','lamb'],['τοῦ','of the'],['Θεοῦ','God'],['ὁ','the one'],['αἴρων','taking away'],['τὴν','the'],['ἁμαρτίαν','sin'],['τοῦ','of the'],['κόσμου.','world']]] ],
+      en:'The next day he sees Jesus coming toward him and says, “Behold, the Lamb of God, who takes away the sin of the world.”' },
+    matt5_8:{ ref:'Matthew 5:8–9', title:'The pure in heart, and the peacemakers', need:14, verses:[
+      ['8',[['μακάριοι','blessed'],['οἱ','the'],['καθαροὶ','pure, clean'],['τῇ','in the'],['καρδίᾳ,','heart'],['ὅτι','because'],['αὐτοὶ','they'],['τὸν','the'],['Θεὸν','God (object)'],['ὄψονται.','will see (future)']]],
+      ['9',[['μακάριοι','blessed'],['οἱ','the'],['εἰρηνοποιοί,','peacemakers'],['ὅτι','because'],['αὐτοὶ','they'],['υἱοὶ','sons'],['Θεοῦ','of God'],['κληθήσονται.','will be called (future)']]] ],
+      en:'Blessed are the pure in heart, because they will see God. Blessed are the peacemakers, because they will be called sons of God.' },
+    john8_32:{ ref:'John 8:32', title:'The truth will set you free', need:14, verses:[
+      ['32',[['καὶ','and'],['γνώσεσθε','you (all) will know (future)'],['τὴν','the'],['ἀλήθειαν,','truth (object)'],['καὶ','and'],['ἡ','the'],['ἀλήθεια','truth'],['ἐλευθερώσει','will set free (future)'],['ὑμᾶς.','you (all)']]] ],
+      en:'And you will know the truth, and the truth will set you free.' },
+    john11_35:{ ref:'John 11:35', title:'The shortest verse', need:9, verses:[
+      ['35',[['ἐδάκρυσεν','wept, shed tears (aorist — see the augment ἐ-)'],['ὁ','the'],['Ἰησοῦς.','Jesus']]] ],
+      en:'Jesus wept.' } });
+  // a leaf on a lectern in each cleansed sanctuary's east aisle, one passage to a town
+  const SANCT_PASS=['matt6a','matt6b','john8_12','john10_11','john11_25','matt5_3','john1_29','matt5_8','john8_32','john11_35'];
+  const sanctPassage=t=>typeof t==='number'||/^\d+$/.test(String(t))?SANCT_PASS[+t]||null:null;
   // the reader: every word a button — tap it for its meaning; then show the whole in English
   let RD=null;
   function readerHtml(id,o){ const p=PASS[id]; let h=o&&o.teach?`<p class="gm-intro">${UI.esc(p.ref)}. Tap any word for its meaning; when you have it, tap “What it says”.</p>`:`<p class="gm-intro">${UI.esc(p.title)} — <b>${UI.esc(p.ref)}</b></p>`;
@@ -11840,7 +11927,7 @@ const GREEK=(function(){
     if(nx) h+=`<button class="gm-item" data-act="next"><span>▶ Next lesson: ${UI.esc(nx.title)}</span></button>`;
     LESSONS.forEach((L,i)=>{ if(g.done.includes(L.id)) h+=`<button class="gm-item" data-act="re:${i}"><span>✓ ${UI.esc(L.title)} <span class="ds">study again · best ${g.best[L.id]||0}/8</span></span></button>`; });
     { const rd=Object.keys(PASS).filter(id=>id==='john1'?g.done.includes('l10'):(g.read||{})[id]); if(rd.length){ h+=`<div class="gm-sec">📜 Manuscripts you have read</div>`; rd.forEach(id=>h+=`<button class="gm-item" data-act="rd:${id}"><span>${UI.esc(PASS[id].ref)} <span class="ds">${UI.esc(PASS[id].title)}</span></span></button>`); }
-      const left=Object.keys(PASS).filter(id=>id!=='john1'&&!(g.read||{})[id]).length; if(left&&level()>=3) h+=`<p class="gm-hint">“There are old leaves out in the realm, knight — I have heard of one by Hearthvale’s chapel door, one where the old sage keeps his glade, and one in a hermit’s cave in the north. Find them, and read them yourself.”</p>`; }
+      const left=Object.keys(PASS).filter(id=>id!=='john1'&&!(g.read||{})[id]).length; if(left&&level()>=3) h+=`<p class="gm-hint">“There are old leaves out in the realm, knight — I have heard of one by Hearthvale’s chapel door, one where the old sage keeps his glade, and one in a hermit’s cave in the north. And every chapel you cleansed keeps a leaf on a lectern in its east aisle. Find them, and read them yourself.”</p>`; }
     if(level()) h+=`<button class="gm-item" data-act="prac"><span>✎ Practise what you know <span class="ds">8 questions · 5 gold a right answer</span></span></button>`;
     if(!nx) h+=`<p class="gm-hint">More lessons are coming — Mario is still writing them.</p>`;
     UI.sheet({title:'🕯 Old Man Mario',html:h,act:a=>{ if(a==='next'){ const L=nextL(); UI.close(); say(L.intro,()=>lessonSheet(L)); } else if(a==='prac') quiz(null,true); else if(a.startsWith('re:')) lessonSheet(LESSONS[+a.slice(3)]); else if(a.startsWith('rd:')){ RD=null; reader(a.slice(3)); } }}); }
@@ -11886,7 +11973,7 @@ const GREEK=(function(){
       const f=addPerson(lv,room,'scribe',4,2.45,0,'Old Man Mario',null,{rest:0}); f.action=()=>talk(); f.label='Talk'; f.reach=1.4;
       return lv; }});
     return g; }
-  return { hut, level, lessons:LESSONS, talk, st, place, read:readFound, reader, _t:()=>T };
+  return { hut, level, lessons:LESSONS, talk, st, place, read:readFound, reader, sanctPassage, passages:PASS, _t:()=>T };
 })();
 
 // ── engine/pad.js ──
