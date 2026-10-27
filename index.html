@@ -5635,14 +5635,27 @@ const _win=(g,x,y,z,frame,ry)=>{ const w=group(x,y,z,g); if(ry) w.rotation.y=ry;
   [-1,1].forEach(sd=>{ const sh=B(0.2,0.46,0.03,frame,sd*0.36,0,0.03,w); sh.rotation.y=sd*0.35; }); return w; };   // shutters, half-open
 const _door=(g,x,z,d,frame,ry,h)=>{ const w=group(x,0,z,g); if(ry) w.rotation.y=ry; h=h||0.95; B(0.62,h,0.05,bmat(0x6a4426,'plank'),0,0,d,w); B(0.08,h+0.06,0.08,frame,-0.35,0,d+0.01,w); B(0.08,h+0.06,0.08,frame,0.35,0,d+0.01,w); B(0.78,0.09,0.09,frame,0,h,d+0.01,w);
   Sp(0.03,0xd8b24a,0.2,h*0.5,d+0.04,w,6,4); B(0.84,0.07,0.3,0x9a958c,0,0,d+0.15,w); return w; };   // planked door, frame, latch, a stone step
+// V102 (LOOK2, Hearthvale): a storybook thatch — a thick, soft-shouldered straw roof that overhangs deep at the eaves, a
+//  rolled ridge with pegged ends, the straw's courses in faintly darker bands; and the cottage trim that goes with it
+//  (window boxes of flowers, a hood over the door)
+function _thatch(g,w,d,h,rh){ const s=new THREE.Shape(), W2=w/2+0.5, top=rh+0.18; s.moveTo(-W2,0); s.lineTo(-W2+0.05,0.18); s.quadraticCurveTo(-0.35,top-0.15,0,top); s.quadraticCurveTo(0.35,top-0.15,W2-0.05,0.18); s.lineTo(W2,0); s.quadraticCurveTo(0,0.08,-W2,0);
+  const geo=new THREE.ExtrudeGeometry(s,{depth:d+0.7,bevelEnabled:true,bevelSize:0.1,bevelThickness:0.12,bevelSegments:3,curveSegments:10}); geo.translate(0,0,-(d+0.7)/2);
+  const r=new THREE.Mesh(geo,flat(0xc8984e)); r.position.y=h-0.12; g.add(r);
+  for(let i=1;i<4;i++){ const f=i/4, yy=h-0.12+top*f*0.92+0.02, hw=W2*(1-f)+0.02; [-1,1].forEach(sd=>{ const band=B(0.06,0.05,d+0.9,0xb0823e,sd*hw,yy,0,g); band.rotation.z=sd*(0.95-0.25*f); }); }
+  const rg=Cy(0.17,0.17,d+0.95,10,0xa87a3a,0,0,0,g); rg.rotation.x=Math.PI/2; rg.position.set(0,h-0.12+top+0.05,0); rg.scale.set(1,1,0.75);
+  [-1,1].forEach(sd=>{ Sp(0.19,0x9a6e34,0,h-0.12+top+0.05,sd*(d+0.95)/2,g,8,6); }); }
+function _cottageTrim(g,w,d,h,fr){ [w/2-0.65,-w/2+0.65].forEach(x=>{ if(Math.abs(x)<=0.7) return; B(0.62,0.14,0.18,0x6a4428,x,0.55,d/2+0.12,g);
+    for(let i=0;i<5;i++) Sp(0.055,[0xe85a6a,0xffe060,0xf4f0ea,0xb08ae8][(i+Math.round(x*3))%4],x-0.24+i*0.12,0.72,d/2+0.13,g,6,4); });
+  const hd=B(1.0,0.06,0.42,0xb88a46,0,1.08,d/2+0.24,g); hd.rotation.x=0.3; [-0.42,0.42].forEach(x=>{ const br=B(0.05,0.32,0.05,fr,x,0.8,d/2+0.12,g); br.rotation.x=-0.6; }); }
 const WSTYLE={
   house(b,g,c,low){ const w=b.w-0.4, d=b.h-0.3, h=low?1.4:1.7, wl=bmat(c.wall,'plaster'), fr=c.beam||c.wallD;
     B(w,h,d,wl,0,0,0,g); B(w+0.08,0.24,d+0.08,bmat(c.wallD,'brick'),0,0,0,g);                                                // walls on a stone footing
     if(c.timber){ [-w/2+0.07,w/2-0.07].forEach(x=>B(0.12,h,0.06,c.beam,x,0,d/2+0.02,g)); B(w,0.1,0.06,c.beam,0,h*0.55,d/2+0.02,g); B(w,0.1,0.06,c.beam,0,h-0.08,d/2+0.02,g);
       [-1,1].forEach(sd=>{ const br=B(0.08,h*0.62,0.05,c.beam,sd*w*0.3,h*0.5-0.05,d/2+0.03,g); br.rotation.z=sd*0.55; }); }                      // cross-bracing
     else [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>B(0.1,h,0.1,c.wallD,sx*(w/2-0.03),0,sz*(d/2-0.03),g));                        // quoins at the corners
-    const r=prism(w+0.45,low?1.4:1.2,d+0.35,bmat(c.roof,'roof')); r.position.y=h; g.add(r); B(0.12,0.1,d+0.42,new THREE.Color(c.roof).multiplyScalar(0.7).getHex(),0,h+(low?1.36:1.16),0,g);   // the roof and its ridge
-    B(w+0.5,0.06,0.08,fr,0,h-0.02,d/2+0.2,g); B(w+0.5,0.06,0.08,fr,0,h-0.02,-d/2-0.2,g);                                                         // eaves
+    if(c.thatch){ _thatch(g,w,d,h,low?1.35:1.2); _cottageTrim(g,w,d,h,fr); }
+    else { const r=prism(w+0.45,low?1.4:1.2,d+0.35,bmat(c.roof,'roof')); r.position.y=h; g.add(r); B(0.12,0.1,d+0.42,new THREE.Color(c.roof).multiplyScalar(0.7).getHex(),0,h+(low?1.36:1.16),0,g);   // the roof and its ridge
+    B(w+0.5,0.06,0.08,fr,0,h-0.02,d/2+0.2,g); B(w+0.5,0.06,0.08,fr,0,h-0.02,-d/2-0.2,g); }                                                       // eaves
     if(c.snow) B(0.25,0.14,d+0.4,0xf4f8fc,0,h+(low?1.32:1.12),0,g);
     B(0.34,0.8,0.34,bmat(c.wallD,'brick'),-w/4,h+0.4,-d/5,g); B(0.42,0.08,0.42,0x5a5048,-w/4,h+1.2,-d/5,g);                               // chimney and its cap
     [[w/2-0.65,0.75],[-w/2+0.65,0.75]].forEach(([x,y])=>{ if(Math.abs(x)>0.7) _win(g,x,y,d/2+0.02,fr); }); if(w>2.4) _win(g,w/2+0.02,0.75,0,fr,Math.PI/2); },
@@ -6123,7 +6136,7 @@ function buildWorld(WD,opt){
   function buildHouse(b,par){ const e=E(b.door.x,b.door.y), key=themeOf(b.id);
     const F=FACE[b.id], side=F&&(F.dir==='E'||F.dir==='W'), bm=side?Object.assign({},b,{w:b.h,h:b.w}):b;   // turned east or west, it's built the other way round to fill the same footprint
     const dx=!F?(b.door.x+0.5)-(b.x+b.w/2):F.dir==='N'?-((F.tx+0.5)-(b.x+b.w/2)):F.dir==='E'?-((F.ty+0.5)-(b.y+b.h/2)):(F.ty+0.5)-(b.y+b.h/2);
-    const make=c=>{ const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
+    const make=c=>{ if(typeof LOOK2!=='undefined'&&LOOK2&&key==='hearthvale'&&(b.style==='house'||b.style==='cottage'||b.style==='shop'||!WSTYLE[b.style])) c=Object.assign({},c,{thatch:true}); const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
       (hingeOf[b.id]=hingeOf[b.id]||[]).push(doorFace(g,dx,b.style==='chapel'?bm.h+0.18:bm.h-0.2,b.style==='chapel'?1.4:b.id==='sg_keep'?1.5:1.0));
       g.rotation.y=!F?0:F.dir==='N'?Math.PI:F.dir==='E'?Math.PI/2:-Math.PI/2;
       g.position.set(b.x+b.w/2,e*TIER*LIFT(b.door.x,b.door.y)+0.02,b.y+b.h/2); par.add(mergeStatic(shade(g))); return g; };
