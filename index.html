@@ -5802,7 +5802,7 @@ function _stoneWalls(g,w,d,y0,y1,holes,cols){ cols=cols||[0x9a9488,0x8a8478,0xa8
 //  front, its roof a railed balcony for the upper storey; the upper storey jettied out in chunky timbers and lime-wash with a glazed
 //  door onto the balcony; a tiled roof over timbered gables with two stone chimneys; the inn's sign swinging from an iron bracket;
 //  lanterns by the door, barrels on the porch. Every town's colours carry through (wall, roof, sign, snow on the ridge up north).
-function _inn2(b,g,c){ const w=b.w-0.3, d=b.h-0.3, H1=1.25, H2=2.5, rh=1.45, fr=c.iron?0x2e2e34:c.beam||0x5a3a22, wall=c.iron?0x9a9ca4:c.wall||0xf2e6cc, shut=c.iron?IRON.ox:undefined, small=w<3.2, wx=w/2-0.8;
+function _inn2(b,g,c){ const w=b.w-0.3, d=b.h-0.3, H1=1.25, H2=2.5, rh=1.45, fr=c.iron?0x2e2e34:c.salt?SALT.trimD:c.beam||0x5a3a22, wall=c.iron?0x9a9ca4:c.salt?SALT.wall:c.wall||0xf2e6cc, shut=c.iron?IRON.ox:c.salt?SALT.trim:undefined, small=w<3.2, wx=w/2-0.8;
   const stoneCols=[c.wallD,0x9a9488,0x8a8478,0xa8a294,0x928c80].map((v,i)=>i?new THREE.Color(v).lerp(new THREE.Color(c.wallD),0.25).getHex():v);
   B(w-0.04,H1,d-0.04,new THREE.Color(c.wallD).multiplyScalar(0.9).getHex(),0,0,0,g); _stoneFooting(g,w,d,0,0.3);
   const holes=[['f',b._dx||0,0,1.15,0.5]]; if(!small){ holes.push(['f',wx,0.35,0.95,0.42],['f',-wx,0.35,0.95,0.42]); } holes.push(['r',0,0.35,0.95,0.42],['l',0,0.35,0.95,0.42]);
@@ -5821,7 +5821,7 @@ function _inn2(b,g,c){ const w=b.w-0.3, d=b.h-0.3, H1=1.25, H2=2.5, rh=1.45, fr=
   { const dz=jd/2+0.03; B(0.7,1.0,0.08,0x2a2a30,0,y0,dz,g); B(0.56,0.88,0.03,glow(0xf2d27a),0,y0+0.04,dz+0.03,g); B(0.05,0.88,0.05,fr,0,y0+0.04,dz+0.05,g); B(0.56,0.05,0.05,fr,0,y0+0.48,dz+0.05,g);
     B(0.84,0.12,0.12,fr,0,y0+0.98,dz+0.05,g); [-0.38,0.38].forEach(x=>B(0.1,1.04,0.12,fr,x,y0,dz+0.05,g)); }
   // the roof: timbered gables, tiles in the town's colour, snow on the ridge where it falls, two stone chimneys
-  _gable(g,jw,jd,H2,rh,wall,c.timber?fr:fr); _tiles(g,jw,jd,H2,rh,c.iron?IRON.slate:c.roof); if(c.iron){ _ironCrest(g,jd+0.4,H2+rh+0.14); _ironBanner(g,jw/2+0.02,H2-0.1,0,Math.PI/2); }
+  _gable(g,jw,jd,H2,rh,wall,c.timber?fr:fr); _tiles(g,jw,jd,H2,rh,c.iron?IRON.slate:c.salt?SALT.roof:c.roof); if(c.salt){ _saltNet(g,-jw/2-0.07,H2-0.15,0,-Math.PI/2,Math.min(jd-0.8,1.8),0.9); _saltPot(g,w/2-0.5,0,d/2+0.95); _saltRope(g,-w/2+0.6,0,d/2+0.95); _saltLantern(g,0.0,y0+1.0,jd/2+0.03); } if(c.iron){ _ironCrest(g,jd+0.4,H2+rh+0.14); _ironBanner(g,jw/2+0.02,H2-0.1,0,Math.PI/2); }
   if(c.snow){ const {W2,a,L}=_roofFrame(jw,jd,rh,0.4); [-1,1].forEach(sd=>{ const sn=B(L*0.5,0.1,jd+0.66,0xf4f8fc,0,0,0,g); sn.position.set(sd*W2*0.25,H2+rh*0.75+0.12,0); sn.rotation.z=-sd*a; }); Cy(0.16,0.16,jd+0.7,8,0xf4f8fc,0,0,0,g).rotation.x=Math.PI/2; g.children[g.children.length-1].position.set(0,H2+rh+0.1,0); }
   [[-jw/2+0.55,-jd/4],[jw/2-0.55,jd/5]].forEach(([cx,cz],i)=>{ if(small&&i) return; for(let j=0;j<6;j++) B(0.42-(j>3?0.05:0),0.27,0.42-(j>3?0.05:0),stoneCols[(j+i)%5],cx,H2+0.05+j*0.27-0.25,cz,g); B(0.52,0.08,0.52,0x7a746a,cx,H2+1.42,cz,g); Cy(0.07,0.09,0.2,8,0xa8603a,cx,H2+1.5,cz,g); });
   // the porch: posts, a deck over it railed for a balcony, lanterns, barrels, the sign on its bracket
@@ -5928,14 +5928,73 @@ function _forge2(b,g,c){ const w=b.w-0.4, d=b.h-0.3, h=2.1, rh=1.3, dx=b._dx||0,
   _gable(g,w,d,h,rh,IRON.core,null); _stoneGable(g,w,d,h,rh,IRON.st); _tiles(g,w,d,h,rh,IRON.slate); _ironCrest(g,d+0.4,h+rh+0.14);
   const sg=group(dx-sd*0.7,1.75,d/2+0.02,g); B(0.04,0.04,0.5,IRON.iron,0,0,0.25,sg); B(0.03,0.16,0.03,IRON.iron,0,-0.16,0.48,sg); B(0.36,0.1,0.12,IRON.iron,0,-0.32,0.48,sg); B(0.2,0.12,0.08,IRON.iron,0,-0.44,0.48,sg); B(0.28,0.05,0.12,IRON.iron,0,-0.5,0.48,sg);
   _ironLamp(g,dx+sd*0.55,1.05,d/2+0.02); _ironBanner(g,-sd*(w/2+0.02),h-0.1,0,-sd*Math.PI/2); }
+// V108 (LOOK2): SALTMERE — whitewash and blue trim by the sea. Lime-washed walls a little soft at the corners, a sea-blue plinth band,
+//  blue doors, frames and shutters, teal slate roofs over white gables, white chimneys banded blue. And the harbour's clutter on
+//  every wall: nets hung out to dry with their cork floats, crossed oars, lobster pots, coils of rope, a ship's lantern by the door,
+//  a little fish turning on the ridge. The Fish Market: a white hall with an open stall under a blue-and-white awning, fish laid on
+//  ice, a line of the day's catch hung up, a scale, barrels and a great painted fish over it all.
+const SALT={ wall:0xf4f0e6, wallD:0xe2ddd0, trim:0x2f6aa8, trimD:0x22508a, roof:0x4a6a78, rope:0xc8a46a, cork:0xe8823a, net:0x8a7a5a };
+function _saltNet(g,x,y,z,ry,w,h){ const n=group(x,y,z,g); if(ry) n.rotation.y=ry; const sag=k=>-Math.sin(k*Math.PI)*0.12;
+  for(let i=0;i<=Math.round(w/0.14);i++){ const t=i/Math.round(w/0.14), xx=-w/2+t*w; B(0.012,h+sag(t)*0.5,0.012,SALT.net,xx,-h+sag(t)*-0.5,0,n); }
+  for(let j=0;j<=Math.round(h/0.14);j++){ const yy=-j*h/Math.round(h/0.14); for(let i=0;i<6;i++){ const t0=i/6, t1=(i+1)/6, m=B(w/6+0.01,0.012,0.012,SALT.net,0,0,0,n); m.position.set(-w/2+(t0+t1)/2*w,yy+sag((t0+t1)/2)*(1-j/Math.round(h/0.14))*0.6,0); m.rotation.z=(sag(t1)-sag(t0))*(1-j/Math.round(h/0.14))*0.6/(w/6)*-1; } }
+  for(let i=0;i<5;i++) Sp(0.05,SALT.cork,-w/2+0.1+i*(w-0.2)/4,0.02,0.02,n,6,4); B(w+0.1,0.03,0.03,SALT.rope,0,0,0,n); return n; }
+function _saltOars(g,x,y,z,ry){ const o=group(x,y,z,g); if(ry) o.rotation.y=ry; [-1,1].forEach(sd=>{ const a=group(0,0,0.04,o); a.rotation.z=sd*0.5; B(0.035,1.2,0.035,0x9a7444,0,-0.6,0,a); B(0.12,0.32,0.02,sd>0?SALT.trim:0xb83a2a,0,-0.68,0,a); }); return o; }
+function _saltPot(g,x,y,z){ const p=group(x,y,z,g); B(0.42,0.04,0.3,0x8a6a40,0,0,0,p); for(let i=0;i<5;i++){ const a=i/4*Math.PI, r=0.16; const s=B(0.02,0.02,0.3,0x8a6a40,0,0,0,p); s.position.set(-0.21+i*0.105,0.04+Math.sin(a)*0,0); }
+  [-0.2,-0.07,0.07,0.2].forEach(xx=>{ const h=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.012,4,10,Math.PI),softMat(0x8a6a40)); h.rotation.y=Math.PI/2; h.position.set(xx,0.02,0); p.add(h); }); return p; }
+function _saltRope(g,x,y,z){ for(let i=0;i<3;i++){ const t=new THREE.Mesh(new THREE.TorusGeometry(0.16-i*0.035,0.03,5,14),softMat(SALT.rope)); t.rotation.x=Math.PI/2; t.position.set(x,y+0.03+i*0.05,z); g.add(t); } }
+function _saltLantern(g,x,y,z){ const l=group(x,y,z,g); B(0.03,0.03,0.24,0x2a2a2e,0,0.28,0.12,l); B(0.16,0.04,0.16,SALT.trimD,0,0.22,0.24,l); Cy(0.07,0.07,0.16,8,glow(0xffd27a),0,0.06,0.24,l); B(0.14,0.03,0.14,SALT.trimD,0,0.03,0.24,l); [-1,1].forEach(a=>[-1,1].forEach(b2=>B(0.015,0.18,0.015,SALT.trimD,a*0.065,0.04,0.24+b2*0.065,l))); return l; }
+function _saltFish(g,x,y,z,col,s){ const f=group(x,y,z,g); s=s||1; const b=Sp(0.1*s,col||0xb8c4cc,0,0,0,f,8,6); b.scale.set(2.2,0.9,0.55); const t=Co(0.07*s,0.12*s,3,col||0xb8c4cc,-0.24*s,0,0,f); t.rotation.z=Math.PI/2; Sp(0.018*s,0x1a1a1e,0.13*s,0.03*s,0.04*s,f,4,3); return f; }
+function _saltWin(g,x,y,z,ry,small){ const w=_win2(g,x,y,z,SALT.trim,ry,SALT.trim); if(small) w.scale.set(0.85,0.85,0.85); return w; }
+function _saltHouse(b,g,c,low){ const w=b.w-0.4, d=b.h-0.3, h=low?1.55:1.8, rh=low?1.0:1.15, dx=b._dx||0;
+  B(w,h,d,softMat(SALT.wall),0,0,0,g); B(w+0.08,0.28,d+0.08,SALT.trim,0,0,0,g); B(w+0.14,0.08,d+0.14,0xb8b2a4,0,0,0,g);   // whitewash on a blue-painted plinth
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>Cy(0.14,0.16,h,10,softMat(SALT.wallD),sx*(w/2-0.04),0,sz*(d/2-0.04),g));   // soft, buttressed corners
+  B(w+0.12,0.1,d+0.12,SALT.wallD,0,h-0.08,0,g);
+  const wins=[w/2-0.62,-w/2+0.62].filter(x=>Math.abs(x)>0.55&&Math.abs(x-dx)>0.8); wins.forEach(x=>_saltWin(g,x,0.78,d/2+0.05,0,low));
+  if(d>1.9){ _saltWin(g,w/2+0.05,0.78,0,Math.PI/2,low); _saltWin(g,-w/2-0.05,0.78,0,-Math.PI/2,low); } _saltWin(g,0,0.78,-d/2-0.05,Math.PI,low);
+  B(0.84,0.1,0.08,SALT.trim,dx,1.12,d/2+0.04,g); [-0.4,0.4].forEach(q=>B(0.08,1.12,0.07,SALT.trim,dx+q,0,d/2+0.04,g));   // the door's blue surround
+  _gable(g,w,d,h,rh,SALT.wall,null); _tiles(g,w,d,h,rh,SALT.roof);
+  [-1,1].forEach(sz=>{ const {W2,a}=_roofFrame(w,d,rh,0.4); [-1,1].forEach(sd=>{ const bb=B(Math.hypot(W2,rh)+0.06,0.1,0.08,SALT.trim,0,0,0,g); bb.position.set(sd*W2/2,h+rh/2-0.02,sz*(d/2+0.32)); bb.rotation.z=-sd*a; }); });   // blue bargeboards
+  const cx=w/4, cz=-d/6; B(0.42,0.95,0.42,softMat(SALT.wall),cx,h+0.25,cz,g); B(0.46,0.1,0.46,SALT.trim,cx,h+1.05,cz,g); B(0.5,0.06,0.5,SALT.wallD,cx,h+1.15,cz,g); Cy(0.07,0.09,0.2,8,0xa8603a,cx,h+1.21,cz,g);
+  // the fish on the ridge
+  { const top=h+rh+0.08, vz=d/2-0.2; B(0.03,0.36,0.03,0x2a2a2e,0,top,vz,g); const f=_saltFish(g,0,top+0.42,vz,0x3a7a9a,0.9); f.rotation.y=0.5; }
+  // the harbour's clutter: a net drying on the side wall, oars over the door side, a lantern, a lobster pot and rope on the step
+  if(d>1.9) _saltNet(g,-w/2-0.07,h-0.12,0.15,-Math.PI/2,Math.min(d-0.7,1.8),0.95); else _saltNet(g,w/2-0.9*(dx>0?3:1)*0,h-0.1,-d/2-0.07,Math.PI,1.3,0.85);
+  const ox=dx>0?dx-0.95:dx+0.95; if(Math.abs(ox)<w/2-0.3&&!wins.some(x=>Math.abs(x-ox)<0.5)) _saltOars(g,ox,h-0.18,d/2+0.02); else _saltOars(g,w/2+0.03,h-0.15,-0.5,Math.PI/2);
+  _saltLantern(g,dx+(dx>0?-0.55:0.55),1.05,d/2+0.02);
+  _saltPot(g,dx+(dx>0?0.85:-0.85),0,d/2+0.3); _saltRope(g,dx+(dx>0?-0.85:0.85),0,d/2+0.32); }
+function _fishMarket2(b,g,c){ const w=b.w-0.4, d=b.h-0.3, h=2.0, rh=1.2, dx=b._dx||0, hd=d*0.58, hz=-d/2+hd/2;
+  // the white hall at the back, its roof running across
+  B(w,h,hd,softMat(SALT.wall),0,0,hz,g); B(w+0.08,0.28,hd+0.08,SALT.trim,0,0,hz,g); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>Cy(0.14,0.16,h,10,softMat(SALT.wallD),sx*(w/2-0.04),0,hz+sz*(hd/2-0.04),g));
+  const r2=group(0,0,hz,g); r2.rotation.y=Math.PI/2; _gable(r2,hd,w,h,rh,SALT.wall,null); _tiles(r2,hd,w,h,rh,SALT.roof);
+  [-w/4,w/4].forEach(x=>_saltWin(g,x,0.9,-d/2-0.05,Math.PI)); _saltWin(g,w/2+0.05,0.9,hz,Math.PI/2); _saltWin(g,-w/2-0.05,0.9,hz,-Math.PI/2);
+  // the walls of the stall run forward to the door; the door is set in a white wall-end of its own
+  const fz=d/2; [-1,1].forEach(sd=>{ B(0.24,1.0,d-hd,softMat(SALT.wall),sd*(w/2-0.12),0,hz+hd/2+(d-hd)/2,g); B(0.3,0.12,d-hd+0.04,SALT.trim,sd*(w/2-0.12),1.0,hz+hd/2+(d-hd)/2,g); });
+  { const dw=1.1; B(dw,1.3,0.24,softMat(SALT.wall),dx,0,fz-0.12,g); B(dw+0.06,0.1,0.28,SALT.trim,dx,1.3,fz-0.12,g); [-0.4,0.4].forEach(q=>B(0.08,1.12,0.07,SALT.trim,dx+q,0,fz+0.02,g)); B(0.84,0.1,0.08,SALT.trim,dx,1.12,fz+0.02,g); }
+  // the counter, ice and the catch
+  const cx0=dx<0?dx+0.75:-w/2+0.35, cx1=dx<0?w/2-0.35:dx-0.75, cw=cx1-cx0, ccx=(cx0+cx1)/2, cz=fz-0.32;
+  B(cw,0.72,0.5,0x7a5838,ccx,0,cz,g); for(let x=cx0+0.1;x<cx1-0.05;x+=0.3) B(0.02,0.68,0.02,0x5a3e24,x,0.02,cz+0.26,g); B(cw+0.06,0.06,0.56,0x9a7444,ccx,0.72,cz,g);
+  B(cw-0.12,0.08,0.44,0xeef4f8,ccx,0.78,cz,g); for(let i=0;i<Math.round(cw/0.12);i++) Sp(0.04,0xffffff,cx0+0.08+i*0.12,0.86,cz+(hsh(i,3)-0.5)*0.3,g,4,3);
+  const FC=[0xb8c4cc,0xe8a090,0x9ab0bc,0xd8b070,0xc8d0d8,0xe07a6a]; for(let i=0;i<Math.round(cw/0.36);i++){ const f=_saltFish(g,cx0+0.22+i*0.36,0.9,cz+(i%2?0.1:-0.1),FC[i%6],0.9); f.rotation.y=(i%2?0.4:-0.3); }
+  // scale, barrels of salt fish, a crate of crabs
+  { const sx=cx1-0.2; B(0.04,0.5,0.04,0x2a2a2e,sx,0.84,cz-0.12,g); B(0.3,0.03,0.03,0x2a2a2e,sx,1.32,cz-0.12,g); [-0.13,0.13].forEach(q=>{ Cy(0.08,0.06,0.03,8,0xc8a040,sx+q,1.08,cz-0.12,g); B(0.01,0.24,0.01,0x2a2a2e,sx+q,1.1,cz-0.12,g); }); }
+  [[cx0-0.05,fz+0.35],[cx0+0.35,fz+0.4]].forEach(([x,z])=>{ Cy(0.18,0.16,0.48,10,0x8a6a40,x,0,z,g); Cy(0.185,0.185,0.03,10,0x3a3a3e,x,0.1,z,g); Cy(0.185,0.185,0.03,10,0x3a3a3e,x,0.38,z,g); Cy(0.16,0.16,0.02,10,0xdde4e8,x,0.48,z,g); _saltFish(g,x,0.53,z,0xb8c4cc,0.6).rotation.y=1; });
+  { const kx=cx1-0.1, kz=fz+0.38; B(0.44,0.24,0.32,0x9a7444,kx,0,kz,g); for(let i=0;i<4;i++){ const cr=Sp(0.06,0xd84a2a,kx-0.13+i*0.09,0.27,kz+(i%2?0.06:-0.06),g,6,4); cr.scale.set(1.3,0.6,1); } }
+  // the striped awning on its posts, the day's catch hung along a line under it, the great fish on the hall
+  const az=fz+0.85, ay=1.75; [-1,1].forEach(sd=>{ Cy(0.04,0.05,ay,8,SALT.trim,sd*(w/2-0.08),0,az,g); });
+  const n=Math.round(w/0.42); for(let i=0;i<n;i++){ const st=B(w/n+0.01,0.05,1.25,i%2?0xf4f0e6:SALT.trim,-w/2+w/n*(i+0.5),0,0,g); st.position.set(-w/2+w/n*(i+0.5),ay+0.32,az-0.6); st.rotation.x=0.36; }
+  for(let i=0;i<n;i++) { const v=Co(w/n*0.5,0.14,3,i%2?0xf4f0e6:SALT.trim,-w/2+w/n*(i+0.5),ay-0.08,az+0.02,g); v.rotation.set(Math.PI,0,0); v.scale.z=0.15; }
+  B(w,0.02,0.02,SALT.rope,0,ay-0.08,az-0.12,g); for(let x=-w/2+0.4;x<w/2-0.3;x+=0.5){ B(0.01,0.16,0.01,SALT.rope,x,ay-0.24,az-0.12,g); const f=_saltFish(g,x,ay-0.42,az-0.12,FC[Math.round(x*3+9)%6],0.8); f.rotation.z=Math.PI/2; }
+  { const bf=group(0,h+0.2,hz+hd/2+0.55,g); bf.rotation.x=-0.15; B(1.7,0.7,0.06,softMat(SALT.wall),0,0,0,bf); B(1.8,0.07,0.08,SALT.trim,0,0.7,0,bf); B(1.8,0.07,0.08,SALT.trim,0,-0.04,0,bf); [-0.88,0.88].forEach(x=>B(0.07,0.78,0.08,SALT.trim,x,-0.04,0,bf)); [-0.6,0.6].forEach(x=>B(0.05,0.5,0.05,SALT.trimD,x,-0.5,-0.06,bf));
+    const f=_saltFish(bf,0.05,0.35,0.05,0x3a7a9a,3.0); f.scale.z=0.12; }
+  _saltNet(g,w/2+0.07,h-0.12,hz,Math.PI/2,Math.min(hd-0.3,1.6),1.0); _saltLantern(g,dx+(dx>0?-0.62:0.62),1.0,fz+0.02); }
 // V105 (LOOK2): the chapel in the characters' manner — dressed stone in courses with big corner quoins, a stone plinth, stepped
 //  buttresses, a tiled roof over stone gables, pointed lancets of real stained glass in moulded surrounds, a rose window in
 //  coloured glass, a deep west portal of nested arches, a tower with a pointed belfry, a tiled broach spire, a gilt cross.
 //  Dark (bound) and bright (cleansed) as before, footprint unchanged.
 function _ptArch(wd,ht,th,dp,col){ const s=new THREE.Shape(), r=wd/2; s.moveTo(-r,0); s.lineTo(-r,ht-r*1.1); s.quadraticCurveTo(-r,ht-r*0.15,0,ht); s.quadraticCurveTo(r,ht-r*0.15,r,ht-r*1.1); s.lineTo(r,0); s.lineTo(r-th,0); s.lineTo(r-th,ht-r*1.1); s.quadraticCurveTo(r-th,ht-r*0.25-th,0,ht-th*1.2); s.quadraticCurveTo(-r+th,ht-r*0.25-th,-r+th,ht-r*1.1); s.lineTo(-r+th,0); s.closePath();
   const g=new THREE.ExtrudeGeometry(s,{depth:dp,bevelEnabled:false}); g.translate(0,0,-dp/2); return new THREE.Mesh(g,typeof col==='number'?softMat(col):col); }
-function _chapel2(b,g,c){ const w=b.w-0.6, d=b.h-0.3, dark=c.dark, wall=dark?0x4e4860:c.iron?0x8e9098:0xe2dccb, wd=new THREE.Color(wall).multiplyScalar(0.84).getHex(), qn=new THREE.Color(wall).multiplyScalar(0.93).getHex(),
-    roof=dark?0x2e2638:c.iron?IRON.slate:c.roof, tz=d/2-0.6, H=2.7, glassCols=dark?['#3a1a5a','#5a2a7a','#2a1440','#4a2a6a']:['#2f5fb8','#c8402e','#f2c14e','#3a8a5a','#7a4ab0','#5aa0d8'];
+function _chapel2(b,g,c){ const w=b.w-0.6, d=b.h-0.3, dark=c.dark, wall=dark?0x4e4860:c.iron?0x8e9098:c.salt?0xf4f0e6:0xe2dccb, wd=new THREE.Color(wall).multiplyScalar(0.84).getHex(), qn=new THREE.Color(wall).multiplyScalar(0.93).getHex(),
+    roof=dark?0x2e2638:c.iron?IRON.slate:c.salt?SALT.roof:c.roof, tz=d/2-0.6, H=2.7, glassCols=dark?['#3a1a5a','#5a2a7a','#2a1440','#4a2a6a']:['#2f5fb8','#c8402e','#f2c14e','#3a8a5a','#7a4ab0','#5aa0d8'];
   const ST=(sx,sy,sz,col,x,y,z)=>B(sx,sy,sz,col,x,y,z,g);
   // the nave: a plinth of big stones, coursed walls, quoins, a cornice
   _stoneFooting(g,w,d,0,0.42); ST(w-0.02,H-0.4,d-0.02,wall,0,0.4,0);
@@ -5971,7 +6030,7 @@ function _cottageTrim(g,w,d,h,fr){ [w/2-0.65,-w/2+0.65].forEach(x=>{ if(Math.abs
     for(let i=0;i<5;i++) Sp(0.055,[0xe85a6a,0xffe060,0xf4f0ea,0xb08ae8][(i+Math.round(x*3))%4],x-0.24+i*0.12,0.72,d/2+0.13,g,6,4); });
   const hd=B(1.0,0.1,0.46,0x9a7c58,0,1.08,d/2+0.24,g); hd.rotation.x=0.3; [-0.42,0.42].forEach(x=>{ const br=B(0.05,0.32,0.05,fr,x,0.8,d/2+0.12,g); br.rotation.x=-0.6; }); }
 const WSTYLE={
-  house(b,g,c,low){ if(c.iron){ _ironHouse(b,g,c,low); return; } if(c.thatch&&b.id==='home_house'){ _farmhouse2(b,g,c); return; } if(c.thatch){ _cottage2(b,g,c,low); return; } const w=b.w-0.4, d=b.h-0.3, h=low?1.4:1.7, wl=bmat(c.wall,'plaster'), fr=c.beam||c.wallD;
+  house(b,g,c,low){ if(c.iron){ _ironHouse(b,g,c,low); return; } if(c.salt){ _saltHouse(b,g,c,low); return; } if(c.thatch&&b.id==='home_house'){ _farmhouse2(b,g,c); return; } if(c.thatch){ _cottage2(b,g,c,low); return; } const w=b.w-0.4, d=b.h-0.3, h=low?1.4:1.7, wl=bmat(c.wall,'plaster'), fr=c.beam||c.wallD;
     B(w,h,d,wl,0,0,0,g); B(w+0.08,0.24,d+0.08,bmat(c.wallD,'brick'),0,0,0,g);                                                // walls on a stone footing
     if(c.timber){ [-w/2+0.07,w/2-0.07].forEach(x=>B(0.12,h,0.06,c.beam,x,0,d/2+0.02,g)); B(w,0.1,0.06,c.beam,0,h*0.55,d/2+0.02,g); B(w,0.1,0.06,c.beam,0,h-0.08,d/2+0.02,g);
       [-1,1].forEach(sd=>{ const br=B(0.08,h*0.62,0.05,c.beam,sd*w*0.3,h*0.5-0.05,d/2+0.03,g); br.rotation.z=sd*0.55; }); }                      // cross-bracing
@@ -5984,7 +6043,7 @@ const WSTYLE={
     B(0.34,0.8,0.34,bmat(c.wallD,'brick'),-w/4,h+0.4,-d/5,g); B(0.42,0.08,0.42,0x5a5048,-w/4,h+1.2,-d/5,g);                               // chimney and its cap
     [[w/2-0.65,0.75],[-w/2+0.65,0.75]].forEach(([x,y])=>{ if(Math.abs(x)>0.7) _win(g,x,y,d/2+0.02,fr); }); if(w>2.4) _win(g,w/2+0.02,0.75,0,fr,Math.PI/2); },
   cottage(b,g,c){ WSTYLE.house(b,g,c,true); },
-  shop(b,g,c){ if(c.iron&&b.id==='ih_forge'){ _forge2(b,g,c); return; } if(c.iron){ _ironHouse(b,g,c); return; } WSTYLE.house(b,g,c); const w=b.w-0.4, d=b.h-0.3; for(let i=0;i<7;i++){ const s=B(w/7,0.07,0.9,i%2?0xf3ead6:c.awn,-w/2+w/7*(i+0.5),1.38,d/2+0.42,g); s.rotation.x=0.35; }
+  shop(b,g,c){ if(c.iron&&b.id==='ih_forge'){ _forge2(b,g,c); return; } if(c.salt&&b.id==='sm_market'){ _fishMarket2(b,g,c); return; } if(c.salt){ _saltHouse(b,g,c); return; } if(c.iron){ _ironHouse(b,g,c); return; } WSTYLE.house(b,g,c); const w=b.w-0.4, d=b.h-0.3; for(let i=0;i<7;i++){ const s=B(w/7,0.07,0.9,i%2?0xf3ead6:c.awn,-w/2+w/7*(i+0.5),1.38,d/2+0.42,g); s.rotation.x=0.35; }
     [-w/2+0.05,w/2-0.05].forEach(x=>Cy(0.03,0.03,1.3,6,0x6b4a2e,x,0,d/2+0.8,g));                                                                // awning poles
     B(1.2,0.5,0.4,bmat(0x9a6b3f,'plank'),-w/2+0.9,0,d/2+0.5,g); [[0,0xd84a3a],[0.3,0xf2c14e],[-0.3,0x6cb065]].forEach(([x,col])=>B(0.2,0.16,0.2,col,-w/2+0.9+x,0.5,d/2+0.5,g)); },
   inn(b,g,c){ if(typeof LOOK2!=='undefined'&&LOOK2){ _inn2(b,g,c); return; } const w=b.w-0.3, d=b.h-0.3, fr=c.beam||c.wallD; B(w,1.15,d,bmat(c.wallD,'brick'),0,0,0,g); B(w+0.15,1.15,d+0.15,bmat(c.wall,'plaster'),0,1.15,0,g); B(w+0.25,0.08,d+0.25,fr,0,1.13,0,g);   // stone below, a jettied upper storey
@@ -6464,7 +6523,7 @@ function buildWorld(WD,opt){
     const F=FACE[b.id], side=F&&(F.dir==='E'||F.dir==='W');
     const dx=!F?(b.door.x+0.5)-(b.x+b.w/2):F.dir==='N'?-((F.tx+0.5)-(b.x+b.w/2)):F.dir==='E'?-((F.ty+0.5)-(b.y+b.h/2)):(F.ty+0.5)-(b.y+b.h/2);
     const bm=Object.assign({},b,side?{w:b.h,h:b.w}:{},{_dx:dx});   // turned east or west, it's built the other way round to fill the same footprint; _dx: where its door sits
-    const make=c=>{ if(typeof LOOK2!=='undefined'&&LOOK2&&key==='ironhold') c=Object.assign({},c,{iron:true}); if(typeof LOOK2!=='undefined'&&LOOK2&&(key==='hearthvale'||key==='homestead')&&(b.style==='house'||b.style==='cottage'||b.style==='shop'||!WSTYLE[b.style])) c=Object.assign({},c,{thatch:true}); const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
+    const make=c=>{ if(typeof LOOK2!=='undefined'&&LOOK2&&key==='ironhold') c=Object.assign({},c,{iron:true}); if(typeof LOOK2!=='undefined'&&LOOK2&&key==='saltmere') c=Object.assign({},c,{salt:true}); if(typeof LOOK2!=='undefined'&&LOOK2&&(key==='hearthvale'||key==='homestead')&&(b.style==='house'||b.style==='cottage'||b.style==='shop'||!WSTYLE[b.style])) c=Object.assign({},c,{thatch:true}); const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
       (hingeOf[b.id]=hingeOf[b.id]||[]).push(doorFace(g,dx,b.style==='chapel'?bm.h+0.18:bm.h-0.2,b.style==='chapel'?1.4:b.id==='sg_keep'?1.5:1.0));
       g.rotation.y=!F?0:F.dir==='N'?Math.PI:F.dir==='E'?Math.PI/2:-Math.PI/2;
       g.position.set(b.x+b.w/2,e*TIER*LIFT(b.door.x,b.door.y)+0.02,b.y+b.h/2); if(typeof LOOK2!=='undefined'&&LOOK2) soften(g); par.add(mergeStatic(shade(g))); return g; };
