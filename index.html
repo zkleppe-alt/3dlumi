@@ -1550,6 +1550,8 @@ const KNIGHT_MODEL={"src":"assets/knight_oot_stylized.glb","scale":0.518,"pivots
 //  Colours are numbers (0xRRGGBB) or ready materials; numbers are cached.
 // ════════════════════════════════════════════════════════════════
 const M4=new THREE.Matrix4(), C=new THREE.Color();
+// V100 art upgrade — the new world look (approved Oct 26): rolling meadows and a painted sky
+const LOOK2=!/[?&]classic\b/.test(location.search)&&(()=>{ try{ return localStorage.getItem('klk3d_look2')!=='0'; }catch(e){ return true; } })();   // on by default; ☰ → System → Classic ground turns it off
 const hsh=(x,y)=>(((x*73856093)^(y*19349663))>>>0)%1000/1000;      // stable 0..1 per tile
 const _FC={}, _LC={}, _BC={};
 function flat(h,o){ if(!o&&_FC[h]) return _FC[h]; const m=new THREE.MeshPhongMaterial(Object.assign({color:h,flatShading:true,shininess:6,specular:0x111111},o||{})); if(!o) _FC[h]=m; return m; }
@@ -3833,6 +3835,7 @@ const ENGINE=(function(){
     try{ R=new THREE.WebGLRenderer(Object.assign({canvas:cv},o)); if(R.getContext()){ if(!o.antialias) lite=true; break; } }catch(e){ R=null; } }
   if(!R){ const m=$('err'); m.textContent=ERR_TXT; m.hidden=false; return null; }
   R.setPixelRatio(Math.min(devicePixelRatio,lite?1:2)); R.shadowMap.enabled=true; R.shadowMap.type=lite?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;
+
   // if the GPU drops the context mid-game, say so and let three.js restore it rather than freezing on a dead canvas
   cv.addEventListener('webglcontextlost',e=>{ e.preventDefault(); const m=$('err'); m.textContent='The graphics card took a breather — restoring the 3D view…'; m.hidden=false; },false);
   cv.addEventListener('webglcontextrestored',()=>{ const m=$('err'); m.hidden=true; m.textContent=ERR_TXT; },false);
@@ -4393,6 +4396,7 @@ const MENU=(function(){
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
         +sec('Controls')+`<button class="gm-item" data-act="keys"><span>⌨ Keyboard Controls <span class="ds">see and change every key · 🧪 potion is ${typeof KEYS!=='undefined'?KEYS.keysFor('potion'):'P'}</span></span></button>`
+          +`<button class="gm-item" data-act="look2"><span>🌄 World look: ${typeof LOOK2!=='undefined'&&LOOK2?'rolling meadows (new)':'classic flat ground'} <span class="ds">tap to switch · reloads the page</span></span></button>`
           +`<button class="gm-item" data-act="pad"><span>🎮 Controller Controls <span class="ds">choose the button for every action · swap sticks · invert look</span></span></button>`
         +sec('Save Profiles')+`<button class="gm-item" data-act="save"><span>💾 Save Game <span class="ds">write your progress to Slot ${slot}</span></span></button>`;
       for(let n=1;n<=GAME.SLOTS;n++){ const o=GAME.peek(n); h+=`<button class="gm-item ${n===slot?'worn':''}" data-act="slot:${n}"><span>${o?'📜':'🆕'} Slot ${n}${n===slot?' ★':''} — ${o?`${E(o.name)} · Lv ${o.level} · ${o.gold}g`:'Empty'} <span class="ds">${o?(n===slot?'playing':'tap to load'):'begin a brand-new journey'}</span></span></button>`; }
@@ -4440,6 +4444,7 @@ const MENU=(function(){
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }
+    else if(k==='look2'){ try{ localStorage.setItem('klk3d_look2',(typeof LOOK2!=='undefined'&&LOOK2)?'0':'1'); }catch(e){} GAME.save&&GAME.save(); location.reload(); return; }
     else if(k==='journal'){ toggle(false); if(typeof JOURNAL!=='undefined') JOURNAL.open(); return; }
     else if(k==='pad'){ toggle(false); if(typeof PAD!=='undefined') PAD.open(); return; }
     else if(k==='save'){ note=GAME.save()?'Saved to Slot '+GAME.slot+'.':'This browser would not store the save — use Export Save Code.'; }
@@ -5658,6 +5663,23 @@ function buildWorld(WD,opt){
   lv.anim.push(()=>{ if(opt.sky&&opt.sky(lv)!==false) return; if(typeof DAYNIGHT!=='undefined'){ DAYNIGHT.drive(lv,{sun,hemi,ground:ground0}); return; }   // day and night (daynight.js)
     const f=GAME.S.dayFrac, e=Math.sin((f-0.25)*Math.PI*2), d=Math.max(0.12,Math.min(1,e*2.2+0.35)), dusk=Math.max(0,1-Math.abs(e)*5)*(e>-0.2?1:0);
     cS.copy(nightSky).lerp(daySky,d).lerp(duskSky,dusk*0.35); scene.background.copy(cS); scene.fog.color.copy(cS); sun.intensity=(typeof OOT_LOOK!=='undefined'&&OOT_LOOK?0.82:0.95)*d; hemi.intensity=(typeof OOT_LOOK!=='undefined'&&OOT_LOOK?0.72:0.55)*(0.4+0.6*d); });
+  // V100 (LOOK2): a painted sky — a dome graded from a deep zenith down to the haze at the horizon, a warm glow round the sun,
+  //  soft clouds drifting high up; warmer sunlight, a cooler, bounced-green fill, and a longer, hazier view
+  if(typeof LOOK2!=='undefined'&&LOOK2){ scene.fog.near=30; scene.fog.far=78; hemi.groundColor.setHex(0x6a6440); ground0.copy(hemi.groundColor);
+    const U={top:{value:new THREE.Color()},hor:{value:new THREE.Color()},sunC:{value:new THREE.Color()},sunD:{value:new THREE.Vector3(0,1,0)}};
+    const dome=new THREE.Mesh(new THREE.SphereGeometry(300,32,16),new THREE.ShaderMaterial({uniforms:U,side:THREE.BackSide,depthWrite:false,fog:false,
+      vertexShader:'varying vec3 vD; void main(){ vD=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+      fragmentShader:'uniform vec3 top; uniform vec3 hor; uniform vec3 sunC; uniform vec3 sunD; varying vec3 vD; void main(){ float h=clamp(vD.y,0.0,1.0); vec3 c=mix(hor,top,pow(h,0.55)); float s=max(dot(normalize(vD),normalize(sunD)),0.0); c+=sunC*(pow(s,64.0)*0.9+pow(s,6.0)*0.22); if(vD.y<0.0) c=hor; gl_FragColor=vec4(c,1.0); }'}));
+    dome.renderOrder=-10; dome.frustumCulled=false; scene.add(dome);
+    const cv=document.createElement('canvas'); cv.width=cv.height=128; const x=cv.getContext('2d'); for(let i=0;i<14;i++){ const px=24+Math.random()*80, py=50+Math.random()*30, r=14+Math.random()*22, gr=x.createRadialGradient(px,py,0,px,py,r); gr.addColorStop(0,'rgba(255,255,255,.85)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,128,128); }
+    const cm=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false,opacity:0.85}), clouds=[];
+    for(let i=0;i<14;i++){ const sp=new THREE.Sprite(cm); const a=i/14*Math.PI*2+hsh(i,5), r=120+hsh(5,i)*90; sp.userData={a,r,h:55+hsh(i,9)*35}; sp.scale.set(70+hsh(i,2)*50,26+hsh(2,i)*14,1); sp.renderOrder=-9; scene.add(sp); clouds.push(sp); }
+    const deep=new THREE.Color(0x3a6ab8), tmp=new THREE.Vector3();
+    dome.onBeforeRender=(r,sc2,cam)=>{ dome.position.copy(cam.position); const bg=scene.background; U.hor.value.copy(bg).lerp(new THREE.Color(0xfff2dc),0.12); U.top.value.copy(bg).lerp(deep,0.45).multiplyScalar(0.92);
+      U.sunC.value.copy(sun.color).multiplyScalar(Math.min(1,sun.intensity)); U.sunD.value.copy(tmp.copy(sun.position).sub(sun.target.position).normalize());
+      const t=performance.now()/1000; clouds.forEach(c=>{ const u=c.userData, a=u.a+t*0.004; c.position.set(cam.position.x+Math.sin(a)*u.r,u.h,cam.position.z+Math.cos(a)*u.r); c.material.color.copy(bg).lerp(new THREE.Color(0xffffff),0.75); }); };
+    lv.anim.push(()=>{ sun.intensity*=1.12; sun.color.lerp(new THREE.Color(0xffe0b0),0.15); });
+  }
   const sea=new THREE.Mesh(new THREE.PlaneGeometry(W+300,H+300),detailify(new THREE.MeshPhongMaterial({color:0x2f6f9c,shininess:50,specular:0x2a4a66}))); sea.rotation.x=-Math.PI/2; sea.position.set(W/2,-0.3,H/2); sea.receiveShadow=true; scene.add(sea); lv.sea=sea; lv.hemi=hemi; lv.sunLight=sun;
 
   // ── the far ranges ── a ring of blue mountains on the horizon beyond the sea, past the fog, always the same distance off
@@ -5702,13 +5724,32 @@ function buildWorld(WD,opt){
   const rings={}; Object.entries(WD.barrierSets||{}).forEach(([i,arr])=>{ const s=new Set(); for(let k=0;k<arr.length;k+=2) s.add(arr[k+1]*W+arr[k]); rings[i]=s; });
   lv.barrierAt=(x,y)=>{ for(const i in rings) if(opt.sealed(+i)&&rings[i].has(y*W+x)) return +i; return -1; };
 
+  // V100 (LOOK2): ROLLING MEADOWS — the open country rises and falls in soft swells instead of lying dead flat. Only meadow,
+  //  path and woodland roll; the swell fades to nothing within a few tiles of anything built or set down — buildings, decor,
+  //  fences, walls, water and every change of level — so doors, steps, quays and streets sit exactly where they did. Everything
+  //  that stands in a meadow (trees, grass, flowers, the knight's own feet) rides the same surface: lv.roll(x,z).
+  const ROLL=(()=>{ const N=(W+1)*(H+1), U=new Float32Array(N); if(typeof LOOK2==='undefined'||!LOOK2||opt.land) return null;
+    const OPEN=new Set([0,1,2,4,7]), D=new Float32Array(W*H);
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const k=y*W+x, t=T(x,y), e=E(x,y); let ok=OPEN.has(t)&&!bAt.has(k)&&!dAt.has(k);
+      if(ok) for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]) if(inB(x+a,y+b)&&E(x+a,y+b)!==e){ ok=false; break; }
+      D[k]=ok?1e9:0; }
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const k=y*W+x; if(x) D[k]=Math.min(D[k],D[k-1]+1); if(y) D[k]=Math.min(D[k],D[k-W]+1); if(x&&y) D[k]=Math.min(D[k],D[k-W-1]+1.4); if(y&&x<W-1) D[k]=Math.min(D[k],D[k-W+1]+1.4); }
+    for(let y=H-1;y>=0;y--) for(let x=W-1;x>=0;x--){ const k=y*W+x; if(x<W-1) D[k]=Math.min(D[k],D[k+1]+1); if(y<H-1) D[k]=Math.min(D[k],D[k+W]+1); if(x<W-1&&y<H-1) D[k]=Math.min(D[k],D[k+W+1]+1.4); if(y<H-1&&x) D[k]=Math.min(D[k],D[k+W-1]+1.4); }
+    const sm=u=>{ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
+    for(let y=0;y<=H;y++) for(let x=0;x<=W;x++){ let d=1e9; for(const [a,b] of [[0,0],[-1,0],[0,-1],[-1,-1]]){ const X=x+a, Y=y+b; d=Math.min(d,inB(X,Y)?D[Y*W+X]:0); }
+      const env=sm((d-1.0)/6), n=0.6*Math.sin(x*0.14+Math.sin(y*0.09)*1.6)*Math.cos(y*0.12+0.7)+0.28*Math.sin((x-y)*0.23+1.1)+0.12*Math.sin(x*0.41+y*0.37);
+      U[y*(W+1)+x]=env*1.6*(0.5+0.5*n); }
+    return U; })();
+  const roll=(fx,fz)=>{ if(!ROLL) return 0; const x=Math.floor(fx), y=Math.floor(fz); if(x<0||y<0||x>=W||y>=H) return 0; const u=fx-x, v=fz-y, r=W+1;
+    return (ROLL[y*r+x]*(1-u)+ROLL[y*r+x+1]*u)*(1-v)+(ROLL[(y+1)*r+x]*(1-u)+ROLL[(y+1)*r+x+1]*u)*v; };
+  lv.roll=roll;
   // stairs ramp across each pair so the knight walks up rather than popping
   const SD=stairMap(W,H,T,E,(x,y)=>WK(x,y)&&T(x,y)!==5);
   function ground(fx,fz){ const x=Math.floor(fx), y=Math.floor(fz); if(!inB(x,y)) return -0.35; const t=T(x,y), e=E(x,y);
     if(t===3) return -0.35; if(t===20||t===21) return -0.05; if(t===24&&!opt.land) return e*TIER*LIFT(x,y)-0.4;   // waist-deep in the hot spring
     const d=SD.get(y*W+x), TL=TIER*LIFT(x,y); if(!d) return e*TL+0.02;
     const u=fx-x, v=fz-y, s=d.dx>0?u:d.dx<0?1-u:d.dy>0?v:1-v; return e*TL+0.02+TL*(d.lo+(d.hi-d.lo)*s); }
-  lv.ground=ground;
+  lv.ground=ROLL?(fx,fz)=>ground(fx,fz)+roll(fx,fz):ground;
   lv.canMove=(fx,fz,tx,tz)=>{ const ax=Math.floor(fx),ay=Math.floor(fz),bx=Math.floor(tx),by=Math.floor(tz);
     if(!WK(bx,by)) return false; if(ax===bx&&ay===by) return true;
     if(lv.barrierAt(bx,by)>=0){ if(opt.onBarrier) opt.onBarrier(lv.barrierAt(bx,by)); return false; }
@@ -5825,9 +5866,16 @@ function buildWorld(WD,opt){
             const sea=(a,b)=>!at(a,b)&&T(a,b)===3; if(onC?[[0,0],[-1,0],[0,-1],[-1,-1]].some(([a,b])=>sea(x+u+a,y+v+b)):sea(x+dx,y+dy)){ py=-0.295; cc=mixc(c,SEA,0.55); return true; } return false; })()){}
         else if(W0&&(u!==m||v!==m)){ const nb=[[u===0?-1:u===1?1:0,0],[0,v===0?-1:v===1?1:0],[u===0?-1:u===1?1:0,v===0?-1:v===1?1:0]].filter(([a,b])=>a||b);
           if(nb.some(([a,b])=>{ const n=at(x+a,y+b); return n&&!wet(n)&&n.top<0.3; })) cc=mixc(c,SHALLOW,0.35); }
+        if(ROLL&&!W0){ const r=roll(px,pz); if(r>0.001){ py+=r; }
+          const sat=(Math.max(...cc)-Math.min(...cc))/Math.max(0.001,Math.max(...cc));
+          if(sat>0.25&&cc[1]>cc[0]&&cc[1]>cc[2]){ const n=0.5+0.35*Math.sin(px*0.37+Math.sin(pz*0.21)*2)*Math.cos(pz*0.29)+0.15*Math.sin((px+pz)*1.1), h=Math.min(1,r/1.6);   // painted meadow: broad patches of lighter and deeper green, sunlit swell-tops warmer
+            cc=[cc[0]*(0.9+0.2*n)+0.05*h,cc[1]*(0.92+0.16*n)+0.03*h,cc[2]*(0.85+0.15*n)-0.03*h]; } }
         return {p:[px,py,pz],c:cc}; };
       const V=[[pt(0,0,cNW),pt(m,0,cN),pt(1,0,cNE)],[pt(0,m,cW),pt(m,m,C),pt(1,m,cE)],[pt(0,1,cSW),pt(m,1,cS),pt(1,1,cSE)]];
-      for(let j=0;j<2;j++) for(let i=0;i<2;i++){ const A=V[j][i], B=V[j+1][i], Cq=V[j+1][i+1], D=V[j][i+1]; tri(A.p,B.p,Cq.p,A.c,B.c,Cq.c); tri(A.p,Cq.p,D.p,A.c,Cq.c,D.c); }
+      const rolled=ROLL&&!W0&&[0,0.5,1].some(u=>[0,0.5,1].some(v=>roll(x+u,y+v)>0.001));
+      for(let j=0;j<2;j++) for(let i=0;i<2;i++){ const A=V[j][i], B=V[j+1][i], Cq=V[j+1][i+1], D=V[j][i+1]; tri(A.p,B.p,Cq.p,A.c,B.c,Cq.c); tri(A.p,Cq.p,D.p,A.c,Cq.c,D.c);
+        if(rolled){ const L=nrm.length; [A,B,Cq,A,Cq,D].forEach((P0,k)=>{ const ex=0.25, gx=(roll(P0.p[0]+ex,P0.p[2])-roll(P0.p[0]-ex,P0.p[2]))/(2*ex), gz=(roll(P0.p[0],P0.p[2]+ex)-roll(P0.p[0],P0.p[2]-ex))/(2*ex), l=Math.hypot(gx,1,gz);
+          nrm[L-18+k*3]=-gx/l; nrm[L-18+k*3+1]=1/l; nrm[L-18+k*3+2]=-gz/l; }); } }   // soft normals: the swells shade smoothly, not in facets
       const banked=(dx,dy)=>(bankOK&&wl(x+dx,y+dy)!==null&&h-wl(x+dx,y+dy)<0.45)||(W0&&!at(x+dx,y+dy)&&T(x+dx,y+dy)===3);
       for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){ if(banked(dx,dy)) continue; const n=at(x+dx,y+dy), from=Math.max(n?n.top:q.bot,q.bot); if(from>=h-0.001) continue;
         const N=[dx,0,dy], a=dx?(dx>0?[x+1,y+1]:[x,y]):(dy>0?[x,y+1]:[x+1,y]), b=dx?(dx>0?[x+1,y]:[x,y+1]):(dy>0?[x+1,y+1]:[x,y]);
@@ -5971,7 +6019,7 @@ function buildWorld(WD,opt){
       else if(t===29){ c=0x1e2a2a; y1=-0.08; }
       else c=TILE_COL[t]||0x9a9a9a;
       if(t===26){ lava.push({x:cx,z:cz,y:y1-0.1,h:0.1,sx:1,sz:1}); continue; }
-      box(cx,cz,y1-0.4,0.4,c,1,1,0,(t===0||t===4||t===16)?jit*0.25:jit);   // the sward barely varies tile to tile, so no checkerboard
+      box(cx,cz,y1-0.4,0.4,c,1,1,0,(t===0||t===4||t===16)?(ROLL?0:jit*0.25):jit);   // the sward barely varies tile to tile, so no checkerboard
       if((t===0||t===4||t===16)&&!desert(x,y)&&!ashland(x,y)&&!tilesOnly){ const n=Math.floor(hsh(x*3,y*5)*3.4); const gc=new THREE.Color(c).offsetHSL(0.0,0.12,-0.06).getHex();
         for(let i=0;i<n;i++){ const hx=hsh(x*11+i,y*7), hz=hsh(y*13+i,x*5); tufts.push({x:x+0.12+hx*0.76,z:y+0.12+hz*0.76,y:y1,h:0.45+hx*0.4,sx:0.7+hz*0.4,sz:0.7+hz*0.4,ry:hx*6.28,c:gc,l:(hz-0.5)*0.06}); } }
       if((t===0||t===4||t===2)&&!tilesOnly&&!opt.land||(opt.land==='mistral'&&t===0&&!tilesOnly)){ const wd=[[1,0],[-1,0],[0,1],[0,-1]].filter(([a,b])=>[3,20,21,29].includes(T(x+a,y+b)));   // rushes and stones along the water's edge
@@ -5995,6 +6043,7 @@ function buildWorld(WD,opt){
       if(t===14||t===39) fence.push({x:cx,z:cz,y:y1,h:1,sx:1,sz:1,ry:(T(x,y-1)===t||T(x,y+1)===t)&&!(T(x-1,y)===t||T(x+1,y)===t)?Math.PI/2:0});
       if(t===40){ box(cx-0.45,cz,y1,1.1,0x6f5128,0.14,0.14); box(cx+0.45,cz,y1,1.1,0x6f5128,0.14,0.14); }
      } finally { if(MG) unsnap(S0); } }
+    if(ROLL){ const lift=o=>{ const r=roll(o.x,o.z); if(r) o.y+=r; }; boxes.forEach(lift); bush.forEach(lift); fence.forEach(lift); tufts.forEach(lift); cones.forEach(lift); rocks.forEach(lift); crystals.forEach(lift); lamps.forEach(o=>{ if(o.x!==undefined&&o.y!==undefined) lift(o); }); Object.values(trees).forEach(l=>l.forEach(lift)); }
     groundMesh(ch,cells,mcells); reliefMesh(ch,relief); instList(ch,boxes,UNIT,boxMat,true); if(cones.length) instList(ch,cones,CONE_U,bmat(0xffffff,'roof'),true); if(rocks.length) instList(ch,rocks,ROCK_U,rockMat,true); if(crystals.length) instList(ch,crystals,CRYSTAL_U,crystalMat,false); if(lamps.length){ instList(ch,lamps,UNIT,lampMat,false); if(typeof DAYNIGHT!=='undefined') lamps.forEach(l=>{ const o=new THREE.Object3D(); o.position.set(l.x,l.y+l.h*0.5,l.z); ch.g.add(o); DAYNIGHT.lamp(o,1.2+l.h*1.5); }); };
     Object.entries(trees).forEach(([k,l])=>instList(ch,l,geo(k),vcMat,true));
     instList(ch,bush,geo('bush'),vcMat,true); if(tufts.length) instList(ch,tufts,geo('tuft'),tuftMat,false); instList(ch,fence,geo('fence'),vcMat,true);
