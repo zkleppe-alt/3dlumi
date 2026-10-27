@@ -4881,6 +4881,47 @@ Object.assign(DECOR_KINDS,{
   mt_windmill(d,g,an){ g.position.x+=0.5; g.position.z+=0.5; Cy(0.5,0.8,2.6,8,0xe8e0d0,0,0,0,g); Co(0.6,0.8,8,0x8e4a36,0,2.6,0,g); const hub=group(0,2.3,0.75,g);
     for(let i=0;i<4;i++){ const s=B(0.25,1.6,0.04,0xf4eedc,0,0.8,0,group(0,0,0,hub)); s.parent.rotation.z=i*Math.PI/2; } an.push((t)=>{ hub.rotation.z=t*0.8; }); }
 });
+// ════════════════════════════════════════════════════════════════
+//  V112 (LOOK2): the village props re-sculpted in the characters' manner — barrels of bent staves with iron hoops and a lid,
+//  crates of boards with corner posts and a cross-brace, a lamp-post with a glazed iron lantern and a little roof, a hay cart
+//  with spoked wheels, a sprung bed and shafts, a market stall on turned posts under a scalloped striped canopy heaped with
+//  produce, a planter of boards spilling flowers, a log pile with cut ends. The classic look keeps the old ones.
+// ════════════════════════════════════════════════════════════════
+(function(){ if(typeof LOOK2==='undefined'||!LOOK2) return; const O=Object.assign({},DECOR_KINDS), PM=c=>new THREE.MeshPhongMaterial({color:c,shininess:4});
+  const OAK=[0x8a6440,0x7e5a38,0x946c46,0x84603c], IRON=0x34343a;
+  const wheel=(g,x,y,z,r)=>{ const w=group(x,y,z,g); const rim=new THREE.Mesh(new THREE.TorusGeometry(r,0.045,6,16),PM(0x5a3c22)); w.add(rim); const tyre=new THREE.Mesh(new THREE.TorusGeometry(r+0.03,0.02,4,16),PM(IRON)); w.add(tyre);
+    for(let i=0;i<8;i++){ const s=B(0.035,r*2-0.06,0.035,0x6a4a2a,0,-r+0.03,0,w); s.rotation.z=i*Math.PI/8; s.position.set(0,0,0); s.geometry.translate(0,0,0); } Cy(0.07,0.07,0.12,8,0x4a3020,0,-0.06,0,w).rotation.x=Math.PI/2; return w; };
+  function barrel(d,g,top){ const n=14; for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, s=B(0.13,0.8,0.05,OAK[i%4],0,0,0,g); s.position.set(Math.cos(a)*0.27,0,Math.sin(a)*0.27); s.rotation.y=-a+Math.PI/2; s.scale.set(1,1,1); }
+    Cy(0.25,0.25,0.78,12,PM(0x6a4a2a),0,0.01,0,g); [0.1,0.4,0.68].forEach(y=>Cy(0.305,0.305,0.05,14,PM(IRON),0,y,0,g)); if(top!==false){ Cy(0.26,0.26,0.03,12,PM(0x9a7448),0,0.78,0,g); B(0.42,0.02,0.05,0x7a5432,0,0.81,0,g); } }
+  Object.assign(DECOR_KINDS,{
+    barrel(d,g){ barrel(d,g); },
+    fishBarrel(d,g){ barrel(d,g,false); Cy(0.26,0.26,0.02,12,PM(0xdde4e8),0,0.74,0,g); for(let i=0;i<4;i++){ const f=Sp(0.06,[0x9ab0c0,0xb8c4cc,0xe8a090][i%3],-0.12+i*0.08,0.82,(i%2?0.05:-0.05),g,6,4); f.scale.set(2.2,0.8,0.7); f.rotation.y=i*0.8; } },
+    crate(d,g){ const s=0.68; for(let i=0;i<4;i++){ [-1,1].forEach(sz=>B(s,0.15,0.04,OAK[(i+(sz>0?1:0))%4],0,0.02+i*0.165,sz*(s/2-0.02),g)); [-1,1].forEach(sx=>B(0.04,0.15,s,OAK[(i+2)%4],sx*(s/2-0.02),0.02+i*0.165,0,g)); }
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>B(0.07,0.7,0.07,0x5a3c22,a*(s/2-0.02),0,b*(s/2-0.02),g)); B(s,0.04,s,OAK[1],0,0.68,0,g);
+      [-1,1].forEach(sz=>{ const x=B(0.05,0.84,0.03,0x6a4a2a,0,0.0,sz*(s/2+0.01),g); x.position.y=0.35; x.rotation.z=0.82; }); },
+    lantern(d,g){ Cy(0.05,0.08,1.6,8,PM(0x2e2a26),0,0,0,g); Cy(0.14,0.18,0.14,8,PM(0x2e2a26),0,0,0,g); B(0.04,0.04,0.3,0x2e2a26,0,1.55,0.1,g);
+      const lg=group(0,1.62,0,g); [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>B(0.025,0.32,0.025,0x2e2a26,a*0.12,0,b*0.12,lg)); const L=B(0.2,0.28,0.2,glow(0xffd27a),0,0.02,0,lg);
+      B(0.3,0.04,0.3,0x2e2a26,0,0,0,lg); Co(0.24,0.18,4,PM(0x2e2a26),0,0.32,0,lg).rotation.y=Math.PI/4; Sp(0.04,0xe8c050,0,0.52,0,lg,6,4); if(typeof DAYNIGHT!=='undefined') DAYNIGHT.lamp(L,1.7); },
+    planter(d,g){ for(let i=0;i<3;i++) [[0.8,0,0.38,0],[0.8,0,-0.38,0],[0.8,0.38,0,1],[0.8,-0.38,0,1]].forEach(([L,x,z,r],k)=>B(r?0.05:L,0.13,r?L:0.05,OAK[(i+k)%4],x,i*0.13,z,g));
+      [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>B(0.08,0.44,0.08,0x5a3c22,a*0.38,0,b*0.38,g)); B(0.72,0.3,0.72,0x5a4030,0,0.05,0,g);
+      const C=[0xe85a6a,0xffe060,0xf4f0ea,0xb08ae8,0xf08a3a]; for(let i=0;i<9;i++){ const x=(i%3-1)*0.22, z=(Math.floor(i/3)-1)*0.22; const l=Sp(0.13,0x4f8a44,x,0.42,z,g,7,5); l.scale.y=0.7; Sp(0.065,C[i%5],x+0.04,0.55,z+0.03,g,6,4); }
+      [[-0.4,0.1],[0.4,-0.1]].forEach(([x,z])=>{ const t=Sp(0.08,0x5a9a48,x,0.3,z,g,6,4); t.scale.set(0.6,1.6,0.6); }); },
+    haycart(d,g){ g.position.x+=0.5; const bed=group(0,0.5,0,g); B(1.6,0.08,0.95,0x8a6440,0,0,0,bed); [-1,1].forEach(sz=>{ for(let i=0;i<3;i++) B(1.6,0.08,0.04,OAK[i],0,0.1+i*0.12,sz*0.46,bed); for(let x=-0.75;x<=0.76;x+=0.375) B(0.05,0.42,0.05,0x5a3c22,x,0.06,sz*0.47,bed); });
+      [-1,1].forEach(sx=>{ for(let i=0;i<3;i++) B(0.04,0.08,0.95,OAK[i+1],sx*0.78,0.1+i*0.12,0,bed); });
+      for(let i=0;i<14;i++){ const h=Sp(0.26,i%3?0xe0c060:0xd0b050,-0.6+(i%5)*0.3,0.4+Math.floor(i/5)*0.16,(i%2?0.18:-0.18)+(i%3-1)*0.08,bed,8,6); h.scale.set(1.2,0.75,1); }
+      for(let i=0;i<10;i++){ const s=B(0.012,0.22,0.012,0xe8d070,-0.6+i*0.13,0.75,(i%2?0.2:-0.15),bed); s.rotation.z=(i%3-1)*0.5; }
+      [[-0.55,0.55],[0.55,0.55],[-0.55,-0.55],[0.55,-0.55]].forEach(([x,z])=>wheel(g,x,0.34,z,0.32)); const ax=Cy(0.04,0.04,1.2,6,PM(0x4a3020),0,0.34,0,g); ax.rotation.x=Math.PI/2; ax.position.y=0.34;
+      [-0.25,0.25].forEach(z=>{ const s=B(1.3,0.05,0.05,0x6a4a2a,1.35,0.42,z,g); s.rotation.z=-0.18; }); B(0.05,0.05,0.56,0x6a4a2a,1.95,0.3,0,g); },
+    marketStall(d,g){ g.position.x+=0.5; const C=[0xb8402e,0xf3ead6]; B(1.5,0.08,0.7,0x9a7448,0,0.78,0,g); B(1.46,0.7,0.04,0x7a5432,0,0.08,0.33,g); for(let x=-0.66;x<0.7;x+=0.22) B(0.03,0.7,0.02,0x5a3c22,x,0.08,0.355,g);
+      [[-0.78,0.4],[0.78,0.4],[-0.78,-0.4],[0.78,-0.4]].forEach(([x,z])=>{ Cy(0.04,0.045,1.85,8,PM(0x6a4a2a),x,0,z,g); Sp(0.05,0x6a4a2a,x,1.86,z,g,6,4); });
+      for(let i=0;i<7;i++){ const s=B(1.76/7+0.005,0.04,1.1,C[i%2],-0.88+1.76/7*(i+0.5),0,0,g); s.position.y=1.8; s.rotation.x=0.22; Co(1.76/14,0.13,4,C[i%2],-0.88+1.76/7*(i+0.5),1.6,0.58,g).rotation.set(Math.PI,Math.PI/4,0); }
+      const crate=(x,col,n)=>{ B(0.36,0.12,0.3,0x8a6440,x,0.86,0,g); for(let i=0;i<n;i++) Sp(0.065,col,x-0.11+(i%4)*0.075,0.99+Math.floor(i/4)*0.06,(i%2?0.06:-0.06),g,6,4); };
+      crate(-0.5,0xd84a3a,8); crate(-0.1,0xf2c14e,8); crate(0.3,0x6cb065,7); Cy(0.1,0.08,0.12,8,0xb8643a,0.6,0.86,0.05,g); B(0.24,0.06,0.18,0xc8a060,0.6,0.86,-0.18,g);
+      for(let i=0;i<3;i++) Sp(0.12,[0x7ab04a,0xe0c060,0xd88a3a][i],-0.6+i*0.5,0.18,-0.5,g,7,5); },
+    logpile(d,g){ for(let i=0;i<3;i++) for(let j=0;j<3-i;j++){ const x=-0.26+j*0.26+i*0.13, y=0.13+i*0.23, l=Cy(0.13,0.13,0.85,9,PM(OAK[(i+j)%4]),x,0,0,g); l.rotation.x=Math.PI/2; l.position.y=y;
+      [-1,1].forEach(sz=>{ const e=Cy(0.115,0.115,0.02,9,PM(0xc8a272),x,0,sz*0.43,g); e.rotation.x=Math.PI/2; e.position.y=y; }); } const ax=B(0.04,0.4,0.04,0x6a4a2a,0.5,0.0,0.2,g); ax.rotation.z=0.4; B(0.14,0.08,0.03,0x8a8a92,0.62,0.32,0.2,g); }
+  });
+})();
 
 // ── engine/props3d.js ──
 // ════════════════════════════════════════════════════════════════
@@ -4945,8 +4986,8 @@ const ROOM_DAY=(()=>{ let last=-1; const dayC=new THREE.Color(0xdff0ff), duskC=n
   return ()=>{ const st=typeof DAYNIGHT!=='undefined'?DAYNIGHT.state():{night:0,dusk:0,dawn:0}; const k=Math.round((st.night*100+st.dusk*7+st.dawn*3)); if(k===last) return st; last=k;
     ROOM_GLASS.color.copy(dayC).lerp(duskC,Math.max(st.dusk,st.dawn)*0.7).lerp(nightC,st.night); ROOM_SHAFT.opacity=0.075*(1-st.night)*(1-0.4*Math.max(st.dusk,st.dawn)); return st; }; })();
 function roomWindow(par,x,z,pal,lv,wide){ const g=group(x,0,z,par), w=wide||0.7;
-  B(w,0.9,0.03,ROOM_GLASS,0,1.15,0.01,g); B(w+0.1,0.07,0.08,pal.wallD,0,1.1,0.04,g); B(w+0.1,0.07,0.08,pal.wallD,0,2.05,0.04,g); B(0.05,0.9,0.06,pal.wallD,0,1.15,0.04,g); B(w,0.05,0.05,pal.wallD,0,1.58,0.04,g);
-  B(w+0.24,0.06,0.18,pal.wallD,0,1.08,0.09,g);   // its sill
+  B(w,0.9,0.03,ROOM_GLASS,0,1.15,0.01,g); B(w+0.1,0.07,0.08,(pal.frame||pal.wallD),0,1.1,0.04,g); B(w+0.1,0.07,0.08,(pal.frame||pal.wallD),0,2.05,0.04,g); B(0.05,0.9,0.06,(pal.frame||pal.wallD),0,1.15,0.04,g); B(w,0.05,0.05,(pal.frame||pal.wallD),0,1.58,0.04,g);
+  B(w+0.24,0.06,0.18,(pal.frame||pal.wallD),0,1.08,0.09,g);   // its sill
   const sh=new THREE.Mesh(new THREE.BoxGeometry(w*0.9,0.85,3.2),ROOM_SHAFT); sh.position.set(0,1.0,1.45); sh.rotation.x=0.42; sh.renderOrder=3; g.add(sh);   // the light falling in
   return g; }
 // a lantern on a chain from a beam, its light real
@@ -4957,8 +4998,34 @@ function roomLantern(par,x,z,lv,pal,col){ const g=group(x,0,z,par); Cy(0.008,0.0
   lv.anim.push(t=>{ L.intensity=(0.8+Math.sin(t*7.3+ph)*0.04+Math.sin(t*13.1+ph)*0.03)*(lv.lampK||1); g.rotation.z=Math.sin(t*0.9+ph)*0.015; });
   if(typeof DAYNIGHT!=='undefined'){ const h=new THREE.Sprite(DAYNIGHT.haloMaterial.clone()); h.material.opacity=0.55; h.scale.setScalar(1.3); h.position.y=WALL_H-0.72; g.add(h); }
   return g; }
+// V112 (LOOK2): the rooms inside match the towns outside — each town's walls, floors and timber: Ironhold's dark coursed stone and
+//  iron-black beams on flags, Saltmere's whitewash and sea-blue timbers, Thornwood's log walls, Dusthaven's adobe over terracotta
+//  tiles, Crystalpeak's lavender stone with crystals glowing in the corners, Stormgate's pale ashlar over a marble chequer,
+//  Ashfield's sooty stone with fresh honey timber above, Shadowmere's violet boards with white lamps. Hearthvale and the Homestead
+//  keep their timber and plaster. (pal.frame is the beams and trim; pal.wallD stays the furniture's wood.)
+const TOWN_ROOM={
+  ironhold:{wall:0x6e7078,frame:0x2e2e34,floorA:0x80808a,floorB:0x74747e,floor:'keep',fin:'stone',st:[0x6e7078,0x62646c,0x7a7c84,0x5a5c64,0x686a72],light:0xffc890},
+  saltmere:{wall:0xf4f0e6,frame:0x2f6aa8,floorA:0xc8b494,floorB:0xbca888,fin:'plaster'},
+  thornwood:{wall:0x6a5040,frame:0x3e2c1a,floorA:0x7a5a3a,floorB:0x6e5034,fin:'log'},
+  dusthaven:{wall:0xdcbc8c,frame:0x6a4a2a,floorA:0xa8724e,floorB:0x9c6a48,floor:"keep",fin:"adobe",light:0xffd4a0},
+  crystalpeak:{wall:0xa8a4b8,frame:0x3a3448,floorA:0x9a96aa,floorB:0x8e8a9e,floor:'keep',fin:'stone',st:[0xa8a4b8,0x9a96aa,0xb4b0c4,0x8e8a9e,0xa09cb0],crystal:true,light:0xe8f0ff},
+  stormgate:{wall:0xe4dfd2,frame:0x4a3a2a,floorA:0xe2dccf,floorB:0xb4ac9e,floor:"keep",fin:"plaster"},
+  ashfield:{wall:0xf2e8d2,frame:0xa8845a,floorA:0x9a7a58,floorB:0x8e7050,fin:'half',st:[0x5e5854,0x524c48,0x6a6460,0x48423e,0x605a56]},
+  shadowmere:{wall:0x585470,frame:0x2e2a3a,floorA:0x5a5048,floorB:0x504840,fin:'board',light:0xf0f0ff}
+};
+const _RTP=[['ih_','ironhold'],['sm_','saltmere'],['tw_','thornwood'],['dh_','dusthaven'],['cp_','crystalpeak'],['sg_','stormgate'],['af_','ashfield'],['sh_','shadowmere']];
+function roomTown(spec){ const m=/^in:([a-z0-9_]+?):\d+$/.exec(spec.id||''); const b=m?m[1]:''; const hit=_RTP.find(([p])=>b.startsWith(p)); return hit?hit[1]:null; }
+function roomFinish(room,inner,T,W,H){ const fin=new THREE.Group(); room.add(fin); let k=0;
+  inner.forEach(([x,z,ry])=>{ const g=group(x,0,z,fin); g.rotation.y=ry;
+    if(T.fin==='stone'||T.fin==='half'){ const top=T.fin==='half'?1.05:WALL_H-0.16; for(let y=0,r=0;y<top-0.04;r++){ const rh=Math.min(0.24+hsh(r,k)*0.07,top-y); let p=-0.5+(r%2?0.18:0);
+        while(p<0.5-0.04){ const sw=Math.min(0.5-p,0.26+hsh(k,r*3)*0.22); k++; if(sw>0.06) B(sw-0.035,rh-0.035,0.05,T.st[(k+r)%T.st.length],p+sw/2,y,0.03,g); p+=sw; } y+=rh; }
+      if(T.fin==='half') B(1.0,0.1,0.08,T.frame,0,1.05,0.05,g); }
+    else if(T.fin==='log'){ for(let y=0.11;y<WALL_H-0.1;y+=0.21){ const c=Cy(0.105,0.105,1.0,7,[0x6a5040,0x5e4a38,0x725640,0x66503c][(Math.round(y*10)+k++)%4],0,0,0,g); c.rotation.z=Math.PI/2; c.position.set(0,y,0.06); } }
+    else if(T.fin==='board'){ for(let y=0;y<WALL_H-0.1;y+=0.17){ const b=B(1.0,0.16,0.04,(Math.round(y*10)+k++)%3?0x585470:0x4c4864,0,y,0.03,g); b.rotation.x=-0.05; } }
+    else if(T.fin==='adobe'){ if(hsh(Math.round(x*7),Math.round(z*5))<0.18){ B(0.42,0.5,0.04,0xc4a272,0,1.0,0.02,g); const ar=new THREE.Mesh(new THREE.CircleGeometry(0.21,10,0,Math.PI),new THREE.MeshLambertMaterial({color:0xc4a272})); ar.position.set(0,1.5,0.045); g.add(ar); B(0.5,0.05,0.1,0x2a9a9a,0,0.96,0.06,g); } } });
+  fin.traverse(m=>{ if(m.isMesh) m.castShadow=false; }); mergeStatic(fin); }
 function roomShell(spec,G){
-  const W=G[0].length, H=G.length, theme=spec.theme||'home', pal=Object.assign({},ROOM_PALS[theme]||ROOM_PALS.home,spec.pal||{});
+  const W=G[0].length, H=G.length, theme=spec.theme||'home', TT=typeof LOOK2!=='undefined'&&LOOK2?TOWN_ROOM[roomTown(spec)]:null, pal=Object.assign({},ROOM_PALS[theme]||ROOM_PALS.home,TT?{wall:TT.wall,floorA:TT.floorA,floorB:TT.floorB}:{},TT&&TT.light?{light:TT.light}:{},spec.pal||{}); pal.frame=TT?TT.frame:pal.wallD;
   const haze=new THREE.Color(ROOM_HAZE[theme]||0x3a2a1c);
   const scene=new THREE.Scene(); scene.background=haze.clone().multiplyScalar(0.45); scene.fog=new THREE.Fog(haze.clone().lerp(new THREE.Color(pal.light),0.25),6,Math.max(W,H)*2.2);   // a warm haze in the air
   const lv={id:spec.id,name:spec.name,scene,folk:[],spots:[],anim:[],pal,W,H,G,interior:true,actorS:ACTOR_IN,cam:{pitch:0.24,dist:2.2,min:1.1,max:3.4,lookH:0.07}};
@@ -4970,21 +5037,26 @@ function roomShell(spec,G){
   const perim=(x,y)=>x===0||y===0||x===W-1||y===H-1, isWall=(x,y)=>{ const t=G[y]&&G[y][x]; return t===5||(perim(x,y)&&(t===45||t===51||t===54)); };
   // floor: planks (flags in the keep), each board its own shade
   const fl=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=G[y][x]; if(isWall(x,y)&&perim(x,y)) continue; fl.push([x,y,t]); }
-  inst(fl,UNIT,floorMat(theme),([x,y,t],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5);
+  inst(fl,UNIT,floorMat(TT&&TT.floor||theme),([x,y,t],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5);
     cc.setHex(t===53?((x+y)%2?0x8c8c94:0x80808a):((x+y)%2?pal.floorA:pal.floorB)).offsetHSL(0,0,(hsh(x,y)-0.5)*0.05); },room);
   // walls: full height all round (the partitions too), plaster over a timber frame
   const wl=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(isWall(x,y)) wl.push([x,y]);
-  inst(wl,UNIT,wallMat(theme),([x,y],m,cc)=>{ m.makeScale(1,WALL_H,1); m.setPosition(x+0.5,0,y+0.5); cc.setHex(pal.wall).offsetHSL(0,0,(hsh(x,y)-0.5)*0.03); },room).castShadow=false;   // (the day comes in through the windows: the walls themselves throw no shade across the floor)
+  inst(wl,UNIT,wallMat(TT&&TT.fin==='stone'?'keep':theme),([x,y],m,cc)=>{ m.makeScale(1,WALL_H,1); m.setPosition(x+0.5,0,y+0.5); cc.setHex(pal.wall).offsetHSL(0,0,(hsh(x,y)-0.5)*0.03); },room).castShadow=false;   // (the day comes in through the windows: the walls themselves throw no shade across the floor)
   // the frame and the trim on the inside faces: a wainscot of boards low down, posts, a beam along the top; the ceiling of
   //  planks on beams across the room
   const frame0=room.children.length;
   const inner=[]; for(let x=1;x<W-1;x++){ if(isWall(x,0)) inner.push([x+0.5,1.0,0]); if(isWall(x,H-1)) inner.push([x+0.5,H-1,Math.PI]); }
   for(let y=1;y<H-1;y++){ if(isWall(0,y)) inner.push([1.0,y+0.5,Math.PI/2]); if(isWall(W-1,y)) inner.push([W-1,y+0.5,-Math.PI/2]); }
-  inner.forEach(([x,z,ry],i)=>{ const g=group(x,0,z,room); g.rotation.y=ry; B(1.0,0.6,0.04,pal.wallD,0,0,0.02,g); B(1.0,0.06,0.07,pal.wallD,0,0.6,0.03,g);
-    if(i%3===0){ B(0.14,WALL_H,0.1,pal.wallD,0.5,0,0.05,g); } B(1.0,0.16,0.12,pal.wallD,0,WALL_H-0.16,0.06,g); });
-  B(W,0.05,H,new THREE.MeshLambertMaterial({color:new THREE.Color(pal.wallD).lerp(new THREE.Color(pal.floorB),0.4).getHex()}),W/2,WALL_H,H/2,room);   // the ceiling boards
-  for(let x=2;x<W-1;x+=2) B(0.16,0.2,H-2,pal.wallD,x,WALL_H-0.2,H/2,room);                                                                    // its beams
-  B(W-2,0.22,0.24,pal.wallD,W/2,WALL_H-0.42,H/2,room);                                                                                       // the ridge beam
+  const FR=pal.frame, wains=!TT||TT.fin==='plaster'||TT.fin==='adobe';
+  inner.forEach(([x,z,ry],i)=>{ const g=group(x,0,z,room); g.rotation.y=ry; if(wains){ B(1.0,0.6,0.04,TT&&TT.fin==='adobe'?0xc4a272:FR,0,0,0.02,g); B(1.0,0.06,0.07,FR,0,0.6,0.03,g); }
+    if(i%3===0&&(!TT||TT.fin!=='log')){ B(0.14,WALL_H,0.1,FR,0.5,0,0.05,g); } B(1.0,0.16,0.12,FR,0,WALL_H-0.16,0.06,g); });
+  if(TT) roomFinish(room,inner,TT,W,H);
+  B(W,0.05,H,new THREE.MeshLambertMaterial({color:new THREE.Color(FR).lerp(new THREE.Color(pal.floorB),0.4).getHex()}),W/2,WALL_H,H/2,room);   // the ceiling boards
+  for(let x=2;x<W-1;x+=2) B(0.16,0.2,H-2,FR,x,WALL_H-0.2,H/2,room);                                                                    // its beams
+  B(W-2,0.22,0.24,FR,W/2,WALL_H-0.42,H/2,room);
+  if(TT&&TT.crystal){ const cm=new THREE.MeshLambertMaterial({color:0xb8f0ff,emissive:0x2a7a9a,transparent:true,opacity:0.86}); [[1.15,1.15],[W-1.15,1.15]].forEach(([cx,cz],j)=>{ const cg=group(cx,0,cz,room);
+      for(let i=0;i<5;i++){ const hh=0.3+hsh(j,i)*0.4, m=new THREE.Mesh(new THREE.OctahedronGeometry(0.12,0),cm); m.scale.set(1,hh/0.12*0.5,1); m.position.set((hsh(i,j)-0.5)*0.3,hh*0.5,(hsh(j+3,i)-0.5)*0.3); m.rotation.set((hsh(i,7)-0.5)*0.6,i,(hsh(i+5,j)-0.5)*0.6); cg.add(m); }
+      const L=new THREE.PointLight(0x8ae0ff,0.35,4,1.6); L.position.y=0.6; cg.add(L); }); }                                                                                       // the ridge beam
   room.traverse(o=>{ if(o.isMesh&&o.position.y>WALL_H-1) o.castShadow=false; }); room.children.slice(frame0).forEach(o=>o.traverse(m=>{ if(m.isMesh) m.castShadow=false; }));
   lv.ground=()=>0;
   const inX=v=>Math.min(W-1.18,Math.max(1.18,v)), inZ=v=>Math.min(H-1.18,Math.max(1.18,v));
@@ -4994,7 +5066,7 @@ function roomShell(spec,G){
   // the way out, and stairs between floors; the doorway shows the light outside
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=G[y][x];
     if(t===9&&(x===0||G[y][x-1]!==9)&&spec.exit){ const w=G[y][x+1]===9?2:1; B(w*0.9,0.02,0.6,pal.cloth,x+w/2,0,y+0.3,room);
-      if(y===H-1){ const DH=1.7; B(w,DH,0.02,ROOM_GLASS,x+w/2,0,y+0.95,room); B(w+0.3,0.16,0.2,pal.wallD,x+w/2,DH,y+0.85,room); B(0.14,DH+0.1,0.2,pal.wallD,x-0.04,0,y+0.85,room); B(0.14,DH+0.1,0.2,pal.wallD,x+w+0.04,0,y+0.85,room);
+      if(y===H-1){ const DH=1.7; B(w,DH,0.02,ROOM_GLASS,x+w/2,0,y+0.95,room); B(w+0.3,0.16,0.2,(pal.frame||pal.wallD),x+w/2,DH,y+0.85,room); B(0.14,DH+0.1,0.2,(pal.frame||pal.wallD),x-0.04,0,y+0.85,room); B(0.14,DH+0.1,0.2,(pal.frame||pal.wallD),x+w+0.04,0,y+0.85,room);
         B(w,WALL_H-DH-0.1,1,pal.wall,x+w/2,DH+0.1,y+0.5,room); }   // the lintel and the wall above the door
       lv.spots.push({x:x+w/2,z:y-0.2,r:1.1,label:'Leave',who:'Leave',auto:[0,1],ar:0.75,action:()=>ENGINE.go(spec.exit.level,spec.exit.spawn)});   // walk out through the door to leave
       if(!lv.spawn) lv.spawn={x:x+w/2,z:y-1.5,face:Math.PI,yaw:0}; }
@@ -5005,7 +5077,8 @@ function roomShell(spec,G){
     for(let a=0;a<nx;a++) for(let b=0;b<nz;b++){ let lx=1+(W-2)*(a+0.5)/nx, lz=1+(H-2)*(b+0.5)/nz; lx=Math.round(lx/2)*2; if(isWall(Math.floor(lx),Math.floor(lz))) continue; roomLantern(room,lx,lz,lv,pal); } }
   lv.shellN=room.children.length; return lv; }
 // the furniture drawn to the people's size: each piece shrunk about its foot (its place on the floor stays), the shell untouched
-function propsToScale(lv){ const r=lv.room; r.children.slice(lv.shellN||0).forEach(c=>{ if(c.userData.castK||c.userData.keepScale) return; c.scale.multiplyScalar(PROP_IN); c.position.y*=PROP_IN; }); }
+function propsToScale(lv){ const r=lv.room; r.children.slice(lv.shellN||0).forEach(c=>{ if(c.userData.castK||c.userData.keepScale) return; c.scale.multiplyScalar(PROP_IN); c.position.y*=PROP_IN; });
+  if(typeof LOOK2!=='undefined'&&LOOK2) r.children.slice(lv.shellN||0).forEach(c=>{ let inst=false; c.traverse(o=>{ if(o.isInstancedMesh||o.isSkinnedMesh) inst=true; }); if(!inst&&!c.userData.castK) soften(c); }); }   // V112: the furniture rounded like the rest
 function stairsUp(par,x,y,pal){ for(let i=0;i<5;i++) B(0.9,0.22*(i+1),0.2,i%2?pal.floorA:pal.floorB,x+0.5,0,y+0.95-i*0.2,par); B(0.06,1.4,1,pal.wallD,x+0.05,0,y+0.5,par); }
 function stairsDown(par,x,y,pal){ B(0.9,0.02,0.9,0x1a1410,x+0.5,0,y+0.5,par); for(let i=0;i<3;i++) B(0.86,0.05,0.18,pal.floorB,x+0.5,-0.05-i*0.05,y+0.2+i*0.25,par);
   B(1,0.7,0.06,pal.wallD,x+0.5,0,y+1.0,par); }
