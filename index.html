@@ -5664,16 +5664,83 @@ function _thatch(g,w,d,h,rh){ const s=new THREE.Shape(), W2=w/2+0.5, top=rh+0.18
   for(let i=1;i<4;i++){ const f=i/4, yy=h-0.12+top*f*0.92+0.02, hw=W2*(1-f)+0.02; [-1,1].forEach(sd=>{ const band=B(0.06,0.05,d+0.9,0xb0823e,sd*hw,yy,0,g); band.rotation.z=sd*(0.95-0.25*f); }); }
   const rg=Cy(0.17,0.17,d+0.95,10,0xa87a3a,0,0,0,g); rg.rotation.x=Math.PI/2; rg.position.set(0,h-0.12+top+0.05,0); rg.scale.set(1,1,0.75);
   [-1,1].forEach(sd=>{ Sp(0.19,0x9a6e34,0,h-0.12+top+0.05,sd*(d+0.95)/2,g,8,6); }); }
+// V104 (LOOK2): roofs with real craft in them.
+//  THATCH: laid in overlapping courses of straw from the eaves up, each a slightly different gold, every course ending in a ragged
+//   fringe of straw ends; a thick, cut eave; a ridge rolled and pegged with a crossed hazel "liggers" pattern and a scalloped,
+//   pointed ridge-block, finials at either end; plastered, timbered gables under it.
+//  TILES: rows of individual overlapping clay tiles (or slates), staggered, each a touch different in tone, with ridge tiles.
+function _roofFrame(w,d,rh,over){ const W2=w/2+over, a=Math.atan2(rh,W2), L=Math.hypot(W2,rh); return {W2,a,L}; }
+function _gable(g,w,d,h,rh,wall,beam){ [-1,1].forEach(sz=>{ const pr=prism(w,rh*0.98,0.12,wall); pr.position.set(0,h,sz*(d/2-0.06)); g.add(pr);
+    if(beam){ B(w,0.1,0.14,beam,0,h-0.02,sz*(d/2-0.02),g); const k=B(0.1,rh*0.8,0.14,beam,0,h,sz*(d/2-0.02),g); [-1,1].forEach(sd=>{ const br=B(0.08,rh*0.75,0.12,beam,sd*w*0.2,h,sz*(d/2-0.01),g); br.rotation.z=sd*0.7; }); } }); }
+const _THATCH={};
+function _thatch2(g,w,d,h,rh){ const key=[w,d,h,rh].map(v=>v.toFixed(2)).join(','); let src=_THATCH[key];
+  if(!src){ const t0=new THREE.Group(); _thatchBuild(t0,w,d,h,rh); soften(t0); src=_THATCH[key]=mergeStatic(t0); }
+  src.children.forEach(m=>{ const c=new THREE.Mesh(m.geometry,m.material); c.castShadow=m.castShadow; c.receiveShadow=true; c.userData.keep=true; g.add(c); }); }
+function _thatchBuild(g,w,d,h,rh){ const {W2,a,L}=_roofFrame(w,d,rh,0.55), D=d+0.9, N=6, SM=hex=>{ const m=softMat(hex), c=new THREE.Color(hex), hsl={}; c.getHSL(hsl); m.color.setHSL(hsl.h,hsl.s*0.72,hsl.l); return m; };
+  const straw=[0xc4a678,0xba9c6e,0xc0a274,0xb59767,0xbea072,0xb89a6b], dark=0x9a7c52, groove=0xb0926a;
+  const ca=Math.cos(a), sa=Math.sin(a);
+  for(const sd of [-1,1]){ const dir=[sd*ca,-sa], nrm=[sd*sa,ca];
+    for(let i=0;i<N;i++){ const cl=L/N*1.6, f=(i+0.5)/N, cx=sd*W2*(1-f), cy=h+rh*f, lift=(N-i)*0.03;
+      // the course, laid in bundles along the roof: each a little thicker or thinner, a little lighter or darker
+      const nb=Math.max(3,Math.round(D/0.8)); for(let k=0;k<nb;k++){ const bz=-D/2+(k+0.5)*D/nb, t=0.24+hsh(k*7+i,i*3+(sd>0?5:0))*0.07, col=new THREE.Color(straw[(i+k)%straw.length]).offsetHSL(0,0,(hsh(k,i*9)-0.5)*0.05).getHex();
+        const m=B(cl,t,D/nb+0.04,SM(col),0,0,0,g); m.position.set(cx+nrm[0]*lift,cy-t/2+nrm[1]*lift,bz); m.rotation.z=-sd*a; }
+      // straw grooves running down the course
+      const ng=Math.round(D/0.34); for(let k=0;k<ng;k++){ const gz=-D/2+(k+0.5)*D/ng, gm=B(cl*0.7,0.015,0.02,SM(groove),0,0,0,g); gm.position.set(cx+nrm[0]*(lift+0.12),cy+nrm[1]*(lift+0.12)-0.02,gz); gm.rotation.z=-sd*a; }
+      // the ragged fringe of straw ends along the course's lower edge
+      const ex=cx+dir[0]*cl/2+nrm[0]*lift, ey=cy+dir[1]*cl/2+nrm[1]*lift, nt=Math.round(D/(i===0?0.05:0.065));
+      for(let k=0;k<nt;k++){ const tz=-D/2+(k+0.5)*D/nt, ln=(i===0?0.13:0.08)+hsh(k*3+i,i*7+(sd>0?1:0))*(i===0?0.07:0.05), tc=k%3===0?dark:straw[(i+k)%6];
+        const tt=B(ln,0.09,0.06,SM(tc),0,0,0,g); tt.position.set(ex+dir[0]*ln*0.3-nrm[0]*0.1,ey+dir[1]*ln*0.3-nrm[1]*0.1-0.12,tz+(hsh(k,i)-0.5)*0.02); tt.rotation.z=-sd*(a+(hsh(i,k)-0.5)*0.2); } }
+    // the saddle over the ridge, its lower edge cut in scallops, with the liggers and crossed spars pinning it
+    const sf=0.86, scl=L*0.34, sx=sd*W2*(1-sf), sy=h+rh*sf, sl=0.2;
+    const sad=B(scl,0.28,D+0.06,SM(0xb48e56),0,0,0,g); sad.position.set(sx+nrm[0]*sl,sy+nrm[1]*sl-0.14,0); sad.rotation.z=-sd*a;
+    const lx=sx+dir[0]*scl/2+nrm[0]*sl, ly=sy+dir[1]*scl/2+nrm[1]*sl-0.06, ns=Math.round(D/0.36);
+    for(let k=0;k<ns;k++){ const zz=-D/2+(k+0.5)*D/ns, sc=new THREE.Mesh(new THREE.SphereGeometry(0.16,10,6,0,Math.PI*2,0,Math.PI/2),SM(0xb08a52)); sc.scale.set(1,0.5,1); sc.position.set(lx,ly,zz); sc.rotation.set(0,0,-sd*a+sd*Math.PI/2*0); g.add(sc); }
+    for(const fr2 of [0.25,0.75]){ const p=[sx+dir[0]*scl*(fr2-0.5)+nrm[0]*(sl+0.15),sy+dir[1]*scl*(fr2-0.5)+nrm[1]*(sl+0.15)];
+      const lg=Cy(0.022,0.022,D,5,SM(0x6e5030),0,0,0,g); lg.rotation.x=Math.PI/2; lg.position.set(p[0],p[1]-0.05,0); }
+    for(let k=0;k<ns;k++){ const zz=-D/2+(k+0.5)*D/ns; [-1,1].forEach(q=>{ const sp=Cy(0.016,0.016,0.42,4,SM(0x6e5030),0,0,0,g); sp.position.set(sx+nrm[0]*(sl+0.16),sy+nrm[1]*(sl+0.16)-0.21,zz); sp.rotation.set(q*0.75,0,-sd*a); }); }
+    const eave=B(0.26,0.24,D+0.04,SM(0xa8834a),0,0,0,g); eave.position.set(sd*(W2+0.04),h-0.12,0); }
+  const top=h+rh+0.16, rc=Cy(0.24,0.24,D+0.14,14,SM(0xb08a52),0,0,0,g); rc.rotation.x=Math.PI/2; rc.position.set(0,top,0); rc.scale.set(1,1,0.72);
+  [-1,1].forEach(sz=>{ Sp(0.2,SM(0xa07e48),0,top+0.04,sz*(D/2+0.07),g,12,10); Sp(0.09,SM(0x8e6c3e),0,top+0.24,sz*(D/2+0.07),g,10,8); }); }
+function _tiles(g,w,d,h,rh,col){ const {W2,a,L}=_roofFrame(w,d,rh,0.4), D=d+0.6, rows=Math.max(5,Math.round(L/0.3)), base=new THREE.Color(col);
+  for(const sd of [-1,1]) for(let i=0;i<rows;i++){ const f=(i+0.5)/rows, x=sd*W2*(1-f), y=h+rh*f, n=Math.round(D/0.34), off=(rows-i)*0.012;
+    for(let k=0;k<n;k++){ const zz=-D/2+(k+0.5+(i%2?0.5:0))*D/n; if(zz>D/2) continue; const tc=base.clone().offsetHSL(0,0,(hsh(k*5+i,i*3+(sd>0?2:0))-0.5)*0.12).getHex();
+      const t=B(L/rows*1.35,0.07,D/n*0.94,tc,0,0,0,g); t.position.set(x+sd*Math.sin(a)*off,y+Math.cos(a)*off,zz); t.rotation.z=-sd*a; } }
+  const top=h+rh+0.04, rr=new THREE.Color(col).multiplyScalar(0.75).getHex(); for(let k=0;k<Math.round(D/0.4);k++){ const rt=Cy(0.13,0.13,0.4,8,rr,0,0,0,g,); rt.rotation.x=Math.PI/2; rt.position.set(0,top,-D/2+0.2+k*0.4); rt.scale.set(1,0.8,1); } }
+// a cottage in the characters' manner: a footing of real stones, chunky timbers proud of the plaster, deep-set windows with thick
+//  frames and shutters, a planked door with iron straps under its hood, a stepped stone chimney with a pot
+function _stoneFooting(g,w,d,y0,hgt){ const cols=[0x9a9488,0x8a8478,0xa8a294,0x928c80]; let k=0;
+  for(const [len,fz,rot] of [[w+0.12,d/2,0],[w+0.12,-d/2,0],[d+0.12,w/2,1],[d+0.12,-w/2,1]]){ let p=-len/2; while(p<len/2-0.05){ const sw=Math.min(len/2-p,0.32+hsh(k,7)*0.3), sh=hgt*(0.85+hsh(7,k)*0.3);
+      const st=B(sw-0.03,sh,0.2,cols[k%4],0,0,0,g); if(rot) st.position.set(fz,y0,p+sw/2), st.rotation.y=Math.PI/2; else st.position.set(p+sw/2,y0,fz); k++; p+=sw; } } }
+function _win2(g,x,y,z,fr,ry){ const w=group(x,y,z,g); if(ry) w.rotation.y=ry;
+  B(0.5,0.5,0.1,0x2a2a30,0,0,-0.02,w); B(0.42,0.42,0.02,glow(0xf2d27a),0,0.04,0.02,w);                       // the deep recess and the lit pane
+  B(0.06,0.42,0.06,fr,0,0.04,0.05,w); B(0.42,0.06,0.06,fr,0,0.22,0.05,w);                                        // the mullion and transom
+  B(0.64,0.1,0.14,fr,0,-0.08,0.05,w); B(0.64,0.1,0.12,fr,0,0.48,0.05,w); B(0.1,0.56,0.12,fr,-0.29,-0.03,0.05,w); B(0.1,0.56,0.12,fr,0.29,-0.03,0.05,w);   // a thick frame
+  B(0.72,0.07,0.22,0xa8a294,0,-0.13,0.1,w);                                                                        // the stone sill
+  [-1,1].forEach(sd=>{ const sh=B(0.26,0.54,0.05,0x3f6a8a,sd*0.47,-0.03,0.1,w); sh.rotation.y=sd*0.45; B(0.22,0.04,0.055,0x2f5070,sd*0.47,0.12,0.12,w).rotation.y=sd*0.45; B(0.22,0.04,0.055,0x2f5070,sd*0.47,0.36,0.12,w).rotation.y=sd*0.45; }); return w; }
+function _cottage2(b,g,c,low,opt){ opt=opt||{}; const w=b.w-0.4, d=b.h-0.3, h=low?1.45:1.75, fr=0x5a3a22, wall=0xf2e6cc;
+  _stoneFooting(g,w,d,0,0.34); B(w-0.04,h-0.3,d-0.04,wall,0,0.3,0,g);                                              // stone footing, plaster above
+  const bm=(x,y,z,sx,sy,sz,rz)=>{ const m=B(sx,sy,sz,fr,x,y,z,g); if(rz) m.rotation.z=rz; return m; };
+  for(const sz of [-1,1]){ const z=sz*(d/2+0.03); bm(-w/2+0.08,0.3,z,0.18,h-0.3,0.12); bm(w/2-0.08,0.3,z,0.18,h-0.3,0.12); bm(0,0.3,z,w,0.14,0.12); bm(0,h-0.14,z,w+0.1,0.16,0.14); bm(0,0.3+(h-0.3)*0.52,z,w,0.1,0.1);
+    [-1,1].forEach(sd=>{ const br=bm(sd*w*0.3,0.4,z,0.1,(h-0.3)*0.7,0.1,sd*0.6); }); }
+  for(const sx of [-1,1]){ const x=sx*(w/2+0.03); [[0,0.3,-d/2+0.08],[0,0.3,d/2-0.08]].forEach(([_,y,z])=>{ const p=B(0.12,h-0.3,0.18,fr,x,y,z,g); }); B(0.12,0.14,d,fr,x,0.3,0,g); B(0.14,0.16,d+0.1,fr,x,h-0.14,0,g); }
+  _gable(g,w,d,h,low?1.35:1.2,wall,fr);
+  _thatch2(g,w,d,h,low?1.35:1.2);
+  // the chimney: stepped stone, a cap, a pot
+  const cx=-w/4, cz=-d/5; for(let i=0;i<5;i++) B(0.44-(i>2?0.04:0),0.26,0.44-(i>2?0.04:0),[0x9a9488,0x8a8478,0xa49e90][i%3],cx,h+0.4+i*0.26-0.4,cz,g); B(0.54,0.08,0.54,0x7a746a,cx,h+1.3,cz,g); Cy(0.08,0.1,0.2,8,0xa8603a,cx,h+1.38,cz,g);
+  // windows, door
+  [[w/2-0.65,0.95],[-w/2+0.65,0.95]].forEach(([x,y])=>{ if(Math.abs(x)>0.7) _win2(g,x,y,d/2+0.05,fr); }); if(w>2.4) _win2(g,w/2+0.05,0.95,0,fr,Math.PI/2);
+  _cottageTrim(g,w,d,h,fr); }
 function _cottageTrim(g,w,d,h,fr){ [w/2-0.65,-w/2+0.65].forEach(x=>{ if(Math.abs(x)<=0.7) return; B(0.62,0.14,0.18,0x6a4428,x,0.55,d/2+0.12,g);
     for(let i=0;i<5;i++) Sp(0.055,[0xe85a6a,0xffe060,0xf4f0ea,0xb08ae8][(i+Math.round(x*3))%4],x-0.24+i*0.12,0.72,d/2+0.13,g,6,4); });
-  const hd=B(1.0,0.06,0.42,0xb88a46,0,1.08,d/2+0.24,g); hd.rotation.x=0.3; [-0.42,0.42].forEach(x=>{ const br=B(0.05,0.32,0.05,fr,x,0.8,d/2+0.12,g); br.rotation.x=-0.6; }); }
+  const hd=B(1.0,0.1,0.46,0x9a7c58,0,1.08,d/2+0.24,g); hd.rotation.x=0.3; [-0.42,0.42].forEach(x=>{ const br=B(0.05,0.32,0.05,fr,x,0.8,d/2+0.12,g); br.rotation.x=-0.6; }); }
 const WSTYLE={
-  house(b,g,c,low){ const w=b.w-0.4, d=b.h-0.3, h=low?1.4:1.7, wl=bmat(c.wall,'plaster'), fr=c.beam||c.wallD;
+  house(b,g,c,low){ if(c.thatch){ _cottage2(b,g,c,low); return; } const w=b.w-0.4, d=b.h-0.3, h=low?1.4:1.7, wl=bmat(c.wall,'plaster'), fr=c.beam||c.wallD;
     B(w,h,d,wl,0,0,0,g); B(w+0.08,0.24,d+0.08,bmat(c.wallD,'brick'),0,0,0,g);                                                // walls on a stone footing
     if(c.timber){ [-w/2+0.07,w/2-0.07].forEach(x=>B(0.12,h,0.06,c.beam,x,0,d/2+0.02,g)); B(w,0.1,0.06,c.beam,0,h*0.55,d/2+0.02,g); B(w,0.1,0.06,c.beam,0,h-0.08,d/2+0.02,g);
       [-1,1].forEach(sd=>{ const br=B(0.08,h*0.62,0.05,c.beam,sd*w*0.3,h*0.5-0.05,d/2+0.03,g); br.rotation.z=sd*0.55; }); }                      // cross-bracing
     else [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>B(0.1,h,0.1,c.wallD,sx*(w/2-0.03),0,sz*(d/2-0.03),g));                        // quoins at the corners
     if(c.thatch){ _thatch(g,w,d,h,low?1.35:1.2); _cottageTrim(g,w,d,h,fr); }
+    else if(typeof LOOK2!=='undefined'&&LOOK2&&!c.snow){ _gable(g,w,d,h,low?1.4:1.2,c.wall,null); _tiles(g,w,d,h,low?1.4:1.2,c.roof); }
     else { const r=prism(w+0.45,low?1.4:1.2,d+0.35,bmat(c.roof,'roof')); r.position.y=h; g.add(r); B(0.12,0.1,d+0.42,new THREE.Color(c.roof).multiplyScalar(0.7).getHex(),0,h+(low?1.36:1.16),0,g);   // the roof and its ridge
     B(w+0.5,0.06,0.08,fr,0,h-0.02,d/2+0.2,g); B(w+0.5,0.06,0.08,fr,0,h-0.02,-d/2-0.2,g); }                                                       // eaves
     if(c.snow) B(0.25,0.14,d+0.4,0xf4f8fc,0,h+(low?1.32:1.12),0,g);
@@ -5684,7 +5751,7 @@ const WSTYLE={
     [-w/2+0.05,w/2-0.05].forEach(x=>Cy(0.03,0.03,1.3,6,0x6b4a2e,x,0,d/2+0.8,g));                                                                // awning poles
     B(1.2,0.5,0.4,bmat(0x9a6b3f,'plank'),-w/2+0.9,0,d/2+0.5,g); [[0,0xd84a3a],[0.3,0xf2c14e],[-0.3,0x6cb065]].forEach(([x,col])=>B(0.2,0.16,0.2,col,-w/2+0.9+x,0.5,d/2+0.5,g)); },
   inn(b,g,c){ const w=b.w-0.3, d=b.h-0.3, fr=c.beam||c.wallD; B(w,1.15,d,bmat(c.wallD,'brick'),0,0,0,g); B(w+0.15,1.15,d+0.15,bmat(c.wall,'plaster'),0,1.15,0,g); B(w+0.25,0.08,d+0.25,fr,0,1.13,0,g);   // stone below, a jettied upper storey
-    if(c.timber) [-w/2+0.1,0,w/2-0.1].forEach(x=>B(0.14,1.15,0.06,c.beam,x,1.15,d/2+0.09,g)); const r=prism(w+0.6,1.5,d+0.5,bmat(c.roof,'roof')); r.position.y=2.3; g.add(r); B(0.14,0.12,d+0.56,new THREE.Color(c.roof).multiplyScalar(0.7).getHex(),0,3.76,0,g);
+    if(c.timber) [-w/2+0.1,0,w/2-0.1].forEach(x=>B(0.14,1.15,0.06,c.beam,x,1.15,d/2+0.09,g)); if(typeof LOOK2!=='undefined'&&LOOK2&&!c.snow){ _gable(g,w+0.15,d+0.15,2.3,1.5,c.wall,c.timber?c.beam:null); _tiles(g,w+0.15,d+0.15,2.3,1.5,c.roof); } else { const r=prism(w+0.6,1.5,d+0.5,bmat(c.roof,'roof')); r.position.y=2.3; g.add(r); B(0.14,0.12,d+0.56,new THREE.Color(c.roof).multiplyScalar(0.7).getHex(),0,3.76,0,g); }
     if(c.snow) B(0.25,0.14,d+0.55,0xf4f8fc,0,3.72,0,g);
     [-w/3,w/3].forEach(x=>{ B(0.36,0.9,0.36,bmat(c.wallD,'brick'),x,3.0,-d/4,g); B(0.44,0.08,0.44,0x5a5048,x,3.9,-d/4,g); });
     B(0.55,0.42,0.06,c.sign,w/2-0.8,1.35,d/2+0.5,g); B(0.06,0.06,0.5,0x5a3c20,w/2-0.8,1.8,d/2+0.3,g);
