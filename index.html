@@ -3855,7 +3855,8 @@ const ENGINE=(function(){
   const cam=new THREE.PerspectiveCamera(55,1,0.1,400);
   const K=buildKnight(); K.traverse(o=>{ if(o.isMesh) o.receiveShadow=true; });
   const P={x:0,z:0,y:0,face:Math.PI};
-  const levels={}; let L=null, yaw=0, pitch=0.55, dist=9, lookT=0, kS=1, camPa=0, camYa=0;
+  const levels={}; let L=null, yaw=0, pitch=0.55, dist=9, lookT=0, kS=1, camPa=0, camYa=0, airLook=0;
+  const PMIN=()=>L&&L.interior?0.02:L&&L.custom?0.12:-0.42;   // V113: the look reaches below level — the camera drops toward the ground and tilts up at the sky
   const calm=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   // ── HUD ──
@@ -3950,7 +3951,7 @@ const ENGINE=(function(){
     const endL=e=>{ if(e.pointerId!==lid) return; lid=null; lv2={x:0,y:0}; lknob.style.transform=''; if(e.type==='pointerup'&&performance.now()-lt0<260&&lmax<10&&typeof COMBAT!=='undefined') COMBAT.toggleLock(); }; look.addEventListener('pointerup',endL); look.addEventListener('pointercancel',endL); }
   let did=null,lx=0,ly=0;
   cv.addEventListener('pointerdown',e=>{ if(document.pointerLockElement) return; did=e.pointerId; lx=e.clientX; ly=e.clientY; try{ cv.setPointerCapture(did); }catch(_){} });
-  cv.addEventListener('pointermove',e=>{ if(e.pointerId!==did||(L&&L.custom)) return; yaw-=(e.clientX-lx)*0.006; pitch=Math.min(1.3,Math.max(ps<1?0.04:0.12,pitch+(e.clientY-ly)*0.004)); lx=e.clientX; ly=e.clientY; });
+  cv.addEventListener('pointermove',e=>{ if(e.pointerId!==did||(L&&L.custom)) return; yaw-=(e.clientX-lx)*0.006; pitch=Math.min(1.3,Math.max(PMIN(),pitch+(e.clientY-ly)*0.004)); lx=e.clientX; ly=e.clientY; });
   const endD=e=>{ if(e.pointerId===did) did=null; }; cv.addEventListener('pointerup',endD); cv.addEventListener('pointercancel',endD);
   // ── mouse and keyboard: click the game to steer the view with the mouse (pointer lock), as a PC action game does —
   //    left click swings (or reads on, in a conversation), hold right click to guard, middle click locks on; while locked on,
@@ -3967,7 +3968,7 @@ const ENGINE=(function(){
   document.addEventListener('pointerlockchange',()=>{ mlock=document.pointerLockElement===cv; document.body.classList.toggle('mlook',mlock); if(!mlock&&typeof COMBAT!=='undefined'&&COMBAT.pl.bDown) COMBAT.bUp(); });
   addEventListener('mousemove',e=>{ if(!mlock||!L||L.custom) return; const m=MS(), dx=e.movementX||0, dy=e.movementY||0; if(Math.abs(dx)>300||Math.abs(dy)>300) return;   // (a jump some browsers send on lock)
     if(Math.abs(dx)>1) lookT=performance.now();
-    yaw-=dx*0.0024*m.sens; pitch=Math.min(1.3,Math.max(ps<1?0.04:0.12,pitch+dy*0.0019*m.sens*(m.inv?-1:1)));
+    yaw-=dx*0.0024*m.sens; pitch=Math.min(1.3,Math.max(PMIN(),pitch+dy*0.0019*m.sens*(m.inv?-1:1)));
     if(typeof COMBAT!=='undefined'&&COMBAT.lockTarget()){ const t=performance.now(); if(t-flickT>350) flick=0; flickT=t; flick+=dx; if(Math.abs(flick)>140){ COMBAT.switchLock(Math.sign(flick)); flick=0; flickT=t+250; } } });
   const mouseFree=()=>{ if(mlock&&document.exitPointerLock) document.exitPointerLock(); };
   // two fingers on the screen: pinch to zoom (phones have no wheel)
@@ -4006,7 +4007,7 @@ const ENGINE=(function(){
       const cv=v=>Math.sign(v)*Math.pow(Math.min(1,Math.abs(v)),1.7), wantY=cv(Math.max(-1,Math.min(1,tx)))*3.4*(1+0.18*Math.min(1,(lookV.full=Math.abs(tx)>0.94?(lookV.full||0)+dt:0)/0.5)), wantP=cv(ty)*1.5;
       const ease=(v,w,up,dn)=>v+(w-v)*(1-Math.exp(-(Math.abs(w)>Math.abs(v)&&Math.sign(w)!==-Math.sign(v)?up:dn)*dt));
       lookV.y=ease(lookV.y,wantY,11,20); lookV.p=ease(lookV.p,wantP,11,20); if(Math.abs(lookV.y)<0.01&&!wantY) lookV.y=0; if(Math.abs(lookV.p)<0.01&&!wantP) lookV.p=0;
-      if(lookV.y){ yaw-=lookV.y*dt; lookT=performance.now(); } if(lookV.p) pitch=Math.min(1.3,Math.max(ps<1?0.04:0.12,pitch+lookV.p*dt)); } else { lookV.y=lookV.p=lookV.full=0; }
+      if(lookV.y){ yaw-=lookV.y*dt; lookT=performance.now(); } if(lookV.p) pitch=Math.min(1.3,Math.max(PMIN(),pitch+lookV.p*dt)); } else { lookV.y=lookV.p=lookV.full=0; }
     let ix=sv.x+PAD.mx, iz=sv.y+PAD.mz; if(keys.a||keys.arrowleft) ix-=1; if(keys.d||keys.arrowright) ix+=1; if(keys.w||keys.arrowup) iz-=1; if(keys.s||keys.arrowdown) iz+=1;
     if(L.custom){ const input={x:Math.max(-1,Math.min(1,ix)),y:Math.max(-1,Math.min(1,iz)),held:Object.assign({},held),pressed:Object.assign({},pressed)};
       for(const k in pressed) delete pressed[k];
@@ -4037,7 +4038,7 @@ const ENGINE=(function(){
         if(!q._armed){ if(!q._t0) q._t0=now; if(dd>ar+0.45||(now-q._t0>650&&!push)) q._armed=true; continue; }
         if(dd<ar&&push){ q._armed=false; q._t0=now; if(q.action) q.action(q); else if(q.lines) speak(q.who,q.lines); break; } } }
     const gy=L.ground(P.x,P.z); if(Math.hypot(P.x-J.lx,P.z-J.lz)>1.5){ J.on=false; J.h=0; J.v=0; P.y=gy; } J.lx=P.x; J.lz=P.z;   // set down somewhere new: no falling from where you were
-    if(J.on){ const top=P.y+J.h; J.v-=17*dt; let nh=top+J.v*dt; if(J.v<0&&nh<=gy){ J.on=false; J.v=0; J.h=0; P.y=gy; } else { if(gy>P.y) P.y=gy; J.h=nh-P.y; if(J.h<0){ J.on=false; J.h=0; P.y=gy; } } }
+    if(J.on){ const top=P.y+J.h; J.v-=17*dt; let nh=top+J.v*dt; if(J.v<0&&nh<=gy){ J.on=false; J.v=0; J.h=0; P.y=gy; if(typeof COMBAT!=='undefined'&&COMBAT.landed) COMBAT.landed(); } else { if(gy>P.y) P.y=gy; J.h=nh-P.y; if(J.h<0){ J.on=false; J.h=0; P.y=gy; } } }
     else { if(gy<P.y-0.5){ J.on=true; J.v=0; J.h=0; } else P.y+=(gy-P.y)*Math.min(1,dt*(gy>P.y?16:10)); }   // stepping off a ledge: you fall, not float down
     // close quarters (a dungeon, the deep wood): the camera rides low behind your shoulder, and when you walk it settles in behind
     //  you again by itself unless you've looked about in the last moment — so a corridor stays ahead of you, walls on either hand
@@ -4058,13 +4059,15 @@ const ENGINE=(function(){
     if(convo&&convo.f&&Math.hypot(convo.f.x-P.x,convo.f.z-P.z)>3.2){ convo=null; say.hidden=true; }
     const z=L.zone?L.zone(P):''; if(z!==lastZone){ lastZone=z; zoneEl.textContent=z; }
     const CQ=L.close||L.interior, AS=ACTOR_S(L), EYE=L.interior?1.6*AS:L.close?0.9:1, HY=L.interior?1.2*AS:L.close?0.9*CLOSE_S:0.9;   // indoors: a low camera at his shoulder, as in Hyrule's houses
-    tmp.set(P.x+Math.sin(yaw)*Math.cos(pitch)*dist, P.y+(ps<1?1.2*ps+0.25:EYE)+Math.sin(pitch)*dist, P.z+Math.cos(yaw)*Math.cos(pitch)*dist);
+    { const tg=typeof COMBAT!=='undefined'&&L.combat&&COMBAT.lockTarget(); const want=tg&&tg.alt>0.6?tg.alt:0; airLook+=(want-airLook)*Math.min(1,dt*(want>airLook?3:1.5)); }   // V113: locked on a foe in the air, the camera sinks and tilts up to keep it in view
+    const PIT=pitch-airLook*0.09;
+    tmp.set(P.x+Math.sin(yaw)*Math.cos(PIT)*dist, P.y+(ps<1?1.2*ps+0.25:EYE)+Math.sin(PIT)*dist, P.z+Math.cos(yaw)*Math.cos(PIT)*dist);
     if(L.clamp) L.clamp(tmp);
     // pull in when a wall, a house or a tree stands between the knight and the camera; boxed in close (a forest
     // mouth, an alley), rise over it instead
     if(L.camBlock){ const hy=P.y+(ps<1?0.9*ps+0.35:HY);
       const hitAt=(cx,cy,cz)=>{ const dx=cx-P.x, dy=cy-hy, dz=cz-P.z, D=Math.hypot(dx,dz), n=Math.ceil(D/0.25); for(let i=2;i<=n;i++){ const f=i/n; if(L.camBlock(P.x+dx*f,P.z+dz*f,hy+dy*f)) return Math.max(0.12,(i-1.5)/n-0.7/Math.max(0.5,D)); } return 1; };
-      const pose=(pa,ya)=>{ const pp=Math.min(1.35,pitch+pa), yy=yaw+ya; return {cx:P.x+Math.sin(yy)*Math.cos(pp)*dist, cy:P.y+(ps<1?1.2*ps+0.25:EYE)+Math.sin(pp)*dist, cz:P.z+Math.cos(yy)*Math.cos(pp)*dist}; };
+      const pose=(pa,ya)=>{ const pp=Math.min(1.35,PIT+pa), yy=yaw+ya; return {cx:P.x+Math.sin(yy)*Math.cos(pp)*dist, cy:P.y+(ps<1?1.2*ps+0.25:EYE)+Math.sin(pp)*dist, cz:P.z+Math.cos(yy)*Math.cos(pp)*dist}; };
       let best=null;
       if(CQ){ best=pose(0,0); best.k=hitAt(best.cx,best.cy,best.cz); }
       else {   // V110, the Hyrule way: keep the angle you chose and pull in along it; failing that, slide a little round the corner;
@@ -4074,17 +4077,18 @@ const ENGINE=(function(){
         camPa+=(bp-camPa)*Math.min(1,dt*2.6); camYa+=(by-camYa)*Math.min(1,dt*2.6); best=pose(camPa,camYa); best.k=hitAt(best.cx,best.cy,best.cz); }
       kS+=(best.k-kS)*Math.min(1,dt*(best.k<kS?14:1.8)); best.k=Math.min(best.k,kS);   // pull in at once, ease back out slowly: no pumping in and out at every corner
       tmp.set(P.x+(best.cx-P.x)*best.k,hy+(best.cy-hy)*best.k+(best.k<1?0.15:0)+(L.interior?Math.max(0,0.85-best.k)*1.1*AS:0),P.z+(best.cz-P.z)*best.k); }   // indoors, backed against a wall: up, and looking down over his shoulder
+    if(!L.interior&&L.ground){ const gy=L.ground(tmp.x,tmp.z)+0.35; if(tmp.y<gy) tmp.y=gy; }
     if(CQ){ const sh=L.interior?0.52*AS:0.22; tmp.x+=Math.cos(yaw)*sh; tmp.z-=Math.sin(yaw)*sh; if(L.clamp) L.clamp(tmp); }   // over his right shoulder, so the way ahead isn't all helmet
     K.visible=!CQ||cam.position.distanceTo(K.position)>(L.interior?0.7*AS:0.85);   // backed against a wall, the camera would sit inside him
     { const tg=typeof COMBAT!=='undefined'&&L.combat&&COMBAT.lockTarget(); const want=tg?Math.min(0.5,0.12+Math.hypot(tg.x-P.x,tg.z-P.z)*0.05):0; lockMix+=(want-lockMix)*Math.min(1,dt*4); if(tg){ lockPt.x=tg.x; lockPt.z=tg.z; }   // locked on: frame the foe as well as you
       if(lockMix>0.005){ tmp.x-=(lockPt.x-P.x)*lockMix*0.6; tmp.z-=(lockPt.z-P.z)*lockMix*0.6; tmp.y+=lockMix*0.8; } }
-    cam.position.lerp(tmp,Math.min(1,dt*8)); cam.lookAt(P.x+(lockPt.x-P.x)*lockMix+(CQ?-Math.sin(yaw)*(L.interior?2.6*AS:1.2):0),P.y+(ps<1?0.9*ps+0.35:HY)+(L.cam.lookH||0),P.z+(lockPt.z-P.z)*lockMix+(CQ?-Math.cos(yaw)*(L.interior?2.6*AS:1.2):0));   // in close quarters, look past him down the way ahead
+    cam.position.lerp(tmp,Math.min(1,dt*8)); const upK=Math.max(0,0.14-PIT)*dist*1.15+airLook*0.55; cam.lookAt(P.x+(lockPt.x-P.x)*lockMix+(CQ?-Math.sin(yaw)*(L.interior?2.6*AS:1.2):0),P.y+(ps<1?0.9*ps+0.35:HY)+(L.cam.lookH||0)+upK,P.z+(lockPt.z-P.z)*lockMix+(CQ?-Math.cos(yaw)*(L.interior?2.6*AS:1.2):0));   // in close quarters, look past him down the way ahead
     if(typeof COMBAT!=='undefined'&&COMBAT.shakeAmt>0.001&&!calm){ const a=COMBAT.shakeAmt*(ps<1?0.6:1); cam.position.x+=(Math.random()-0.5)*a; cam.position.y+=(Math.random()-0.5)*a; cam.position.z+=(Math.random()-0.5)*a; }   // the blow lands
     if(L.follow) L.follow(P);
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     R.render(L.scene,cam); requestAnimationFrame(frame); }
 
-  return { add, get, go, start, speak, P, K, cam, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump };
+  return { add, get, go, start, speak, P, K, cam, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();
 
 // ── engine/pets.js ──
@@ -6448,8 +6452,9 @@ function buildWorld(WD,opt){
   const inB=(x,y)=>x>=0&&y>=0&&x<W&&y<H, T=(x,y)=>inB(x,y)?A[y*W+x]:3, E=(x,y)=>inB(x,y)?A[N+y*W+x]&15:0, WK=(x,y)=>inB(x,y)&&((A[N+y*W+x]>>4)===1||A[y*W+x]===40);
   // the capital stands taller than any town: Stormgate's terraces rise 2.2× as high (its keep and cathedral on a high
   // acropolis over the lower town and the harbour), and its walls are a fortress's
+  const CPL=typeof LOOK2!=="undefined"&&LOOK2?3.4:2.6;   // V113: Crystalpeak stands taller still in the new look: the town up on a high mountain
   const SGB=opt.land?null:[138,186,198,241], CPB=opt.land?null:[118,40,190,98], inCP=(x,y)=>!!CPB&&x>=CPB[0]&&x<CPB[2]&&y>=CPB[1]&&y<CPB[3],   // Crystalpeak climbs 2.6 times as steep: a real mountain
-    LIFT=(x,y)=>SGB&&x>=SGB[0]&&x<SGB[2]&&y>=SGB[1]&&y<SGB[3]?1.8:inCP(x,y)?2.6:1, EH=(x,y)=>E(x,y)*TIER*LIFT(x,y);
+    LIFT=(x,y)=>SGB&&x>=SGB[0]&&x<SGB[2]&&y>=SGB[1]&&y<SGB[3]?1.8:inCP(x,y)?CPL:1, EH=(x,y)=>E(x,y)*TIER*LIFT(x,y);
   const scene=new THREE.Scene(), sky=0x9cc4e4; scene.background=new THREE.Color(sky); scene.fog=new THREE.Fog(sky,26,58);
   const lv={id:opt.id,name:opt.name,scene,folk:[],spots:[],anim:[],cam:{pitch:0.62,dist:10,min:5,max:19},T,E,WK,W,H};
   const hemi=new THREE.HemisphereLight(0xd8e8ff,0x4a5a3a,0.55); scene.add(hemi);   // a little less fill and a little more sun: the shapes model instead of flattening
@@ -6584,19 +6589,36 @@ function buildWorld(WD,opt){
     const tri=(a,b,c,kind,x,y)=>{ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; ny/=l;
       const hm=(a[1]+b[1]+c[1])/3-RB(x,y), r=region(x,y), ash=ashland(x,y)||r==='hellgate'||r==='ashfield', sand=desert(x,y), cold=r==='crystalpeak'||r==='hellgate'||(x>=72&&x<=118&&y>=252&&y<=299), jit=(hsh(x*7+Math.round(a[0]*3),y*3+Math.round(a[2]*3))-0.5)*0.06;
       const ya=(a[1]+b[1]+c[1])/3;
-      let hex; if(kind===3) hex=ny<0.55?(ya>7?0x9aa2ae:0x7a7468):ya>8?0xeef2f6:ya>5?(ny>0.75?0xdfe6ee:0x9aa2ae):ya>2.5?(ny>0.7?0x8aa070:0x7a7468):(ny>0.6?0x5f9a50:0x766a58);   // the mountainside: rock on the faces, meadow below, snow above   // the mountainside: meadow, then rock and scree, then snow
+      let hex; if(kind===3&&L2&&inCP(x,y)) hex=ny>0.72?(ya>3.2?0xeef3f8:0xa8c890):ny>0.5?(ya>4.5?0xc8d0dc:0x8e8a84):(ya>6?0x8a8e9c:0x78726c);   // V113: Crystalpeak — snow on the ledges, grey rock on the cliffs
+      else if(kind===3) hex=ny<0.55?(ya>7?0x9aa2ae:0x7a7468):ya>8?0xeef2f6:ya>5?(ny>0.75?0xdfe6ee:0x9aa2ae):ya>2.5?(ny>0.7?0x8aa070:0x7a7468):(ny>0.6?0x5f9a50:0x766a58);   // the mountainside: rock on the faces, meadow below, snow above   // the mountainside: meadow, then rock and scree, then snow
       else if(kind===2&&hm<(cold?3.2:5.6)) hex=ny>0.8?0x4f8a44:ny>0.6?0x5a6a3c:0x6c6258;                 // wooded slopes: turf, bare earth on the steeper faces, rock on the steepest
       else if(kind===2&&hm<(cold?4.2:7.4)) hex=ny>0.7?0x7a8a5a:0x7a7062;                                      // the tree line: thin alpine turf and scree
       else if(!ash&&!sand&&hm>(cold?3.0:kind===2?9.2:5.4)&&ny>0.35) hex=0xeef2f6; else if(!ash&&!sand&&hm>(cold?2.2:kind===2?8.0:4.6)&&ny>0.8) hex=0xe2e8ee;   // snow on the tops and in the gentler hollows high up
       else if(ash) hex=ny<0.6?0x3e3834:0x524a44; else if(sand) hex=ny<0.6?0x9a7450:0xb48a5c; else hex=ny<0.55?0x6c6258:hm<1.2&&ny>0.7?0x6a8a4a:0x857868;   // rock, grassed at the foot
       C.setHex(hex).offsetHSL(0,0,jit); pos.push(...a,...b,...c); for(let i=0;i<3;i++) col.push(C.r,C.g,C.b); };
-    list.forEach(([x,y])=>{ const k=y*W+x, kind=RK[k], V=(i,j)=>{ const vx=x*2+i, vy=y*2+j, ins=kind===3&&(i===1||j===1)&&!(i!==1&&j!==1)?1:0, jx=ins?(hsh(vx*7+3,vy*3+1)-0.5)*0.4:0, jz=ins?(hsh(vx*5+9,vy*11+5)-0.5)*0.4:0; return [x+i*0.5+(i===1?jx:0),reliefV(vx,vy),y+j*0.5+(j===1?jz:0)]; };
+    // V113 (LOOK2): CRYSTALPEAK as a real mountain — its rock between the trails is cut finer (a quarter-tile skin), roughened
+    //  inside each tile, and carved into bands: steep cliff faces with ledges between them where the snow lies; smooth-shaded,
+    //  so it reads as one massif rather than facets. Where it meets the trails it meets them exactly, as before.
+    const SMOOTH=[], SS=TIER*CPL/3, band=h=>{ const q=h/SS, f=q-Math.floor(q), e=f<0.42?f*0.25:f<0.88?0.105+(f-0.42)/0.46*0.88:0.985+(f-0.88)*0.125; return h+(Math.floor(q)*SS+e*SS-h)*0.75; };
+    const fbm=(X,Z)=>Math.sin(X*2.1+Math.sin(Z*1.3)*1.7)*0.5+Math.sin(Z*2.7+X*0.9)*0.3+Math.sin((X-Z)*4.3)*0.2;
+    list.forEach(([x,y])=>{ const k=y*W+x, kind=RK[k]; if(kind===3&&L2&&inCP(x,y)){ const HG=[]; for(let j=0;j<3;j++){ HG[j]=[]; for(let i=0;i<3;i++) HG[j][i]=reliefV(x*2+i,y*2+j); }
+        const P4=(u,v)=>{ const fx=u/2, fz=v/2, i0=Math.min(1,Math.floor(fx)), j0=Math.min(1,Math.floor(fz)), tx=fx-i0, tz=fz-j0, h0=HG[j0][i0]*(1-tx)+HG[j0][i0+1]*tx, h1=HG[j0+1][i0]*(1-tx)+HG[j0+1][i0+1]*tx;
+          let h=h0*(1-tz)+h1*tz, X=x+u*0.25, Z=y+v*0.25; const edge=u===0||u===4||v===0||v===4, half=u%2===0&&v%2===0;
+          if(!edge&&!half){ h+=fbm(X,Z)*0.42; X+=(hsh(Math.round(X*8),Math.round(Z*8)+3)-0.5)*0.1; Z+=(hsh(Math.round(Z*8)+7,Math.round(X*8))-0.5)*0.1; } else if(!edge) h+=fbm(X,Z)*0.2;
+          return [X,band(h),Z]; };
+        const s0=pos.length; for(let v=0;v<4;v++) for(let u=0;u<4;u++){ const A=P4(u,v), Bq=P4(u,v+1), Cq=P4(u+1,v+1), Dq=P4(u+1,v); if((u+v)%2){ tri(A,Bq,Cq,3,x,y); tri(A,Cq,Dq,3,x,y); } else { tri(A,Bq,Dq,3,x,y); tri(Bq,Cq,Dq,3,x,y); } }
+        SMOOTH.push([s0,pos.length]); return; }
+      const V=(i,j)=>{ const vx=x*2+i, vy=y*2+j, ins=kind===3&&(i===1||j===1)&&!(i!==1&&j!==1)?1:0, jx=ins?(hsh(vx*7+3,vy*3+1)-0.5)*0.4:0, jz=ins?(hsh(vx*5+9,vy*11+5)-0.5)*0.4:0; return [x+i*0.5+(i===1?jx:0),reliefV(vx,vy),y+j*0.5+(j===1?jz:0)]; };
       for(let j=0;j<2;j++) for(let i=0;i<2;i++){ const A=V(i,j), B=V(i,j+1), Cc=V(i+1,j+1), Dd=V(i+1,j); if((i+j)%2){ tri(A,B,Cc,kind,x,y); tri(A,Cc,Dd,kind,x,y); } else { tri(A,B,Dd,kind,x,y); tri(B,Cc,Dd,kind,x,y); } } });
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.computeVertexNormals(); g.computeBoundingSphere();
+    if(SMOOTH.length){ const nr=g.attributes.normal.array, acc=new Map(), key=i=>Math.round(pos[i]*40)+','+Math.round(pos[i+1]*40)+','+Math.round(pos[i+2]*40);   // smooth-shade the mountain's skin
+      SMOOTH.forEach(([a,b])=>{ for(let i=a;i<b;i+=3){ const kk=key(i); let v=acc.get(kk); if(!v){ v=[0,0,0]; acc.set(kk,v); } v[0]+=nr[i]; v[1]+=nr[i+1]; v[2]+=nr[i+2]; } });
+      SMOOTH.forEach(([a,b])=>{ for(let i=a;i<b;i+=3){ const v=acc.get(key(i)), l=Math.hypot(v[0],v[1],v[2])||1; nr[i]=v[0]/l; nr[i+1]=v[1]/l; nr[i+2]=v[2]/l; } }); g.attributes.normal.needsUpdate=true; }
     const me=new THREE.Mesh(g,reliefMat); me.receiveShadow=true; me.castShadow=true; ch.g.add(me); ch.ims.push(me); }
   lv.reliefAt=(x,y)=>inB(x,y)?RS[y*W+x]:0;
   const BLD_EAVE={chapel:2.8,keep:3.6,inn:2.5,house:1.8,shop:1.9,cottage:1.5};
   const BLD_H={chapel:4.9,keep:6.4,inn:4.1,house:3.0,shop:3.3,cottage:2.7,lighthouse:6};   // how tall each kind stands, roof and all, for the camera
+  const SIGNT=new Set(); Object.keys(WD.signs||{}).forEach(k=>{ const [sx,sy]=k.split(',').map(Number); for(let b=-4;b<=4;b++) for(let a=-4;a<=4;a++) SIGNT.add((sy+b)*W+sx+a); }), NEARSIGN=(x,y)=>SIGNT.has(y*W+x);
   const ROCK_U=(()=>{ const g=new THREE.IcosahedronGeometry(0.5,1), p=g.attributes.position, key=(x,y,z)=>Math.round(x*97)+','+Math.round(y*97)+','+Math.round(z*97), off={};   // a faceted boulder, the same lumps at every shared corner
     for(let i=0;i<p.count;i++){ const x=p.getX(i),y=p.getY(i),z=p.getZ(i), k=key(x,y,z); if(!off[k]) off[k]=0.82+hsh(Math.round(x*50+60),Math.round(z*50+y*30+60))*0.36; let f=off[k]; p.setXYZ(i,x*f,Math.max(-0.5,y*f*(y<0?0.6:1)),z*f); }
     g.translate(0,0.3,0); g.computeVertexNormals(); return g; })(), rockMat=detailify(new THREE.MeshLambertMaterial(),{amp:0.2,strata:0.18,grit:0.14});
@@ -6682,6 +6704,11 @@ function buildWorld(WD,opt){
       const banked=(dx,dy)=>(bankOK&&wl(x+dx,y+dy)!==null&&h-wl(x+dx,y+dy)<0.45)||(W0&&!at(x+dx,y+dy)&&T(x+dx,y+dy)===3);
       for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){ if(banked(dx,dy)) continue; const n=at(x+dx,y+dy), from=Math.max(n?n.top:q.bot,q.bot); if(from>=h-0.001) continue;
         const N=[dx,0,dy], a=dx?(dx>0?[x+1,y+1]:[x,y]):(dy>0?[x,y+1]:[x+1,y]), b=dx?(dx>0?[x+1,y]:[x,y+1]):(dy>0?[x+1,y+1]:[x,y]);
+        if(typeof LOOK2!=='undefined'&&LOOK2&&inCP(x,y)&&h-from>0.5){   // V113: Crystalpeak's drops are rock faces — cut in rows, pushed in and out, banded grey; edges meet as before
+          const NR=Math.max(2,Math.round((h-from)/0.32)), NC=4, RC=[[0.52,0.53,0.58],[0.46,0.47,0.52],[0.58,0.59,0.64],[0.5,0.5,0.54]];
+          const P=(u,r)=>{ const X=a[0]+(b[0]-a[0])*u, Z=a[1]+(b[1]-a[1])*u, Y=from+(h-from)*r/NR; const inner=u>0&&u<1&&r<NR; const n=inner?(Math.sin(X*3.1+Y*1.7)*0.5+Math.sin(Z*2.3-Y*2.9)*0.35+Math.sin((X+Z)*5.1+Y)*0.15):0, push=inner?0.05+n*0.12:0; return [X+dx*push,Y+(inner?n*0.05:0),Z+dy*push]; };
+          for(let r=0;r<NR;r++){ const cc=RC[(Math.floor((from+(h-from)*r/NR)/0.32)+x+y)&3], ct=r===NR-1?[0.72,0.74,0.8]:cc; for(let u=0;u<NC;u++){ const p0=P(u/NC,r), p1=P((u+1)/NC,r), p2=P((u+1)/NC,r+1), p3=P(u/NC,r+1); tri(p0,p1,p2,cc,cc,ct); tri(p0,p2,p3,cc,ct,ct); } }
+          continue; }
         q.segs.forEach(sg=>{ const y0=Math.max(sg[0],from), y1=Math.min(sg[1],h); if(y1-y0<0.002) return; _gd.setHex(sg[2]); if(sg[3]) _gd.offsetHSL(0,0,sg[3]); const lip=y1>=h-0.001;
           const cl=[_gd.r*0.9,_gd.g*0.9,_gd.b*0.9], ct=lip?[_gd.r,_gd.g,_gd.b]:cl;
           quad([a[0],y0,a[1]],[b[0],y0,b[1]],[b[0],y1,b[1]],[a[0],y1,a[1]],cl,cl,ct,ct,N); }); } });
@@ -6815,6 +6842,9 @@ function buildWorld(WD,opt){
       // a berth (tile 32 at sea level beside the water): the game draws it as its neighbours — here, harbour water
       if(t===32&&!e&&[[0,1],[0,-1],[1,0],[-1,0]].some(([a,b])=>[3,12,20,21].includes(T(x+a,y+b)))){ box(cx,cz,-0.45,0.4,0x5fb0c8,1,1,0,jit); continue; }
       if(t===32){ box(cx,cz,top-0.4,0.4,0x9a7a58,1,1,0,jit); box(cx,cz,top,0.45,0xa8845e,0.9,0.9,hsh(x,y),jit); continue; }
+      if(L2&&inCP(x,y)&&WK(x,y)&&!tilesOnly&&!STAIRS.has(t)) for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const X=x+a, Y=y+b; if(!WK(X,Y)||STAIRS.has(T(X,Y))||bAt.has(Y*W+X)||dAt.has(Y*W+X)||NEARSIGN(X,Y)) continue; const dh=EH(x,y)-EH(X,Y); if(dh<0.9) continue;   // V113: the drop from one trail to the next broken by boulders and fallen rock at its foot
+        const gy=EH(X,Y)+0.02; for(let i=0;i<3;i++){ const r=hsh(x*7+i+a*3,y*5+i*2+b*3), along=(i-1)*0.34+(r-0.5)*0.1, out=0.04+r*0.12; rocks.push({x:cx+a*(0.5+out)+(b?along:0),z:cz+b*(0.5+out)+(a?along:0),y:gy-0.12,h:Math.min(1.4,dh*(0.3+r*0.35)),sx:0.42+r*0.28,sz:0.36+r*0.2,ry:r*6.3,c:[0x8a8e9c,0x7a7e8a,0x9a9eaa][i%3],l:(r-0.5)*0.06}); }
+        const r2=hsh(x*3+a,y*11+b); if(r2<0.5) rocks.push({x:cx+a*(0.5+0.32)+(b?(r2-0.25)*1.2:0),z:cz+b*(0.5+0.32)+(a?(r2-0.25)*1.2:0),y:gy-0.04,h:0.14,sx:0.22,sz:0.18,ry:r2*9,c:0x9a9eaa}); }
       let c, y1=top;
       if(t===0||t===14||t===15||t===16||t===1||t===39||t===40||t===9&&false) c=grassOf(x,y);
       else if(t===4) c=grassOf(x,y);
@@ -7395,7 +7425,7 @@ const COMBAT=(function(){
   const SWING={ light:{windup:3,dur:12,reach:1.5,half:Math.PI*0.48,mult:1.0,knock:4}, heavy:{windup:6,dur:18,reach:1.7,half:Math.PI*0.62,mult:1.7,knock:8} };
   const GP={name:'Ground Pound',mult:1.6,radius:2.3,knock:14};
   const BOSS_CAP=0.08, BOSS_GATE=300;
-  const pl={buf:0,lungeT:0,lx:0,lz:0,swingDur:0,iframes:0,swing:0,combo:0,comboT:0,blocking:false,bDown:false,bAt:0,lastTap:0,dodgeCd:0,dashing:0,dashx:0,dashz:0,jumpY:0,leap:0};
+  const pl={buf:0,lungeT:0,lx:0,lz:0,swingDur:0,iframes:0,swing:0,combo:0,comboT:0,blocking:false,bDown:false,bAt:0,lastTap:0,dodgeCd:0,dashing:0,dashx:0,dashz:0,jumpY:0,leap:0,plunge:false,airSwingH:0,airSwingT:0};
   let hitStop=0, shake=0, lock=null;   // the freeze when a blow lands, the camera's jolt, and the foe you're locked on to
   const later=[]; let acc=0;
   const S=()=>GAME.S, P=()=>ENGINE.P, L=()=>ENGINE.level, A=()=>L()&&L().combat;
@@ -7422,6 +7452,7 @@ const COMBAT=(function(){
   const hurtV=css(document.createElement('div'),'position:fixed;inset:0;pointer-events:none;box-shadow:inset 0 0 90px 30px rgba(220,30,40,.55);opacity:0;transition:opacity .25s;z-index:4'); document.body.appendChild(hurtV);
   const pops=[]; for(let i=0;i<10;i++){ const d=css(document.createElement('div'),'position:fixed;left:0;top:0;pointer-events:none;font:700 17px var(--f-mono);color:#fff;text-shadow:0 2px 3px #000,0 0 2px #000;z-index:6;white-space:nowrap'); d.hidden=true; document.body.appendChild(d); pops.push({d,t:0}); }
   let popI=0; const V3=new THREE.Vector3();
+  const airH=()=>((typeof ENGINE!=='undefined'&&ENGINE.airH)||0)+(pl.jumpY||0), swingH=()=>Math.max(airH(),pl.airSwingT>0?pl.airSwingH:0);   // V113: how high off the ground the knight is (a jump, a leap)
   function pop(x,y,z,txt,col){ const p=pops[popI++%pops.length]; p.x=x; p.y=y; p.z=z; p.t=0.8; p.d.textContent=txt; p.d.style.color=col||'#fff'; p.d.hidden=false; }
   function drawPops(dt){ const cam=ENGINE.cam; pops.forEach(p=>{ if(p.t<=0) return; p.t-=dt; if(p.t<=0){ p.d.hidden=true; return; }
     V3.set(p.x,p.y+(0.8-p.t)*0.9,p.z).project(cam); if(V3.z>1){ p.d.hidden=true; return; }
@@ -7501,7 +7532,13 @@ const COMBAT=(function(){
     f.g=o.model||(o.boss&&o.bossForm!=null&&typeof BOSS3D!=="undefined"?BOSS3D.make(o.bossForm,o.level||1):o.boss&&o.look==="paladin"?knightModel("dark"):demonModel(o.level||1,o.form||0,o.boss,o.boss?o.tint:null)); f.g.userData.foe=f;   /* each guardian its own (bosses3d.js) */ if(!o.model&&typeof inkify==="function") inkify(f.g,0.018,0x120a10); if(lv.close&&!o.boss) f.g.scale.multiplyScalar(0.72); { const vs=VIEWMODE.ps(lv); if(vs!==1) f.g.scale.multiplyScalar(o.boss?Math.sqrt(vs):vs); } f.bar=bar(f.g,(o.boss?2.4:1.55)*VIEWMODE.ps(lv)); lv.scene.add(f.g);
     if(f.boss){ f.state='idle'; f.timer=34; f.moveIdx=0; f.guardUntil=now()+1300; f.anchorx=f.x; f.anchorz=f.z; f.telegraph=0; f.ring=0; f.ringR=0;
       const tr=new THREE.Mesh(new THREE.RingGeometry(0.6,0.85,28),new THREE.MeshBasicMaterial({color:0xff4a6a,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false})); tr.rotation.x=-Math.PI/2; c.fx.add(tr); f.tel=tr;
-      const sr=new THREE.Mesh(new THREE.RingGeometry(0.92,1.0,48),new THREE.MeshBasicMaterial({color:0xffb0c0,transparent:true,opacity:0.8,side:THREE.DoubleSide,depthWrite:false})); sr.rotation.x=-Math.PI/2; sr.visible=false; c.fx.add(sr); f.slamM=sr; }
+      const sr=new THREE.Mesh(new THREE.RingGeometry(0.92,1.0,48),new THREE.MeshBasicMaterial({color:0xffb0c0,transparent:true,opacity:0.8,side:THREE.DoubleSide,depthWrite:false})); sr.rotation.x=-Math.PI/2; sr.visible=false; c.fx.add(sr); f.slamM=sr;
+      // V113: the shockwave stands up off the floor as a wall of light to hop; a target ring where it means to land; its shadow when it flies
+      const bd=new THREE.Mesh(new THREE.CylinderGeometry(1,1,0.42,56,1,true),new THREE.MeshBasicMaterial({color:0xffb0c0,transparent:true,opacity:0.45,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending})); bd.visible=false; c.fx.add(bd); f.bandM=bd;
+      const mk=new THREE.Group(); const mr=new THREE.Mesh(new THREE.RingGeometry(0.9,1.15,36),new THREE.MeshBasicMaterial({color:0xff3a3a,transparent:true,opacity:0.85,side:THREE.DoubleSide,depthWrite:false})); mr.rotation.x=-Math.PI/2; mk.add(mr);
+      const md=new THREE.Mesh(new THREE.CircleGeometry(0.9,36),new THREE.MeshBasicMaterial({color:0xff3a3a,transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false})); md.rotation.x=-Math.PI/2; md.position.y=-0.005; mk.add(md); mk.visible=false; c.fx.add(mk); f.markM=mk;
+      const shd=new THREE.Mesh(new THREE.CircleGeometry(0.85,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.35,depthWrite:false})); shd.rotation.x=-Math.PI/2; shd.visible=false; c.fx.add(shd); f.shadowM=shd;
+      if(o.bossForm!=null&&f.pat&&f.pat.moves){ const fly=[0,2,6,9].includes(o.bossForm), ex=fly?{kind:'soar',telegraph:44}:{kind:'leap',telegraph:38}, mv=f.pat.moves.slice(); mv.splice(1,0,ex); if(mv.length>=5) mv.splice(4,0,ex); f.pat=Object.assign({},f.pat,{moves:mv}); f.flier=fly; } }
     f.custom=!!o.model; c.foes.push(f);
     if(!f.custom&&!f.boss&&lv.id==='world'&&isNightNow()){ if(!f.nightBuff){ f.nightBuff=true; f.level=(f.level||1)+2; const r=f.hp/f.maxHp; f.maxHp=5+f.level*2; f.hp=Math.max(1,Math.round(f.maxHp*r)); f.xp=4+f.level*3; } nightify(f,true); }   // born after dark: bold
     return f; }
@@ -7518,7 +7555,10 @@ const COMBAT=(function(){
     for(let i=1;i<n;i++){ const t=i/n; if(!c.cfg.los(Math.floor(ax+(bx-ax)*t),Math.floor(az+(bz-az)*t))) return false; } return true; };
 
   // ── the knight's blows ──
-  function bossHitGate(d,dmg){ if(!d.boss) return dmg; const t=now(); if(d.guardUntil&&t<d.guardUntil) return -1; const braced=d.state==='telegraph';
+  function bossHitGate(d,dmg){ if(!d.boss) return dmg; const t=now(); const sh=swingH();
+    if((d.alt||0)>1.9+sh*2.3){ if(!d.highPop||t-d.highPop>900){ d.highPop=t; pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.alt||0)+1.2,d.z,sh>0.2?'Too high!':'Too high — jump!','#8ae0ff'); } return -1; }   // V113: up in the air, out of reach — jump to meet it
+    let bonus=1; if(d.state==='stunned') bonus*=1.5; if(sh>0.22){ bonus*=1.3; if(!d.airPop||t-d.airPop>600){ d.airPop=t; pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.alt||0)+2.4,d.z,'Aerial!','#ffe08a'); } } dmg=Math.round(dmg*bonus);
+    if(d.guardUntil&&t<d.guardUntil) return -1; const braced=d.state==='telegraph';
     if(d.lastHitAt&&t-d.lastHitAt<BOSS_GATE) return -1; d.lastHitAt=t;
     if(!d.noEnrage&&!d.enraged&&d.hp-dmg<d.maxHp*0.35){ d.enraged=true; d.timer=Math.min(d.timer||99,5); }
     return Math.min(dmg,Math.ceil(d.maxHp*BOSS_CAP))*(braced?0.3:1); }
@@ -7545,6 +7585,7 @@ const COMBAT=(function(){
     //  waits for this one to all but finish, so a combo flows from one cut into the next instead of snapping back
     const type=weaponType(), w=SWING[type], anim=(w.windup+w.dur)/60*1.8, hitAt=Math.max(w.windup,Math.round(anim*60*(type==='heavy'?0.43:0.4)));
     pl.swing=Math.round(anim*60*0.9); pl.swingDur=pl.swing; ENGINE.K.swing(type==='heavy'?0:pl.combo===2?2:1,anim); lunge(aim(w.reach+1.6),w,type,hitAt);
+    if(airH()>0.3&&!pl.plunge){ pl.airSwingH=airH(); pl.airSwingT=hitAt+6; pl.plunge=true; later.push([hitAt+3,()=>{ if(ENGINE.plunge) ENGINE.plunge(); }]); }   // V113: struck in the air — the blade reaches higher, then down you come in a plunge
     if(bowOn()) later.push([hitAt,()=>{ const f=fv(), p=P(); const m=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.5),glow(0xfff0b0)); c.fx.add(m);
       c.arrows.push({x:p.x,z:p.z,vx:f.x*3.2*PX,vz:f.z*3.2*PX,t:26,m}); }]);
     else later.push([hitAt,()=>{ slash(type); resolve(type); }]); }
@@ -7610,6 +7651,10 @@ const COMBAT=(function(){
         if(a.mirror){ a.alive=false; if(c.cfg.onMirror) c.cfg.onMirror(a); return; }
         a.hp-=Math.max(1,Math.round(S().atk*GP.mult)); a.hurt=8; hits++; if(a.hp<=0) a.alive=false; });
       UI.toast('✦ Ground Pound!'+(hits?' ×'+hits:''),700); }]); }
+  function landed(){ const c=A(); if(!c||!pl.plunge){ pl.plunge=false; return; } pl.plunge=false; const p=P(), R=1.7; shake=Math.max(shake,0.35); hitStop=Math.max(hitStop,0.05); dust(p.x,p.z);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(0.2,0.42,32),new THREE.MeshBasicMaterial({color:0xffe87a,transparent:true,opacity:0.85,side:THREE.DoubleSide,depthWrite:false})); ring.rotation.x=-Math.PI/2; ring.position.set(p.x,ENGINE.level.ground(p.x,p.z)+0.06,p.z); c.fx.add(ring); c.rings.push({m:ring,t:0,max:R});
+    c.foes.forEach(d=>{ if(!d.alive||(d.alt||0)>1.2) return; const vx=d.x-p.x, vz=d.z-p.z, dist=Math.hypot(vx,vz); if(dist>R+(d.boss?0.4:0)) return; let dmg=Math.max(1,Math.round(S().atk*0.8)); dmg=bossHitGate(d,dmg); if(dmg<0){ d.hurt=3; return; } hitFoe(d,dmg,false,vx,vz,dist,8); });
+    c.adds.forEach(a=>{ if(!a.alive||a.flock||Math.hypot(a.x-p.x,a.z-p.z)>R) return; a.hp-=Math.max(1,Math.round(S().atk*0.8)); a.hurt=8; if(a.hp<=0) a.alive=false; }); }
   function dust(x,z){ const c=A(), gy=ENGINE.level.ground(x,z), ps=Math.max(0.5,VIEWMODE.ps(ENGINE.level)); for(let i=0;i<14;i++){ const m=new THREE.Mesh(new THREE.BoxGeometry(0.14,0.14,0.14),flat(i%3?0xb8a888:0x8a7a62)); const a=i/14*6.283; m.position.set(x+Math.cos(a)*0.3,gy+0.1,z+Math.sin(a)*0.3); c.fx.add(m);
       c.rings.push({m,t:0,max:0,bit:{vx:Math.cos(a)*3.2*ps,vy:1.8+Math.random()*1.5,vz:Math.sin(a)*3.2*ps,dust:1}}); } }
   // Ⓑ: hold to guard, tap twice to dodge
@@ -7639,6 +7684,7 @@ const COMBAT=(function(){
   // ── one step of the world: 1/60 s, as the game counts it ──
   function step(){ const c=A(), p=P(), cfg=c.cfg, dun=cfg.mode==='dungeon';
     for(let i=later.length-1;i>=0;i--){ if(--later[i][0]<=0){ const f=later[i][1]; later.splice(i,1); f(); } }
+    stepDrops(); if(pl.airSwingT>0) pl.airSwingT--;
     if(pl.leap){ pl.leapT++; const k=pl.leapT; pl.jumpY=k<=12?Math.sin(k/12*Math.PI/2)*0.95:Math.max(0,0.95*(1-(k-12)/6)); if(k>=18){ pl.leap=0; pl.jumpY=0; } }   // up for twelve steps, down in six
     if(pl.swing>0) pl.swing--; if(pl.iframes>0) pl.iframes--; pl.blocking=pl.bDown; if(pl.dodgeCd>0) pl.dodgeCd--; if(pl.comboT>0&&--pl.comboT<=0) pl.combo=0;
     if(pl.dashing>0){ const k=0.35+0.65*pl.dashing/DASH_N; pl.dashing--; const L0=ENGINE.level, nx=p.x+pl.dashx*k, nz=p.z+pl.dashz*k; if(L0.canMove(p.x,p.z,nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)) p.z=nz; }
@@ -7731,8 +7777,36 @@ const COMBAT=(function(){
     { const warn=lock.lunge===1||(lock.boss&&lock.state==='telegraph'); reticle.ring.material.color.setHex(warn?0xff4a3a:0xffd84a); reticle.dm.material.color.setHex(warn?0xff4a3a:0xffd84a); }   /* red when it's about to strike */
     reticle.position.set(lock.x,gy+0.04,lock.z); reticle.ring.scale.setScalar(s*Math.max(0.6,ps)*(1+Math.sin(t*6)*0.05)); reticle.dm.position.y=(lock.boss?3.0:1.9)*Math.max(0.55,ps)+Math.sin(t*4)*0.08; reticle.dm.rotation.y=t*2; }
   // the guardian: telegraph, then the move; idle drifts home; braced while it winds up
+  // ── V113: the guardians take to the air. FLIERS (the Imp, the Specter, the Char Demon, the Void Champion) SOAR: rise out of
+  //  reach, circle over you raining fire on marked spots, swoop low now and then (a jump-strike can reach it), then fix a red
+  //  ring on you and DIVE — the landing throws a shockwave you jump, and leaves it stunned and open (+50%). The heavy ones LEAP:
+  //  a great bound to where you stood, the same ring and wave on landing, a shorter stun. Every shockwave can be jumped.
+  function ringHit(d,dmg){ const p=P(); if(airH()>0.26){ if(!d.ringJumped){ d.ringJumped=true; pop(p.x,ENGINE.level.ground(p.x,p.z)+2.1,p.z,'Jumped!','#8ae0ff'); } return; } hurtFromBoss(dmg); }
+  function land(d,x,z,en,stun){ const c=A(), p=P(); d.x=x; d.z=z; d.alt=0; d.mark=false; d.anchorx=x; d.anchorz=z; d.ring=1; d.ringR=0; d.ringJumped=false; d.wave=false; d.move=Object.assign({},d.move,{ringSpeed:4.6,ringMax:120});
+    shake=Math.max(shake,0.6); dust(x,z); if(Math.hypot(p.x-x,p.z-z)<1.3) hurtFromBoss((8+d.level*1.2)*en); d.state='stunned'; d.timer=stun;
+    pop(x,ENGINE.level.ground(x,z)+2.6,z,'Stunned!','#ffd84a'); }
+  function drop(d,tx,tz){ const c=A(); c.drops=c.drops||[]; const m=new THREE.Mesh(new THREE.SphereGeometry(0.2,10,8),glow(d.tint||0xff7a3a)); c.fx.add(m);
+    const mk=new THREE.Mesh(new THREE.RingGeometry(0.55,0.75,24),new THREE.MeshBasicMaterial({color:0xff5a3a,transparent:true,opacity:0.7,side:THREE.DoubleSide,depthWrite:false})); mk.rotation.x=-Math.PI/2; c.fx.add(mk);
+    c.drops.push({x0:d.x,z0:d.z,y0:(d.alt||0)+1.6,tx,tz,t:0,T:44,m,mk,dmg:4+d.level*0.8}); }
+  function stepDrops(){ const c=A(); if(!c||!c.drops) return; const p=P(), lv=ENGINE.level;
+    c.drops=c.drops.filter(o=>{ o.t++; const k=o.t/o.T, gy=lv.ground(o.tx,o.tz); o.m.position.set(o.x0+(o.tx-o.x0)*k,gy+o.y0*(1-k)+Math.sin(k*Math.PI)*0.8,o.z0+(o.tz-o.z0)*k); o.mk.position.set(o.tx,gy+0.05,o.tz); o.mk.scale.setScalar(1.2-k*0.5); o.mk.material.opacity=0.35+k*0.5;
+      if(o.t>=o.T){ c.fx.remove(o.m); c.fx.remove(o.mk); dust(o.tx,o.tz); if(Math.hypot(p.x-o.tx,p.z-o.tz)<0.8) hurtFromBoss(o.dmg); return false; } return true; }); }
+  function bossAir(d,dx,dz,dist,T,en,done){ const c=A(), p=P(), cfg=c.cfg, W=cfg.W||20, H=cfg.H||20, cl=(v,M)=>Math.max(1.5,Math.min(M-1.5,v));
+    const ringStep=()=>{ if(!d.ring) return; d.ringR+=(d.move&&d.move.ringSpeed||4.6)*PX; const rd=Math.hypot(p.x-d.anchorx,p.z-d.anchorz); if(Math.abs(rd-d.ringR)<0.5) ringHit(d,(5+d.level)*en); if(d.ringR>(d.move&&d.move.ringMax||120)*PX) d.ring=0; };
+    if(d.state==='rise'){ d.timer--; d.alt=(d.alt||0)+(4.2-(d.alt||0))*0.06; if(d.timer<=0){ d.state='hover'; d.timer=d.enraged?240:300; d.dropT=30; } return true; }
+    if(d.state==='hover'){ d.timer--; const ph=d.timer%120, swoop=ph<38; d.orb=(d.orb||0)+(swoop?0.022:0.012); const r=swoop?1.7:3.4, tx=cl(p.x+Math.cos(d.orb)*r,W), tz=cl(p.z+Math.sin(d.orb)*r,H);
+      d.x+=(tx-d.x)*0.035; d.z+=(tz-d.z)*0.035; d.alt+=((swoop?2.2:4.2)-d.alt)*0.05; d.walking=true;
+      if(--d.dropT<=0&&!swoop){ d.dropT=d.enraged?24:34; drop(d,cl(p.x+(Math.random()-0.5)*0.8,W),cl(p.z+(Math.random()-0.5)*0.8,H)); if(d.enraged) drop(d,cl(p.x+(Math.random()-0.5)*3,W),cl(p.z+(Math.random()-0.5)*3,H)); }
+      if(d.timer<=0){ d.state='aim'; d.timer=58; d.mark=true; d.mx=p.x; d.mz=p.z; } return true; }
+    if(d.state==='aim'){ d.timer--; if(d.timer>22){ d.mx+=(p.x-d.mx)*0.12; d.mz+=(p.z-d.mz)*0.12; } d.alt+=(4.6-d.alt)*0.05; d.x+=(d.mx-d.x)*0.02; d.z+=(d.mz-d.z)*0.02;
+      if(d.timer<=0){ d.state='dive'; d.timer=16; d.jx0=d.x; d.jz0=d.z; d.a0=d.alt; } return true; }
+    if(d.state==='dive'){ d.timer--; const k=1-d.timer/16; d.x=d.jx0+(d.mx-d.jx0)*k; d.z=d.jz0+(d.mz-d.jz0)*k; d.alt=d.a0*(1-k*k); if(d.timer<=0) land(d,d.mx,d.mz,en,d.enraged?90:130); return true; }
+    if(d.state==='jump'){ d.timer--; const k=1-d.timer/46; if(k<0.5){ d.mx+=(p.x-d.mx)*0.04; d.mz+=(p.z-d.mz)*0.04; } d.x=d.jx0+(d.mx-d.jx0)*k; d.z=d.jz0+(d.mz-d.jz0)*k; d.alt=Math.sin(k*Math.PI)*5.0; if(d.timer<=0) land(d,d.mx,d.mz,en,d.enraged?55:80); return true; }
+    if(d.state==='stunned'){ d.timer--; d.walking=false; ringStep(); if(d.timer<=0){ d.state='idle'; d.timer=34; d.ring=0; done(); } return true; }
+    if(d.alt>0.01&&d.state!=='rise') d.alt=Math.max(0,d.alt-0.15); return false; }
   function bossStep(d,dx,dz,dist,T){ const c=A(), p=P(), cfg=c.cfg, en=d.enraged?T.enrageDmg:1;
     const done=()=>{ if(cfg.moveDone) cfg.moveDone(d); };
+    if(bossAir(d,dx,dz,dist,T,en,done)){ d.face=Math.atan2(dx,dz); return; }
     if(d.state==='idle'){ d.timer--; if(cfg.wide&&!cfg.bossIdle&&dist>4.5&&d.anchorx!==undefined){ const nx=d.anchorx+dx/dist*0.035, nz=d.anchorz+dz/dist*0.035; if(walk(nx,nz)){ d.anchorx=nx; d.anchorz=nz; } }   /* in the widened sanctum it stalks you across the hall rather than holding the middle */
       const k=cfg.bossIdle?cfg.bossIdle(d):0.02; d.x+=(d.anchorx-d.x)*k; d.z+=(d.anchorz-d.z)*k;
       if(d.timer<=0){ const mv=d.pat.moves[d.moveIdx%d.pat.moves.length]; d.moveIdx++; const rage=d.hp<d.maxHp*0.5?0.7:1; d.move=mv; d.kind=mv.kind; d.state='telegraph'; d.telegraph=Math.round(mv.telegraph*rage); d.telMax=d.telegraph; } }
@@ -7743,15 +7817,17 @@ const COMBAT=(function(){
         else if(mv.kind==='spread'){ for(let i=0;i<mv.count;i++){ const a=i/mv.count*Math.PI*2; shot(d.x,d.z,Math.cos(a)*mv.speed*PX,Math.sin(a)*mv.speed*PX,150); } d.state='idle'; d.timer=48; done(); }
         else if(mv.kind==='charge'){ d.state='charge'; d.timer=26; d.chx=d.aimx*mv.speed*PX; d.chz=d.aimz*mv.speed*PX; }
         else if(mv.kind==='slam'||mv.kind==='wave'){ d.state='slam'; d.wave=mv.kind==='wave'; d.timer=mv.kind==='wave'?20:16; d.ring=0; d.anchorx=d.x; d.anchorz=d.z; }
+        else if(mv.kind==='soar'){ d.state='rise'; d.timer=50; d.orb=Math.atan2(d.z-p.z,d.x-p.x); UI.toast('⚠ '+(d.name||'It')+' takes to the air — look up!',1400); }
+        else if(mv.kind==='leap'){ d.state='jump'; d.timer=46; d.jx0=d.x; d.jz0=d.z; d.mx=p.x; d.mz=p.z; d.mark=true; }
         else if(mv.kind==='summon'){ for(let i=0;i<2;i++){ const ax=Math.max(1.5,Math.min(cfg.W-1.5,d.x+(i?2:-2))); add({x:ax,z:d.z,hp:8+d.level,level:Math.max(1,d.level-4),speed:1.3*PX}); } d.state='idle'; d.timer=58; }
         else { d.state='idle'; d.timer=50; } } }
     else if(d.state==='charge'){ const cm=cfg.chargeMult?cfg.chargeMult(d):1; d.x+=d.chx*cm; d.z+=d.chz*cm; d.timer--;
       if(d.x<1.5){ d.x=1.5; d.chx*=-1; } if(d.x>cfg.W-1.5){ d.x=cfg.W-1.5; d.chx*=-1; } if(d.z<1.5){ d.z=1.5; d.chz*=-1; } if(d.z>cfg.H-1.5){ d.z=cfg.H-1.5; d.chz*=-1; }
       if(Math.hypot(p.x-d.x,p.z-d.z)<0.8) hurtFromBoss((7+d.level*1.1)*en); if(d.timer<=0){ d.state='idle'; d.timer=40; done(); } }
-    else if(d.state==='slam'){ d.timer--; if(d.timer<=0&&d.ring===0){ d.ring=1; d.ringR=0; }
-      if(d.ring){ d.ringR+=(d.move.ringSpeed||4)*PX; const rd=Math.hypot(p.x-d.x,p.z-d.z); if(Math.abs(rd-d.ringR)<0.5&&!(d.wave&&cfg.ringSafe&&cfg.ringSafe())) hurtFromBoss((5+d.level)*(d.wave?1.6:1)*en); if(cfg.ringTick) cfg.ringTick(d);
+    else if(d.state==='slam'){ d.timer--; if(d.timer<=0&&d.ring===0){ d.ring=1; d.ringR=0; d.ringJumped=false; }
+      if(d.ring){ d.ringR+=(d.move.ringSpeed||4)*PX; const rd=Math.hypot(p.x-d.x,p.z-d.z); if(Math.abs(rd-d.ringR)<0.5&&!(d.wave&&cfg.ringSafe&&cfg.ringSafe())) ringHit(d,(5+d.level)*(d.wave?1.6:1)*en); if(cfg.ringTick) cfg.ringTick(d);
         if(d.ringR>(d.move.ringMax||120)*PX){ d.ring=0; d.wave=false; d.state='idle'; d.timer=42; done(); } } }
-    const cr=d.state==='telegraph'?T.hotRadius:0.7; if(dist<cr) hurtFromBoss((5+d.level*0.85)*en);
+    const cr=d.state==='telegraph'?T.hotRadius:0.7; if(dist<cr&&(d.alt||0)<0.8) hurtFromBoss((5+d.level*0.85)*en);
     d.face=Math.atan2(dx,dz); }
   function shot(x,z,vx,vz,life,nova,burst,dmg,col){ const c=A(), m=new THREE.Mesh(new THREE.SphereGeometry(nova?0.14:0.18,8,6),glow(col||(nova?0xffd0f0:0xff5a6a))); m.position.set(x,1,z); c.fx.add(m); c.shots.push({x,z,vx,vz,life,nova,burst,m,dmg}); }
   function add(o){ const c=A(), a=Object.assign({alive:true,hurt:0,maxHp:o.hp},o); a.g=o.model||demonModel(a.level,1,false); if(!o.model) a.g.scale.multiplyScalar(0.7); a.g.scale.multiplyScalar(VIEWMODE.ps(ENGINE.level)); ENGINE.level.scene.add(a.g); c.adds.push(a); return a; }
@@ -7765,7 +7841,7 @@ const COMBAT=(function(){
     ENGINE.K.guarding=pl.blocking; ENGINE.K.dash=pl.dashing>0?Math.min(1,pl.dashing/4):Math.max(0,(ENGINE.K.dash||0)-0.15); ENGINE.K.air=pl.jumpY||0; ENGINE.K.raise=pl.leap&&pl.leapT<12?1:0; drawLock(ENGINE.level);
     const lv=ENGINE.level, cam=ENGINE.cam, t=now()/1000; let boss=null;
     c.foes.forEach(d=>{ const g=d.g; if(!d.alive&&d.dying<=0){ if(g.parent){ g.parent.remove(g); } return; }
-      const gy=lv.ground(d.x,d.z); g.position.set(d.x,gy+(d.boss?0:Math.abs(Math.sin(t*4+d.t))*0.06+0.05),d.z);
+      const gy=lv.ground(d.x,d.z); g.position.set(d.x,gy+(d.boss?(d.alt||0)+(d.alt>0.5?Math.sin(t*3)*0.12:0):Math.abs(Math.sin(t*4+d.t))*0.06+0.05),d.z);
       if(d.face!==undefined){ let r=d.face-g.rotation.y; r=Math.atan2(Math.sin(r),Math.cos(r)); g.rotation.y+=r*Math.min(1,dt*8); }
       const tell=d.lunge===1, mats=g.userData.mats||[]; mats.forEach(m=>m.emissive&&m.emissive.setHex(d.flash>0?0xffffff:d.hurt>0?0x884444:tell?(Math.floor(t*14)%2?0xaa1010:0x440808):(d.boss&&d.state==='telegraph'?0x441122:0)));
       if(d.flash>0&&!paused&&hitStop<=0) d.flash--;
@@ -7775,8 +7851,12 @@ const COMBAT=(function(){
       if(!d.alive){ const k=d.dying/18; g.rotation.y+=dt*14*(1-k); g.scale.setScalar((g.userData.s0b||g.scale.x)*Math.max(0.05,k)); g.position.y-=(1-k)*0.4; }
       d.bar.visible=d.alive&&!d.boss&&d.hp<d.maxHp; if(d.bar.visible){ g.updateMatrixWorld(); d.bar.lookAt(cam.position); d.bar.fg.scale.x=Math.max(0.01,d.hp/d.maxHp); d.bar.fg.position.x=-(1-d.hp/d.maxHp)*0.39; }
       if(d.boss&&d.alive){ boss=d; d.tel.position.set(d.x,gy+0.05,d.z); d.tel.material.opacity=d.state==='telegraph'?0.35+0.45*(1-d.telegraph/Math.max(1,d.telMax)):0; d.tel.scale.setScalar(d.state==='telegraph'?1+(1-d.telegraph/Math.max(1,d.telMax))*0.8:1);
-        d.slamM.visible=!!d.ring; if(d.ring){ d.slamM.position.set(d.anchorx,gy+0.08,d.anchorz); d.slamM.scale.setScalar(Math.max(0.05,d.ringR)); d.slamM.material.color.setHex(d.wave?0x6ad8ff:0xffb0c0); } }
-      else if(d.boss){ d.tel.visible=false; d.slamM.visible=false; } });
+        d.slamM.visible=!!d.ring; if(d.ring){ d.slamM.position.set(d.anchorx,gy+0.08,d.anchorz); d.slamM.scale.setScalar(Math.max(0.05,d.ringR)); d.slamM.material.color.setHex(d.wave?0x6ad8ff:0xffb0c0); }
+        if(d.bandM){ const ag=lv.ground(d.anchorx,d.anchorz); d.bandM.visible=!!d.ring; if(d.ring){ d.bandM.position.set(d.anchorx,ag+0.21,d.anchorz); d.bandM.scale.set(Math.max(0.05,d.ringR),1,Math.max(0.05,d.ringR)); d.bandM.material.color.setHex(d.wave?0x6ad8ff:0xffb0c0); d.bandM.material.opacity=0.5*(1-Math.min(1,d.ringR/12)); } }
+        if(d.markM){ d.markM.visible=!!d.mark; if(d.mark){ d.markM.position.set(d.mx,lv.ground(d.mx,d.mz)+0.05,d.mz); d.markM.scale.setScalar(1+Math.sin(t*10)*0.08); } }
+        if(d.shadowM){ const a=d.alt||0; d.shadowM.visible=a>0.15; if(a>0.15){ d.shadowM.position.set(d.x,gy+0.04,d.z); d.shadowM.scale.setScalar(Math.max(0.5,1.3-a*0.12)); d.shadowM.material.opacity=Math.max(0.15,0.42-a*0.04); } }
+        if(g.w1&&d.alt>0.3){ g.w1.rotation.y=Math.sin(t*16)*0.8; g['w-1'].rotation.y=-Math.sin(t*16)*0.8; } }
+      else if(d.boss){ d.tel.visible=false; d.slamM.visible=false; if(d.bandM) d.bandM.visible=false; if(d.markM) d.markM.visible=false; if(d.shadowM) d.shadowM.visible=false; } });
     c.adds.forEach(a=>{ a.g.position.set(a.x,lv.ground(a.x,a.z),a.z); if(a.g.animate){ a.g.animate(dt,a.moving||a.walking?'walk':'idle',1); a.g.rotation.y=a.walking?Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z):ENGINE.P.face; } else a.g.rotation.y=Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z); });
     c.shots.forEach(s=>s.m.position.set(s.x,lv.ground(s.x,s.z)+0.9,s.z));
     c.arrows.forEach(s=>{ s.m.position.set(s.x,lv.ground(s.x,s.z)+1.0,s.z); s.m.rotation.y=Math.atan2(s.vx,s.vz); });
@@ -7791,7 +7871,7 @@ const COMBAT=(function(){
   function reset(){ pl.buf=0; pl.lungeT=0; lock=null; charge.on=false; charge.ready=false; if(charge.ring) charge.ring.visible=false; if(typeof letterbox==='function') letterbox(false); ENGINE.K.charge=0; ENGINE.K.spinT=-1; hitStop=0; shake=0; pl.leap=0; pl.jumpY=0; if(reticle) reticle.visible=false; meter(null); tintV.style.opacity=0; pl.iframes=0; pl.swing=0; pl.combo=0; pl.comboT=0; pl.blocking=false; pl.bDown=false; pl.dashing=0; later.length=0; ENGINE.K.visible=true; bossBar.hidden=true; guardB.hidden=true; potB.hidden=true; }
   // how fast you can walk just now: a swing roots you (you can still turn and edge), a guard or a charging blade slows you
   function moveMul(){ return pl.swing>0?(pl.swing>pl.swingDur*0.35?0.25:0.6):pl.blocking?0.6:charge.on&&charge.k>0?0.55:1; }
-  return { moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
+  return { moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
     if(pl.iframes>0) return; let inc=Math.max(1,Math.round((8+tl*0.5)-S().def*0.4)); if(pl.blocking) inc=Math.max(1,Math.ceil(inc*0.4)); pl.iframes=18; takeHit(inc); } };
 })();
 
@@ -8551,7 +8631,7 @@ function chapelLevels(C,spec){
       f.demons.forEach(d=>{ const post=d.x+','+d.y; if(d.boss?R.bossDead:R.cleared[i+':'+post]) return; const dirs=[[1,0],[-1,0],[0,1],[0,-1]][Math.random()*4|0];
         COMBAT.foe(lv,Object.assign({x:d.x+0.5,z:d.y+0.5,hx:d.x+0.5,hz:d.y+0.5,post,pdx:dirs[0],pdz:dirs[1],form:(d.x+d.y)%4},d,d.boss?{pat:C.boss,look:C.town===8?'paladin':'demon',tint:C.boss.color,bossForm:C.town,x:d.x+0.5,z:d.y+0.5}:{x:d.x+0.5,z:d.y+0.5})); });
       if(M.onEnter) M.onEnter();
-      if(top&&!R.bossDead) setTimeout(()=>ENGINE.speak('⬆ The general\'s sanctum',[`⚠️ ${td.boss} guards it. Read its telegraphed attacks and dodge with Ⓑ (tap Guard twice) — it cannot turn once it has committed.`]),450);
+      if(top&&!R.bossDead) setTimeout(()=>ENGINE.speak('⬆ The general\'s sanctum',[`⚠️ ${td.boss} guards it. Read its telegraphed attacks and dodge with Ⓑ (tap Guard twice) — it cannot turn once it has committed.`,'When it takes to the air or leaps, lock on (F / tap the look stick) and the view tilts up to follow it. Stay out of the red rings where it means to land. Jump (⤴) over its shockwaves. Swing in mid-air for an Aerial blow that reaches higher and ends in a plunge, and strike hard while it is stunned.']),450);
       else if(ftype==='doctrine'&&!R.briefed){ R.briefed=true; setTimeout(()=>ENGINE.speak('Five lampstands, and a stone that will not move',['They stand in a ring, each with its name set in the floor before it. The stone above the stair holds fast while they are cold.','Read the tablet on the pedestal at the centre. The order is in the verse — light them as it names them, and skip the two that are not here.']),500); }
       else if(f.podium&&!R.hinted){ R.hinted=true; setTimeout(()=>ENGINE.speak('The chapel is bound',['Demons hold these halls, and a stone seals the stair to the next floor.','Hunt down every demon on the floor. When the last one falls, a chest rises from the dais in the great hall — the iron key inside opens the stone.','(The count of demons left is up in the corner, under the floor number.)']),450); }
       else setTimeout(()=>UI.toast(f.podium&&!R.opened[i]?`⬆ Floor ${i+1}/${N} — 👹 slay every demon to raise the key`:`⬆ Floor ${i+1}/${N}`,1800),400); };
