@@ -5710,12 +5710,14 @@ function _tiles(g,w,d,h,rh,col){ const {W2,a,L}=_roofFrame(w,d,rh,0.4), D=d+0.6,
 function _stoneFooting(g,w,d,y0,hgt){ const cols=[0x9a9488,0x8a8478,0xa8a294,0x928c80]; let k=0;
   for(const [len,fz,rot] of [[w+0.12,d/2,0],[w+0.12,-d/2,0],[d+0.12,w/2,1],[d+0.12,-w/2,1]]){ let p=-len/2; while(p<len/2-0.05){ const sw=Math.min(len/2-p,0.32+hsh(k,7)*0.3), sh=hgt*(0.85+hsh(7,k)*0.3);
       const st=B(sw-0.03,sh,0.2,cols[k%4],0,0,0,g); if(rot) st.position.set(fz,y0,p+sw/2), st.rotation.y=Math.PI/2; else st.position.set(p+sw/2,y0,fz); k++; p+=sw; } } }
-function _win2(g,x,y,z,fr,ry){ const w=group(x,y,z,g); if(ry) w.rotation.y=ry;
+function _win2(g,x,y,z,fr,ry,sh){ const w=group(x,y,z,g); if(ry) w.rotation.y=ry; if(sh===undefined) sh=0x3f6a8a;
   B(0.5,0.5,0.1,0x2a2a30,0,0,-0.02,w); B(0.42,0.42,0.02,glow(0xf2d27a),0,0.04,0.02,w);                       // the deep recess and the lit pane
   B(0.06,0.42,0.06,fr,0,0.04,0.05,w); B(0.42,0.06,0.06,fr,0,0.22,0.05,w);                                        // the mullion and transom
   B(0.64,0.1,0.14,fr,0,-0.08,0.05,w); B(0.64,0.1,0.12,fr,0,0.48,0.05,w); B(0.1,0.56,0.12,fr,-0.29,-0.03,0.05,w); B(0.1,0.56,0.12,fr,0.29,-0.03,0.05,w);   // a thick frame
   B(0.72,0.07,0.22,0xa8a294,0,-0.13,0.1,w);                                                                        // the stone sill
-  [-1,1].forEach(sd=>{ const sh=B(0.26,0.54,0.05,0x3f6a8a,sd*0.47,-0.03,0.1,w); sh.rotation.y=sd*0.45; B(0.22,0.04,0.055,0x2f5070,sd*0.47,0.12,0.12,w).rotation.y=sd*0.45; B(0.22,0.04,0.055,0x2f5070,sd*0.47,0.36,0.12,w).rotation.y=sd*0.45; }); return w; }
+  if(sh===null){ for(const xx of [-0.13,0.13]) B(0.025,0.44,0.025,0x2a2a2e,xx,0.03,0.09,w); B(0.44,0.025,0.025,0x2a2a2e,0,0.36,0.09,w); return w; }   // iron bars instead of shutters
+  const shD=new THREE.Color(sh).multiplyScalar(0.75).getHex();
+  [-1,1].forEach(sd=>{ const s2=B(0.26,0.54,0.05,sh,sd*0.47,-0.03,0.1,w); s2.rotation.y=sd*0.45; B(0.22,0.04,0.055,shD,sd*0.47,0.12,0.12,w).rotation.y=sd*0.45; B(0.22,0.04,0.055,shD,sd*0.47,0.36,0.12,w).rotation.y=sd*0.45; }); return w; }
 function _cottage2(b,g,c,low,opt){ opt=opt||{}; const w=b.w-0.4, d=b.h-0.3, h=low?1.45:1.75, fr=0x5a3a22, wall=0xf2e6cc;
   _stoneFooting(g,w,d,0,0.34); B(w-0.04,h-0.3,d-0.04,wall,0,0.3,0,g);                                              // stone footing, plaster above
   const bm=(x,y,z,sx,sy,sz,rz)=>{ const m=B(sx,sy,sz,fr,x,y,z,g); if(rz) m.rotation.z=rz; return m; };
@@ -5740,7 +5742,7 @@ function _farmhouse2(b,g,c){ const w=b.w-0.4, d=b.h-0.3, H1=1.6, H2=3.05, rh=1.5
   B(w-0.04,H1-0.02,d-0.04,0x948e80,0,0,0,g); _stoneFooting(g,w,d,0,0.36); let k=0;
   for(const [len,fz,rot,sg] of [[w,d/2,0,1],[w,-d/2,0,-1],[d,w/2,1,1],[d,-w/2,1,-1]]){ for(let y=0.36,r=0;y<H1-0.05;r++){ const rhh=0.2+hsh(r,k)*0.08; let p=-len/2+(r%2?0.14:0);
       while(p<len/2-0.06){ const sw=Math.min(len/2-p,0.26+hsh(k,r*3+1)*0.26), cx=p+sw/2; k++;
-        if(!(rot===0&&sg>0&&Math.abs(cx)<0.62&&y<1.2)&&!(Math.abs(cx-2.35)<0.42&&rot===0&&y>0.5&&y<1.25)&&!(Math.abs(cx+2.35)<0.42&&rot===0&&y>0.5&&y<1.25)&&!(rot===1&&Math.abs(cx)<0.42&&y>0.5&&y<1.25)){
+        if(!(rot===0&&sg>0&&Math.abs(cx-(b._dx||0))<0.62&&y<1.2)&&!(Math.abs(cx-2.35)<0.42&&rot===0&&y>0.5&&y<1.25)&&!(Math.abs(cx+2.35)<0.42&&rot===0&&y>0.5&&y<1.25)&&!(rot===1&&Math.abs(cx)<0.42&&y>0.5&&y<1.25)){
           const st=B(sw-0.04,Math.min(rhh,H1-y)-0.03,0.08,stones[(k+r)%5],0,y,0,g); if(rot) st.position.set(fz+sg*0.03,y+st.geometry.parameters.height/2,cx), st.rotation.y=Math.PI/2; else st.position.set(cx,y+st.geometry.parameters.height/2,fz+sg*0.03); }
         p+=sw; } y+=rhh; } }
   [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ for(let i=0;i<4;i++){ const big=i%2===0; B(big?0.4:0.24,0.3,big?0.24:0.4,0xb8b0a0,sx*(w/2-(big?0.16:0.08)+0.04),0.38+i*0.31,sz*(d/2-(big?0.08:0.16)+0.04),g); } });   // big quoins
@@ -5800,12 +5802,12 @@ function _stoneWalls(g,w,d,y0,y1,holes,cols){ cols=cols||[0x9a9488,0x8a8478,0xa8
 //  front, its roof a railed balcony for the upper storey; the upper storey jettied out in chunky timbers and lime-wash with a glazed
 //  door onto the balcony; a tiled roof over timbered gables with two stone chimneys; the inn's sign swinging from an iron bracket;
 //  lanterns by the door, barrels on the porch. Every town's colours carry through (wall, roof, sign, snow on the ridge up north).
-function _inn2(b,g,c){ const w=b.w-0.3, d=b.h-0.3, H1=1.25, H2=2.5, rh=1.45, fr=c.beam||0x5a3a22, wall=c.wall||0xf2e6cc, small=w<3.2, wx=w/2-0.8;
+function _inn2(b,g,c){ const w=b.w-0.3, d=b.h-0.3, H1=1.25, H2=2.5, rh=1.45, fr=c.iron?0x2e2e34:c.beam||0x5a3a22, wall=c.iron?0x9a9ca4:c.wall||0xf2e6cc, shut=c.iron?IRON.ox:undefined, small=w<3.2, wx=w/2-0.8;
   const stoneCols=[c.wallD,0x9a9488,0x8a8478,0xa8a294,0x928c80].map((v,i)=>i?new THREE.Color(v).lerp(new THREE.Color(c.wallD),0.25).getHex():v);
   B(w-0.04,H1,d-0.04,new THREE.Color(c.wallD).multiplyScalar(0.9).getHex(),0,0,0,g); _stoneFooting(g,w,d,0,0.3);
-  const holes=[['f',0,0,1.15,0.5]]; if(!small){ holes.push(['f',wx,0.35,0.95,0.42],['f',-wx,0.35,0.95,0.42]); } holes.push(['r',0,0.35,0.95,0.42],['l',0,0.35,0.95,0.42]);
-  _stoneWalls(g,w,d,0.3,H1,holes,stoneCols);
-  if(!small) [wx,-wx].forEach(x=>_win2(g,x,0.5,d/2+0.08,fr)); _win2(g,w/2+0.08,0.5,0,fr,Math.PI/2); _win2(g,-w/2-0.08,0.5,0,fr,-Math.PI/2);
+  const holes=[['f',b._dx||0,0,1.15,0.5]]; if(!small){ holes.push(['f',wx,0.35,0.95,0.42],['f',-wx,0.35,0.95,0.42]); } holes.push(['r',0,0.35,0.95,0.42],['l',0,0.35,0.95,0.42]);
+  _stoneWalls(g,w,d,0.3,H1,holes,c.iron?IRON.st:stoneCols);
+  if(!small) [wx,-wx].forEach(x=>_win2(g,x,0.5,d/2+0.08,fr,0,shut)); _win2(g,w/2+0.08,0.5,0,fr,Math.PI/2,shut); _win2(g,-w/2-0.08,0.5,0,fr,-Math.PI/2,shut);
   // the floor beam, and the upper storey jettied out
   B(w+0.2,0.14,d+0.2,fr,0,H1-0.02,0,g); const jw=w+0.24, jd=d+0.24, y0=H1+0.12, hh=H2-y0;
   B(jw-0.04,hh,jd-0.04,wall,0,y0,0,g); for(let x=-jw/2+0.25;x<=jw/2-0.2;x+=0.42) [-1,1].forEach(sz=>{ const j=B(0.1,0.1,0.22,fr,x,H1-0.08,sz*(d/2+0.06),g); });   // the joist ends
@@ -5814,12 +5816,12 @@ function _inn2(b,g,c){ const w=b.w-0.3, d=b.h-0.3, H1=1.25, H2=2.5, rh=1.45, fr=
     if(!small) [-1,1].forEach(sd=>{ bm(sd*(wx+0.45),y0,z,0.11,hh,0.1); bm(sd*(jw/2-0.32),y0+0.08,z,0.08,hh*0.7,0.08,sd*0.6); }); }
   for(const sx of [-1,1]){ const x=sx*(jw/2+0.03); B(0.12,hh,0.16,fr,x,y0,-jd/2+0.08,g); B(0.12,hh,0.16,fr,x,y0,jd/2-0.08,g); B(0.12,hh,0.12,fr,x,y0,0,g); B(0.14,0.16,jd+0.1,fr,x,H2-0.14,0,g); B(0.12,0.1,jd,fr,x,y0,0,g);
     [-1,1].forEach(q=>{ const br=B(0.08,hh*0.7,0.08,fr,x,y0+0.08,q*jd/4,g); br.rotation.x=q*0.55; }); }
-  if(!small) [wx,-wx].forEach(x=>_win2(g,x,y0+0.38,jd/2+0.05,fr)); [[jw/2+0.05,Math.PI/2],[-jw/2-0.05,-Math.PI/2]].forEach(([x,ry])=>{ _win2(g,x,y0+0.38,-jd/4,fr,ry); if(d>3.2) _win2(g,x,y0+0.38,jd/4,fr,ry); });
-  [-0.9,0.9].forEach(x=>{ if(Math.abs(x)<w/2-0.5) _win2(g,x*Math.min(1,w/4),y0+0.38,-jd/2-0.05,fr,Math.PI); });
+  if(!small) [wx,-wx].forEach(x=>_win2(g,x,y0+0.38,jd/2+0.05,fr,0,shut)); [[jw/2+0.05,Math.PI/2],[-jw/2-0.05,-Math.PI/2]].forEach(([x,ry])=>{ _win2(g,x,y0+0.38,-jd/4,fr,ry,shut); if(d>3.2) _win2(g,x,y0+0.38,jd/4,fr,ry,shut); });
+  [-0.9,0.9].forEach(x=>{ if(Math.abs(x)<w/2-0.5) _win2(g,x*Math.min(1,w/4),y0+0.38,-jd/2-0.05,fr,Math.PI,shut); });
   { const dz=jd/2+0.03; B(0.7,1.0,0.08,0x2a2a30,0,y0,dz,g); B(0.56,0.88,0.03,glow(0xf2d27a),0,y0+0.04,dz+0.03,g); B(0.05,0.88,0.05,fr,0,y0+0.04,dz+0.05,g); B(0.56,0.05,0.05,fr,0,y0+0.48,dz+0.05,g);
     B(0.84,0.12,0.12,fr,0,y0+0.98,dz+0.05,g); [-0.38,0.38].forEach(x=>B(0.1,1.04,0.12,fr,x,y0,dz+0.05,g)); }
   // the roof: timbered gables, tiles in the town's colour, snow on the ridge where it falls, two stone chimneys
-  _gable(g,jw,jd,H2,rh,wall,c.timber?fr:fr); _tiles(g,jw,jd,H2,rh,c.roof);
+  _gable(g,jw,jd,H2,rh,wall,c.timber?fr:fr); _tiles(g,jw,jd,H2,rh,c.iron?IRON.slate:c.roof); if(c.iron){ _ironCrest(g,jd+0.4,H2+rh+0.14); _ironBanner(g,jw/2+0.02,H2-0.1,0,Math.PI/2); }
   if(c.snow){ const {W2,a,L}=_roofFrame(jw,jd,rh,0.4); [-1,1].forEach(sd=>{ const sn=B(L*0.5,0.1,jd+0.66,0xf4f8fc,0,0,0,g); sn.position.set(sd*W2*0.25,H2+rh*0.75+0.12,0); sn.rotation.z=-sd*a; }); Cy(0.16,0.16,jd+0.7,8,0xf4f8fc,0,0,0,g).rotation.x=Math.PI/2; g.children[g.children.length-1].position.set(0,H2+rh+0.1,0); }
   [[-jw/2+0.55,-jd/4],[jw/2-0.55,jd/5]].forEach(([cx,cz],i)=>{ if(small&&i) return; for(let j=0;j<6;j++) B(0.42-(j>3?0.05:0),0.27,0.42-(j>3?0.05:0),stoneCols[(j+i)%5],cx,H2+0.05+j*0.27-0.25,cz,g); B(0.52,0.08,0.52,0x7a746a,cx,H2+1.42,cz,g); Cy(0.07,0.09,0.2,8,0xa8603a,cx,H2+1.5,cz,g); });
   // the porch: posts, a deck over it railed for a balcony, lanterns, barrels, the sign on its bracket
@@ -5873,14 +5875,67 @@ function _keep2(b,g,c){ const w=b.w-0.2, d=b.h-0.2, H=3.2, stone=c.stone||0xa8a4
     Co(R+0.26,1.9,16,sm(roof),tx,TH+0.47,tz,g); for(let i=1;i<5;i++){ const rr=(R+0.26)*(1-i/5.2); Cy(rr,rr+0.03,0.05,16,sm(rD),tx,TH+0.47+i*0.38,tz,g); }
     Sp(0.07,sm(0xe8c050),tx,TH+2.42,tz,g,8,6); ST(0.03,0.5,0.03,0x2a2a2a,tx,TH+2.45,tz); const pn=ST(0.36,0.16,0.02,c.flag||roof,tx+0.18,TH+2.75,tz); pn.rotation.y=-0.3+ti*0.2;
     ST(0.05,0.36,0.14,0x1a1820,tx+sx*(R+0.0),3.3,tz); ST(0.14,0.36,0.05,0x1a1820,tx,1.8,tz+sz*(R+0.0)); }); }
+// V107 (LOOK2): IRONHOLD — dark stone and iron. Houses of coursed blue-grey stone with stone gables and heavy quoins, slate roofs
+//  with an iron cresting along the ridge, barred windows with oxblood shutters, iron lamp brackets and boot-scrapers, sooty chimneys
+//  with iron cowls, the town's red-and-black banners. The Great Forge: an open smithy bay under an iron-bound beam, a hearth glowing
+//  under its hood, the great chimney, the anvil on its stump, the quench trough, a rack of blades and the bellows.
+const IRON={ st:[0x6e7078,0x62646c,0x7a7c84,0x5a5c64,0x686a72], core:0x55575e, quoin:0x8a8c94, slate:0x464a56, iron:0x2a2a30, ox:0x7a2a22, red:0xa83a2a };
+function _ironCrest(g,len,y){ B(0.05,0.05,len,IRON.iron,0,y,0,g); for(let z=-len/2+0.15;z<=len/2-0.1;z+=0.3){ B(0.03,0.2,0.03,IRON.iron,0,y,z,g); Co(0.04,0.1,4,IRON.iron,0,y+0.2,z,g); } }
+function _ironLamp(g,x,y,z,ry){ const l=group(x,y,z,g); if(ry) l.rotation.y=ry; B(0.04,0.04,0.32,IRON.iron,0,0.3,0.16,l); B(0.03,0.28,0.03,IRON.iron,0,0.02,0.02,l); const br=B(0.03,0.3,0.03,IRON.iron,0,0.05,0.14,l); br.rotation.x=0.8;
+  B(0.14,0.03,0.14,IRON.iron,0,0.22,0.32,l); Sp(0.06,glow(0xffb85a),0,0.14,0.32,l,8,6); B(0.12,0.03,0.12,IRON.iron,0,0.04,0.32,l); return l; }
+function _ironBanner(g,x,y,z,ry){ const b=group(x,y,z,g); if(ry) b.rotation.y=ry; B(0.04,0.04,0.3,IRON.iron,0,0,0.12,b); B(0.5,0.04,0.04,IRON.iron,0,0,0.28,b);
+  B(0.44,0.8,0.02,IRON.red,0,-0.82,0.28,b); B(0.44,0.08,0.025,0x1a1a1e,0,-0.3,0.28,b); B(0.44,0.08,0.025,0x1a1a1e,0,-0.78,0.28,b); Co(0.12,0.16,3,IRON.red,0,-0.98,0.28,b).rotation.z=Math.PI;
+  B(0.12,0.26,0.03,0x1a1a1e,0,-0.66,0.29,b); B(0.24,0.06,0.03,0x1a1a1e,0,-0.5,0.29,b); return b; }   // a black hammer on the red
+function _stoneGable(g,w,d,h,rh,cols){ let k=0; [-1,1].forEach(sz=>{ for(let y=h,r=0;y<h+rh-0.12;r++){ const rr=0.24, ww=w*(1-(y+rr*0.5-h)/rh)-0.08; let p=-ww/2+(r%2?0.12:0);
+      while(p<ww/2-0.05){ const sw=Math.min(ww/2-p,0.24+hsh(k,r*5+3)*0.22); k++; if(sw>0.08) B(sw-0.04,rr-0.03,0.07,cols[(k+r)%cols.length],p+sw/2,y,sz*(d/2+0.0),g); p+=sw; } y+=rr; } }); }
+function _ironHouse(b,g,c,low){ const w=b.w-0.4, d=b.h-0.3, h=low?1.8:2.0, rh=1.25, dx=b._dx||0;
+  B(w-0.04,h,d-0.04,IRON.core,0,0,0,g); _stoneFooting(g,w,d,0,0.34);
+  const wins=[w/2-0.7,-w/2+0.7].filter(x=>Math.abs(x)>0.6&&Math.abs(x-dx)>0.85);
+  const holes=[['f',dx,0,1.2,0.52]].concat(wins.map(x=>['f',x,0.5,1.25,0.42])); if(d>2.4) holes.push(['r',0,0.5,1.25,0.42],['l',0,0.5,1.25,0.42]); holes.push(['b',0,0.5,1.25,0.42]);
+  _stoneWalls(g,w,d,0.34,h,holes,IRON.st);
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ for(let y=0.36,i=0;y<h-0.2;y+=0.31,i++){ const big=i%2===0; B(big?0.4:0.24,0.3,big?0.24:0.4,IRON.quoin,sx*(w/2-(big?0.16:0.08)+0.04),y,sz*(d/2-(big?0.08:0.16)+0.04),g); } });
+  B(w+0.16,0.12,d+0.16,IRON.quoin,0,h-0.06,0,g);
+  wins.forEach(x=>_win2(g,x,0.72,d/2+0.08,IRON.iron,0,IRON.ox)); if(d>2.4){ _win2(g,w/2+0.08,0.72,0,IRON.iron,Math.PI/2,null); _win2(g,-w/2-0.08,0.72,0,IRON.iron,-Math.PI/2,null); } _win2(g,0,0.72,-d/2-0.08,IRON.iron,Math.PI,null);
+  // stone gables, slate, the iron cresting, a sooty chimney with its cowl
+  _gable(g,w,d,h,rh,IRON.core,null); _stoneGable(g,w,d,h,rh,IRON.st);
+  _tiles(g,w,d,h,rh,IRON.slate); _ironCrest(g,d+0.4,h+rh+0.14);
+  const cx=-w/4, cz=-d/5; for(let j=0;j<5;j++) B(0.46-(j>2?0.05:0),0.28,0.46-(j>2?0.05:0),IRON.st[(j+2)%5],cx,h+0.1+j*0.28-0.3,cz,g); B(0.54,0.07,0.54,0x3a3a3e,cx,h+1.12,cz,g);
+  B(0.3,0.06,0.3,IRON.iron,cx,h+1.42,cz,g); [-1,1].forEach(q=>[-1,1].forEach(r=>B(0.03,0.24,0.03,IRON.iron,cx+q*0.12,h+1.19,cz+r*0.12,g)));
+  // the door's lamp, a boot-scraper, the banner
+  _ironLamp(g,dx+(dx>0?-0.55:0.55),1.05,d/2+0.02); B(0.3,0.08,0.06,IRON.iron,dx+(dx>0?0.45:-0.45),0,d/2+0.2,g);
+  _ironBanner(g,w/2+0.02,h-0.1,0.0,Math.PI/2); }
+function _forge2(b,g,c){ const w=b.w-0.4, d=b.h-0.3, h=2.1, rh=1.3, dx=b._dx||0, sd=dx<=0?1:-1, bx0=sd>0?Math.max(dx+0.6,-0.2):Math.min(dx-0.6,0.2), bx1=sd*(w/2-0.35), bw=Math.abs(bx1-bx0), bcx=(bx0+bx1)/2;
+  const BD=1.3, xa=Math.min(bx0,bx1), xb=Math.max(bx0,bx1); B(w-0.04,h,d-BD,IRON.core,0,0,-BD/2,g);                                  // the core, hollowed in front for the smithy bay
+  if(xa>-w/2+0.05) B(xa+w/2-0.02,h,BD-0.04,IRON.core,(xa-w/2)/2,0,d/2-BD/2,g); if(xb<w/2-0.05) B(w/2-xb-0.02,h,BD-0.04,IRON.core,(xb+w/2)/2,0,d/2-BD/2,g);
+  B(xb-xa,h-1.74,BD-0.04,IRON.core,(xa+xb)/2,1.74,d/2-BD/2,g); B(xb-xa,0.06,BD,0x4a4440,(xa+xb)/2,0,d/2-BD/2,g);
+  _stoneFooting(g,w,d,0,0.34);
+  _stoneWalls(g,w,d,0.34,h,[['f',dx,0,1.2,0.52],['f',bcx,0,1.75,bw/2],['b',-w/4,0.5,1.25,0.42],['b',w/4,0.5,1.25,0.42]],IRON.st);
+  [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ for(let y=0.36,i=0;y<h-0.2;y+=0.31,i++){ const big=i%2===0; B(big?0.4:0.24,0.3,big?0.24:0.4,IRON.quoin,sx*(w/2-(big?0.16:0.08)+0.04),y,sz*(d/2-(big?0.08:0.16)+0.04),g); } });
+  [-w/4,w/4].forEach(x=>_win2(g,x,0.72,-d/2-0.08,IRON.iron,Math.PI,null)); _win2(g,-sd*(w/2+0.08),0.72,0,IRON.iron,-sd*Math.PI/2,null);
+  // the open bay: dark inside, an iron-bound oak beam over it, posts
+  B(bw+0.3,0.26,0.24,0x5a3a22,bcx,1.72,d/2+0.04,g); for(const x of [bx0,bcx,bx1]) B(0.05,0.28,0.26,IRON.iron,x,1.71,d/2+0.04,g); [bx0,bx1].forEach(x=>B(0.2,1.72,0.2,IRON.quoin,x,0,d/2,g));
+  // the hearth under its hood, glowing; the great chimney over it
+  const hx=bcx+sd*bw*0.18, hz=d/2-BD+0.32; B(0.9,0.5,0.6,IRON.st[3],hx,0,hz,g); B(0.7,0.08,0.44,glow(0xff7a2a),hx,0.5,hz,g); for(let i=0;i<5;i++) Sp(0.07,glow(i%2?0xffb03a:0xff5a1a),hx-0.24+i*0.12,0.6,hz+(i%2?0.08:-0.06),g,6,4);
+  const hood=Co(0.6,0.7,4,softMat(IRON.st[1]),hx,1.0,hz,g); hood.rotation.y=Math.PI/4; B(0.36,0.8,0.36,IRON.st[1],hx,1.6,hz,g);
+  for(let j=0;j<7;j++) B(0.62-(j>4?0.06:0),0.3,0.62-(j>4?0.06:0),IRON.st[(j+1)%5],hx,h+0.1+j*0.3-0.3,hz-0.2,g); B(0.72,0.08,0.72,0x2a2a2e,hx,h+2.0,hz-0.2,g); B(0.42,0.06,0.42,glow(0xff8a3a),hx,h+2.06,hz-0.2,g);
+  // the anvil on its stump, the quench trough, the bellows, a rack of blades
+  const ax=bcx-sd*bw*0.12, az=d/2+0.35; Cy(0.2,0.24,0.42,10,0x6a4428,ax,0,az,g); B(0.42,0.12,0.2,IRON.iron,ax,0.42,az,g); B(0.24,0.1,0.14,IRON.iron,ax,0.54,az,g); const hn=Co(0.07,0.22,6,IRON.iron,ax+0.26,0.6,az,g); hn.rotation.z=-Math.PI/2; B(0.16,0.06,0.08,0x5a5a62,ax-0.02,0.66,az,g); B(0.04,0.04,0.3,0x6a4428,ax-0.02,0.68,az+0.12,g);
+  const tx=bx1-sd*0.35; B(0.36,0.32,0.7,0x5a3a22,tx,0,d/2+0.2,g); B(0.3,0.02,0.62,0x3a5a6a,tx,0.3,d/2+0.2,g);
+  const bel=group(hx-sd*0.62,0.45,hz,g); B(0.5,0.08,0.34,0x6a4428,0,0,0,bel); B(0.5,0.08,0.34,0x6a4428,0,0.22,0,bel); B(0.46,0.16,0.3,0x4a3020,0,0.06,0,bel); Co(0.06,0.24,6,IRON.iron,0.36*sd,0.1,0,bel).rotation.z=-sd*Math.PI/2;
+  const rk=group(bx0+sd*0.25,0,d/2+0.12,g); B(0.06,0.9,0.06,0x5a3a22,0,0,0,rk); B(0.06,0.9,0.06,0x5a3a22,sd*0.5,0,0,rk); B(0.62,0.06,0.08,0x5a3a22,sd*0.25,0.75,0,rk);
+  for(let i=0;i<3;i++){ const bl=B(0.04,0.8,0.02,0xc8ccd4,sd*(0.1+i*0.15),0.05,0.03,rk); B(0.12,0.03,0.04,0x3a2a1a,sd*(0.1+i*0.15),0.72,0.03,rk); }
+  // the roof: stone gables, slate, the cresting; the smithy's sign: an iron anvil on a bracket
+  _gable(g,w,d,h,rh,IRON.core,null); _stoneGable(g,w,d,h,rh,IRON.st); _tiles(g,w,d,h,rh,IRON.slate); _ironCrest(g,d+0.4,h+rh+0.14);
+  const sg=group(dx-sd*0.7,1.75,d/2+0.02,g); B(0.04,0.04,0.5,IRON.iron,0,0,0.25,sg); B(0.03,0.16,0.03,IRON.iron,0,-0.16,0.48,sg); B(0.36,0.1,0.12,IRON.iron,0,-0.32,0.48,sg); B(0.2,0.12,0.08,IRON.iron,0,-0.44,0.48,sg); B(0.28,0.05,0.12,IRON.iron,0,-0.5,0.48,sg);
+  _ironLamp(g,dx+sd*0.55,1.05,d/2+0.02); _ironBanner(g,-sd*(w/2+0.02),h-0.1,0,-sd*Math.PI/2); }
 // V105 (LOOK2): the chapel in the characters' manner — dressed stone in courses with big corner quoins, a stone plinth, stepped
 //  buttresses, a tiled roof over stone gables, pointed lancets of real stained glass in moulded surrounds, a rose window in
 //  coloured glass, a deep west portal of nested arches, a tower with a pointed belfry, a tiled broach spire, a gilt cross.
 //  Dark (bound) and bright (cleansed) as before, footprint unchanged.
 function _ptArch(wd,ht,th,dp,col){ const s=new THREE.Shape(), r=wd/2; s.moveTo(-r,0); s.lineTo(-r,ht-r*1.1); s.quadraticCurveTo(-r,ht-r*0.15,0,ht); s.quadraticCurveTo(r,ht-r*0.15,r,ht-r*1.1); s.lineTo(r,0); s.lineTo(r-th,0); s.lineTo(r-th,ht-r*1.1); s.quadraticCurveTo(r-th,ht-r*0.25-th,0,ht-th*1.2); s.quadraticCurveTo(-r+th,ht-r*0.25-th,-r+th,ht-r*1.1); s.lineTo(-r+th,0); s.closePath();
   const g=new THREE.ExtrudeGeometry(s,{depth:dp,bevelEnabled:false}); g.translate(0,0,-dp/2); return new THREE.Mesh(g,typeof col==='number'?softMat(col):col); }
-function _chapel2(b,g,c){ const w=b.w-0.6, d=b.h-0.3, dark=c.dark, wall=dark?0x4e4860:0xe2dccb, wd=new THREE.Color(wall).multiplyScalar(0.84).getHex(), qn=new THREE.Color(wall).multiplyScalar(0.93).getHex(),
-    roof=dark?0x2e2638:c.roof, tz=d/2-0.6, H=2.7, glassCols=dark?['#3a1a5a','#5a2a7a','#2a1440','#4a2a6a']:['#2f5fb8','#c8402e','#f2c14e','#3a8a5a','#7a4ab0','#5aa0d8'];
+function _chapel2(b,g,c){ const w=b.w-0.6, d=b.h-0.3, dark=c.dark, wall=dark?0x4e4860:c.iron?0x8e9098:0xe2dccb, wd=new THREE.Color(wall).multiplyScalar(0.84).getHex(), qn=new THREE.Color(wall).multiplyScalar(0.93).getHex(),
+    roof=dark?0x2e2638:c.iron?IRON.slate:c.roof, tz=d/2-0.6, H=2.7, glassCols=dark?['#3a1a5a','#5a2a7a','#2a1440','#4a2a6a']:['#2f5fb8','#c8402e','#f2c14e','#3a8a5a','#7a4ab0','#5aa0d8'];
   const ST=(sx,sy,sz,col,x,y,z)=>B(sx,sy,sz,col,x,y,z,g);
   // the nave: a plinth of big stones, coursed walls, quoins, a cornice
   _stoneFooting(g,w,d,0,0.42); ST(w-0.02,H-0.4,d-0.02,wall,0,0.4,0);
@@ -5916,7 +5971,7 @@ function _cottageTrim(g,w,d,h,fr){ [w/2-0.65,-w/2+0.65].forEach(x=>{ if(Math.abs
     for(let i=0;i<5;i++) Sp(0.055,[0xe85a6a,0xffe060,0xf4f0ea,0xb08ae8][(i+Math.round(x*3))%4],x-0.24+i*0.12,0.72,d/2+0.13,g,6,4); });
   const hd=B(1.0,0.1,0.46,0x9a7c58,0,1.08,d/2+0.24,g); hd.rotation.x=0.3; [-0.42,0.42].forEach(x=>{ const br=B(0.05,0.32,0.05,fr,x,0.8,d/2+0.12,g); br.rotation.x=-0.6; }); }
 const WSTYLE={
-  house(b,g,c,low){ if(c.thatch&&b.id==='home_house'){ _farmhouse2(b,g,c); return; } if(c.thatch){ _cottage2(b,g,c,low); return; } const w=b.w-0.4, d=b.h-0.3, h=low?1.4:1.7, wl=bmat(c.wall,'plaster'), fr=c.beam||c.wallD;
+  house(b,g,c,low){ if(c.iron){ _ironHouse(b,g,c,low); return; } if(c.thatch&&b.id==='home_house'){ _farmhouse2(b,g,c); return; } if(c.thatch){ _cottage2(b,g,c,low); return; } const w=b.w-0.4, d=b.h-0.3, h=low?1.4:1.7, wl=bmat(c.wall,'plaster'), fr=c.beam||c.wallD;
     B(w,h,d,wl,0,0,0,g); B(w+0.08,0.24,d+0.08,bmat(c.wallD,'brick'),0,0,0,g);                                                // walls on a stone footing
     if(c.timber){ [-w/2+0.07,w/2-0.07].forEach(x=>B(0.12,h,0.06,c.beam,x,0,d/2+0.02,g)); B(w,0.1,0.06,c.beam,0,h*0.55,d/2+0.02,g); B(w,0.1,0.06,c.beam,0,h-0.08,d/2+0.02,g);
       [-1,1].forEach(sd=>{ const br=B(0.08,h*0.62,0.05,c.beam,sd*w*0.3,h*0.5-0.05,d/2+0.03,g); br.rotation.z=sd*0.55; }); }                      // cross-bracing
@@ -5929,7 +5984,7 @@ const WSTYLE={
     B(0.34,0.8,0.34,bmat(c.wallD,'brick'),-w/4,h+0.4,-d/5,g); B(0.42,0.08,0.42,0x5a5048,-w/4,h+1.2,-d/5,g);                               // chimney and its cap
     [[w/2-0.65,0.75],[-w/2+0.65,0.75]].forEach(([x,y])=>{ if(Math.abs(x)>0.7) _win(g,x,y,d/2+0.02,fr); }); if(w>2.4) _win(g,w/2+0.02,0.75,0,fr,Math.PI/2); },
   cottage(b,g,c){ WSTYLE.house(b,g,c,true); },
-  shop(b,g,c){ WSTYLE.house(b,g,c); const w=b.w-0.4, d=b.h-0.3; for(let i=0;i<7;i++){ const s=B(w/7,0.07,0.9,i%2?0xf3ead6:c.awn,-w/2+w/7*(i+0.5),1.38,d/2+0.42,g); s.rotation.x=0.35; }
+  shop(b,g,c){ if(c.iron&&b.id==='ih_forge'){ _forge2(b,g,c); return; } if(c.iron){ _ironHouse(b,g,c); return; } WSTYLE.house(b,g,c); const w=b.w-0.4, d=b.h-0.3; for(let i=0;i<7;i++){ const s=B(w/7,0.07,0.9,i%2?0xf3ead6:c.awn,-w/2+w/7*(i+0.5),1.38,d/2+0.42,g); s.rotation.x=0.35; }
     [-w/2+0.05,w/2-0.05].forEach(x=>Cy(0.03,0.03,1.3,6,0x6b4a2e,x,0,d/2+0.8,g));                                                                // awning poles
     B(1.2,0.5,0.4,bmat(0x9a6b3f,'plank'),-w/2+0.9,0,d/2+0.5,g); [[0,0xd84a3a],[0.3,0xf2c14e],[-0.3,0x6cb065]].forEach(([x,col])=>B(0.2,0.16,0.2,col,-w/2+0.9+x,0.5,d/2+0.5,g)); },
   inn(b,g,c){ if(typeof LOOK2!=='undefined'&&LOOK2){ _inn2(b,g,c); return; } const w=b.w-0.3, d=b.h-0.3, fr=c.beam||c.wallD; B(w,1.15,d,bmat(c.wallD,'brick'),0,0,0,g); B(w+0.15,1.15,d+0.15,bmat(c.wall,'plaster'),0,1.15,0,g); B(w+0.25,0.08,d+0.25,fr,0,1.13,0,g);   // stone below, a jettied upper storey
@@ -6406,9 +6461,10 @@ function buildWorld(WD,opt){
   lv.facing=FACE;
   const hingeOf={}; WD.buildings.forEach(b=>hingeOf[b.id]=[]);
   function buildHouse(b,par){ const e=E(b.door.x,b.door.y), key=themeOf(b.id);
-    const F=FACE[b.id], side=F&&(F.dir==='E'||F.dir==='W'), bm=side?Object.assign({},b,{w:b.h,h:b.w}):b;   // turned east or west, it's built the other way round to fill the same footprint
+    const F=FACE[b.id], side=F&&(F.dir==='E'||F.dir==='W');
     const dx=!F?(b.door.x+0.5)-(b.x+b.w/2):F.dir==='N'?-((F.tx+0.5)-(b.x+b.w/2)):F.dir==='E'?-((F.ty+0.5)-(b.y+b.h/2)):(F.ty+0.5)-(b.y+b.h/2);
-    const make=c=>{ if(typeof LOOK2!=='undefined'&&LOOK2&&(key==='hearthvale'||key==='homestead')&&(b.style==='house'||b.style==='cottage'||b.style==='shop'||!WSTYLE[b.style])) c=Object.assign({},c,{thatch:true}); const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
+    const bm=Object.assign({},b,side?{w:b.h,h:b.w}:{},{_dx:dx});   // turned east or west, it's built the other way round to fill the same footprint; _dx: where its door sits
+    const make=c=>{ if(typeof LOOK2!=='undefined'&&LOOK2&&key==='ironhold') c=Object.assign({},c,{iron:true}); if(typeof LOOK2!=='undefined'&&LOOK2&&(key==='hearthvale'||key==='homestead')&&(b.style==='house'||b.style==='cottage'||b.style==='shop'||!WSTYLE[b.style])) c=Object.assign({},c,{thatch:true}); const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
       (hingeOf[b.id]=hingeOf[b.id]||[]).push(doorFace(g,dx,b.style==='chapel'?bm.h+0.18:bm.h-0.2,b.style==='chapel'?1.4:b.id==='sg_keep'?1.5:1.0));
       g.rotation.y=!F?0:F.dir==='N'?Math.PI:F.dir==='E'?Math.PI/2:-Math.PI/2;
       g.position.set(b.x+b.w/2,e*TIER*LIFT(b.door.x,b.door.y)+0.02,b.y+b.h/2); if(typeof LOOK2!=='undefined'&&LOOK2) soften(g); par.add(mergeStatic(shade(g))); return g; };
