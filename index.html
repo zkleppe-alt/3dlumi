@@ -6671,10 +6671,12 @@ function buildWorld(WD,opt){
   //  rather than its rings of terraces: a single great slope from the shore to the snowy summit with Eden's spring on its
   //  crown, the old terrace cliffs left as bands of crag along it (you still can't walk them; the stairs become slope you can)
   const MTN=(typeof LOOK2!=='undefined'&&LOOK2&&opt.mountain)?opt.mountain:null;
-  const mtnH=MTN?(()=>{ const PK=13.5, nz=(x,y)=>Math.sin(x*0.31+Math.sin(y*0.17)*2.1)*0.5+Math.sin(y*0.27+x*0.11)*0.35+Math.sin((x+y)*0.53)*0.15;
-    return (x,y)=>{ const dx=x-MTN.cx, dy=y-MTN.cy, a=Math.atan2(dy,dx), rr=Math.hypot(dx,dy)*(1+0.07*Math.sin(a*3+1.3)+0.04*Math.sin(a*7)), u=Math.min(1,rr/(MTN.R*0.98));
-      if(u>=1) return 0; const top=u<0.12?1:Math.pow(1-(u-0.12)/0.88,1.45); return PK*top+(u>0.12&&u<0.92?nz(x,y)*0.55*(1-u):0); }; })():null;
-  if(MTN){ for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=T(x,y); SOFT[y*W+x]=(t===3||t===20||t===21||t===29||bAt.has(y*W+x))?0:1; }
+  const MS=new Uint8Array(W*H);   // tiles that ride a mountain's (or an isle's) own shape
+  const shapeH=(M,x,y)=>{ const PK=M.PK||13.5, nz=Math.sin(x*0.31+Math.sin(y*0.17)*2.1)*0.5+Math.sin(y*0.27+x*0.11)*0.35+Math.sin((x+y)*0.53)*0.15;
+    const dx=x-M.cx, dy=y-M.cy, a=Math.atan2(dy,dx), rr=Math.hypot(dx,dy)*(1+0.07*Math.sin(a*3+1.3)+0.04*Math.sin(a*7)), u=Math.min(1,rr/(M.R*0.98));
+    if(u>=1) return 0; const cr=M.crown===undefined?0.12:M.crown, top=u<cr?1:Math.pow(1-(u-cr)/(1-cr),M.ex||1.45); return PK*top+(u>cr&&u<0.92?nz*(M.rough||0.55)*(1-u):0); };
+  const mtnH=MTN?((x,y)=>shapeH(MTN,x,y)):null;
+  if(MTN){ for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=T(x,y); SOFT[y*W+x]=(t===3||t===20||t===21||t===29||bAt.has(y*W+x))?0:1; MS[y*W+x]=SOFT[y*W+x]; }
     // the mountain comes down to the water on every side, whatever the island's shape: it eases to the shore over a few tiles
     const DW=new Float32Array((W+1)*(H+1)).fill(1e9), R1w=W+1; for(let y=0;y<=H;y++) for(let x=0;x<=W;x++){ for(const [a,b] of [[-1,-1],[0,-1],[-1,0],[0,0]]){ const X=x+a, Y=y+b; if(!inB(X,Y)||!SOFT[Y*W+X]){ DW[y*R1w+x]=0; break; } } }
     for(let pass=0;pass<2;pass++){ for(let y=0;y<=H;y++) for(let x=0;x<=W;x++){ const v=y*R1w+x; if(x) DW[v]=Math.min(DW[v],DW[v-1]+1); if(y) DW[v]=Math.min(DW[v],DW[v-R1w]+1); if(x&&y) DW[v]=Math.min(DW[v],DW[v-R1w-1]+1.41); if(y&&x<W) DW[v]=Math.min(DW[v],DW[v-R1w+1]+1.41); }
@@ -6686,6 +6688,19 @@ function buildWorld(WD,opt){
     for(let y=0;y<=H;y++) for(let x=0;x<=W;x++){ let hard=false; for(const [a,b] of [[-1,-1],[0,-1],[-1,0],[0,0]]){ const X=x+a, Y=y+b; if(inB(X,Y)&&!SOFT[Y*W+X]) { hard=true; break; } } if(hard) continue;
       let sm=0, n=0; for(let b=-2;b<=1;b++) for(let a=-2;a<=1;a++){ const X=x+a, Y=y+b; if(!inB(X,Y)||!SOFT[Y*W+X]) continue; const w=(a===-1||a===0)&&(b===-1||b===0)?2:1; sm+=EH(X,Y)*w; n+=w; }
       if(n) SV[y*(W+1)+x]=sm/n; } }
+  // V125: THE SOUTHERN ISLES — each drawn from its own shape, as Tabor's world is: Mount Tabor's isle a real peak,
+  //  Mistral Isle green downs, Sunfall Atoll low dunes; every one easing down to its beaches and the sea
+  if(SOFTZ&&!opt.land&&typeof SX==='function'){ const R1=W+1;
+    [[40,270,{PK:4.2,ex:1.1,crown:0.0,rough:0.9}],[95,274,{PK:9,ex:1.35}],[155,270,{PK:1.8,ex:0.9,crown:0.0,rough:1.2}]].forEach(([ox,oy,M])=>{
+      let cx0=SX(ox), cy0=SY(oy), sx=0, sy=0, n=0; const RR=22, land=(x,y)=>inB(x,y)&&!([3,20,21,29].includes(T(x,y)));
+      for(let y=cy0-RR;y<=cy0+RR;y++) for(let x=cx0-RR;x<=cx0+RR;x++) if(land(x,y)){ sx+=x; sy+=y; n++; } if(n<20) return;
+      M.cx=sx/n; M.cy=sy/n; let R=0; for(let y=cy0-RR;y<=cy0+RR;y++) for(let x=cx0-RR;x<=cx0+RR;x++) if(land(x,y)) R=Math.max(R,Math.hypot(x+0.5-M.cx,y+0.5-M.cy)); M.R=R+1.5;
+      const x0=Math.max(0,Math.floor(M.cx-M.R-2)), x1=Math.min(W-1,Math.ceil(M.cx+M.R+2)), y0=Math.max(0,Math.floor(M.cy-M.R-2)), y1=Math.min(H-1,Math.ceil(M.cy+M.R+2));
+      for(let y=y0;y<=y1;y++) for(let x=x0;x<=x1;x++){ const k=y*W+x; if(land(x,y)&&!bAt.has(k)&&!dAt.has(k)){ MS[k]=1; SOFT[k]=1; } /* the isles' low walls ride the land with it */ }
+      const D=new Map(), key=(x,y)=>y*R1+x; const q=[];
+      for(let y=y0;y<=y1+1;y++) for(let x=x0;x<=x1+1;x++){ let open=false; for(const [a,b] of [[-1,-1],[0,-1],[-1,0],[0,0]]){ const X=x+a,Y=y+b; if(!inB(X,Y)||!MS[Y*W+X]){ open=true; break; } } if(open){ D.set(key(x,y),0); q.push([x,y]); } }
+      for(let i=0;i<q.length;i++){ const [x,y]=q[i], d=D.get(key(x,y)); for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const X=x+a,Y=y+b; if(X<x0||Y<y0||X>x1+1||Y>y1+1) continue; if(!D.has(key(X,Y))){ D.set(key(X,Y),d+1); q.push([X,Y]); } } }
+      for(let y=y0;y<=y1+1;y++) for(let x=x0;x<=x1+1;x++){ const d=D.get(key(x,y)); if(!d) continue; const u=Math.min(1,d/5), sh=u*u*(3-2*u); SV[key(x,y)]=Math.max(EH(Math.min(W-1,x),Math.min(H-1,y)),shapeH(M,x,y)*sh+EH(Math.min(W-1,x),Math.min(H-1,y))*(1-sh)); } }); }
   const softOff=(fx,fz)=>{ if(!SOFTZ) return 0; const x=Math.floor(fx), y=Math.floor(fz); if(!inB(x,y)||!SOFT[y*W+x]) return 0; const own=EH(x,y), u=fx-x, v=fz-y, R=W+1;
     const c=(X,Y)=>{ const s0=SV[Y*R+X]; return s0===s0?s0-own:0; };
     return (c(x,y)*(1-u)+c(x+1,y)*u)*(1-v)+(c(x,y+1)*(1-u)+c(x+1,y+1)*u)*v; };
@@ -6698,7 +6713,7 @@ function buildWorld(WD,opt){
   const SD=stairMap(W,H,T,E,(x,y)=>WK(x,y)&&T(x,y)!==5);
   function ground(fx,fz){ const x=Math.floor(fx), y=Math.floor(fz); if(!inB(x,y)) return -0.35; const t=T(x,y), e=E(x,y);
     if(t===3) return -0.35; if(t===20||t===21) return -0.05; if(t===24&&!opt.land) return e*TIER*LIFT(x,y)-0.4;   // waist-deep in the hot spring
-    const d=SD.get(y*W+x), TL=TIER*LIFT(x,y); if(!d||(MTN&&SOFT[y*W+x])) return e*TL+0.02;   // (on Tabor the stairs are part of the one slope)
+    const d=SD.get(y*W+x), TL=TIER*LIFT(x,y); if(!d||MS[y*W+x]) return e*TL+0.02;   // (on Tabor the stairs are part of the one slope)
     const u=fx-x, v=fz-y, s=d.dx>0?u:d.dx<0?1-u:d.dy>0?v:1-v; return e*TL+0.02+TL*(d.lo+(d.hi-d.lo)*s); }
   lv.ground=ROLL?(fx,fz)=>ground(fx,fz)+roll(fx,fz):ground;
   lv.canMove=(fx,fz,tx,tz)=>{ const ax=Math.floor(fx),ay=Math.floor(fz),bx=Math.floor(tx),by=Math.floor(tz);
@@ -6889,12 +6904,13 @@ function buildWorld(WD,opt){
       if((opt.land==='tabor'||(!opt.land&&x>=SX(72)&&x<=SX(118)&&y>=SY(252)&&y<=SY(299)))&&TABOR_TILE(t)){ const th=opt.land?(typeof opt.thawed==='function'?!!opt.thawed(x,y):!!opt.thawed):!!(opt.taborThawed&&opt.taborThawed());
         if(e) box(cx,cz,-0.4,top-0.12+0.4,th?0x8a7a62:0x8e9cae,1,1,0,(hsh(y,x)-0.5)*0.08);
         const floor=c=>box(cx,cz,top-0.4,0.4,c,1,1,0,jit), snowC=th?0x7ab65a:0xdde5ee;
-        if(MTN&&(t===32||t===99||t===100)){ floor(th?(t===32?0x7a6e5e:0x4aa0d0):(t===32?0x8e96a2:0xcfe8f4)); continue; }   // V124: on the one mountain the old terrace drops are bands of crag in the slope
+        if(MS[k]&&(t===32||t===99||t===100)){ floor(th?(t===32?0x7a6e5e:0x4aa0d0):(t===32?0x8e96a2:0xcfe8f4)); continue; }   // V124: on the one mountain the old terrace drops are bands of crag in the slope
         if(t===22||t===16||t===64||t===65){ floor(snowC); if(th&&t===22&&hsh(x,y)<0.12) box(cx+(hsh(y,x)-0.5)*0.6,cz,top,0.05,[0xf4f4f4,0xf0c040,0xe04a6a,0xa06ae0][(x+y)%4],0.07,0.07); continue; }
         if(t===61){ floor(th?0x8cc070:0xbfdcec); continue; }
         if(t===34){ floor(th?0x9a7a58:0x8e98a8); if(!th&&(x*7+y*13)%9===0) box(cx+0.38,cz+0.38,top,0.55,0xd8642a,0.06,0.06); continue; }   // the packed trail, darker than the snow, a marker pole now and then
         if(t===19){ floor(th?0xe2cf98:0xd8d4c8); continue; }
         if(t===63){ floor(th?0x5cc86a:0xc4ccc0); if(th&&hsh(x,y)<0.35) box(cx+(hsh(y,x)-0.5)*0.6,cz+(hsh(x,y*3)-0.5)*0.6,top,0.05,[0xff8ab0,0xfff070,0xffe0f0,0xc8a0f0][(x*3+y)%4],0.07,0.07); continue; }
+        if(t===62&&MS[k]){ floor(th?0x5ab8e8:0xcfeaf8); continue; }   // V125: on a slope the frozen stream lies in the land as ice
         if(t===62){ floor(th?0x5ab8e8:0xd8f0ff); box(cx,cz,top,th?0.08:0.5,th?0xeaf8ff:0xcfeaf8,th?0.9:0.8,th?0.9:0.8,0,(hsh(y,x)-0.5)*0.05); continue; }
         if(t===75||t===100){ box(cx,cz,top-0.45,0.4,th?0x4aa0d0:0xcfe8f4,1,1,0,jit); continue; }
         if(t===99){ box(cx,cz,top-0.9,0.4,th?0x4aa0d0:0x2a4a6a,1,1,0,jit); continue; }
@@ -6986,7 +7002,7 @@ function buildWorld(WD,opt){
         else if(col&&!run){ box(cx,y+0.25,h+0.1,0.5,wc,0.9,0.42,0,0.04); if((x+y)%2===0) box(cx,y+0.75,h+0.1,0.5,wc,0.9,0.42,0,0.04); }
         else box(cx,cz,h+0.1,0.5,wc,0.6,0.6,0,0.04);
         continue; }
-      if(SD.has(k)&&!(MTN&&SOFT[k])){ stairBoxes(x,y,SD.get(k),ground,(a,b)=>inB(a,b)&&(T(a,b)===10||T(a,b)===11),q=>boxes.push(q)); continue; }
+      if(SD.has(k)&&!MS[k]){ stairBoxes(x,y,SD.get(k),ground,(a,b)=>inB(a,b)&&(T(a,b)===10||T(a,b)===11),q=>boxes.push(q)); continue; }
       if(t===33){ const h=rockH(x,y), ash=ashland(x,y)||region(x,y)==='hellgate'||region(x,y)==='ashfield', snowy=!ash&&(region(x,y)==='crystalpeak'||T(x+1,y)===22||T(x,y+1)===22||h>4.2), rc=ash?0x625a54:snowy?0xa8a4a8:0x8a6a4a, rd=ash?0x4a4440:snowy?0x8c8890:0x765a40, r1=hsh(y,x), r2=hsh(x+7,y), r3=hsh(x*3,y*5);
         // a crag of real rock: a footing that keeps the range whole, then broken faceted masses leaning together, snow on the tall ones
         box(cx,cz,top-0.4,0.4+h*0.18,rd,1,1,0,jit*2); const b0=top+h*0.18;
@@ -6997,7 +7013,7 @@ function buildWorld(WD,opt){
         continue; }
       // a berth (tile 32 at sea level beside the water): the game draws it as its neighbours — here, harbour water
       if(t===32&&!e&&[[0,1],[0,-1],[1,0],[-1,0]].some(([a,b])=>[3,12,20,21].includes(T(x+a,y+b)))){ box(cx,cz,-0.45,0.4,0x5fb0c8,1,1,0,jit); continue; }
-      if(t===32&&MTN&&SOFT[k]){ const th=typeof opt.thawed==='function'?!!opt.thawed(x,y):!!opt.thawed; box(cx,cz,top-0.4,0.4,th?0x7a7064:0x9aa4b0,1,1,0,jit); continue; }   // V124: a band of crag in Tabor's one slope
+      if(t===32&&MS[k]){ const th=typeof opt.thawed==='function'?!!opt.thawed(x,y):!!opt.thawed; box(cx,cz,top-0.4,0.4,th?0x7a7064:0x9aa4b0,1,1,0,jit); continue; }   // V124: a band of crag in Tabor's one slope
       if(t===32){ box(cx,cz,top-0.4,0.4,0x9a7a58,1,1,0,jit); box(cx,cz,top,0.45,0xa8845e,0.9,0.9,hsh(x,y),jit); continue; }
       if(L2&&inCP(x,y)&&WK(x,y)&&!tilesOnly&&!STAIRS.has(t)) for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const X=x+a, Y=y+b; if(!WK(X,Y)||STAIRS.has(T(X,Y))||bAt.has(Y*W+X)||dAt.has(Y*W+X)||NEARSIGN(X,Y)) continue; const dh=EH(x,y)-EH(X,Y); if(dh<0.9) continue;   // V113: the drop from one trail to the next broken by boulders and fallen rock at its foot
         const gy=EH(X,Y)+0.02; for(let i=0;i<3;i++){ const r=hsh(x*7+i+a*3,y*5+i*2+b*3), along=(i-1)*0.34+(r-0.5)*0.1, out=0.04+r*0.12; rocks.push({x:cx+a*(0.5+out)+(b?along:0),z:cz+b*(0.5+out)+(a?along:0),y:gy-0.12,h:Math.min(1.4,dh*(0.3+r*0.35)),sx:0.42+r*0.28,sz:0.36+r*0.2,ry:r*6.3,c:[0x8a8e9c,0x7a7e8a,0x9a9eaa][i%3],l:(r-0.5)*0.06}); }
