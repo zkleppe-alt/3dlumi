@@ -6569,9 +6569,9 @@ function buildWorld(WD,opt){
   //  sits where it did, and every hill can be climbed), the roads eased over them, the rivers down in their valleys.
   //  Elsewhere the old swell, until the later steps reach it. All of it one surface: lv.roll(x,z), on top of the tiles.
   // V120 (step B): the open country is the whole realm now — every town's own land around it
-  const OW=(()=>{ if(typeof LOOK2==='undefined'||!LOOK2||opt.land) return null; return {X1:W,Y1:H,m:()=>1}; })();
+  const OW=(()=>{ if(typeof LOOK2==='undefined'||!LOOK2) return null; /* V122: the portal worlds too */ return {X1:W,Y1:H,m:()=>1}; })();
   lv.openWorld=OW;
-  const ROLL=(()=>{ const R1=W+1, N=R1*(H+1), U=new Float32Array(N); if(typeof LOOK2==='undefined'||!LOOK2||opt.land) return null;
+  const ROLL=(()=>{ const R1=W+1, N=R1*(H+1), U=new Float32Array(N); if(typeof LOOK2==='undefined'||!LOOK2) return null;
     const OPEN=new Set([0,1,2,4,7]), D=new Float32Array(W*H);
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const k=y*W+x, t=T(x,y), e=E(x,y); let ok=(OPEN.has(t)||(t===19&&OW&&OW.m(x,y)>0.5))&&!bAt.has(k)&&!dAt.has(k);
       if(ok) for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]) if(inB(x+a,y+b)&&E(x+a,y+b)!==e){ ok=false; break; }
@@ -6589,7 +6589,11 @@ function buildWorld(WD,opt){
     // each town's country, by the land's own character, felt out to a good walk around it
     const KIND={Hearthvale:['vale',3.2],Ironhold:['ridge',9.5],Dusthaven:['dune',3.0],Thornwood:['forest',5.5],Homestead:['vale',2.4],Crystalpeak:['mountain',15],Saltmere:['coast',3.4],
       Ashfield:['ash',3.6],Stormgate:['coast',4.2],Shadowmere:['marsh',1.1],Hellgate:['crag',13]};   // V120: every town's country — Thornwood's wooded knolls, Crystalpeak's range, Saltmere's and Stormgate's headlands, Ashfield's mesas, Shadowmere's flat mere, Hellgate's crags
-    const centres=(WD.towns||[]).filter(t=>KIND[t[0]]).map(t=>({x:t[1],y:t[2],k:KIND[t[0]][0],A:KIND[t[0]][1]}));
+    // V122: the portal worlds' own country — Mistral's green downs, Tabor's mountain ridges, Sunfall's sea-headlands — and the
+    //  three southern isles in the realm (Mistral Isle's downs, Mount Tabor a real peak, Sunfall Atoll low and sandy)
+    const LANDK={mistral:['vale',3.8],tabor:['ridge',6.5],sunfall:['coast',2.6]}, LK=opt.land?(LANDK[opt.land]||['vale',3]):null;
+    const centres=(WD.towns||[]).filter(t=>LK||KIND[t[0]]).map(t=>({x:t[1],y:t[2],k:LK?LK[0]:KIND[t[0]][0],A:LK?LK[1]:KIND[t[0]][1]}));
+    if(!opt.land) [['coast',3.2,40,270,16],['mountain',11,95,274,15],['coast',1.6,155,270,14]].forEach(([k,A,x,y,R])=>centres.push({x:SX(x),y:SY(y),k,A,R}));
     const shape=(k,A,x,y)=>{ if(k==='vale') return A*Math.pow(fbm(x/26,y/26,1),1.2)*1.5;
       if(k==='ridge'){ const n=fbm(x/30,y/30,5), r=1-Math.abs(2*n-1); return A*(Math.pow(r,1.6)*0.85+fbm(x/14,y/14,9)*0.25); }
       if(k==='forest'){ const n=fbm(x/17,y/17,15); return A*(Math.pow(n,1.4)*1.3+fbm(x/40,y/40,16)*0.5); }
@@ -6606,7 +6610,7 @@ function buildWorld(WD,opt){
       const env=sm((d-1.0)/6), n=0.6*Math.sin(x*0.14+Math.sin(y*0.09)*1.6)*Math.cos(y*0.12+0.7)+0.28*Math.sin((x-y)*0.23+1.1)+0.12*Math.sin(x*0.41+y*0.37);
       const old=env*1.6*(0.5+0.5*n);
       if(m<=0||d<=0){ U[v]=old*(1-m); continue; }
-      let ws=0.35, h=0.35*shape('hill',5.5,x,y), mw=0; for(const c of centres){ const R=(c.k==='mountain'||c.k==='crag')?58:44, w=Math.exp(-(((x-c.x)**2+(y-c.y)**2)/(R*R))); if(w<0.01) continue; ws+=w; h+=w*shape(c.k,c.A,x,y); if(c.k==='mountain'||c.k==='crag') mw+=w; }
+      let ws=0.35, h=0.35*(LK?shape(LK[0],LK[1],x,y):shape('hill',5.5,x,y)), mw=0; for(const c of centres){ const R=c.R||((c.k==='mountain'||c.k==='crag')?58:44), w=Math.exp(-(((x-c.x)**2+(y-c.y)**2)/(R*R))); if(w<0.01) continue; ws+=w; h+=w*shape(c.k,c.A,x,y); if(c.k==='mountain'||c.k==='crag') mw+=w; }
       HILL[v]=h/ws*sm((d-0.5)/2.5); WR[v]=1-sm((dr-1)/4); U[v]=old*(1-m); MW[v]=Math.min(1,mw/ws*1.6); DD[v]=d; }
     // the roads ride the land but are eased over it: where one runs, the hill under it is a broad average of the hills about
     const blur=(A,rad)=>{ const B=new Float32Array(N), C=new Float32Array(N); for(let y=0;y<=H;y++){ let acc=0, n=0; for(let x=-rad;x<=W+rad;x++){ if(x+rad<=W){ acc+=A[y*R1+x+rad]; n++; } if(x-rad-1>=0){ acc-=A[y*R1+x-rad-1]; n--; } if(x>=0&&x<=W) B[y*R1+x]=acc/n; } }
@@ -6620,7 +6624,7 @@ function buildWorld(WD,opt){
     // V121: THE PILGRIM'S PASS — the road to Hellgate climbs as the Northern Reach's trail does: a winding trail (its curve
     //  and heights from STRETCH.trek.samples) up to a high pass and down into Hellgate's valley, walled on both hands by crags
     //  too steep to climb, rising with their distance from the trail to snowy tops; it blends into the country at the box's edges
-    const TK=typeof STRETCH!=='undefined'&&STRETCH.trek&&STRETCH.trek.samples;
+    const TK=!opt.land&&typeof STRETCH!=='undefined'&&STRETCH.trek&&STRETCH.trek.samples;
     if(TK){ const [bx0,by0,bx1,by1]=STRETCH.trek.box, SMP=TK;
       lv.trek={samples:SMP,box:STRETCH.trek.box};
       for(let y=Math.max(0,by0-12);y<=Math.min(H,by1+12);y++) for(let x=Math.max(0,bx0-12);x<=Math.min(W,bx1+12);x++){ const v=y*R1+x;
@@ -7083,7 +7087,7 @@ function buildWorld(WD,opt){
   // V119: THE FAR COUNTRY — the whole realm once more, coarse (a vertex every two tiles), coloured by what lies there, so the
   //  hills and ranges run on past the near chunks into the haze as the Northern Reach's do. It lies a little under the near
   //  ground and is cut away around the knight, where the chunks stand.
-  const FAR=(()=>{ if(!OW) return null; const S2=2, NX=Math.floor(W/S2)+1, NZ=Math.floor(H/S2)+1, pos=new Float32Array(NX*NZ*3), col=new Float32Array(NX*NZ*3), C=new THREE.Color();
+  const FAR=(()=>{ if(!OW||opt.land) return null; const S2=2, NX=Math.floor(W/S2)+1, NZ=Math.floor(H/S2)+1, pos=new Float32Array(NX*NZ*3), col=new Float32Array(NX*NZ*3), C=new THREE.Color();
     for(let j=0;j<NZ;j++) for(let i=0;i<NX;i++){ const x=Math.min(W-1,i*S2), y=Math.min(H-1,j*S2), k=y*W+x, t=T(x,y), v=(j*NX+i)*3; let h, hex;
       if(RK[k]){ h=reliefV(x*2+1,y*2+1); const hm=h-RB(x,y)-roll(x+0.5,y+0.5); hex=RK[k]===1?(hm>5?0xdfe6ee:0x7a7468):hm>7?0xdfe6ee:hm>4.5?0x6a7458:0x2f5a34; if(inCP(x,y)) hex=h>4?0xe8eef4:0x8e8a84; }
       else if(t===3||t===21||t===29){ h=-0.32; hex=0x2f6f9c; } else if(t===20){ h=-0.08; hex=0x5fb0c8; }
