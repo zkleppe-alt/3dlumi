@@ -2022,6 +2022,16 @@ function buildKnight(){
 
   // sword in the right hand
   const sword=pivot(0,0,0,AR.hand); sword.rotation.x=Math.PI/2;      // points forward
+  // V129: the fishing pole — a long ash rod with a cork grip and a reel, held out over the water while he sits on the bank
+  const pole=pivot(0,0,0,AR.hand); pole.visible=false; { const wd=new THREE.MeshLambertMaterial({color:0x8a6a3a}), dk=new THREE.MeshLambertMaterial({color:0x5a3a1e}), ck=new THREE.MeshLambertMaterial({color:0xc8a070}), mt=new THREE.MeshLambertMaterial({color:0x9aa0a8});
+    const seg=(r0,r1,len,y,m)=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(r1,r0,len,6),m); c.position.y=y+len/2; pole.add(c); return c; };
+    seg(0.026,0.024,0.26,-0.12,ck); seg(0.02,0.014,0.9,0.14,wd); seg(0.014,0.008,0.85,1.04,wd); seg(0.008,0.004,0.6,1.89,dk);
+    const reel=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.04,10),mt); reel.rotation.z=Math.PI/2; reel.position.set(0.05,0.02,0); pole.add(reel);
+    for(const y of [0.6,1.2,1.75,2.2]){ const g=new THREE.Mesh(new THREE.TorusGeometry(0.014,0.004,4,8),mt); g.position.set(0,y,0.012); pole.add(g); }
+    const tip=new THREE.Object3D(); tip.position.y=2.49; pole.add(tip); pole.userData.tip=tip; }
+  pole.rotation.set(Math.PI/2-0.75,0,0);   // forward and up from the hand
+  K.pole=pole; K.poleTip=v=>{ K.updateMatrixWorld(true); return pole.userData.tip.getWorldPosition(v||new THREE.Vector3()); };
+  K.fishBend=0;   // 0 still … 1 a fish on: the rod bows and the hands lift
   K._sword=sword;
   add(cyl(0.022,0.022,0.12,6),M.grip,0,0,0,sword);
   add(new THREE.SphereGeometry(0.035,6,4),M.guard,0,-0.075,0,sword);
@@ -2330,6 +2340,17 @@ function buildKnight(){
     if(K.air>0.02){ const u=Math.min(1,K.air*1.6); L.hip.rotation.x=-1.0*u; R.hip.rotation.x=-0.55*u; L.knee.rotation.x=1.5*u; R.knee.rotation.x=1.1*u; torso.rotation.x+=0.12*u; capeP.rotation.x=0.6*u+0.1; AL.sh.rotation.x-=0.3*u*(1-gk); }
     if(mode==='sit'){ L.hip.rotation.x=R.hip.rotation.x=-1.45; L.knee.rotation.x=R.knee.rotation.x=1.45; hips.position.set(0,K.hipY-0.2,0); hips.rotation.set(0,0,0); L.hip.rotation.z=R.hip.rotation.z=0; torso.rotation.set(-0.08,0,0); head.rotation.set(0,0,0);   // seated: thighs level, shins down
       AL.sh.rotation.x=AR.sh.rotation.x=-0.55; AR.sh.rotation.y=0; AL.el.rotation.x=AR.el.rotation.x=-0.7; capeP.rotation.x=0.05; }
+    // V129: fishing — sat on the bank, knees drawn up, the rod held out in both hands over the water; slow breaths, the head
+    //  following the float; when a fish takes, the rod bows and he leans back to it
+    pole.visible=mode==='fish';
+    if(mode==='fish'){ const fb=K.fishBend||0, br=Math.sin(t*0.9)*0.5+0.5;
+      if(sword.parent===AR.hand&&K._carry!=='none') stow();
+      L.hip.rotation.x=R.hip.rotation.x=-1.22; L.knee.rotation.x=1.25; R.knee.rotation.x=1.05; L.hip.rotation.z=0.12; R.hip.rotation.z=-0.1;
+      hips.position.set(0,0.2,-0.05); hips.rotation.set(0,0,0); torso.rotation.set(0.14-0.22*fb+0.02*br,0,0); head.rotation.set(0.18-0.12*fb+0.03*Math.sin(t*0.4),Math.sin(t*0.23)*0.12,0);
+      AR.sh.rotation.set(-0.95-0.5*fb,0.25,-0.05); AR.el.rotation.x=-0.75+0.35*fb; AR.hand.rotation.x=0.1;
+      AL.sh.rotation.set(-0.85-0.45*fb,-0.45,0.05); AL.el.rotation.x=-1.05+0.3*fb;
+      const want=1.05-0.5*fb+0.02*Math.sin(t*1.3);   // the rod's own angle in the world: forward and some 30° up, lifting as a fish pulls
+      pole.rotation.set(want-(torso.rotation.x+AR.sh.rotation.x+AR.el.rotation.x+AR.hand.rotation.x),0,0); capeP.rotation.x=0.35; }
     // V99: riding — astride, not standing on its back. Thighs forward and spread round the barrel, shins down along its sides,
     //  heels down; the seat sits the stride (rising a little out of the saddle at the gallop, the body forward), the hands low on
     //  the reins, the head steady and looking ahead, leaning into the turns; the cape streams back with the speed
@@ -4118,7 +4139,7 @@ const ENGINE=(function(){
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     R.render(L.scene,cam); requestAnimationFrame(frame); }
 
-  return { add, get, go, start, speak, P, K, cam, renderer:R, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
+  return { add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();
 
 // ── engine/pets.js ──
@@ -9529,24 +9550,47 @@ function pastimes(world,D){
   const lineGeo=new THREE.BufferGeometry(); lineGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,0,0,0],3));
   const line=new THREE.Line(lineGeo,new THREE.LineBasicMaterial({color:0xe8e8e8})); line.visible=false; line.frustumCulled=false; world.scene.add(line);
   const ring=new THREE.Mesh(new THREE.RingGeometry(0.1,0.16,16),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false})); ring.rotation.x=-Math.PI/2; world.scene.add(ring);
-  function endFish(){ fishing=null; bob.visible=line.visible=false; ring.material.opacity=0; }
+  // V129: FISHING AS REST — you sit down on the bank, take out the rod and cast. Then you wait: the float rides the water, the
+  //  day goes on about you, and you mend a little while you sit. A bite comes in its own time (a few seconds to a quarter of a
+  //  minute); the float dips, the rod bows — and you reel. Now and then, while you wait, a verse about waiting comes to mind.
+  //  Stand up with the button, or push the stick, whenever you like.
+  const WAITV=[['Psalm 46:10','Be still, and know that I am God.'],['Isaiah 40:31','They that wait upon the LORD shall renew their strength.'],['Psalm 37:7','Rest in the LORD, and wait patiently for him.'],
+    ['Lamentations 3:25','The LORD is good unto them that wait for him.'],['Matthew 4:19','Follow me, and I will make you fishers of men.'],['Psalm 23:2','He leadeth me beside the still waters.'],['James 5:7','Be patient therefore, brethren… the husbandman waiteth for the precious fruit of the earth.']];
+  const tipV=new THREE.Vector3();
+  function endFish(){ if(fishing&&fishing.sat){ ENGINE.hold(0); ENGINE.K.fishBend=0; } fishing=null; bob.visible=line.visible=false; ring.material.opacity=0; }
   fishSpot.action=()=>{ if(!fishing){ const x=fishSpot.tx, y=fishSpot.ty, z=zoneAt(x,y); if(!z) return;
-      fishing={phase:'wait',t0:now(),biteAt:1000+Math.random()*3000,fx:x,fy:y,zone:z}; bob.position.set(x+0.5,-0.22,y+0.5); bob.visible=line.visible=true; ENGINE.K.swing(); UI.toast('🎣 You cast your line… wait for a bite!',1400); return; }
-    if(fishing.phase==='bite'){ const q=S().quests||{};
+      // sit on the bank, facing the water, and cast the float out a couple of paces
+      const fa=Math.atan2(x+0.5-P.x,y+0.5-P.z); P.face=fa; ENGINE.hold(9999,'fish');
+      let bx=x+0.5+Math.sin(fa)*1.2, bz=y+0.5+Math.cos(fa)*1.2; if(!zoneAt(Math.floor(bx),Math.floor(bz))){ bx=x+0.5; bz=y+0.5; }
+      fishing={phase:'cast',t0:now(),biteAt:3500+Math.random()*9000,fx:x,fy:y,zone:z,sat:true,px:P.x,pz:P.z,face:fa,bx,bz,heal:0,verse:6000+Math.random()*4000};
+      bob.position.set(P.x,P.y+1.2,P.z); bob.visible=line.visible=true; UI.toast('🎣 You sit down on the bank and cast your line.',1600); return; }
+    if(fishing.phase==='bite'){ const q=S().quests||{}; ENGINE.K.fishBend=1;
       if(q.goldenFish==='active'&&(inv().goldenFish||0)<1&&Math.random()<0.28){ inv().goldenFish=1; GAME.save(); UI.toast('🪙 A Golden Fish! It gleams in the light — surely the one Eldan spoke of.',2600); }
       else { const tb=D.fishZones[fishing.zone]||D.fishZones.pond; let tot=tb.reduce((s,e)=>s+e[1],0), r=Math.random()*tot, pick=tb[0][0]; for(const [k,w] of tb){ if(r<w){ pick=k; break; } r-=w; }
         inv()[pick]=(inv()[pick]||0)+1; const g=GOODS[pick]; UI.toast(`${g.emoji} You caught a ${g.name}! (worth ${g.value}g)`,1700); }
-      GAME.changed(); endFish(); return; }
-    UI.toast('🎣 …too early! The fish slipped away.',1200); endFish(); };
+      GAME.changed(); fishing.phase='landed'; fishing.t0=now(); return; }
+    if(fishing.phase==='landed'){ endFish(); return; }
+    UI.toast('🎣 You reel in and stand up.',1000); endFish(); };
+  // the stick: pushing it while you sit stands you up
+  let standT=0;
   world.anim.push(t=>{ if(ENGINE.level!==world){ if(fishing) endFish(); return; }
     const L=world.spots, i=L.indexOf(fishSpot);
-    if(fishing){ const tt=now()-fishing.t0; if(Math.abs(Math.floor(P.x)-fishing.fx)>2||Math.abs(Math.floor(P.z)-fishing.fy)>2){ endFish(); }
-      else if(fishing.phase==='wait'&&tt>=fishing.biteAt){ fishing.phase='bite'; fishing.t0=now(); UI.toast('❗ A bite! Reel it in!',900); }
-      else if(fishing.phase==='bite'&&tt>750){ UI.toast('🎣 The fish got away…',1100); endFish(); } }
-    if(fishing){ const bite=fishing.phase==='bite'; bob.position.y=-0.22+(bite?-0.08+Math.sin(t*30)*0.05:Math.sin(t*2.5)*0.025);
-      ring.position.set(bob.position.x,-0.24,bob.position.z); ring.material.opacity=bite?0.6:0.15; ring.scale.setScalar(1+((t*1.5)%1)*2);
-      const a=lineGeo.attributes.position.array; a[0]=P.x+Math.sin(P.face)*0.5+Math.cos(P.face)*0.3; a[1]=P.y+1.7; a[2]=P.z+Math.cos(P.face)*0.5-Math.sin(P.face)*0.3; a[3]=bob.position.x; a[4]=bob.position.y+0.1; a[5]=bob.position.z; lineGeo.attributes.position.needsUpdate=true;
-      fishSpot.label=bite?'Reel!':'Reel'; fishSpot.x=P.x; fishSpot.z=P.z; if(i<0) L.push(fishSpot); return; }
+    if(fishing){ const tt=now()-fishing.t0, dt=0.016;
+      if(fishing.sat){ P.x=fishing.px; P.z=fishing.pz; P.face=fishing.face; }
+      const mv=ENGINE.moveInput&&ENGINE.moveInput(); if(mv&&Math.hypot(mv.x,mv.z)>0.5){ standT+=dt; if(standT>0.25){ standT=0; UI.toast('🎣 You reel in and stand up.',1000); endFish(); return; } } else standT=0;
+      if(fishing.phase==='cast'){ const u=Math.min(1,tt/700); ENGINE.K.poleTip(tipV); bob.position.set(tipV.x+(fishing.bx-tipV.x)*u,tipV.y+(-0.22-tipV.y)*u+Math.sin(u*Math.PI)*1.2,tipV.z+(fishing.bz-tipV.z)*u); if(u>=1){ fishing.phase='wait'; fishing.t0=now(); } }
+      else if(fishing.phase==='wait'){ if(tt>=fishing.biteAt){ fishing.phase='bite'; fishing.t0=now(); UI.toast('❗ A bite! Reel it in!',1000); }
+        // resting: a little mending while you sit, and now and then a verse about waiting
+        fishing.heal+=dt; if(fishing.heal>2.5){ fishing.heal=0; const s=S(); if(s.hp<s.maxHp){ s.hp=Math.min(s.maxHp,s.hp+Math.max(1,Math.round(s.maxHp*0.02))); ENGINE.hud&&ENGINE.hud(); } }
+        if(tt>fishing.verse&&!fishing.said){ fishing.said=true; const v=WAITV[(Math.random()*WAITV.length)|0]; UI.toast(`🌿 “${v[1]}” — ${v[0]}`,3800); } }
+      else if(fishing.phase==='bite'&&tt>1100){ UI.toast('🎣 The fish got away… cast again when you’re ready.',1400); fishing.phase='wait'; fishing.t0=now(); fishing.biteAt=3500+Math.random()*9000; fishing.said=false; fishing.verse=6000+Math.random()*5000; }
+      else if(fishing.phase==='landed'){ ENGINE.K.fishBend=Math.max(0,1-tt/600); if(tt>900){ fishing.phase='wait'; fishing.t0=now(); fishing.biteAt=3500+Math.random()*9000; fishing.said=false; fishing.verse=6000+Math.random()*5000; ENGINE.K.poleTip(tipV); fishing.cast2=true; } }
+      const bite=fishing.phase==='bite'; ENGINE.K.fishBend=bite?0.55+Math.sin(t*22)*0.25:fishing.phase==='landed'?ENGINE.K.fishBend:0;
+      if(fishing.phase!=='cast'){ bob.position.set(fishing.bx,-0.22+(bite?-0.08+Math.sin(t*30)*0.05:Math.sin(t*2.5)*0.025),fishing.bz); }
+      bob.visible=fishing.phase!=='landed';
+      ring.position.set(bob.position.x,-0.24,bob.position.z); ring.material.opacity=fishing.phase==='cast'?0:bite?0.6:0.15; ring.scale.setScalar(1+((t*1.5)%1)*2);
+      ENGINE.K.poleTip(tipV); const a=lineGeo.attributes.position.array; a[0]=tipV.x; a[1]=tipV.y; a[2]=tipV.z; a[3]=bob.position.x; a[4]=bob.position.y+0.1; a[5]=bob.position.z; lineGeo.attributes.position.needsUpdate=true; line.visible=fishing.phase!=='landed';
+      fishSpot.label=bite?'Reel!':fishing.phase==='landed'?'Stand':'Stand'; fishSpot.x=P.x; fishSpot.z=P.z; if(i<0) L.push(fishSpot); return; }
     // facing water from the shore: offer a cast
     const fx=Math.floor(P.x+Math.sin(P.face)*0.9), fz=Math.floor(P.z+Math.cos(P.face)*0.9), here=world.T(Math.floor(P.x),Math.floor(P.z));
     const z=(here!==3&&here!==29)?zoneAt(fx,fz):null;
