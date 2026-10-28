@@ -3961,10 +3961,16 @@ const ENGINE=(function(){
     jb.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); jump(); }); document.body.appendChild(jb); }
   function strike(){ if(holdT>0||convo||busy||UI.open||(MENU&&MENU.open)) return; if(L&&L.combat) COMBAT.attack(); else K.swing((K._sn=(K._sn||0)+1)%2?1:2); }
   const stick=$('stick'), knob=$('knob'); let sv={x:0,y:0}, sid=null;
-  function stickMove(e){ const r=stick.getBoundingClientRect(); let dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2); const l=Math.hypot(dx,dy), M=44; if(l>M){dx*=M/l;dy*=M/l;} sv={x:dx/M,y:dy/M}; knob.style.transform=`translate(${dx}px,${dy}px)`; }
+  function stickMove(e){ const r=stick.getBoundingClientRect(); let dx=e.clientX-(r.left+r.width/2), dy=e.clientY-(r.top+r.height/2); const l=Math.hypot(dx,dy), M=Math.max(30,r.width*0.37); if(l>M){dx*=M/l;dy*=M/l;} sv={x:dx/M,y:dy/M}; knob.style.transform=`translate(${dx}px,${dy}px)`; }
   stick.addEventListener('pointerdown',e=>{ sid=e.pointerId; stick.setPointerCapture(sid); stickMove(e); e.preventDefault(); });
   stick.addEventListener('pointermove',e=>{ if(e.pointerId===sid) stickMove(e); });
-  const endS=e=>{ if(e.pointerId!==sid) return; sid=null; sv={x:0,y:0}; knob.style.transform=''; }; stick.addEventListener('pointerup',endS); stick.addEventListener('pointercancel',endS);
+  const endS=e=>{ if(e.pointerId!==sid) return; sid=null; sv={x:0,y:0}; knob.style.transform=''; stick.classList.remove('live'); if(stick._home) stick._home(); }; stick.addEventListener('pointerup',endS); stick.addEventListener('pointercancel',endS);
+  // V128: on a touch screen the stick FLOATS, as most phone games' do: put your left thumb down anywhere in the lower-left of
+  //  the screen and the stick comes to it; let go and it settles back to its corner (hud.js places that corner)
+  { const zone=document.createElement('div'); zone.id='stickZone'; document.body.insertBefore(zone,stick);
+    zone.addEventListener('pointerdown',e=>{ if(sid!==null) return; const w=stick.offsetWidth||110; stick.style.setProperty('left',(e.clientX-w/2)+'px','important'); stick.style.setProperty('top',(e.clientY-w/2)+'px','important'); stick.style.setProperty('bottom','auto','important');
+      stick.classList.add('live'); sid=e.pointerId; try{ zone.setPointerCapture(sid); }catch(_){} stickMove(e); e.preventDefault(); });
+    zone.addEventListener('pointermove',e=>{ if(e.pointerId===sid) stickMove(e); }); zone.addEventListener('pointerup',endS); zone.addEventListener('pointercancel',endS); }
   // the look stick (right thumb): turn and tilt the view smoothly while the left thumb walks
   const look=$('look'), lknob=$('lknob'); let lv2={x:0,y:0}, lid=null; const lookV={y:0,p:0};
   const PAD={mx:0,mz:0,lx:0,ly:0};   // a plugged-in controller's sticks (pad.js writes them)
@@ -4112,7 +4118,7 @@ const ENGINE=(function(){
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     R.render(L.scene,cam); requestAnimationFrame(frame); }
 
-  return { add, get, go, start, speak, P, K, cam, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
+  return { add, get, go, start, speak, P, K, cam, renderer:R, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();
 
 // ── engine/pets.js ──
@@ -7169,7 +7175,7 @@ function buildWorld(WD,opt){
     const r=new THREE.Mesh(new THREE.TorusGeometry(1,0.012,4,60),glow(0xc06aff)); r.rotation.x=Math.PI/2; r.scale.set(e.rx,e.ry,40); r.position.set(e.cx+0.5,0.3,e.cy+0.5); scene.add(r); domes.push({i,m,r}); });
   lv.anim.push(t=>domes.forEach(d=>{ const on=opt.sealed(d.i); d.m.visible=d.r.visible=on; if(on) d.m.material.opacity=0.13+Math.sin(t*1.3+d.i)*0.04; }));
   // ── streaming: build what is near, show what is in range, cull instances against the view ──
-  const VIEW=62, frus=new THREE.Frustum(), PM=new THREE.Matrix4(); let tick=0;
+  let VIEW=62; const frus=new THREE.Frustum(), PM=new THREE.Matrix4(); let tick=0;
   // V119: THE FAR COUNTRY — the whole realm once more, coarse (a vertex every two tiles), coloured by what lies there, so the
   //  hills and ranges run on past the near chunks into the haze as the Northern Reach's do. It lies a little under the near
   //  ground and is cut away around the knight, where the chunks stand.
@@ -7185,6 +7191,8 @@ function buildWorld(WD,opt){
     m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,U); sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vFW;').replace('#include <project_vertex>','#include <project_vertex>\nvFW=(modelMatrix*vec4(transformed,1.0)).xyz;');
       sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vFW; uniform vec2 uC; uniform float uR;').replace('void main() {','void main() {\nif(distance(vFW.xz,uC)<uR) discard;'); };
     const mesh=new THREE.Mesh(g,m); mesh.frustumCulled=false; mesh.receiveShadow=false; scene.add(mesh); return {mesh,U}; })();
+  lv.setView=v=>{ VIEW=v; if(FAR) FAR.U.uR.value=Math.max(18,v-16); };   // V128: the quality governor (hud.js) draws the near land less far on a slow phone
+  lv.sunShadow=sun;
   lv.follow=p=>{ if(FAR){ FAR.U.uC.value.set(p.x,p.z); scene.fog.near=40; scene.fog.far=150; } if(typeof DAYNIGHT!=='undefined'){ const L=DAYNIGHT.state().light; sun.position.set(p.x+L.x*34,p.y+L.y*34,p.z+L.z*34); } else sun.position.set(p.x-12,p.y+30,p.z+14); sun.target.position.set(p.x,p.y,p.z);
     const cam=ENGINE.cam; cam.updateMatrixWorld(); PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); frus.setFromProjectionMatrix(PM);
     const heavy=(tick++%6)===0;
@@ -14220,6 +14228,77 @@ const PAD=(function(){
     prev=gp.buttons.map(x=>x.pressed||x.value>0.5); }
   requestAnimationFrame(poll);
   return { get connected(){ return idx!==null; }, open:()=>{ msg=''; listen=null; draw(); }, binds:()=>binds };
+})();
+
+// ── engine/hud.js ──
+// ════════════════════════════════════════════════════════════════
+//  HUD (V128) — the controls laid out as phone games lay theirs, and fitted to whatever screen you have:
+//   · one UI scale from the screen's size (a small phone, a big tablet, a laptop all get controls that fit)
+//   · the left thumb: a floating stick (core.js) — it rests in the lower-left corner and comes to your thumb
+//   · the right thumb: the sword is the big button in the corner; everything else sits in an arc round it, nearest first —
+//     the context action (Talk, Enter, Read…) gold and largest, then Guard and Jump; potion, mount, lock-on, stow on the
+//     outer arc. Only what you can use now is shown, so the arc closes up instead of leaving gaps.
+//   · drag anywhere on the right of the screen to look about (the look stick is retired on phones; it crowded the buttons);
+//     the 🎯 lock-on button appears beside the arc when foes are near
+//   · on a computer with no touch screen the stick is hidden (WASD/arrows walk) and the buttons sit smaller
+//  QUALITY — the governor watches the frame rate for the first while in the realm and eases the load if a device struggles:
+//   sharper → lighter pixel ratio, then the near land drawn less far and smaller shadows. One toast says so; ☰ never shows it.
+// ════════════════════════════════════════════════════════════════
+const HUD=(function(){
+  const $=id=>document.getElementById(id);
+  const touch=()=>('ontouchstart' in window)||navigator.maxTouchPoints>0||matchMedia('(any-pointer: coarse)').matches;
+  const css=document.createElement('style'); css.textContent=`
+    #stickZone{position:fixed;left:0;bottom:0;width:44vw;height:58vh;z-index:1;touch-action:none;display:none}
+    body.touch #stickZone{display:block} body.touch #look{display:none!important} body.mg #stickZone{display:none!important}
+    #stick{z-index:2;transition:opacity .25s;opacity:.7} #stick.live{opacity:1;transition:none} body.notouch #stick{display:none!important}
+    .act{touch-action:none;transition:width .15s,height .15s} #lockBtn{font-size:20px}
+    body.notouch #mhint{display:block}`;
+  document.head.appendChild(css);
+  let s=1, ready=false;
+  const px=v=>Math.round(v)+'px';
+  const put=(el,o)=>{ if(!el) return; for(const k in o) el.style.setProperty(k,o[k],'important'); };
+  function scale(){ const w=innerWidth, h=innerHeight, m=Math.min(w,h); const t=touch(); document.body.classList.toggle('touch',t); document.body.classList.toggle('notouch',!t);
+    s=t?Math.max(0.74,Math.min(1.25,m/430)):Math.max(0.7,Math.min(0.95,m/900)); return {w,h}; }
+  // the lock-on button (phones): beside the arc, only when foes are near
+  let lockB=null;
+  function lockBtn(){ if(lockB) return lockB; lockB=document.createElement('button'); lockB.className='act'; lockB.id='lockBtn'; lockB.textContent='🎯'; lockB.hidden=true; lockB.setAttribute('aria-label','Lock on');
+    lockB.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); if(typeof COMBAT!=='undefined'&&COMBAT.toggleLock) COMBAT.toggleLock(); }); document.body.appendChild(lockB); return lockB; }
+  function foesNear(){ const L=typeof ENGINE!=='undefined'&&ENGINE.level; if(!L||!L.combat||!L.combat.foes) return false; const P=ENGINE.P; return L.combat.foes.some(f=>f.alive&&Math.hypot(f.x-P.x,f.z-P.z)<14); }
+  function layout(){ const {w,h}=scale(); const sa=v=>`calc(${px(v)} + env(safe-area-inset-right,0px))`, sb=v=>`calc(${px(v)} + env(safe-area-inset-bottom,0px))`, sl=v=>`calc(${px(v)} + env(safe-area-inset-left,0px))`;
+    const vis=el=>el&&!el.hidden&&el.style.display!=='none'&&getComputedStyle(el).display!=='none';
+    const S=78*s, m=16*s, cx=m+S/2, cy=m+S/2;   // the sword's centre, from the bottom-right corner
+    const swing=$('swing'); put(swing,{width:px(S),height:px(S),right:sa(m),bottom:sb(m),'font-size':px(15*s)});
+    // the inner arc, then the outer: [element, size, preferred order]
+    const I=58*s, O=46*s, R1=S/2+I/2+10*s, R2=R1+I/2+O/2+6*s;
+    const inner=[['talk',66*s],['guardBtn',I],['jumpBtn',I],['surfaceBtn',I]].map(([id,z])=>[$(id),z]).filter(([e])=>vis(e));
+    const outer=[['potBtn',O],['mountBtn',O],['lockBtn',O],['stowBtn',O]].map(([id,z])=>[$(id),z]).filter(([e])=>vis(e));
+    const IA=[180,135,90,225], OA=[160,118,76,200];   // degrees, from the sword's left round to straight above
+    const place=(list,R,angs)=>list.forEach(([el,z],i)=>{ const a=(angs[i]!==undefined?angs[i]:angs[angs.length-1])*Math.PI/180;
+      // x: distance from the right edge to the button's centre; the arc runs leftward (cos 180° = -1) and up
+      const right=cx-Math.cos(a)*R, bottom=cy+Math.sin(a)*R; put(el,{width:px(z),height:px(z),right:sa(Math.max(m*0.5,right-z/2)),bottom:sb(Math.max(m*0.5,bottom-z/2)),left:'auto',top:'auto','font-size':px((el.id==='talk'?14:el.id==='jumpBtn'||el.id==='mountBtn'||el.id==='surfaceBtn'||el.id==='lockBtn'?20:12)*s)}); });
+    // the context action leads; then the rest in order
+    place(inner,R1,IA); place(outer,R2,OA);
+    // the stick's resting corner, and its size
+    const st=$('stick'), SK=Math.round(118*s); if(st){ st._home=()=>{ put(st,{width:px(SK),height:px(SK),left:sl(22*s),bottom:sb(22*s),top:'auto'}); }; if(!st.classList.contains('live')) st._home(); const kn=$('knob'); put(kn,{width:px(SK*0.42),height:px(SK*0.42),margin:`${px(-SK*0.21)} 0 0 ${px(-SK*0.21)}`}); }
+    // the dialogue box sits clear of both thumbs
+    const say=$('say'); if(say){ const side=Math.max(SK+30*s, R2+O+m); const free=w-2*side; if(free>=280) put(say,{bottom:sb(10*s),width:px(Math.min(460,free)),left:'50%',transform:'translateX(-50%)'}); else put(say,{bottom:sb(Math.max(SK, R1+S/2)+24*s),width:`min(calc(100vw - 24px),440px)`,left:'50%',transform:'translateX(-50%)'}); }
+    ready=true; }
+  function tick(){ try{ const lb=lockBtn(); const want=touch()&&foesNear()&&!(document.body.classList.contains('mg')); if(lb.hidden===want) lb.hidden=!want; layout(); }catch(e){} }
+  addEventListener('resize',()=>setTimeout(tick,60)); addEventListener('orientationchange',()=>setTimeout(tick,200));
+  setInterval(tick,250); setTimeout(tick,50);
+  // ── the quality governor ──
+  let frames=0, t0=0, lvl=0, tried=0;
+  const R=()=>typeof ENGINE!=='undefined'&&ENGINE.renderer;
+  function apply(n){ const r=R(); if(!r) return; lvl=n; const dpr=devicePixelRatio||1;
+    r.setPixelRatio(n===0?Math.min(dpr,2):n===1?Math.min(dpr,1.5):n===2?1:0.8);
+    const W=ENGINE.get&&ENGINE.get('world'); if(W){ if(W.setView) W.setView(n<2?62:n===2?48:38); if(W.sunShadow){ const sz=n<2?1024:512; if(W.sunShadow.shadow.mapSize.x!==sz){ W.sunShadow.shadow.mapSize.set(sz,sz); if(W.sunShadow.shadow.map){ W.sunShadow.shadow.map.dispose(); W.sunShadow.shadow.map=null; } } } }
+    try{ localStorage.setItem('klk3d_quality',String(n)); }catch(e){} }
+  try{ const q=+localStorage.getItem('klk3d_quality'); if(q>0) setTimeout(()=>apply(q),1500); else if(touch()&&Math.min(innerWidth,innerHeight)<500) setTimeout(()=>apply(1),1500); }catch(e){}
+  function watch(t){ requestAnimationFrame(watch); const L=typeof ENGINE!=='undefined'&&ENGINE.level; if(!L||L.id!=='world'||document.hidden||ENGINE.busy){ frames=0; t0=t; return; }
+    frames++; if(t-t0>4000){ const fps=frames*1000/(t-t0); frames=0; t0=t;
+      if(fps<34&&lvl<3&&tried<3){ tried++; apply(lvl+1); if(tried===1&&typeof UI!=='undefined') UI.toast('⚙️ Graphics eased a little for smoother play on this device',2600); } } }
+  requestAnimationFrame(watch);
+  return { layout:tick, get scale(){ return s; }, get quality(){ return lvl; }, setQuality:apply };
 })();
 
 // ── cities/luminar.js ──
