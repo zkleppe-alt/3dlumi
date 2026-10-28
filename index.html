@@ -6548,6 +6548,20 @@ function buildWorld(WD,opt){
       for(let i=0;i<base.length;i+=3){ if(base[i]<0){ col[i]=bgc.r; col[i+1]=bgc.g; col[i+2]=bgc.b; } else { col[i]=base[i]*0.55+bgc.r*0.45; col[i+1]=base[i+1]*0.55+bgc.g*0.45; col[i+2]=base[i+2]*0.55+bgc.b*0.45; } }
       cA.array.set(col); cA.needsUpdate=true; }; }
 
+  // V126: SUNFALL IN THE SKY — in the right light (the evening hours most of all, and faint at dawn and by night) the
+  //  outline of the floating isle shows high in Luminar's western sky: a spiral of ledges on a hanging root of rock, towers
+  //  round it and Vesper's cathedral spire at the heart. It keeps its distance, as the far ranges do.
+  if(!opt.land&&typeof LOOK2!=='undefined'&&LOOK2){ const cv=document.createElement('canvas'); cv.width=1024; cv.height=512; const x=cv.getContext('2d');
+    const sil='rgba(40,24,48,1)'; x.fillStyle=sil;
+    x.beginPath(); x.moveTo(140,250); x.bezierCurveTo(260,262,760,262,884,250); x.bezierCurveTo(860,300,760,320,700,360); x.bezierCurveTo(640,410,580,470,520,500); x.bezierCurveTo(470,470,400,410,330,362); x.bezierCurveTo(260,318,170,296,140,250); x.fill();   // the hanging root of rock
+    for(let i=0;i<9;i++){ const px=200+i*78, w=60+((i*37)%30); x.fillRect(px-w/2,236-((i%3)*10),w,24); }                    // the ledges, ring on ring
+    [[230,150],[330,120],[690,120],[790,150],[520,90]].forEach(([px,top],i)=>{ x.fillRect(px-13,top,26,250-top); x.beginPath(); x.moveTo(px-19,top+2); x.lineTo(px,top-34); x.lineTo(px+19,top+2); x.fill(); });   // the lamp towers
+    x.beginPath(); x.moveTo(470,248); x.lineTo(470,150); x.lineTo(500,120); x.lineTo(512,30); x.lineTo(524,120); x.lineTo(554,150); x.lineTo(554,248); x.fill();   // Vesper's cathedral spire
+    x.globalCompositeOperation='source-atop'; const rim=x.createLinearGradient(0,0,0,512); rim.addColorStop(0,'rgba(255,190,120,0.55)'); rim.addColorStop(0.5,'rgba(120,60,90,0)'); x.fillStyle=rim; x.fillRect(0,0,1024,512);
+    const sfMat=new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),transparent:true,depthWrite:false,fog:false,opacity:0}), sf=new THREE.Mesh(new THREE.PlaneGeometry(110,55),sfMat); sf.renderOrder=-7; sf.frustumCulled=false; scene.add(sf);
+    sf.onBeforeRender=(r,s2,cam)=>{ sf.position.set(cam.position.x-210,88,cam.position.z+30); sf.lookAt(cam.position.x,88,cam.position.z); };
+    lv.anim.push(()=>{ const f=(GAME.S.dayFrac||0)%1, dk=Math.max(0,1-Math.abs(f-0.84)/0.07), dw=Math.max(0,1-Math.abs(f-0.27)/0.05), nt=(f>0.9||f<0.22)?0.12:0;
+      sfMat.opacity=Math.min(0.55,dk*0.55+dw*0.3+nt); sf.visible=sfMat.opacity>0.01; }); }
   // ── the hot spring's steam, and its healing (KLK: standing in tile 24 mends you, a little at a time) ──
   if(!opt.land){ const sp=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(T(x,y)===24) sp.push([x,y]);
     if(sp.length){ const N=Math.min(160,sp.length*12), pos=new Float32Array(N*3), ph=new Float32Array(N), cv=document.createElement('canvas'); cv.width=cv.height=64; const cx2=cv.getContext('2d'), gr=cx2.createRadialGradient(32,32,2,32,32,30);
@@ -10979,6 +10993,23 @@ function sunfallQuest(D){
 
   // ════ the spiral ════
   function attach(L){ lv=L; const T0=lv.T, base=lv.canMove, baseWalk=lv.walkTile;
+    // V126: LUMINAR BENEATH — Sunfall hangs in Luminar's sky. Once its five lamps burn (or Madison is free), the wine-dark sea
+    //  below thins away and the realm itself shows far beneath the ledges: its whole map laid out under a veil of cloud and
+    //  evening haze, the drifting clouds between. Until then, the sea.
+    { const below=new THREE.Group(); lv.scene.add(below); below.visible=false; const cx=(D.cx!==undefined?D.cx:lv.W/2), cz=(D.cy!==undefined?D.cy:lv.H/2);
+      const cv=document.createElement('canvas'); cv.width=cv.height=1024; const g2=cv.getContext('2d'), tex=new THREE.CanvasTexture(cv);
+      const paint=img=>{ g2.fillStyle='#3a5a78'; g2.fillRect(0,0,1024,1024); if(img){ const k=Math.min(1024/img.width,1024/img.height)*0.9, w=img.width*k, h=img.height*k; g2.imageSmoothingEnabled=true; g2.filter='blur(3px) saturate(1.15)'; g2.drawImage(img,(1024-w)/2,(1024-h)/2,w,h); g2.filter='none'; }
+        const gr=g2.createRadialGradient(512,512,180,512,512,520); gr.addColorStop(0,'rgba(232,160,120,0.18)'); gr.addColorStop(0.7,'rgba(232,150,110,0.5)'); gr.addColorStop(1,'rgba(232,148,106,1)'); g2.fillStyle=gr; g2.fillRect(0,0,1024,1024); tex.needsUpdate=true; };
+      paint(null); if(typeof SYS!=='undefined'&&SYS.MAP&&SYS.MAP.map){ const im=new Image(); im.onload=()=>paint(im); im.src=SYS.MAP.map; }
+      const land=new THREE.Mesh(new THREE.PlaneGeometry(520,520),new THREE.MeshBasicMaterial({map:tex,fog:false,transparent:true,opacity:0.92,depthWrite:false})); land.rotation.x=-Math.PI/2; land.position.set(cx,-70,cz); land.renderOrder=-4; below.add(land);
+      // clouds between: soft sprites drifting slowly under the ledges
+      const cc=document.createElement('canvas'); cc.width=cc.height=128; const c2=cc.getContext('2d'); for(let i=0;i<12;i++){ const px=24+Math.random()*80, py=40+Math.random()*48, r=14+Math.random()*24, gr=c2.createRadialGradient(px,py,0,px,py,r); gr.addColorStop(0,'rgba(255,240,230,.8)'); gr.addColorStop(1,'rgba(255,240,230,0)'); c2.fillStyle=gr; c2.fillRect(0,0,128,128); }
+      const cm=new THREE.SpriteMaterial({map:new THREE.CanvasTexture(cc),transparent:true,depthWrite:false,fog:false,opacity:0.55}), clouds=[];
+      for(let i=0;i<26;i++){ const sp=new THREE.Sprite(cm); const a=hsh(i,3)*6.283, r=20+hsh(3,i)*130; sp.userData={a,r,y:-22-hsh(i,7)*30,sp:0.002+hsh(i,11)*0.003}; sp.scale.set(40+hsh(i,5)*40,16+hsh(5,i)*10,1); sp.renderOrder=-3; below.add(sp); clouds.push(sp); }
+      let was=null; lv.anim.push(t=>{ if(ENGINE.level!==lv) return; const f=SF(), open=litN()>=5||!!f.rescued||!!S().homecoming;
+        if(open!==was){ was=open; below.visible=open; if(lv.sea) lv.sea.visible=!open; }
+        if(!open) return; const day=!!S().homecoming; land.material.opacity=day?0.95:f.dawn?0.62:0.88;
+        clouds.forEach(c=>{ const u=c.userData, a=u.a+t*u.sp; c.position.set(cx+Math.cos(a)*u.r,u.y,cz+Math.sin(a)*u.r); c.material.color.setHex(day?0xffffff:f.dawn?0x8a7aa8:0xffd0b8); }); }); }
     const rubble=new Map(), planks=new Set(), deck=new Set(), void81=(x,y)=>T0(x,y)===81;
     // the rubble, where it was left (sunfallProgress.debris)
     const rubM=new THREE.Group(); lv.scene.add(rubM);
