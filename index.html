@@ -14065,7 +14065,7 @@ const TREK=(function(){
       c.traverse(m=>{ if(m.isMesh) m.castShadow=true; });
       world.spots.push({x,z:z+1.2,r:1.4,label:'Rest',who:'The high camp',action:()=>{ const P=ENGINE.P, lv=world;
         if(lv.combat&&lv.combat.foes.some(d=>d.alive&&Math.hypot(d.x-P.x,d.z-P.z)<8)){ UI.toast('⚔ Not with demons so close.',1600); return; }
-        const s=S(); s.hp=s.maxHp; s.dayFrac=(s.dayFrac||0)+1/24; ENGINE.hud&&ENGINE.hud(); GAME.changed(); GAME.save();
+        const s=S(); s.hp=s.maxHp; s.dayFrac=(s.dayFrac||0)+1/24; s.wxWarm=(s.wxN||0)+1;   /* V134: warmed through for this watch and the next */ ENGINE.hud&&ENGINE.hud(); GAME.changed(); GAME.save();
         ENGINE.speak('The high camp',['You sit by the fire with your back to the rock. Below, Shadowmere’s mists; above, the pass, white against the sky. An hour passes; you rise mended.']);
         if(!st().saw.camp){ st().saw.camp=true; jw(`I made camp halfway up ${name}, the fire small against the mountain. The trail goes on up into the snow.`,{place:name}); } }}); }
     // ── the pass: the ruined watchtower and the overlook ──
@@ -14257,7 +14257,7 @@ const WEATHER=(function(){
       let best=null, bd=1e9; TOWNS.forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-z); if(d<bd){ bd=d; best=n; } });
       return (best&&bd<70&&CLIMATE[best])||'rain'; };
     // the watch's weather for a climate: 0 (clear) .. 1 (heavy)
-    const strength=(c,w)=>{ const K=KIND[c], ci=Object.keys(KIND).indexOf(c); const r=hsh(w,ci+11); if(r>K.p) return 0; return 0.45+0.55*hsh(w,ci+37); };
+    const strength=(c,w)=>{ if(c==='storm'&&GAME.S.wxCalm===w) return 0; const K=KIND[c], ci=Object.keys(KIND).indexOf(c); const r=hsh(w,ci+11); if(r>K.p) return 0; return 0.45+0.55*hsh(w,ci+37); };
     const watch=()=>{ const S=GAME.S; const f=typeof S.dayFrac==='number'?S.dayFrac:0.4; const seg=Math.floor(((f%1)+1)%1*3);
       if(S.wxSeg!==seg){ S.wxSeg=seg; S.wxN=(S.wxN||0)+1; } return S.wxN||0; };
     // ── the particles ──
@@ -14313,7 +14313,31 @@ const WEATHER=(function(){
       else { f.near=bN; f.far=bF; }
       if(flash>0&&world.hemi){ world.hemi.intensity+=flash*1.4; if(scene.background&&scene.background.isColor) scene.background.lerp(tmpC.setHex(0xe8ecff),flash*0.5); }
       wN=f.near; wF=f.far; };
-    return { get now(){ return {kind:cur,amount:amt,want,wantS}; }, climate, _pts:pts, _rain:rain };
+    // ── V134: weather that asks something of you ──
+    //  · CALM THE STORM: in a storm on the Stormgate coast, stand at the water's edge and pray — "Peace, be still" (Mark 4:39) —
+    //    and the wind drops and the sea goes still, for the rest of the watch.
+    //  · THE COLD: in snow out in the open (the Pilgrim's Pass, the high country round Crystalpeak and Hellgate) the cold
+    //    creeps in while you walk and slows you; the fire at the high camp warms you through for the next two watches.
+    const nearSea=(x,z)=>{ for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ const t=world.T(Math.floor(x)+dx,Math.floor(z)+dy); if(t===3||t===29) return true; } return false; };
+    const nearTown=(x,z)=>TOWNS.some(([n,tx,ty])=>Math.hypot(tx-x,ty-z)<16);
+    const calmSpot={x:-999,z:-999,r:1.2,label:'Pray',who:'The storm',action:()=>{ const w=watch(), first=!GAME.S.wxCalmed;
+      ENGINE.speak('The storm',['The wind howls off the sea and the waves break white against the stones. You plant your feet at the water’s edge and lift your voice over it.','“And he arose, and rebuked the wind, and said unto the sea, Peace, be still. And the wind ceased, and there was a great calm.” — Mark 4:39','(The wind falls away. The rain thins to nothing. The sea lies down like a tired dog.)'],null,()=>{
+        GAME.S.wxCalm=w; GAME.S.wxCalmed=true; flash=0; nextBolt=1e9; GAME.changed();
+        if(first){ const x=GAME.gainXp?GAME.gainXp(80):null; UI.toast(`🌊 Peace, be still — the storm is calmed. +80 XP${x&&x.up?' · LEVEL UP!':''}`,3000); if(typeof JOURNAL!=='undefined') JOURNAL.write('A storm came in on the Stormgate coast. I stood at the water and said the words from Mark 4:39, and the wind ceased, and there was a great calm. It was not my voice that did it.',{place:'Stormgate'}); if(typeof LIBRARY!=='undefined'&&LIBRARY.codexAdd) LIBRARY.codexAdd('Weather','Mark 4:39','Peace, be still. And the wind ceased, and there was a great calm.'); }
+        else UI.toast('🌊 Peace, be still — the wind drops and the sea goes calm.',2400); }); }};
+    world.spots.push(calmSpot);
+    let cold=0, coldSaid=false, warmSaid=false;
+    const warm=()=>(GAME.S.wxWarm||-9)>=watch();
+    const sm0=world.speedMult; world.speedMult=()=>(sm0?sm0():1)*(1-0.28*cold);
+    world.anim.push(t=>{ if(ENGINE.level!==world){ calmSpot.x=-999; return; } const P=ENGINE.P, dt=0.016*Math.max(1,Math.min(15,(performance.now()-(world._wxT||performance.now()))/16)); world._wxT=performance.now();
+      if(cur==='storm'&&amt>0.45&&!ENGINE.holding&&nearSea(P.x,P.z)){ calmSpot.x=P.x; calmSpot.z=P.z; } else calmSpot.x=-999;
+      const riding=world.mounted&&world.mounted();
+      const chill=cur==='snow'&&amt>0.3&&!riding&&!warm()&&!nearTown(P.x,P.z);
+      cold=Math.max(0,Math.min(1,cold+(chill?dt/45:-dt/12)));
+      if(cold>0.5&&!coldSaid){ coldSaid=true; UI.toast('❄ The cold bites through your mail and slows your step. The fire at the high camp would warm you.',3200); }
+      if(cold<0.1) coldSaid=false;
+      if(warm()&&cur==='snow'&&!warmSaid){ warmSaid=true; UI.toast('🔥 Warm from the fire, you shrug off the cold.',2200); } });
+    return { get cold(){ return cold; }, get now(){ return {kind:cur,amount:amt,want,wantS}; }, climate, _pts:pts, _rain:rain };
   }
   return {attach};
 })();
