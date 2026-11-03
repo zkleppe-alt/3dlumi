@@ -4106,7 +4106,7 @@ const ENGINE=(function(){
       let d=want-f.g.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); f.g.rotation.y+=d*Math.min(1,dt*5); if(typeof folkPose==='function'&&Math.hypot(f.x-P.x,f.z-P.z)<24) folkPose(f,t,dt,P,!!(convo&&convo.f===f)); });
     L.anim.forEach(fn=>fn(t,dt));
     if(PETS3D) PETS3D.tick(dt,t,P,L);
-    document.body.classList.toggle('saying',!say.hidden); near=(convo||busy||paused||hold)?null:nearest(); talkB.hidden=!near&&!convo; if(near) talkB.textContent=near.label||'Talk'; else if(convo) talkB.textContent='Next';
+    document.body.classList.toggle('saying',!say.hidden); near=(convo||busy||paused)?null:hold?((L.spots||[]).find(q=>q.holdOK)||null):nearest(); /* V130: while sat, only what belongs to the sitting (the fishing rod's Reel / Stand) */ talkB.hidden=!near&&!convo; if(near) talkB.textContent=near.label||'Talk'; else if(convo) talkB.textContent='Next';
     if(convo&&convo.f&&Math.hypot(convo.f.x-P.x,convo.f.z-P.z)>3.2){ convo=null; say.hidden=true; }
     const z=L.zone?L.zone(P):''; if(z!==lastZone){ lastZone=z; zoneEl.textContent=z; }
     const CQ=L.close||L.interior, AS=ACTOR_S(L), EYE=L.interior?1.6*AS:L.close?0.9:1, HY=L.interior?1.2*AS:L.close?0.9*CLOSE_S:0.9;   // indoors: a low camera at his shoulder, as in Hyrule's houses
@@ -9545,7 +9545,7 @@ function pastimes(world,D){
   const desert=(x,y)=>x>=SX(78)&&x<=SX(107)&&y>=SY(56)&&y<=SY(82), sage=(x,y)=>x>=SX(84)&&x<=SX(95)&&y>=SY(165)&&y<=SY(176);
   function zoneAt(x,y){ const k=D.fishSpots[x+','+y]; if(k) return k; const t=world.T(x,y);
     if(t===20||t===21) return 'sea'; if(t===29) return 'forest'; if(t===3) return desert(x,y)?'oasis':sage(x,y)?'forest':'pond'; return null; }
-  let fishing=null; const fishSpot={x:0,z:0,r:0.2,label:'Fish',who:'Water'};
+  let fishing=null; const fishSpot={x:0,z:0,r:0.2,label:'Fish',who:'Water',holdOK:true};
   const bob=new THREE.Group(); Sp(0.09,0xd83a2a,0,0,0,bob,8,6); Sp(0.06,0xf4f4f4,0,0.08,0,bob,8,6); bob.visible=false; world.scene.add(bob);
   const lineGeo=new THREE.BufferGeometry(); lineGeo.setAttribute('position',new THREE.Float32BufferAttribute([0,0,0,0,0,0],3));
   const line=new THREE.Line(lineGeo,new THREE.LineBasicMaterial({color:0xe8e8e8})); line.visible=false; line.frustumCulled=false; world.scene.add(line);
@@ -9558,7 +9558,7 @@ function pastimes(world,D){
     ['Lamentations 3:25','The LORD is good unto them that wait for him.'],['Matthew 4:19','Follow me, and I will make you fishers of men.'],['Psalm 23:2','He leadeth me beside the still waters.'],['James 5:7','Be patient therefore, brethren… the husbandman waiteth for the precious fruit of the earth.']];
   const tipV=new THREE.Vector3();
   function endFish(){ if(fishing&&fishing.sat){ ENGINE.hold(0); ENGINE.K.fishBend=0; } fishing=null; bob.visible=line.visible=false; ring.material.opacity=0; }
-  fishSpot.action=()=>{ if(!fishing){ const x=fishSpot.tx, y=fishSpot.ty, z=zoneAt(x,y); if(!z) return;
+  fishSpot.action=()=>{ if(!fishing&&ENGINE.holding) return; if(!fishing){ const x=fishSpot.tx, y=fishSpot.ty, z=zoneAt(x,y); if(!z) return;
       // sit on the bank, facing the water, and cast the float out a couple of paces
       const fa=Math.atan2(x+0.5-P.x,y+0.5-P.z); P.face=fa; ENGINE.hold(9999,'fish');
       let bx=x+0.5+Math.sin(fa)*1.2, bz=y+0.5+Math.cos(fa)*1.2; if(!zoneAt(Math.floor(bx),Math.floor(bz))){ bx=x+0.5; bz=y+0.5; }
