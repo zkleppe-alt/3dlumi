@@ -4046,7 +4046,7 @@ const ENGINE=(function(){
   // someone who walked into you (and the foes of a fight are solid the same way, COMBAT.solid)
   function blocked(tx,tz){ const r0=f=>(f.solid||0.45)*Math.max(0.6,ps); return L.folk.some(f=>{ if(f.ghost||(f.g&&f.g.visible===false)) return false; const dn=Math.hypot(f.x-tx,f.z-tz), r=r0(f); return dn<r&&dn<Math.hypot(f.x-P.x,f.z-P.z)-1e-4; })||(typeof COMBAT!=='undefined'&&L.combat&&COMBAT.solid(tx,tz)); }
 
-  function resize(){ const w=innerWidth,h=innerHeight; R.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+  function resize(){ const w=innerWidth,h=innerHeight; R.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); if(window.KLK_POST) window.KLK_POST.resize(w,h); }
   addEventListener('resize',resize); resize();
   let last=performance.now(); const tmp=new THREE.Vector3();
   function frame(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; const t=now/1000; DETAIL_TIME.value=t%1000;
@@ -4137,7 +4137,7 @@ const ENGINE=(function(){
     if(typeof COMBAT!=='undefined'&&COMBAT.shakeAmt>0.001&&!calm){ const a=COMBAT.shakeAmt*(ps<1?0.6:1); cam.position.x+=(Math.random()-0.5)*a; cam.position.y+=(Math.random()-0.5)*a; cam.position.z+=(Math.random()-0.5)*a; }   // the blow lands
     if(L.follow) L.follow(P);
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
-    R.render(L.scene,cam); requestAnimationFrame(frame); }
+    { const PO=window.KLK_POST; if(PO&&PO.on) PO.render(L.scene,cam); else R.render(L.scene,cam); } requestAnimationFrame(frame); }   /* V135: High/Ultra draw through post.js */
 
   return { add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();
@@ -4470,6 +4470,9 @@ const MENU=(function(){
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
         +sec('Controls')+`<button class="gm-item" data-act="keys"><span>⌨ Keyboard Controls <span class="ds">see and change every key · 🧪 potion is ${typeof KEYS!=='undefined'?KEYS.keysFor('potion'):'P'}</span></span></button>`
+          +sec('Graphics')+['auto','low','medium','high','ultra'].map(t=>{ const cur=typeof HUD!=='undefined'?HUD.pref:'auto', act=typeof HUD!=='undefined'?HUD.tier:'medium';
+            const lab={auto:`✨ Auto <span class="ds">chosen for this device — now ${act[0].toUpperCase()+act.slice(1)}</span>`,low:'Low <span class="ds">older phones: short view, plain light</span>',medium:'Medium <span class="ds">phones and tablets</span>',high:'High <span class="ds">computers: soft wide shadows, long views, glow and colour grading</span>',ultra:'Ultra <span class="ds">a strong graphics card: the longest views, the sharpest shadows</span>'}[t];
+            return `<button class="gm-item ${cur===t?'worn':''}" data-act="gfx:${t}"><span>${lab}</span>${cur===t?'<i>✓</i>':''}</button>`; }).join('')
           +`<button class="gm-item" data-act="look2"><span>🌄 World look: ${typeof LOOK2!=='undefined'&&LOOK2?'rolling meadows (new)':'classic flat ground'} <span class="ds">tap to switch · reloads the page</span></span></button>`
           +`<button class="gm-item" data-act="pad"><span>🎮 Controller Controls <span class="ds">choose the button for every action · swap sticks · invert look</span></span></button>`
         +sec('Save Profiles')+`<button class="gm-item" data-act="save"><span>💾 Save Game <span class="ds">write your progress to Slot ${slot}</span></span></button>`;
@@ -4518,6 +4521,7 @@ const MENU=(function(){
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }
+    else if(k==='gfx'){ if(typeof HUD!=='undefined') HUD.setTier(v); note='Graphics: '+v; render(true); return; }
     else if(k==='look2'){ try{ localStorage.setItem('klk3d_look2',(typeof LOOK2!=='undefined'&&LOOK2)?'0':'1'); }catch(e){} GAME.save&&GAME.save(); location.reload(); return; }
     else if(k==='journal'){ toggle(false); if(typeof JOURNAL!=='undefined') JOURNAL.open(); return; }
     else if(k==='pad'){ toggle(false); if(typeof PAD!=='undefined') PAD.open(); return; }
@@ -5837,6 +5841,8 @@ const BUSH_GEO2=()=>mergeColoured([[_tg(new THREE.IcosahedronGeometry(0.42,2).sc
 const FLOWER_GEO=col=>{ const parts=[[_tg(new THREE.CylinderGeometry(0.008,0.012,0.12,4),0,0.06,0),0x5a9a3a],[_tg(new THREE.SphereGeometry(0.03,5,3).scale(1.6,0.35,0.7),0.03,0.03,0),0x4f8f36]]; for(let i=0;i<5;i++){ const a=i/5*Math.PI*2, g=new THREE.SphereGeometry(0.04,6,4); g.scale(1,0.35,0.62); g.translate(0.04,0,0); g.rotateY(a); parts.push([_tg(g,0,0.13,0),col]); }
   parts.push([_tg(new THREE.SphereGeometry(0.024,6,4),0,0.135,0),0xf2c03a]); return mergeColoured(parts); };
 // the wind: crowns and grass sway — higher points more — in a slow, gusting breeze that moves across the land
+/* V135: how lush the sward is, by the graphics tier chosen (read once, as the realm is built: a change shows after a reload) */
+const GRASS_K=(()=>{ try{ const p=localStorage.getItem('klk3d_gfx'); const t=p&&p!=='auto'?p:(matchMedia('(any-pointer: coarse)').matches?'medium':'high'); return t==='ultra'?2.6:t==='high'?2:t==='low'?0.6:1; }catch(e){ return 1; } })();
 function windSway(mat,amt){ const prev=mat.onBeforeCompile; mat.onBeforeCompile=(sh,r)=>{ if(prev) prev(sh,r); sh.uniforms.uWind={value:0}; sh.uniforms.uWind=DETAIL_TIME;
     sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
       #ifdef USE_INSTANCING
@@ -7079,7 +7085,7 @@ function buildWorld(WD,opt){
       else c=TILE_COL[t]||0x9a9a9a;
       if(t===26){ lava.push({x:cx,z:cz,y:y1-0.1,h:0.1,sx:1,sz:1}); continue; }
       box(cx,cz,y1-0.4,0.4,c,1,1,0,(t===0||t===4||t===16)?(ROLL?0:jit*0.25):jit);   // the sward barely varies tile to tile, so no checkerboard
-      if((t===0||t===4||t===16)&&!desert(x,y)&&!ashland(x,y)&&!tilesOnly){ const n=Math.floor(hsh(x*3,y*5)*3.4); const gc=new THREE.Color(c).offsetHSL(0.0,0.12,-0.06).getHex();
+      if((t===0||t===4||t===16)&&!desert(x,y)&&!ashland(x,y)&&!tilesOnly){ const n=Math.floor(hsh(x*3,y*5)*3.4*GRASS_K); const gc=new THREE.Color(c).offsetHSL(0.0,0.12,-0.06).getHex();
         for(let i=0;i<n;i++){ const hx=hsh(x*11+i,y*7), hz=hsh(y*13+i,x*5); tufts.push({x:x+0.12+hx*0.76,z:y+0.12+hz*0.76,y:y1,h:0.45+hx*0.4,sx:0.7+hz*0.4,sz:0.7+hz*0.4,ry:hx*6.28,c:gc,l:(hz-0.5)*0.06}); } }
       if((t===0||t===4||t===2)&&!tilesOnly&&!opt.land||(opt.land==='mistral'&&t===0&&!tilesOnly)){ const wd=[[1,0],[-1,0],[0,1],[0,-1]].filter(([a,b])=>[3,20,21,29].includes(T(x+a,y+b)));   // rushes and stones along the water's edge
         wd.forEach(([a,b],j)=>{ for(let i=0;i<3;i++){ const r=hsh(x*13+i+j*7,y*11+i), sd=(r-0.5)*0.8; if(r<0.3) continue;
@@ -7219,6 +7225,14 @@ function buildWorld(WD,opt){
       else if(t===3||t===21||t===29){ h=-0.32; hex=0x2f6f9c; } else if(t===20){ h=-0.08; hex=0x5fb0c8; }
       else { const r=roll(x+0.5,y+0.5); h=EH(x,y)+0.02+r; hex=bAt.has(k)?0x8a5a3a:t===19||desert(x,y)?0xc8aa78:t===2||t===12?0xb09060:t===5||t===6?0x9a958c:t===22?0xeef2f6:t===25||t===28?0x4a4440:r>6?0x7c8a5c:0x5e9a4a; }
       pos[v]=i*S2+0.5; pos[v+1]=h-0.45; pos[v+2]=j*S2+0.5; C.setHex(hex).offsetHSL(0,0,(hsh(i,j)-0.5)*0.05); col[v]=C.r; col[v+1]=C.g; col[v+2]=C.b; }
+    /* V135: the far mountains, softened: their heights eased over their neighbours (the crags sampled every other tile made
+       knife-edged sheets), and the steep faces given rock instead of meadow green */
+    { const isR=new Uint8Array(NX*NZ); for(let j=0;j<NZ;j++) for(let i=0;i<NX;i++){ const x=Math.min(W-1,i*S2), y=Math.min(H-1,j*S2); isR[j*NX+i]=RK[y*W+x]?1:0; }
+      for(let it=0;it<2;it++){ const hh=new Float32Array(NX*NZ); for(let k=0;k<NX*NZ;k++) hh[k]=pos[k*3+1];
+        for(let j=1;j<NZ-1;j++) for(let i=1;i<NX-1;i++){ const k=j*NX+i; if(!isR[k]) continue; let sum=hh[k]*2, n=2; for(const q of [k-1,k+1,k-NX,k+NX]) if(isR[q]){ sum+=hh[q]; n++; } pos[k*3+1]=sum/n; } }
+      const rock=new THREE.Color(0x6e685e), cc=new THREE.Color();
+      for(let j=1;j<NZ-1;j++) for(let i=1;i<NX-1;i++){ const k=j*NX+i; if(!isR[k]) continue; const g=Math.max(Math.abs(pos[(k+1)*3+1]-pos[(k-1)*3+1]),Math.abs(pos[(k+NX)*3+1]-pos[(k-NX)*3+1]))/(2*S2);
+        if(g>0.55){ const u=Math.min(1,(g-0.55)/0.6); cc.setRGB(col[k*3],col[k*3+1],col[k*3+2]); if(cc.r+cc.g+cc.b<2.4){ cc.lerp(rock,u*0.85); col[k*3]=cc.r; col[k*3+1]=cc.g; col[k*3+2]=cc.b; } } } }
     const idx=[]; for(let j=0;j<NZ-1;j++) for(let i=0;i<NX-1;i++){ const a=j*NX+i, b=a+1, c=a+NX, d=c+1; idx.push(a,c,b,b,c,d); }
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setIndex(idx); g.computeVertexNormals();
     const m=new THREE.MeshLambertMaterial({vertexColors:true}), U={uC:{value:new THREE.Vector2()},uR:{value:46}};
@@ -7227,17 +7241,21 @@ function buildWorld(WD,opt){
     const mesh=new THREE.Mesh(g,m); mesh.frustumCulled=false; mesh.receiveShadow=false; scene.add(mesh); return {mesh,U}; })();
   lv.setView=v=>{ VIEW=v; if(FAR) FAR.U.uR.value=Math.max(18,v-16); };   // V128: the quality governor (hud.js) draws the near land less far on a slow phone
   lv.sunShadow=sun;
+  /* V135: what the graphics tier sets (hud.js): fog near/far, how far things cast shadows, how far the grass tufts are drawn,
+     and the size of the sun's shadow box round you */
+  lv.gfx={fogN:40,fogF:150,shR:26,tuftR:30};
+  lv.setGfx=g=>{ Object.assign(lv.gfx,g); if(g.shadowBox){ const b=g.shadowBox, C=sun.shadow.camera; C.left=-b; C.right=b; C.top=b; C.bottom=-b; lv.gfx.sunD=Math.max(34,b*1.3); C.far=lv.gfx.sunD+b*2.5; C.updateProjectionMatrix(); } };
   /* V132: nobody stands sunk in the hills — anyone set down at a tile's flat height (or later, by a quest) is lifted onto the
      rolled ground under their feet. Only ever raised: folk on a bridge, a deck or a stair keep their height. */
   if(ROLL){ let gT=0; lv.anim.push((t,dt)=>{ gT+=dt||0.016; if(gT<0.5) return; gT=0; if(ENGINE.level!==lv) return;
     for(const f of lv.folk){ const pa=f.g&&f.g.parent; if(!pa||(pa!==scene&&(pa.parent!==scene||pa.position.lengthSq()>0.01))) continue; const gy=lv.ground(f.x,f.z)+0.02; if(f.y<gy-0.03){ f.y=gy; if(f.still&&f.g) f.g.position.y=gy; } } }); }
-  lv.follow=p=>{ if(FAR){ FAR.U.uC.value.set(p.x,p.z); scene.fog.near=40; scene.fog.far=150; } if(typeof DAYNIGHT!=='undefined'){ const L=DAYNIGHT.state().light; sun.position.set(p.x+L.x*34,p.y+L.y*34,p.z+L.z*34); } else sun.position.set(p.x-12,p.y+30,p.z+14); sun.target.position.set(p.x,p.y,p.z);
+  lv.follow=p=>{ const G=lv.gfx; if(FAR){ FAR.U.uC.value.set(p.x,p.z); scene.fog.near=G.fogN; scene.fog.far=G.fogF; } if(typeof DAYNIGHT!=='undefined'){ const L=DAYNIGHT.state().light; const SD=G.sunD||34; sun.position.set(p.x+L.x*SD,p.y+L.y*SD,p.z+L.z*SD); } else sun.position.set(p.x-12,p.y+30,p.z+14); sun.target.position.set(p.x,p.y,p.z);
     const cam=ENGINE.cam; cam.updateMatrixWorld(); PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); frus.setFromProjectionMatrix(PM);
     const heavy=(tick++%6)===0;
     chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z);
       if(heavy&&!ch.built&&d<VIEW+10&&lv._builds<2){ buildChunk(ch); lv._builds++; }
       const show=d<VIEW+12; ch.g.visible=show&&ch.built; if(!ch.g.visible) return;
-      const inView=frus.intersectsSphere(ch.sphere), near=d<26; ch.ims.forEach(im=>{ const tu=im.material===tuftMat; im.visible=inView&&(!tu||d<30); im.castShadow=!tu&&(near&&im.material!==boxMat&&im.material!==groundMat||near&&d<18); }); });
+      const inView=frus.intersectsSphere(ch.sphere), near=d<G.shR; ch.ims.forEach(im=>{ const tu=im.material===tuftMat; im.visible=inView&&(!tu||d<G.tuftR); im.castShadow=!tu&&(near&&im.material!==boxMat&&im.material!==groundMat||near&&d<G.shR*0.7); }); });
     lv._builds=0;
   // redraw the ground of an area in place (the tiles only — people, buildings and decorations stay)
   lv.retile=(x0,y0,x1,y1)=>chunks.forEach(ch=>{ if(!ch.built) return; const cx0=ch.cx*CHUNK, cy0=ch.cy*CHUNK; if(cx0>x1||cy0>y1||cx0+CHUNK<x0||cy0+CHUNK<y0) return; ch.ims.forEach(im=>ch.g.remove(im)); ch.ims=[]; buildChunk(ch,true); }); };
@@ -14668,19 +14686,1151 @@ const HUD=(function(){
   function tick(){ try{ const lb=lockBtn(); const want=touch()&&foesNear()&&!(document.body.classList.contains('mg')); if(lb.hidden===want) lb.hidden=!want; layout(); }catch(e){} }
   addEventListener('resize',()=>setTimeout(tick,60)); addEventListener('orientationchange',()=>setTimeout(tick,200));
   setInterval(tick,250); setTimeout(tick,50);
-  // ── the quality governor ──
-  let frames=0, t0=0, lvl=0, tried=0;
+  // ── V135: GRAPHICS TIERS — Low / Medium / High / Ultra ──
+  //  Auto by default: phones and tablets start on Medium, a computer on High (a software renderer starts on Low). The ☰
+  //  menu's Graphics choice overrides it, remembered on this device. On Auto, the governor still watches the frame rate in
+  //  the realm and steps down a tier if the device struggles (one toast says so).
+  const TIERS=['low','medium','high','ultra'];
+  const SPEC={ low:{dpr:1,view:40,shadow:512,box:18,fog:[30,110],shR:16,tuftR:20,post:false},
+    medium:{dpr:1.5,view:62,shadow:1024,box:20,fog:[40,150],shR:26,tuftR:30,post:false},
+    high:{dpr:2,view:92,shadow:2048,box:30,fog:[62,230],shR:40,tuftR:46,post:true,bloom:0.42},
+    ultra:{dpr:2,view:124,shadow:4096,box:42,fog:[84,300],shR:56,tuftR:62,post:true,bloom:0.5} };
+  let pref='auto', tier='medium', tried=0;
   const R=()=>typeof ENGINE!=='undefined'&&ENGINE.renderer;
-  function apply(n){ const r=R(); if(!r) return; lvl=n; const dpr=devicePixelRatio||1;
-    r.setPixelRatio(n===0?Math.min(dpr,2):n===1?Math.min(dpr,1.5):n===2?1:0.8);
-    const W=ENGINE.get&&ENGINE.get('world'); if(W){ if(W.setView) W.setView(n<2?62:n===2?48:38); if(W.sunShadow){ const sz=n<2?1024:512; if(W.sunShadow.shadow.mapSize.x!==sz){ W.sunShadow.shadow.mapSize.set(sz,sz); if(W.sunShadow.shadow.map){ W.sunShadow.shadow.map.dispose(); W.sunShadow.shadow.map=null; } } } }
-    try{ localStorage.setItem('klk3d_quality',String(n)); }catch(e){} }
-  try{ const q=+localStorage.getItem('klk3d_quality'); if(q>0) setTimeout(()=>apply(q),1500); else if(touch()&&Math.min(innerWidth,innerHeight)<500) setTimeout(()=>apply(1),1500); }catch(e){}
-  function watch(t){ requestAnimationFrame(watch); const L=typeof ENGINE!=='undefined'&&ENGINE.level; if(!L||L.id!=='world'||document.hidden||ENGINE.busy){ frames=0; t0=t; return; }
-    frames++; if(t-t0>4000){ const fps=frames*1000/(t-t0); frames=0; t0=t;
-      if(fps<34&&lvl<3&&tried<3){ tried++; apply(lvl+1); if(tried===1&&typeof UI!=='undefined') UI.toast('⚙️ Graphics eased a little for smoother play on this device',2600); } } }
+  function gpuSlow(){ try{ const r=R(); const gl=r&&r.getContext(); const ext=gl&&gl.getExtension('WEBGL_debug_renderer_info'); const n=ext?String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)):''; return /swiftshader|llvmpipe|software|microsoft basic/i.test(n); }catch(e){ return false; } }
+  function autoTier(){ if(gpuSlow()) return 'low'; return touch()?'medium':'high'; }
+  function apply(t){ const r=R(); if(!r||!SPEC[t]) return; tier=t; const q=SPEC[t], dpr=devicePixelRatio||1;
+    r.setPixelRatio(Math.min(dpr,q.dpr)); if(r.shadowMap) r.shadowMap.type=THREE.PCFSoftShadowMap;
+    const W=ENGINE.get&&ENGINE.get('world');
+    if(W){ if(W.setView) W.setView(q.view); if(W.setGfx) W.setGfx({fogN:q.fog[0],fogF:q.fog[1],shR:q.shR,tuftR:q.tuftR,shadowBox:q.box});
+      if(W.sunShadow){ const sz=q.shadow; if(W.sunShadow.shadow.mapSize.x!==sz){ W.sunShadow.shadow.mapSize.set(sz,sz); if(W.sunShadow.shadow.map){ W.sunShadow.shadow.map.dispose(); W.sunShadow.shadow.map=null; } } } }
+    if(window.KLK_POST){ window.KLK_POST.attach(r); window.KLK_POST.enable(q.post,{bloom:q.bloom||0}); window.KLK_POST.resize(innerWidth,innerHeight); }
+    if(typeof ENGINE!=='undefined'&&ENGINE.cam){ ENGINE.cam.far=Math.max(400,q.fog[1]+60); ENGINE.cam.updateProjectionMatrix(); } }
+  try{ const p0=localStorage.getItem('klk3d_gfx'); if(p0&&(p0==='auto'||SPEC[p0])) pref=p0; }catch(e){}
+  setTimeout(()=>apply(pref==='auto'?autoTier():pref),1500);
+  function setTier(p){ pref=p; tried=0; try{ localStorage.setItem('klk3d_gfx',p); }catch(e){} apply(p==='auto'?autoTier():p); }
+  let frames=0, t0=0;
+  function watch(t){ requestAnimationFrame(watch); const L=typeof ENGINE!=='undefined'&&ENGINE.level; if(pref!=='auto'||!L||L.id!=='world'||document.hidden||ENGINE.busy){ frames=0; t0=t; return; }
+    frames++; if(t-t0>4000){ const fps=frames*1000/(t-t0); frames=0; t0=t; const i=TIERS.indexOf(tier);
+      if(fps<34&&i>0&&tried<3){ tried++; apply(TIERS[i-1]); if(tried===1&&typeof UI!=='undefined') UI.toast('⚙️ Graphics eased a little for smoother play on this device (☰ → Graphics to choose)',2800); } } }
   requestAnimationFrame(watch);
-  return { layout:tick, get scale(){ return s; }, get quality(){ return lvl; }, setQuality:apply };
+  return { layout:tick, get scale(){ return s; }, get quality(){ return ({low:3,medium:1,high:0,ultra:0})[tier]; }, get tier(){ return tier; }, get pref(){ return pref; }, setTier, TIERS };
+})();
+
+// ── engine/vendor_post.js ──
+// three.js r128 examples (MIT, three.js authors): EffectComposer, RenderPass, ShaderPass, UnrealBloomPass and their shaders — vendored for the High/Ultra graphics tiers (post.js)
+( function () {
+
+	/**
+ * Full-screen textured quad shader
+ */
+	var CopyShader = {
+		uniforms: {
+			'tDiffuse': {
+				value: null
+			},
+			'opacity': {
+				value: 1.0
+			}
+		},
+		vertexShader:
+  /* glsl */
+  `
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+		fragmentShader:
+  /* glsl */
+  `
+
+		uniform float opacity;
+
+		uniform sampler2D tDiffuse;
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vec4 texel = texture2D( tDiffuse, vUv );
+			gl_FragColor = opacity * texel;
+
+		}`
+	};
+
+	THREE.CopyShader = CopyShader;
+
+} )();
+
+( function () {
+
+	/**
+ * Luminosity
+ * http://en.wikipedia.org/wiki/Luminosity
+ */
+
+	const LuminosityHighPassShader = {
+		shaderID: 'luminosityHighPass',
+		uniforms: {
+			'tDiffuse': {
+				value: null
+			},
+			'luminosityThreshold': {
+				value: 1.0
+			},
+			'smoothWidth': {
+				value: 1.0
+			},
+			'defaultColor': {
+				value: new THREE.Color( 0x000000 )
+			},
+			'defaultOpacity': {
+				value: 0.0
+			}
+		},
+		vertexShader:
+  /* glsl */
+  `
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vUv = uv;
+
+			gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+		}`,
+		fragmentShader:
+  /* glsl */
+  `
+
+		uniform sampler2D tDiffuse;
+		uniform vec3 defaultColor;
+		uniform float defaultOpacity;
+		uniform float luminosityThreshold;
+		uniform float smoothWidth;
+
+		varying vec2 vUv;
+
+		void main() {
+
+			vec4 texel = texture2D( tDiffuse, vUv );
+
+			vec3 luma = vec3( 0.299, 0.587, 0.114 );
+
+			float v = dot( texel.xyz, luma );
+
+			vec4 outputColor = vec4( defaultColor.rgb, defaultOpacity );
+
+			float alpha = smoothstep( luminosityThreshold, luminosityThreshold + smoothWidth, v );
+
+			gl_FragColor = mix( outputColor, texel, alpha );
+
+		}`
+	};
+
+	THREE.LuminosityHighPassShader = LuminosityHighPassShader;
+
+} )();
+
+( function () {
+
+	class Pass {
+
+		constructor() {
+
+			// if set to true, the pass is processed by the composer
+			this.enabled = true; // if set to true, the pass indicates to swap read and write buffer after rendering
+
+			this.needsSwap = true; // if set to true, the pass clears its buffer before rendering
+
+			this.clear = false; // if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
+
+			this.renderToScreen = false;
+
+		}
+
+		setSize( ) {}
+
+		render( ) {
+
+			console.error( 'THREE.Pass: .render() must be implemented in derived pass.' );
+
+		}
+
+	} // Helper for passes that need to fill the viewport with a single quad.
+
+
+	const _camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 ); // https://github.com/mrdoob/three.js/pull/21358
+
+
+	const _geometry = new THREE.BufferGeometry();
+
+	_geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( [ - 1, 3, 0, - 1, - 1, 0, 3, - 1, 0 ], 3 ) );
+
+	_geometry.setAttribute( 'uv', new THREE.Float32BufferAttribute( [ 0, 2, 0, 0, 2, 0 ], 2 ) );
+
+	class FullScreenQuad {
+
+		constructor( material ) {
+
+			this._mesh = new THREE.Mesh( _geometry, material );
+
+		}
+
+		dispose() {
+
+			this._mesh.geometry.dispose();
+
+		}
+
+		render( renderer ) {
+
+			renderer.render( this._mesh, _camera );
+
+		}
+
+		get material() {
+
+			return this._mesh.material;
+
+		}
+
+		set material( value ) {
+
+			this._mesh.material = value;
+
+		}
+
+	}
+
+	THREE.FullScreenQuad = FullScreenQuad;
+	THREE.Pass = Pass;
+
+} )();
+
+( function () {
+
+	class EffectComposer {
+
+		constructor( renderer, renderTarget ) {
+
+			this.renderer = renderer;
+
+			if ( renderTarget === undefined ) {
+
+				const parameters = {
+					minFilter: THREE.LinearFilter,
+					magFilter: THREE.LinearFilter,
+					format: THREE.RGBAFormat
+				};
+				const size = renderer.getSize( new THREE.Vector2() );
+				this._pixelRatio = renderer.getPixelRatio();
+				this._width = size.width;
+				this._height = size.height;
+				renderTarget = new THREE.WebGLRenderTarget( this._width * this._pixelRatio, this._height * this._pixelRatio, parameters );
+				renderTarget.texture.name = 'EffectComposer.rt1';
+
+			} else {
+
+				this._pixelRatio = 1;
+				this._width = renderTarget.width;
+				this._height = renderTarget.height;
+
+			}
+
+			this.renderTarget1 = renderTarget;
+			this.renderTarget2 = renderTarget.clone();
+			this.renderTarget2.texture.name = 'EffectComposer.rt2';
+			this.writeBuffer = this.renderTarget1;
+			this.readBuffer = this.renderTarget2;
+			this.renderToScreen = true;
+			this.passes = []; // dependencies
+
+			if ( THREE.CopyShader === undefined ) {
+
+				console.error( 'THREE.EffectComposer relies on THREE.CopyShader' );
+
+			}
+
+			if ( THREE.ShaderPass === undefined ) {
+
+				console.error( 'THREE.EffectComposer relies on THREE.ShaderPass' );
+
+			}
+
+			this.copyPass = new THREE.ShaderPass( THREE.CopyShader );
+			this.clock = new THREE.Clock();
+
+		}
+
+		swapBuffers() {
+
+			const tmp = this.readBuffer;
+			this.readBuffer = this.writeBuffer;
+			this.writeBuffer = tmp;
+
+		}
+
+		addPass( pass ) {
+
+			this.passes.push( pass );
+			pass.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+		}
+
+		insertPass( pass, index ) {
+
+			this.passes.splice( index, 0, pass );
+			pass.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+		}
+
+		removePass( pass ) {
+
+			const index = this.passes.indexOf( pass );
+
+			if ( index !== - 1 ) {
+
+				this.passes.splice( index, 1 );
+
+			}
+
+		}
+
+		isLastEnabledPass( passIndex ) {
+
+			for ( let i = passIndex + 1; i < this.passes.length; i ++ ) {
+
+				if ( this.passes[ i ].enabled ) {
+
+					return false;
+
+				}
+
+			}
+
+			return true;
+
+		}
+
+		render( deltaTime ) {
+
+			// deltaTime value is in seconds
+			if ( deltaTime === undefined ) {
+
+				deltaTime = this.clock.getDelta();
+
+			}
+
+			const currentRenderTarget = this.renderer.getRenderTarget();
+			let maskActive = false;
+
+			for ( let i = 0, il = this.passes.length; i < il; i ++ ) {
+
+				const pass = this.passes[ i ];
+				if ( pass.enabled === false ) continue;
+				pass.renderToScreen = this.renderToScreen && this.isLastEnabledPass( i );
+				pass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime, maskActive );
+
+				if ( pass.needsSwap ) {
+
+					if ( maskActive ) {
+
+						const context = this.renderer.getContext();
+						const stencil = this.renderer.state.buffers.stencil; //context.stencilFunc( context.NOTEQUAL, 1, 0xffffffff );
+
+						stencil.setFunc( context.NOTEQUAL, 1, 0xffffffff );
+						this.copyPass.render( this.renderer, this.writeBuffer, this.readBuffer, deltaTime ); //context.stencilFunc( context.EQUAL, 1, 0xffffffff );
+
+						stencil.setFunc( context.EQUAL, 1, 0xffffffff );
+
+					}
+
+					this.swapBuffers();
+
+				}
+
+				if ( THREE.MaskPass !== undefined ) {
+
+					if ( pass instanceof THREE.MaskPass ) {
+
+						maskActive = true;
+
+					} else if ( pass instanceof THREE.ClearMaskPass ) {
+
+						maskActive = false;
+
+					}
+
+				}
+
+			}
+
+			this.renderer.setRenderTarget( currentRenderTarget );
+
+		}
+
+		reset( renderTarget ) {
+
+			if ( renderTarget === undefined ) {
+
+				const size = this.renderer.getSize( new THREE.Vector2() );
+				this._pixelRatio = this.renderer.getPixelRatio();
+				this._width = size.width;
+				this._height = size.height;
+				renderTarget = this.renderTarget1.clone();
+				renderTarget.setSize( this._width * this._pixelRatio, this._height * this._pixelRatio );
+
+			}
+
+			this.renderTarget1.dispose();
+			this.renderTarget2.dispose();
+			this.renderTarget1 = renderTarget;
+			this.renderTarget2 = renderTarget.clone();
+			this.writeBuffer = this.renderTarget1;
+			this.readBuffer = this.renderTarget2;
+
+		}
+
+		setSize( width, height ) {
+
+			this._width = width;
+			this._height = height;
+			const effectiveWidth = this._width * this._pixelRatio;
+			const effectiveHeight = this._height * this._pixelRatio;
+			this.renderTarget1.setSize( effectiveWidth, effectiveHeight );
+			this.renderTarget2.setSize( effectiveWidth, effectiveHeight );
+
+			for ( let i = 0; i < this.passes.length; i ++ ) {
+
+				this.passes[ i ].setSize( effectiveWidth, effectiveHeight );
+
+			}
+
+		}
+
+		setPixelRatio( pixelRatio ) {
+
+			this._pixelRatio = pixelRatio;
+			this.setSize( this._width, this._height );
+
+		}
+
+	}
+
+	class Pass {
+
+		constructor() {
+
+			// if set to true, the pass is processed by the composer
+			this.enabled = true; // if set to true, the pass indicates to swap read and write buffer after rendering
+
+			this.needsSwap = true; // if set to true, the pass clears its buffer before rendering
+
+			this.clear = false; // if set to true, the result of the pass is rendered to screen. This is set automatically by EffectComposer.
+
+			this.renderToScreen = false;
+
+		}
+
+		setSize( ) {}
+
+		render( ) {
+
+			console.error( 'THREE.Pass: .render() must be implemented in derived pass.' );
+
+		}
+
+	} // Helper for passes that need to fill the viewport with a single quad.
+
+
+	const _camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 ); // https://github.com/mrdoob/three.js/pull/21358
+
+
+	const _geometry = new THREE.BufferGeometry();
+
+	_geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( [ - 1, 3, 0, - 1, - 1, 0, 3, - 1, 0 ], 3 ) );
+
+	_geometry.setAttribute( 'uv', new THREE.Float32BufferAttribute( [ 0, 2, 0, 0, 2, 0 ], 2 ) );
+
+	class FullScreenQuad {
+
+		constructor( material ) {
+
+			this._mesh = new THREE.Mesh( _geometry, material );
+
+		}
+
+		dispose() {
+
+			this._mesh.geometry.dispose();
+
+		}
+
+		render( renderer ) {
+
+			renderer.render( this._mesh, _camera );
+
+		}
+
+		get material() {
+
+			return this._mesh.material;
+
+		}
+
+		set material( value ) {
+
+			this._mesh.material = value;
+
+		}
+
+	}
+
+	THREE.EffectComposer = EffectComposer;
+	THREE.FullScreenQuad = FullScreenQuad;
+	THREE.Pass = Pass;
+
+} )();
+
+( function () {
+
+	class RenderPass extends THREE.Pass {
+
+		constructor( scene, camera, overrideMaterial, clearColor, clearAlpha ) {
+
+			super();
+			this.scene = scene;
+			this.camera = camera;
+			this.overrideMaterial = overrideMaterial;
+			this.clearColor = clearColor;
+			this.clearAlpha = clearAlpha !== undefined ? clearAlpha : 0;
+			this.clear = true;
+			this.clearDepth = false;
+			this.needsSwap = false;
+			this._oldClearColor = new THREE.Color();
+
+		}
+
+		render( renderer, writeBuffer, readBuffer
+			/*, deltaTime, maskActive */
+		) {
+
+			const oldAutoClear = renderer.autoClear;
+			renderer.autoClear = false;
+			let oldClearAlpha, oldOverrideMaterial;
+
+			if ( this.overrideMaterial !== undefined ) {
+
+				oldOverrideMaterial = this.scene.overrideMaterial;
+				this.scene.overrideMaterial = this.overrideMaterial;
+
+			}
+
+			if ( this.clearColor ) {
+
+				renderer.getClearColor( this._oldClearColor );
+				oldClearAlpha = renderer.getClearAlpha();
+				renderer.setClearColor( this.clearColor, this.clearAlpha );
+
+			}
+
+			if ( this.clearDepth ) {
+
+				renderer.clearDepth();
+
+			}
+
+			renderer.setRenderTarget( this.renderToScreen ? null : readBuffer ); // TODO: Avoid using autoClear properties, see https://github.com/mrdoob/three.js/pull/15571#issuecomment-465669600
+
+			if ( this.clear ) renderer.clear( renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil );
+			renderer.render( this.scene, this.camera );
+
+			if ( this.clearColor ) {
+
+				renderer.setClearColor( this._oldClearColor, oldClearAlpha );
+
+			}
+
+			if ( this.overrideMaterial !== undefined ) {
+
+				this.scene.overrideMaterial = oldOverrideMaterial;
+
+			}
+
+			renderer.autoClear = oldAutoClear;
+
+		}
+
+	}
+
+	THREE.RenderPass = RenderPass;
+
+} )();
+
+( function () {
+
+	class ShaderPass extends THREE.Pass {
+
+		constructor( shader, textureID ) {
+
+			super();
+			this.textureID = textureID !== undefined ? textureID : 'tDiffuse';
+
+			if ( shader instanceof THREE.ShaderMaterial ) {
+
+				this.uniforms = shader.uniforms;
+				this.material = shader;
+
+			} else if ( shader ) {
+
+				this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
+				this.material = new THREE.ShaderMaterial( {
+					defines: Object.assign( {}, shader.defines ),
+					uniforms: this.uniforms,
+					vertexShader: shader.vertexShader,
+					fragmentShader: shader.fragmentShader
+				} );
+
+			}
+
+			this.fsQuad = new THREE.FullScreenQuad( this.material );
+
+		}
+
+		render( renderer, writeBuffer, readBuffer
+			/*, deltaTime, maskActive */
+		) {
+
+			if ( this.uniforms[ this.textureID ] ) {
+
+				this.uniforms[ this.textureID ].value = readBuffer.texture;
+
+			}
+
+			this.fsQuad.material = this.material;
+
+			if ( this.renderToScreen ) {
+
+				renderer.setRenderTarget( null );
+				this.fsQuad.render( renderer );
+
+			} else {
+
+				renderer.setRenderTarget( writeBuffer ); // TODO: Avoid using autoClear properties, see https://github.com/mrdoob/three.js/pull/15571#issuecomment-465669600
+
+				if ( this.clear ) renderer.clear( renderer.autoClearColor, renderer.autoClearDepth, renderer.autoClearStencil );
+				this.fsQuad.render( renderer );
+
+			}
+
+		}
+
+	}
+
+	THREE.ShaderPass = ShaderPass;
+
+} )();
+
+( function () {
+
+	class MaskPass extends THREE.Pass {
+
+		constructor( scene, camera ) {
+
+			super();
+			this.scene = scene;
+			this.camera = camera;
+			this.clear = true;
+			this.needsSwap = false;
+			this.inverse = false;
+
+		}
+
+		render( renderer, writeBuffer, readBuffer
+			/*, deltaTime, maskActive */
+		) {
+
+			const context = renderer.getContext();
+			const state = renderer.state; // don't update color or depth
+
+			state.buffers.color.setMask( false );
+			state.buffers.depth.setMask( false ); // lock buffers
+
+			state.buffers.color.setLocked( true );
+			state.buffers.depth.setLocked( true ); // set up stencil
+
+			let writeValue, clearValue;
+
+			if ( this.inverse ) {
+
+				writeValue = 0;
+				clearValue = 1;
+
+			} else {
+
+				writeValue = 1;
+				clearValue = 0;
+
+			}
+
+			state.buffers.stencil.setTest( true );
+			state.buffers.stencil.setOp( context.REPLACE, context.REPLACE, context.REPLACE );
+			state.buffers.stencil.setFunc( context.ALWAYS, writeValue, 0xffffffff );
+			state.buffers.stencil.setClear( clearValue );
+			state.buffers.stencil.setLocked( true ); // draw into the stencil buffer
+
+			renderer.setRenderTarget( readBuffer );
+			if ( this.clear ) renderer.clear();
+			renderer.render( this.scene, this.camera );
+			renderer.setRenderTarget( writeBuffer );
+			if ( this.clear ) renderer.clear();
+			renderer.render( this.scene, this.camera ); // unlock color and depth buffer for subsequent rendering
+
+			state.buffers.color.setLocked( false );
+			state.buffers.depth.setLocked( false ); // only render where stencil is set to 1
+
+			state.buffers.stencil.setLocked( false );
+			state.buffers.stencil.setFunc( context.EQUAL, 1, 0xffffffff ); // draw if == 1
+
+			state.buffers.stencil.setOp( context.KEEP, context.KEEP, context.KEEP );
+			state.buffers.stencil.setLocked( true );
+
+		}
+
+	}
+
+	class ClearMaskPass extends THREE.Pass {
+
+		constructor() {
+
+			super();
+			this.needsSwap = false;
+
+		}
+
+		render( renderer
+			/*, writeBuffer, readBuffer, deltaTime, maskActive */
+		) {
+
+			renderer.state.buffers.stencil.setLocked( false );
+			renderer.state.buffers.stencil.setTest( false );
+
+		}
+
+	}
+
+	THREE.ClearMaskPass = ClearMaskPass;
+	THREE.MaskPass = MaskPass;
+
+} )();
+
+( function () {
+
+	/**
+ * UnrealBloomPass is inspired by the bloom pass of Unreal Engine. It creates a
+ * mip map chain of bloom textures and blurs them with different radii. Because
+ * of the weighted combination of mips, and because larger blurs are done on
+ * higher mips, this effect provides good quality and performance.
+ *
+ * Reference:
+ * - https://docs.unrealengine.com/latest/INT/Engine/Rendering/PostProcessEffects/Bloom/
+ */
+
+	class UnrealBloomPass extends THREE.Pass {
+
+		constructor( resolution, strength, radius, threshold ) {
+
+			super();
+			this.strength = strength !== undefined ? strength : 1;
+			this.radius = radius;
+			this.threshold = threshold;
+			this.resolution = resolution !== undefined ? new THREE.Vector2( resolution.x, resolution.y ) : new THREE.Vector2( 256, 256 ); // create color only once here, reuse it later inside the render function
+
+			this.clearColor = new THREE.Color( 0, 0, 0 ); // render targets
+
+			const pars = {
+				minFilter: THREE.LinearFilter,
+				magFilter: THREE.LinearFilter,
+				format: THREE.RGBAFormat
+			};
+			this.renderTargetsHorizontal = [];
+			this.renderTargetsVertical = [];
+			this.nMips = 5;
+			let resx = Math.round( this.resolution.x / 2 );
+			let resy = Math.round( this.resolution.y / 2 );
+			this.renderTargetBright = new THREE.WebGLRenderTarget( resx, resy, pars );
+			this.renderTargetBright.texture.name = 'UnrealBloomPass.bright';
+			this.renderTargetBright.texture.generateMipmaps = false;
+
+			for ( let i = 0; i < this.nMips; i ++ ) {
+
+				const renderTargetHorizonal = new THREE.WebGLRenderTarget( resx, resy, pars );
+				renderTargetHorizonal.texture.name = 'UnrealBloomPass.h' + i;
+				renderTargetHorizonal.texture.generateMipmaps = false;
+				this.renderTargetsHorizontal.push( renderTargetHorizonal );
+				const renderTargetVertical = new THREE.WebGLRenderTarget( resx, resy, pars );
+				renderTargetVertical.texture.name = 'UnrealBloomPass.v' + i;
+				renderTargetVertical.texture.generateMipmaps = false;
+				this.renderTargetsVertical.push( renderTargetVertical );
+				resx = Math.round( resx / 2 );
+				resy = Math.round( resy / 2 );
+
+			} // luminosity high pass material
+
+
+			if ( THREE.LuminosityHighPassShader === undefined ) console.error( 'THREE.UnrealBloomPass relies on THREE.LuminosityHighPassShader' );
+			const highPassShader = THREE.LuminosityHighPassShader;
+			this.highPassUniforms = THREE.UniformsUtils.clone( highPassShader.uniforms );
+			this.highPassUniforms[ 'luminosityThreshold' ].value = threshold;
+			this.highPassUniforms[ 'smoothWidth' ].value = 0.01;
+			this.materialHighPassFilter = new THREE.ShaderMaterial( {
+				uniforms: this.highPassUniforms,
+				vertexShader: highPassShader.vertexShader,
+				fragmentShader: highPassShader.fragmentShader,
+				defines: {}
+			} ); // Gaussian Blur Materials
+
+			this.separableBlurMaterials = [];
+			const kernelSizeArray = [ 3, 5, 7, 9, 11 ];
+			resx = Math.round( this.resolution.x / 2 );
+			resy = Math.round( this.resolution.y / 2 );
+
+			for ( let i = 0; i < this.nMips; i ++ ) {
+
+				this.separableBlurMaterials.push( this.getSeperableBlurMaterial( kernelSizeArray[ i ] ) );
+				this.separableBlurMaterials[ i ].uniforms[ 'texSize' ].value = new THREE.Vector2( resx, resy );
+				resx = Math.round( resx / 2 );
+				resy = Math.round( resy / 2 );
+
+			} // Composite material
+
+
+			this.compositeMaterial = this.getCompositeMaterial( this.nMips );
+			this.compositeMaterial.uniforms[ 'blurTexture1' ].value = this.renderTargetsVertical[ 0 ].texture;
+			this.compositeMaterial.uniforms[ 'blurTexture2' ].value = this.renderTargetsVertical[ 1 ].texture;
+			this.compositeMaterial.uniforms[ 'blurTexture3' ].value = this.renderTargetsVertical[ 2 ].texture;
+			this.compositeMaterial.uniforms[ 'blurTexture4' ].value = this.renderTargetsVertical[ 3 ].texture;
+			this.compositeMaterial.uniforms[ 'blurTexture5' ].value = this.renderTargetsVertical[ 4 ].texture;
+			this.compositeMaterial.uniforms[ 'bloomStrength' ].value = strength;
+			this.compositeMaterial.uniforms[ 'bloomRadius' ].value = 0.1;
+			this.compositeMaterial.needsUpdate = true;
+			const bloomFactors = [ 1.0, 0.8, 0.6, 0.4, 0.2 ];
+			this.compositeMaterial.uniforms[ 'bloomFactors' ].value = bloomFactors;
+			this.bloomTintColors = [ new THREE.Vector3( 1, 1, 1 ), new THREE.Vector3( 1, 1, 1 ), new THREE.Vector3( 1, 1, 1 ), new THREE.Vector3( 1, 1, 1 ), new THREE.Vector3( 1, 1, 1 ) ];
+			this.compositeMaterial.uniforms[ 'bloomTintColors' ].value = this.bloomTintColors; // copy material
+
+			if ( THREE.CopyShader === undefined ) {
+
+				console.error( 'THREE.UnrealBloomPass relies on THREE.CopyShader' );
+
+			}
+
+			const copyShader = THREE.CopyShader;
+			this.copyUniforms = THREE.UniformsUtils.clone( copyShader.uniforms );
+			this.copyUniforms[ 'opacity' ].value = 1.0;
+			this.materialCopy = new THREE.ShaderMaterial( {
+				uniforms: this.copyUniforms,
+				vertexShader: copyShader.vertexShader,
+				fragmentShader: copyShader.fragmentShader,
+				blending: THREE.AdditiveBlending,
+				depthTest: false,
+				depthWrite: false,
+				transparent: true
+			} );
+			this.enabled = true;
+			this.needsSwap = false;
+			this._oldClearColor = new THREE.Color();
+			this.oldClearAlpha = 1;
+			this.basic = new THREE.MeshBasicMaterial();
+			this.fsQuad = new THREE.FullScreenQuad( null );
+
+		}
+
+		dispose() {
+
+			for ( let i = 0; i < this.renderTargetsHorizontal.length; i ++ ) {
+
+				this.renderTargetsHorizontal[ i ].dispose();
+
+			}
+
+			for ( let i = 0; i < this.renderTargetsVertical.length; i ++ ) {
+
+				this.renderTargetsVertical[ i ].dispose();
+
+			}
+
+			this.renderTargetBright.dispose();
+
+		}
+
+		setSize( width, height ) {
+
+			let resx = Math.round( width / 2 );
+			let resy = Math.round( height / 2 );
+			this.renderTargetBright.setSize( resx, resy );
+
+			for ( let i = 0; i < this.nMips; i ++ ) {
+
+				this.renderTargetsHorizontal[ i ].setSize( resx, resy );
+				this.renderTargetsVertical[ i ].setSize( resx, resy );
+				this.separableBlurMaterials[ i ].uniforms[ 'texSize' ].value = new THREE.Vector2( resx, resy );
+				resx = Math.round( resx / 2 );
+				resy = Math.round( resy / 2 );
+
+			}
+
+		}
+
+		render( renderer, writeBuffer, readBuffer, deltaTime, maskActive ) {
+
+			renderer.getClearColor( this._oldClearColor );
+			this.oldClearAlpha = renderer.getClearAlpha();
+			const oldAutoClear = renderer.autoClear;
+			renderer.autoClear = false;
+			renderer.setClearColor( this.clearColor, 0 );
+			if ( maskActive ) renderer.state.buffers.stencil.setTest( false ); // Render input to screen
+
+			if ( this.renderToScreen ) {
+
+				this.fsQuad.material = this.basic;
+				this.basic.map = readBuffer.texture;
+				renderer.setRenderTarget( null );
+				renderer.clear();
+				this.fsQuad.render( renderer );
+
+			} // 1. Extract Bright Areas
+
+
+			this.highPassUniforms[ 'tDiffuse' ].value = readBuffer.texture;
+			this.highPassUniforms[ 'luminosityThreshold' ].value = this.threshold;
+			this.fsQuad.material = this.materialHighPassFilter;
+			renderer.setRenderTarget( this.renderTargetBright );
+			renderer.clear();
+			this.fsQuad.render( renderer ); // 2. Blur All the mips progressively
+
+			let inputRenderTarget = this.renderTargetBright;
+
+			for ( let i = 0; i < this.nMips; i ++ ) {
+
+				this.fsQuad.material = this.separableBlurMaterials[ i ];
+				this.separableBlurMaterials[ i ].uniforms[ 'colorTexture' ].value = inputRenderTarget.texture;
+				this.separableBlurMaterials[ i ].uniforms[ 'direction' ].value = UnrealBloomPass.BlurDirectionX;
+				renderer.setRenderTarget( this.renderTargetsHorizontal[ i ] );
+				renderer.clear();
+				this.fsQuad.render( renderer );
+				this.separableBlurMaterials[ i ].uniforms[ 'colorTexture' ].value = this.renderTargetsHorizontal[ i ].texture;
+				this.separableBlurMaterials[ i ].uniforms[ 'direction' ].value = UnrealBloomPass.BlurDirectionY;
+				renderer.setRenderTarget( this.renderTargetsVertical[ i ] );
+				renderer.clear();
+				this.fsQuad.render( renderer );
+				inputRenderTarget = this.renderTargetsVertical[ i ];
+
+			} // Composite All the mips
+
+
+			this.fsQuad.material = this.compositeMaterial;
+			this.compositeMaterial.uniforms[ 'bloomStrength' ].value = this.strength;
+			this.compositeMaterial.uniforms[ 'bloomRadius' ].value = this.radius;
+			this.compositeMaterial.uniforms[ 'bloomTintColors' ].value = this.bloomTintColors;
+			renderer.setRenderTarget( this.renderTargetsHorizontal[ 0 ] );
+			renderer.clear();
+			this.fsQuad.render( renderer ); // Blend it additively over the input texture
+
+			this.fsQuad.material = this.materialCopy;
+			this.copyUniforms[ 'tDiffuse' ].value = this.renderTargetsHorizontal[ 0 ].texture;
+			if ( maskActive ) renderer.state.buffers.stencil.setTest( true );
+
+			if ( this.renderToScreen ) {
+
+				renderer.setRenderTarget( null );
+				this.fsQuad.render( renderer );
+
+			} else {
+
+				renderer.setRenderTarget( readBuffer );
+				this.fsQuad.render( renderer );
+
+			} // Restore renderer settings
+
+
+			renderer.setClearColor( this._oldClearColor, this.oldClearAlpha );
+			renderer.autoClear = oldAutoClear;
+
+		}
+
+		getSeperableBlurMaterial( kernelRadius ) {
+
+			return new THREE.ShaderMaterial( {
+				defines: {
+					'KERNEL_RADIUS': kernelRadius,
+					'SIGMA': kernelRadius
+				},
+				uniforms: {
+					'colorTexture': {
+						value: null
+					},
+					'texSize': {
+						value: new THREE.Vector2( 0.5, 0.5 )
+					},
+					'direction': {
+						value: new THREE.Vector2( 0.5, 0.5 )
+					}
+				},
+				vertexShader: `varying vec2 vUv;
+				void main() {
+					vUv = uv;
+					gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+				}`,
+				fragmentShader: `#include <common>
+				varying vec2 vUv;
+				uniform sampler2D colorTexture;
+				uniform vec2 texSize;
+				uniform vec2 direction;
+
+				float gaussianPdf(in float x, in float sigma) {
+					return 0.39894 * exp( -0.5 * x * x/( sigma * sigma))/sigma;
+				}
+				void main() {
+					vec2 invSize = 1.0 / texSize;
+					float fSigma = float(SIGMA);
+					float weightSum = gaussianPdf(0.0, fSigma);
+					vec3 diffuseSum = texture2D( colorTexture, vUv).rgb * weightSum;
+					for( int i = 1; i < KERNEL_RADIUS; i ++ ) {
+						float x = float(i);
+						float w = gaussianPdf(x, fSigma);
+						vec2 uvOffset = direction * invSize * x;
+						vec3 sample1 = texture2D( colorTexture, vUv + uvOffset).rgb;
+						vec3 sample2 = texture2D( colorTexture, vUv - uvOffset).rgb;
+						diffuseSum += (sample1 + sample2) * w;
+						weightSum += 2.0 * w;
+					}
+					gl_FragColor = vec4(diffuseSum/weightSum, 1.0);
+				}`
+			} );
+
+		}
+
+		getCompositeMaterial( nMips ) {
+
+			return new THREE.ShaderMaterial( {
+				defines: {
+					'NUM_MIPS': nMips
+				},
+				uniforms: {
+					'blurTexture1': {
+						value: null
+					},
+					'blurTexture2': {
+						value: null
+					},
+					'blurTexture3': {
+						value: null
+					},
+					'blurTexture4': {
+						value: null
+					},
+					'blurTexture5': {
+						value: null
+					},
+					'dirtTexture': {
+						value: null
+					},
+					'bloomStrength': {
+						value: 1.0
+					},
+					'bloomFactors': {
+						value: null
+					},
+					'bloomTintColors': {
+						value: null
+					},
+					'bloomRadius': {
+						value: 0.0
+					}
+				},
+				vertexShader: `varying vec2 vUv;
+				void main() {
+					vUv = uv;
+					gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+				}`,
+				fragmentShader: `varying vec2 vUv;
+				uniform sampler2D blurTexture1;
+				uniform sampler2D blurTexture2;
+				uniform sampler2D blurTexture3;
+				uniform sampler2D blurTexture4;
+				uniform sampler2D blurTexture5;
+				uniform sampler2D dirtTexture;
+				uniform float bloomStrength;
+				uniform float bloomRadius;
+				uniform float bloomFactors[NUM_MIPS];
+				uniform vec3 bloomTintColors[NUM_MIPS];
+
+				float lerpBloomFactor(const in float factor) {
+					float mirrorFactor = 1.2 - factor;
+					return mix(factor, mirrorFactor, bloomRadius);
+				}
+
+				void main() {
+					gl_FragColor = bloomStrength * ( lerpBloomFactor(bloomFactors[0]) * vec4(bloomTintColors[0], 1.0) * texture2D(blurTexture1, vUv) +
+						lerpBloomFactor(bloomFactors[1]) * vec4(bloomTintColors[1], 1.0) * texture2D(blurTexture2, vUv) +
+						lerpBloomFactor(bloomFactors[2]) * vec4(bloomTintColors[2], 1.0) * texture2D(blurTexture3, vUv) +
+						lerpBloomFactor(bloomFactors[3]) * vec4(bloomTintColors[3], 1.0) * texture2D(blurTexture4, vUv) +
+						lerpBloomFactor(bloomFactors[4]) * vec4(bloomTintColors[4], 1.0) * texture2D(blurTexture5, vUv) );
+				}`
+			} );
+
+		}
+
+	}
+
+	UnrealBloomPass.BlurDirectionX = new THREE.Vector2( 1.0, 0.0 );
+	UnrealBloomPass.BlurDirectionY = new THREE.Vector2( 0.0, 1.0 );
+
+	THREE.UnrealBloomPass = UnrealBloomPass;
+
+} )();
+
+
+// ── engine/post.js ──
+// ════════════════════════════════════════════════════════════════
+//  POST (V135) — the finishing pass for the High and Ultra graphics tiers (hud.js decides the tier):
+//   · the scene is drawn into a multisampled target (WebGL2), so the edges stay clean through the effects
+//   · BLOOM: only what truly shines — lamps, flames, the Sunfall sun, glowing glass — gets a soft halo
+//   · the GRADE: a little more contrast and colour, a warm lift, and a gentle vignette, so the frame reads as a painting
+//     rather than a screen of flat colour
+//  Low and Medium draw straight to the screen as before. window.KLK_POST = { on, enable(b,{bloom}), render(scene,cam), resize }
+// ════════════════════════════════════════════════════════════════
+const POST=(function(){
+  let R=null, comp=null, rp=null, bloom=null, grade=null, on=false, want=false, opts={bloom:0.42};
+  const Grade={ uniforms:{tDiffuse:{value:null},uVig:{value:0.24},uSat:{value:1.12},uCon:{value:1.06},uWarm:{value:0.018},uExp:{value:1.04}},
+    vertexShader:'varying vec2 vUv; void main(){ vUv=uv; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }',
+    fragmentShader:`uniform sampler2D tDiffuse; uniform float uVig,uSat,uCon,uWarm,uExp; varying vec2 vUv;
+      void main(){ vec4 c=texture2D(tDiffuse,vUv); vec3 col=c.rgb*uExp; float l=dot(col,vec3(0.2126,0.7152,0.0722)); col=mix(vec3(l),col,uSat);
+        col=(col-0.5)*uCon+0.5; col+=vec3(uWarm,uWarm*0.35,-uWarm*0.6)*(1.0-l); vec2 d=vUv-0.5; col*=1.0-uVig*dot(d,d)*1.6; gl_FragColor=vec4(clamp(col,0.0,1.0),1.0); }`};
+  function build(){ if(comp||!R||typeof THREE.EffectComposer==='undefined') return !!comp;
+    const w=innerWidth, h=innerHeight, pr=R.getPixelRatio(); let rt;
+    if(R.capabilities.isWebGL2&&THREE.WebGLMultisampleRenderTarget){ rt=new THREE.WebGLMultisampleRenderTarget(w*pr,h*pr,{format:THREE.RGBAFormat}); rt.samples=4; }
+    comp=new THREE.EffectComposer(R,rt); comp.setPixelRatio(pr); comp.setSize(w,h);
+    rp=new THREE.RenderPass(new THREE.Scene(),new THREE.PerspectiveCamera()); comp.addPass(rp);
+    bloom=new THREE.UnrealBloomPass(new THREE.Vector2(w,h),opts.bloom,0.55,0.8); comp.addPass(bloom);
+    grade=new THREE.ShaderPass(Grade); comp.addPass(grade); return true; }
+  function enable(b,o){ want=!!b; if(o) Object.assign(opts,o); if(want&&!build()){ on=false; return; } on=want; if(bloom) bloom.strength=opts.bloom; }
+  function render(scene,cam){ if(rp.scene!==scene) rp.scene=scene; rp.camera=cam;
+    /* by day only the brightest things glow (the sun, flames); as night falls the lamps and windows bloom more */
+    const n=(typeof DAYNIGHT!=='undefined'&&DAYNIGHT.state)?(DAYNIGHT.state().night||0):0; bloom.threshold=0.86-0.32*n; bloom.strength=opts.bloom*(0.55+1.0*n);
+    comp.render(); }
+  function resize(w,h){ if(!comp) return; comp.setPixelRatio(R.getPixelRatio()); comp.setSize(w,h); }
+  const api={ get on(){ return on&&!!comp; }, enable, render, resize, attach(r){ R=r; if(want) enable(true); } };
+  window.KLK_POST=api; return api;
 })();
 
 // ── cities/luminar.js ──
