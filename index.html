@@ -6611,6 +6611,7 @@ function buildWorld(WD,opt){
   function rimQ(x,y){ if(opt.land) return 0; for(let i=1;i<ellipses.length;i++){ const e=ellipses[i]; if(!e) continue; const q=((x-e.cx)/e.rx)**2+((y-e.cy)/e.ry)**2; if(q<=1) return Math.sqrt(q); }
     const a=Math.hypot(x-26,y-146)/15; if(a<1) return a; const b2=Math.hypot(x-33,y-22)/18; return b2<1?b2:0; }
   const desert=(x,y)=>!opt.land&&x>=SX(78)&&x<=SX(107)&&y>=SY(56)&&y<=SY(82), ashland=(x,y)=>!opt.land&&x>=SX(136)&&x<=SX(180)&&y>=SY(134)&&y<=SY(167);
+  lv.towns=WD.towns||[]; lv.desert=desert; lv.ashland=ashland; lv.hemi=hemi;   /* V131: weather.js reads these */
   const bAt=new Map(); WD.buildings.forEach(b=>{ for(let y=b.y;y<b.y+b.h;y++) for(let x=b.x;x<b.x+b.w;x++) bAt.set(y*W+x,b); });
   const dAt=new Set(); WD.decor.forEach(d=>{ for(let j=0;j<(d.w||1);j++) for(let i=0;i<(d.w||1);i++) dAt.add((d.y+j)*W+d.x+i); });
   // the barrier rings, as the game keeps them (BARRIERS[i].set, after its own edits)
@@ -9557,7 +9558,25 @@ function pastimes(world,D){
   const WAITV=[['Psalm 46:10','Be still, and know that I am God.'],['Isaiah 40:31','They that wait upon the LORD shall renew their strength.'],['Psalm 37:7','Rest in the LORD, and wait patiently for him.'],
     ['Lamentations 3:25','The LORD is good unto them that wait for him.'],['Matthew 4:19','Follow me, and I will make you fishers of men.'],['Psalm 23:2','He leadeth me beside the still waters.'],['James 5:7','Be patient therefore, brethren… the husbandman waiteth for the precious fruit of the earth.']];
   const tipV=new THREE.Vector3();
-  function endFish(){ if(fishing&&fishing.sat){ ENGINE.hold(0); ENGINE.K.fishBend=0; } fishing=null; bob.visible=line.visible=false; ring.material.opacity=0; }
+  // V131: the catch, seen — the fish leaps out of the water on the line, swings up to the rod tip and hangs there wriggling,
+  //  gleaming, before it goes into the creel
+  const FCOL={perch:[0x7a8a3a,0xd8a040],trout:[0x8a8a7a,0xd87a8a],oasisCarp:[0xd8a040,0xf2d070],seabass:[0x6a7a8a,0xc8d0d8],kingfish:[0x3a5a9a,0xd8e0f0],goldenFish:[0xe8b830,0xfff0a0]};
+  const fishM=new THREE.Group(); fishM.visible=false; world.scene.add(fishM); const fBody=new THREE.MeshLambertMaterial({color:0x8a8a7a}), fBelly=new THREE.MeshLambertMaterial({color:0xd8d8c8});
+  { const b=new THREE.Mesh(new THREE.SphereGeometry(0.14,10,8),fBody); b.scale.set(0.55,0.75,1.6); fishM.add(b); const bl=new THREE.Mesh(new THREE.SphereGeometry(0.12,8,6),fBelly); bl.scale.set(0.5,0.5,1.4); bl.position.y=-0.04; fishM.add(bl);
+    const tail=new THREE.Mesh(new THREE.ConeGeometry(0.12,0.18,4),fBody); tail.rotation.x=-Math.PI/2; tail.position.z=-0.27; tail.scale.x=0.25; fishM.add(tail); fishM.userData.tail=tail;
+    const fin=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.12,3),fBody); fin.position.set(0,0.12,0.02); fin.scale.z=1.8; fishM.add(fin);
+    for(const sx of [-1,1]){ const e=new THREE.Mesh(new THREE.SphereGeometry(0.022,6,4),new THREE.MeshBasicMaterial({color:0x101010})); e.position.set(sx*0.07,0.03,0.17); fishM.add(e); } }
+  const splash=[]; for(let i=0;i<10;i++){ const d=Sp(0.04,0xdff4ff,0,0,0,world.scene,6,4); d.visible=false; splash.push({m:d,vx:0,vy:0,vz:0}); }
+  let showT=-1, from=new THREE.Vector3();
+  function showFish(kind){ const c=FCOL[kind]||FCOL.trout; fBody.color.setHex(c[0]); fBelly.color.setHex(c[1]); fBody.emissive=new THREE.Color(kind==='goldenFish'?0x5a4010:0x000000);
+    from.copy(bob.position); showT=0; fishM.visible=true; splash.forEach(q=>{ q.m.visible=true; q.m.position.copy(bob.position); const a=Math.random()*6.28, sp=0.8+Math.random()*1.4; q.vx=Math.cos(a)*sp; q.vz=Math.sin(a)*sp; q.vy=2+Math.random()*2; }); }
+  world.anim.push((t,dt)=>{ dt=dt||0.016; splash.forEach(q=>{ if(!q.m.visible) return; q.vy-=9*dt; q.m.position.x+=q.vx*dt; q.m.position.y+=q.vy*dt; q.m.position.z+=q.vz*dt; if(q.m.position.y<-0.3) q.m.visible=false; });
+    if(showT<0) return; showT+=dt; ENGINE.K.poleTip(tipV); const hang=new THREE.Vector3(tipV.x,tipV.y-0.55,tipV.z);
+    if(showT<0.55){ const u=showT/0.55; fishM.position.lerpVectors(from,hang,u); fishM.position.y+=Math.sin(u*Math.PI)*0.9; fishM.rotation.set(-1.2+u*1.2,0,Math.sin(t*30)*0.6); }
+    else if(showT<2.2){ fishM.position.copy(hang); fishM.rotation.set(-Math.PI/2+0.2,Math.sin(t*3)*0.5,Math.sin(t*18)*0.5*Math.max(0,1-(showT-0.55)/1.4)); fishM.userData.tail.rotation.y=Math.sin(t*26)*0.6; }
+    else { fishM.visible=false; showT=-1; }
+    const a=lineGeo.attributes.position.array; if(showT>=0){ line.visible=true; a[0]=tipV.x; a[1]=tipV.y; a[2]=tipV.z; a[3]=fishM.position.x; a[4]=fishM.position.y+0.2; a[5]=fishM.position.z; lineGeo.attributes.position.needsUpdate=true; } });
+  function endFish(){ if(fishing&&fishing.sat){ ENGINE.hold(0); ENGINE.K.fishBend=0; } fishing=null; bob.visible=line.visible=false; ring.material.opacity=0; fishM.visible=false; showT=-1; }
   fishSpot.action=()=>{ if(!fishing&&ENGINE.holding) return; if(!fishing){ const x=fishSpot.tx, y=fishSpot.ty, z=zoneAt(x,y); if(!z) return;
       // sit on the bank, facing the water, and cast the float out a couple of paces
       const fa=Math.atan2(x+0.5-P.x,y+0.5-P.z); P.face=fa; ENGINE.hold(9999,'fish');
@@ -9565,10 +9584,10 @@ function pastimes(world,D){
       fishing={phase:'cast',t0:now(),biteAt:3500+Math.random()*9000,fx:x,fy:y,zone:z,sat:true,px:P.x,pz:P.z,face:fa,bx,bz,heal:0,verse:6000+Math.random()*4000};
       bob.position.set(P.x,P.y+1.2,P.z); bob.visible=line.visible=true; UI.toast('🎣 You sit down on the bank and cast your line.',1600); return; }
     if(fishing.phase==='bite'){ const q=S().quests||{}; ENGINE.K.fishBend=1;
-      if(q.goldenFish==='active'&&(inv().goldenFish||0)<1&&Math.random()<0.28){ inv().goldenFish=1; GAME.save(); UI.toast('🪙 A Golden Fish! It gleams in the light — surely the one Eldan spoke of.',2600); }
+      if(q.goldenFish==='active'&&(inv().goldenFish||0)<1&&Math.random()<0.28){ inv().goldenFish=1; fishing.kind='goldenFish'; GAME.save(); UI.toast('🪙 A Golden Fish! It gleams in the light — surely the one Eldan spoke of.',2600); }
       else { const tb=D.fishZones[fishing.zone]||D.fishZones.pond; let tot=tb.reduce((s,e)=>s+e[1],0), r=Math.random()*tot, pick=tb[0][0]; for(const [k,w] of tb){ if(r<w){ pick=k; break; } r-=w; }
-        inv()[pick]=(inv()[pick]||0)+1; const g=GOODS[pick]; UI.toast(`${g.emoji} You caught a ${g.name}! (worth ${g.value}g)`,1700); }
-      GAME.changed(); fishing.phase='landed'; fishing.t0=now(); return; }
+        inv()[pick]=(inv()[pick]||0)+1; const g=GOODS[pick]; UI.toast(`${g.emoji} You caught a ${g.name}! (worth ${g.value}g)`,1700); fishing.kind=pick; }
+      GAME.changed(); fishing.phase='landed'; fishing.t0=now(); showFish(fishing.kind); return; }
     if(fishing.phase==='landed'){ endFish(); return; }
     UI.toast('🎣 You reel in and stand up.',1000); endFish(); };
   // the stick: pushing it while you sit stands you up
@@ -9584,12 +9603,12 @@ function pastimes(world,D){
         fishing.heal+=dt; if(fishing.heal>2.5){ fishing.heal=0; const s=S(); if(s.hp<s.maxHp){ s.hp=Math.min(s.maxHp,s.hp+Math.max(1,Math.round(s.maxHp*0.02))); ENGINE.hud&&ENGINE.hud(); } }
         if(tt>fishing.verse&&!fishing.said){ fishing.said=true; const v=WAITV[(Math.random()*WAITV.length)|0]; UI.toast(`🌿 “${v[1]}” — ${v[0]}`,3800); } }
       else if(fishing.phase==='bite'&&tt>1100){ UI.toast('🎣 The fish got away… cast again when you’re ready.',1400); fishing.phase='wait'; fishing.t0=now(); fishing.biteAt=3500+Math.random()*9000; fishing.said=false; fishing.verse=6000+Math.random()*5000; }
-      else if(fishing.phase==='landed'){ ENGINE.K.fishBend=Math.max(0,1-tt/600); if(tt>900){ fishing.phase='wait'; fishing.t0=now(); fishing.biteAt=3500+Math.random()*9000; fishing.said=false; fishing.verse=6000+Math.random()*5000; ENGINE.K.poleTip(tipV); fishing.cast2=true; } }
+      else if(fishing.phase==='landed'){ ENGINE.K.fishBend=Math.max(0,0.6-tt/2400); if(tt>2300){ fishing.phase='wait'; fishing.t0=now(); fishing.biteAt=3500+Math.random()*9000; fishing.said=false; fishing.verse=6000+Math.random()*5000; ENGINE.K.poleTip(tipV); fishing.cast2=true; } }
       const bite=fishing.phase==='bite'; ENGINE.K.fishBend=bite?0.55+Math.sin(t*22)*0.25:fishing.phase==='landed'?ENGINE.K.fishBend:0;
       if(fishing.phase!=='cast'){ bob.position.set(fishing.bx,-0.22+(bite?-0.08+Math.sin(t*30)*0.05:Math.sin(t*2.5)*0.025),fishing.bz); }
       bob.visible=fishing.phase!=='landed';
       ring.position.set(bob.position.x,-0.24,bob.position.z); ring.material.opacity=fishing.phase==='cast'?0:bite?0.6:0.15; ring.scale.setScalar(1+((t*1.5)%1)*2);
-      ENGINE.K.poleTip(tipV); const a=lineGeo.attributes.position.array; a[0]=tipV.x; a[1]=tipV.y; a[2]=tipV.z; a[3]=bob.position.x; a[4]=bob.position.y+0.1; a[5]=bob.position.z; lineGeo.attributes.position.needsUpdate=true; line.visible=fishing.phase!=='landed';
+      if(showT<0){ ENGINE.K.poleTip(tipV); const a=lineGeo.attributes.position.array; a[0]=tipV.x; a[1]=tipV.y; a[2]=tipV.z; a[3]=bob.position.x; a[4]=bob.position.y+0.1; a[5]=bob.position.z; lineGeo.attributes.position.needsUpdate=true; } line.visible=fishing.phase!=='landed'||showT>=0;
       fishSpot.label=bite?'Reel!':fishing.phase==='landed'?'Stand':'Stand'; fishSpot.x=P.x; fishSpot.z=P.z; if(i<0) L.push(fishSpot); return; }
     // facing water from the shore: offer a cast
     const fx=Math.floor(P.x+Math.sin(P.face)*0.9), fz=Math.floor(P.z+Math.cos(P.face)*0.9), here=world.T(Math.floor(P.x),Math.floor(P.z));
@@ -14088,6 +14107,12 @@ const LANDMARKS=(function(){
       const gf=world.ground(fx,fz), gt=world.ground(tx,tz); if(gt-gf>0.7) return false;   // no climbing up its side; stepping off, you fall
       return hit?true:cm0(fx,fz,tx,tz); };
     world.landmarkTowers=TOWERS;
+    // V131: the camera knows the towers — their stone stands between it and you, so it pulls in rather than looking through
+    const cb0=world.camBlock; world.camBlock=(fx,fz,y)=>{ for(const T of TOWERS){ const d=Math.hypot(fx-T.x,fz-T.z); if(d<RC+0.15&&y<T.y0+H+0.5) return true; } return cb0?cb0(fx,fz,y):false; };
+    // and if the stair hugs the stone so close the camera still finds itself in the core, it steps out onto the open side of the
+    //  stair, a little above him, and looks back down at him
+    const fo0=world.follow; world.follow=P=>{ if(fo0) fo0(P); const C=ENGINE.cam; if(!C||ENGINE.level!==world) return; for(const T of TOWERS){ const d=Math.hypot(C.position.x-T.x,C.position.z-T.z); if(d<RC+0.35&&C.position.y<T.y0+H+0.6){
+      const px=P.x-T.x, pz=P.z-T.z, pl=Math.hypot(px,pz)||1; C.position.set(T.x+px/pl*(RS+2.6),Math.max(P.y+2.0,C.position.y),T.z+pz/pl*(RS+2.6)); C.lookAt(P.x,P.y+1.0,P.z); } } };
     // ── the towers themselves ──
     const stone=[0x8a8578,0x7e7a6c,0x96907f,0x74706a], mats=stone.map(c=>new THREE.MeshLambertMaterial({color:c}));
     TOWERS.forEach((T,ti)=>{ const g=group(T.x,T.y0,T.z,scene);
@@ -14175,6 +14200,99 @@ const LANDMARKS=(function(){
     const zone0=world.zone; world.zone=p=>{ for(const q of PLACES) if(Math.hypot(p.x-q.x,p.z-q.z)<q.r) return q.name; return zone0?zone0(p):null; };
     world.landmarks=PLACES;
     return {towers:TOWERS,places:PLACES};
+  }
+  return {attach};
+})();
+
+// ── engine/weather.js ──
+// ════════════════════════════════════════════════════════════════
+//  WEATHER (V131) — each land has the sky it should:
+//   · the green vales (Hearthvale, the Homestead, Ironhold, Thornwood): soft rain some days, gone again by the next watch
+//   · the coast (Saltmere, Stormgate): rain off the sea, and at Stormgate a storm, with lightning far out over the water
+//   · the peaks (Crystalpeak, the Pilgrim's Pass, Hellgate): snow drifting down
+//   · the Dust Road and Dusthaven: sand blowing low and fast, and the far country lost in a tan haze
+//   · the Ashlands: ash falling slow and grey
+//   · Shadowmere: the mist rising off the mere
+//  The weather turns every third of a day (a "watch", 24 real minutes); whether a land has weather in a watch, and how much,
+//  is decided once for the watch, so walking back and forth doesn't reroll it. Crossing from one land into the next, the
+//  old weather fades out and the new fades in. The particles fall in a box about the camera; the fog and the light follow.
+//  WEATHER.attach(world). Never in rooms or portal worlds — only the open realm.
+// ════════════════════════════════════════════════════════════════
+const WEATHER=(function(){
+  const CLIMATE={Hearthvale:'rain',Homestead:'rain',Ironhold:'rain',Thornwood:'rain',Saltmere:'rain',Stormgate:'storm',Dusthaven:'sand',Crystalpeak:'snow',Ashfield:'ash',Shadowmere:'mist',Hellgate:'snow'};
+  // chance a watch has weather, the fog it brings (near, far, colour), how much it dims the sun
+  const KIND={
+    rain:{p:0.38,near:10,far:60,col:0x8a96a4,dim:0.5,msg:'🌧 Rain sets in, soft and steady.'},
+    storm:{p:0.45,near:8,far:48,col:0x6a7482,dim:0.65,msg:'⛈ A storm comes in off the sea.'},
+    snow:{p:0.6,near:8,far:52,col:0xd8e0ea,dim:0.3,msg:'❄ Snow begins to fall.'},
+    sand:{p:0.45,near:3,far:32,col:0xc8a878,dim:0.35,msg:'🌪 The wind lifts the sand.'},
+    ash:{p:0.7,near:10,far:58,col:0x8a7a70,dim:0.4,msg:'🌫 Ash drifts down from a grey sky.'},
+    mist:{p:0.7,near:2,far:30,col:0xb8c0c4,dim:0.25,msg:'🌫 Mist rises off the mere.'}};
+  const hsh=(a,b)=>{ let h=Math.imul(a|0,374761393)^Math.imul(b|0,668265263); h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296; };
+  function attach(world){
+    const scene=world.scene, TOWNS=world.towns||[];
+    const climate=(x,z)=>{ const tk=world.trek; if(tk&&tk.box){ const b=tk.box; if(x>=b[0]&&x<=b[2]&&z>=b[1]&&z<=b[3]) return 'snow'; }
+      if(world.desert&&world.desert(Math.floor(x),Math.floor(z))) return 'sand'; if(world.ashland&&world.ashland(Math.floor(x),Math.floor(z))) return 'ash';
+      let best=null, bd=1e9; TOWNS.forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-z); if(d<bd){ bd=d; best=n; } });
+      return (best&&bd<70&&CLIMATE[best])||'rain'; };
+    // the watch's weather for a climate: 0 (clear) .. 1 (heavy)
+    const strength=(c,w)=>{ const K=KIND[c], ci=Object.keys(KIND).indexOf(c); const r=hsh(w,ci+11); if(r>K.p) return 0; return 0.45+0.55*hsh(w,ci+37); };
+    const watch=()=>{ const S=GAME.S; const f=typeof S.dayFrac==='number'?S.dayFrac:0.4; const seg=Math.floor(((f%1)+1)%1*3);
+      if(S.wxSeg!==seg){ S.wxSeg=seg; S.wxN=(S.wxN||0)+1; } return S.wxN||0; };
+    // ── the particles ──
+    const R=13, HT=13, NR=1800, NP=1800;
+    const rainPos=new Float32Array(NR*6), rainG=new THREE.BufferGeometry(); rainG.setAttribute('position',new THREE.BufferAttribute(rainPos,3));
+    const rainM=new THREE.LineBasicMaterial({color:0xdce6f2,transparent:true,opacity:0,depthWrite:false,fog:false});
+    const rain=new THREE.LineSegments(rainG,rainM); rain.frustumCulled=false; rain.visible=false; scene.add(rain);
+    const ptPos=new Float32Array(NP*3), ptG=new THREE.BufferGeometry(); ptG.setAttribute('position',new THREE.BufferAttribute(ptPos,3));
+    const dotCv=document.createElement('canvas'); dotCv.width=dotCv.height=32; { const c=dotCv.getContext('2d'), g=c.createRadialGradient(16,16,0,16,16,16); g.addColorStop(0,'rgba(255,255,255,1)'); g.addColorStop(0.5,'rgba(255,255,255,0.6)'); g.addColorStop(1,'rgba(255,255,255,0)'); c.fillStyle=g; c.fillRect(0,0,32,32); }
+    const ptM=new THREE.PointsMaterial({color:0xffffff,size:0.14,map:new THREE.CanvasTexture(dotCv),transparent:true,opacity:0,depthWrite:false,fog:false});
+    const pts=new THREE.Points(ptG,ptM); pts.frustumCulled=false; pts.visible=false; scene.add(pts);
+    const seedR=new Float32Array(NR*3), seedP=new Float32Array(NP*4);
+    for(let i=0;i<NR;i++){ seedR[i*3]=(Math.random()*2-1)*R; seedR[i*3+1]=Math.random()*HT; seedR[i*3+2]=(Math.random()*2-1)*R; }
+    for(let i=0;i<NP;i++){ seedP[i*4]=(Math.random()*2-1)*R; seedP[i*4+1]=Math.random()*HT; seedP[i*4+2]=(Math.random()*2-1)*R; seedP[i*4+3]=Math.random()*6.28; }
+    const wrap=v=>((v+R)%(2*R)+2*R)%(2*R)-R;
+    let cur=null, amt=0, want=null, wantS=0, told={}, flash=0, nextBolt=0;
+    const col=new THREE.Color(), tmpC=new THREE.Color(), nightK=()=>(typeof DAYNIGHT!=='undefined')?(DAYNIGHT.state().night||0):0;
+    let lastT=0; world.anim.push(t=>{ const tn=performance.now()/1000; let dt=lastT?Math.min(0.25,tn-lastT):0.016; lastT=tn; const on=ENGINE.level===world;
+      if(!on){ rain.visible=pts.visible=false; return; }
+      const P=ENGINE.P, c=climate(P.x,P.z), w=watch(); want=c; wantS=strength(c,w); if(world.wxForce){ want=world.wxForce[0]; wantS=world.wxForce[1]; if(world.wxForce[2]){ cur=want; amt=wantS; } }
+      // fade the old weather out before the new comes in
+      if(cur!==want){ amt=Math.max(0,amt-dt/3); if(amt<=0){ cur=want; } }
+      else amt+=(wantS-amt)*Math.min(1,dt/5);
+      if(cur&&amt>0.25&&wantS>0&&cur===want&&!told[cur+w]){ told[cur+w]=1; UI.toast(KIND[cur].msg,2200); }
+      const C=ENGINE.cam.position, sc=Math.max(0.22,Math.min(1,Math.hypot(C.x-P.x,C.y-P.y,C.z-P.z)/7)), lite=(typeof HUD!=='undefined'&&HUD.quality>=2)?0.5:1;
+      const isRain=cur==='rain'||cur==='storm', isPts=cur==='snow'||cur==='sand'||cur==='ash'||cur==='mist';
+      rain.visible=isRain&&amt>0.02; pts.visible=isPts&&amt>0.02;
+      if(rain.visible){ const n=Math.floor(NR*lite*Math.min(1,amt*1.2)), sp=cur==='storm'?24:18, wx=cur==='storm'?5:1.5, L=cur==='storm'?1.3:1.0;
+        for(let i=0;i<n;i++){ let y=seedR[i*3+1]-sp*dt; if(y<0) y+=HT; seedR[i*3+1]=y; seedR[i*3]=wrap(seedR[i*3]+wx*dt);
+          const x=P.x+seedR[i*3]*sc, yy=P.y+(y-1)*sc, z=P.z+seedR[i*3+2]*sc, k=i*6;
+          rainPos[k]=x; rainPos[k+1]=yy; rainPos[k+2]=z; rainPos[k+3]=x-wx*L/sp*sc; rainPos[k+4]=yy+L*sc; rainPos[k+5]=z; }
+        rainG.setDrawRange(0,n*2); rainG.attributes.position.needsUpdate=true; rainM.opacity=0.8*Math.min(1,amt*1.3); rainM.color.setHex(0xdce6f2).multiplyScalar(1-0.55*nightK()); }
+      if(pts.visible){ const n=Math.floor(NP*lite*Math.min(1,amt*1.2)*(cur==='mist'?0.35:1));
+        const fall=cur==='snow'?1.4:cur==='ash'?0.6:cur==='mist'?-0.15:0.3, wx=cur==='sand'?11:cur==='snow'?0.8:cur==='ash'?0.5:0.3, low=cur==='sand'?0.3:cur==='mist'?0.4:0.7;
+        for(let i=0;i<n;i++){ const k4=i*4; let y=seedP[k4+1]-fall*dt; if(y<0) y+=HT; if(y>HT) y-=HT; seedP[k4+1]=y;
+          seedP[k4]=wrap(seedP[k4]+wx*dt+Math.sin(t*0.8+seedP[k4+3])*0.4*dt); seedP[k4+2]=wrap(seedP[k4+2]+Math.cos(t*0.7+seedP[k4+3])*0.3*dt);
+          ptPos[i*3]=P.x+seedP[k4]*sc; ptPos[i*3+1]=P.y+(y*low-0.5)*sc; ptPos[i*3+2]=P.z+seedP[k4+2]*sc; }
+        ptG.setDrawRange(0,n); ptG.attributes.position.needsUpdate=true;
+        ptM.color.setHex(cur==='snow'?0xffffff:cur==='sand'?0xc0905a:cur==='ash'?0x5a524c:0xe8ecee); ptM.size=(cur==='snow'?0.24:cur==='sand'?0.13:cur==='ash'?0.18:1.4)*Math.max(0.45,sc);
+        ptM.opacity=(cur==='mist'?0.22:0.95)*Math.min(1,amt*1.3); ptM.color.multiplyScalar(1-0.6*nightK()); }
+      // a storm: lightning far out, now and then
+      if(cur==='storm'&&amt>0.5){ if(t>nextBolt){ nextBolt=t+6+Math.random()*12; flash=1; } } flash=Math.max(0,flash-dt*3.2);
+    });
+    // the fog and the light, after the day's own sky has been set (DAYNIGHT in the anims, world.follow after them)
+    let wN=-1, wF=-1, bN=40, bF=150;
+    const fo0=world.follow; world.follow=P=>{ if(fo0) fo0(P); if(ENGINE.level!==world) return; const f=scene.fog; if(!f) return;
+      if(f.near!==wN||f.far!==wF){ bN=f.near; bF=f.far; }
+      const K=cur&&KIND[cur], a=K?Math.min(1,amt):0;
+      if(a>0.001){ col.setHex(K.col); const night=(typeof DAYNIGHT!=='undefined')?DAYNIGHT.state().night||0:0; tmpC.copy(col).multiplyScalar(1-0.75*night);
+        f.color.lerp(tmpC,a*0.75); if(scene.background&&scene.background.isColor) scene.background.lerp(tmpC,a*0.6);
+        f.near=bN+(K.near-bN)*a; f.far=bF+(K.far-bF)*a;
+        if(world.sunShadow) world.sunShadow.intensity*=1-K.dim*a; if(world.hemi) world.hemi.intensity*=1-K.dim*0.4*a; }
+      else { f.near=bN; f.far=bF; }
+      if(flash>0&&world.hemi){ world.hemi.intensity+=flash*1.4; if(scene.background&&scene.background.isColor) scene.background.lerp(tmpC.setHex(0xe8ecff),flash*0.5); }
+      wN=f.near; wF=f.far; };
+    return { get now(){ return {kind:cur,amount:amt,want,wantS}; }, climate, _pts:pts, _rain:rain };
   }
   return {attach};
 })();
@@ -14432,6 +14550,7 @@ const HUD=(function(){
   // bridge runs from Hearthvale to Dusthaven; see data/stretch.json → roads). ROADS.attach(world) would bring them back.
   if(false&&typeof ROADS!=='undefined') ROADS.attach(world);
   if(typeof TREK!=='undefined') TREK.attach(world);
+  if(typeof WEATHER!=='undefined') world.weather=WEATHER.attach(world);   /* V131: rain, snow, sand, ash and mist by the land */
   if(typeof LANDMARKS!=='undefined') LANDMARKS.attach(world);   // V127: watchtowers to climb, camps, the mill, the drowned chapel, a shrine, a spring   // V121: the Pilgrim's Pass — the mountain trek from Shadowmere to Hellgate   // V115: the high roads: the long journeys between distant towns   // V114: the Scholar's Way, the old road north to Mario's tower school
   if(typeof GREEK!=='undefined'){ const gx=SX(46.5), gz=SY(20.5); GREEK.place(world,world.scene,world.anim,gx,gz,'john14_6',{y:world.ground?world.ground(gx,gz):0}); }   // a scrap of John by Hearthvale's chapel door
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
