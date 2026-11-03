@@ -6968,7 +6968,18 @@ function buildWorld(WD,opt){
       }
       // Sunfall's own tiles (drawSunfallTile): ledges of warm stone over a drop to a wine-dark sea
       if(opt.land==='sunfall'){ if(t===81) continue;
-        if([[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>T(x+a,y+b)===81)) box(cx,cz,-7,6.6,(x+y)%2?0x6a4632:0x5e3e2c,1,1,0,jit);   // the cliff of the ledge, falling away
+        { /* V133: the ledges are floating rock, not slabs on posts — a keel under every arm, deepest at its middle, and on the
+             open face, strata of warm sandstone stepping back as they go down, with crags breaking out of them */
+          let dE=5; for(let r=1;r<=4&&dE===5;r++){ for(let q=-r;q<=r&&dE===5;q++){ if(T(x+q,y-r)===81||T(x+q,y+r)===81||T(x-r,y+q)===81||T(x+r,y+q)===81) dE=r; } }
+          const h0=hsh(x*7,y*3), h1=hsh(y*5,x*11), bot=-(3.6+Math.min(dE,4)*2.1+h0*1.4);
+          const SC=[0x7e5638,0x6c4832,0x8e6646,0x624230,0x74503a];
+          if(dE===1){ const out=[[1,0],[-1,0],[0,1],[0,-1]].filter(([a,b])=>T(x+a,y+b)===81); const ox=out.reduce((s,q)=>s+q[0],0), oz=out.reduce((s,q)=>s+q[1],0);
+            /* the strata run level along the whole face (bands of 1.1, one colour each), each stepping back a little */
+            let y1=top-0.4; for(let i=0;y1>bot+0.2;i++){ const band=Math.floor((y1-0.001+40)/1.1), yb=Math.max(bot,band*1.1-40), hh=y1-yb, ins=Math.min(0.55,i*0.06+hsh(x*3+i,y)*0.05), sx=1-Math.abs(ox)*ins, sz=1-Math.abs(oz)*ins;
+              box(cx-ox*ins/2,cz-oz*ins/2,yb,hh,SC[((band%SC.length)+SC.length)%SC.length],sx,sz,0,jit*0.4+(hsh(x,y+i)-0.5)*0.03); y1=yb; }
+            if(h1<0.5&&!tilesOnly){ const r=hsh(x*13,y*17); rocks.push({x:cx+ox*(0.42+r*0.12),z:cz+oz*(0.42+r*0.12),y:top-1.6-r*3.2,h:0.9+r*1.4,sx:0.55+r*0.5,sz:0.45+h0*0.4,ry:r*17,c:SC[(x+y)%SC.length]}); }
+            if(h0<0.12&&!tilesOnly){ const r=hsh(x*19,y*23); rocks.push({x:cx+ox*0.3,z:cz+oz*0.3,y:bot-0.9-r*1.5,h:1.2+r*1.8,sx:0.35+r*0.3,sz:0.3+r*0.25,ry:r*11,c:0x5e3e2c}); } }
+          else box(cx,cz,bot,(top-0.4)-bot,0x5a3c2c,1,1,0,jit*0.3); }
         const fl=c=>box(cx,cz,top-0.4,0.4,c,1,1,0,jit);
         if(t===6||t===83||t===85||t===86||t===87||t===84||t===82){ fl(0xb4966f); continue; }
         if(t===25){ fl(0x8a7466); continue; } if(t===27){ fl(0x7a6656); box(cx,cz,top,0.01,0x4a3a30,0.7,0.06,hsh(x,y)*3); continue; }
@@ -14864,6 +14875,7 @@ const HUD=(function(){
   // ── the finale: Abaddon in the Hellgate keep, then King Karl's grant in Stormgate's ──
   const hgDoor=WD.buildings.find(b=>b.id==='hg_keep');
   const PORTALS=(typeof PASTIME_DATA!=='undefined'&&PASTIME_DATA.finale&&PASTIME_DATA.finale.portals)?portalSystem(world,PASTIME_DATA.finale.portals,typeof PORTAL_WORLDS!=='undefined'?PORTAL_WORLDS:{}):null;   // the three tears in the sky
+  world.portalSys=PORTALS;   /* V133: tests and tools reach the portal worlds through this */
   GOAL_API.cur=goalSystem(world,{portals:PORTALS});   // ➤ the next goal, under the place plate and as a gold star on the map
   const FINALE=(typeof PASTIME_DATA!=='undefined'&&PASTIME_DATA.finale&&hgDoor)?finaleLevel(PASTIME_DATA.finale,{ id:'finale', exit:back('hg_keep'), keep:'keep', afterKeep:back('sg_keep') }):null;
 
