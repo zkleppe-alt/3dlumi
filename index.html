@@ -9242,13 +9242,13 @@ const CATACOMB=(function(){
       const pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xffd8a0,size:0.018,transparent:true,opacity:0.4,depthWrite:false})); scene.add(pts);
       an.push((t2,dt)=>{ const P=ENGINE.P; pts.position.set(P.x,0,P.z); const a=g.attributes.position.array; for(let i=0;i<N;i++){ a[i*3+1]+=0.05*(dt||0.016); if(a[i*3+1]>CW) a[i*3+1]=0; a[i*3]+=Math.sin(t2*0.3+i)*0.002; } g.attributes.position.needsUpdate=true; }); }
     // ── the things in the halls ──
-    const BLK=[]; const comp=(ch,x0,y0,seen)=>{ const out=[], q=[[x0,y0]]; seen.add(x0+','+y0); while(q.length){ const [x,y]=q.pop(); out.push([x,y]); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const k=(x+a)+','+(y+b); if(!seen.has(k)&&at(x+a,y+b)===ch){ seen.add(k); q.push([x+a,y+b]); } }); } return out; };
+    const BLK=[], RECT=[]; const comp=(ch,x0,y0,seen)=>{ const out=[], q=[[x0,y0]]; seen.add(x0+','+y0); while(q.length){ const [x,y]=q.pop(); out.push([x,y]); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const k=(x+a)+','+(y+b); if(!seen.has(k)&&at(x+a,y+b)===ch){ seen.add(k); q.push([x+a,y+b]); } }); } return out; };
     const seen=new Set();
     const sarc=(x,y,c)=>{ const along=wallC(x-1,y)||wallC(x+1,y)?'z':'x', g=group(x+0.5,0,y+0.5,room); if(along==='x') g.rotation.y=Math.PI/2;
       B(0.82,0.6,1.7,c||pal.stone,0,0,0,g); B(0.92,0.12,1.8,pal.lid,0,0.6,0,g); B(0.06,0.02,1.1,dk(pal.trim,0.7),0,0.72,0,g); B(0.5,0.02,0.06,dk(pal.trim,0.7),0,0.72,-0.25,g);
       /* a lamb carved at the head: the shepherds' mark */ const lb=group(0,0.72,0.62,g); Sp(0.09,0xe8e0d0,0,0.06,0,lb); Sp(0.05,0xe8e0d0,0,0.1,0.1,lb); return g; };
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), cx=x+0.5, cz=y+0.5, k=x+','+y;
-      if(c==='T') shade(sarc(x,y));
+      if(c==='T'){ const g=sarc(x,y); shade(g); const along=Math.abs(Math.sin(g.rotation.y))>0.5; RECT.push({x:x+0.5,z:y+0.5,hx:along?0.92:0.47,hz:along?0.47:0.92}); }   /* the whole tomb is solid, end to end */
       else if(c==='O'){ Cy(0.3,0.36,CW,10,dk(pal.stone,0.9),cx,0,cz,room); Cy(0.44,0.44,0.22,10,dk(pal.stone,0.8),cx,0,cz,room); Cy(0.44,0.3,0.26,10,dk(pal.stone,0.8),cx,CW-0.26,cz,room); }
       else if(c==='C'){ const g=group(cx,0,cz,room); g.rotation.y=wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2; B(0.74,0.44,0.5,0x5e3c20,0,0,0,g); [-0.26,0.26].forEach(o=>B(0.06,0.46,0.52,0xc8a040,o,0,0,g));
         const lid=group(0,0.44,-0.25,g); B(0.76,0.14,0.52,0x6e4828,0,0,0.26,lid); [-0.26,0.26].forEach(o=>B(0.06,0.15,0.53,0xc8a040,o,0,0.26,lid)); B(0.1,0.12,0.03,0xe8c766,0,0.3,0.26,g); shade(g); dyn.chests[k]=lid; }
@@ -9260,7 +9260,11 @@ const CATACOMB=(function(){
         const L=new THREE.PointLight(0xfff0d0,0.7,5,1.6); L.position.set(0,2.2,0.2); g.add(L); }
       else if(c==='v'){ const g=group(cx,0,cz,room); B(1,0.02,1,0x020203,0,0.0,0,g); for(let i=0;i<4;i++) B(0.9,0.12,0.22,dk(pal.stone,0.8-i*0.15),0,-0.18-i*0.24,0.36-i*0.24,g); B(0.1,0.3,1.1,pal.stone,-0.55,0,0,g); B(0.1,0.3,1.1,pal.stone,0.55,0,0,g); [-0.58,0.58].forEach(o=>B(0.2,2.2,0.2,dk(pal.stone,0.85),o,0,0.42,g)); B(1.4,0.3,0.26,dk(pal.stone,0.85),0,2.2,0.42,g); B(1.0,2.2,0.05,0x030203,0,0,-0.55,g); }   /* an archway down into the dark */
       else if(c==='P'){ const g=group(cx,0,cz,room); const pl=B(0.84,0.08,0.84,0x6a6458,0,0,0,g); B(0.5,0.09,0.06,0xd8b060,0,0,0,g); B(0.06,0.09,0.5,0xd8b060,0,0,0,g); dyn.plates.push({x,y,m:pl,g}); }
-      else if(c==='B'){ const g=sarc(x,y,0x9a8e7a); shade(g); g.rotation.y=0; dyn.blocks.push({k,x0:x,y0:y,x,y,g,mv:null}); }
+      else if(c==='B'){ const g=group(cx,0,cz,room); B(0.92,0.06,0.92,0x4a4038,0,0,0,g); B(0.86,0.66,0.86,0xb0a48c,0,0.06,0,g); B(0.94,0.12,0.94,0xc2b69c,0,0.72,0,g);
+          B(0.08,0.03,0.5,0x8a6a2a,0,0.84,0,g); B(0.32,0.03,0.08,0x8a6a2a,0,0.84,-0.1,g);   /* a gilt cross on the lid */
+          [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const r=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.022,6,14),new THREE.MeshPhongMaterial({color:0x5a5a62,shininess:50})); r.position.set(a*0.44,0.45,b*0.44); r.rotation.y=a?Math.PI/2:0; g.add(r); });   /* iron rings on every side, to drag it by */
+          shade(g); dyn.blocks.push({k,x0:x,y0:y,x,y,g,mv:null});
+          for(let i=1;i<=3;i++){ const m=B(0.7,0.012,0.05,0x2a221c,cx-0.5-i*0.0+0,0,cz+(i-2)*0.25,room); m.position.x=cx-0.9; m.scale.x=1.2; }   /* scrape marks where it has been dragged before */ }
       else if((c==='L'||/[1-9]/.test(c))&&!seen.has(k)){ const cells=comp(c,x,y,seen), vert=cells.every(q=>q[0]===cells[0][0]), xs=cells.map(q=>q[0]), ys=cells.map(q=>q[1]);
         const len=vert?Math.max(...ys)-Math.min(...ys)+1:Math.max(...xs)-Math.min(...xs)+1, mx=(Math.min(...xs)+Math.max(...xs))/2+0.5, mz=(Math.min(...ys)+Math.max(...ys))/2+0.5, g=group(mx,0,mz,room), HT=2.7;
         B(vert?0.6:len,CW-HT,vert?len:0.6,dk(pal.wall,0.9),mx,HT,mz,room);   // the lintel over it
@@ -9275,7 +9279,9 @@ const CATACOMB=(function(){
     const ok=(x,y)=>{ const c=at(x,y); if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='L'||/[1-9]/.test(c)){ const d=doorOf(x,y); const k=Object.keys(dyn.doors).find(q=>dyn.doors[q]===d); return isOpen(k)&&d.u>0.85; } if(blockAt(x,y)) return false; return true; };
     const okAt=(px,pz)=>{ const x=Math.floor(px), y=Math.floor(pz); return ok(x,y)||(wallC(x,y)&&WI.free(px,pz)&&(()=>{ const u=px-x, v=pz-y; return (u<WI.m&&ok(x-1,y))||(u>1-WI.m&&ok(x+1,y))||(v<WI.m&&ok(x,y-1))||(v>1-WI.m&&ok(x,y+1)); })()); };
     lv._dyn=dyn; lv._ok=(x,y)=>ok(x,y);
-    lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!okAt(tx+ox,tz+oz)) return false; for(const b of BLK){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.24&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; } return true; };
+    lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!okAt(tx+ox,tz+oz)) return false; for(const b of BLK){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.24&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; }
+      for(const r of RECT){ const inT=Math.abs(tx-r.x)<r.hx+0.26&&Math.abs(tz-r.z)<r.hz+0.26, inF=Math.abs(fx-r.x)<r.hx+0.26&&Math.abs(fz-r.z)<r.hz+0.26; if(inT&&!inF) return false; }
+      for(const b of dyn.blocks){ const bx=b.g.position.x, bz=b.g.position.z; if(Math.abs(tx-bx)<0.47+0.26&&Math.abs(tz-bz)<0.47+0.26&&!(Math.abs(fx-bx)<0.73&&Math.abs(fz-bz)<0.73)) return false; } return true; };   /* nothing half-walks into a tomb */
     lv.ground=()=>0;
     lv.camBlock=(fx,fz,y)=>{ const x=Math.floor(fx), z=Math.floor(fz); return y>CW-0.15||((wallC(x,z)&&!WI.free(fx,fz))&&y<CW); };
     lv.dmap={W,H,wall:(x,y)=>wallC(x,y),solid:(x,y)=>!ok(x,y)&&!wallC(x,y),known:()=>!!s().map[n]};
@@ -9302,8 +9308,13 @@ const CATACOMB=(function(){
       const px=Math.floor(P.x), pz=Math.floor(P.z), b=blockAt(px+ax,pz+az); if(!b||b.mv||b.solved){ lean=0; return; }
       const lat=ax?Math.abs(P.z-(b.y+0.5)):Math.abs(P.x-(b.x+0.5)), gap=ax?Math.abs(P.x-(b.x+0.5)):Math.abs(P.z-(b.y+0.5)); if(lat>0.38||gap>1.05){ lean=0; return; }
       const dir=ax+','+az; if(dir!==leanDir){ leanDir=dir; lean=0; } lean+=dt; if(lean<0.45) return; lean=0;
-      const nx=b.x+ax, ny=b.y+az, cc=at(nx,ny); if(!(cc==='.'||cc==='P'||cc===',')||blockAt(nx,ny)||doorOf(nx,ny)){ return; }
-      b.mv={fx:b.x,fz:b.y,u:0}; b.x=nx; b.y=ny; if(typeof SFX!=='undefined'){ AUDIO2D.noise(null,{dur:0.4,fc:300,fc1:120,q:0.6,gain:0.22,decay:0.8}); } });
+      tryPush(b,ax,az); });
+    function tryPush(b,ax,az){ if(b.mv||b.solved) return false; const nx=b.x+ax, ny=b.y+az, cc=at(nx,ny); if(!(cc==='.'||cc==='P'||cc===',')||blockAt(nx,ny)||doorOf(nx,ny)||RECT.some(r=>Math.abs(nx+0.5-r.x)<r.hx+0.4&&Math.abs(ny+0.5-r.z)<r.hz+0.4)){ UI.toast('It won’t go any further that way.',1000); return false; }
+      b.mv={fx:b.x,fz:b.y,u:0}; b.x=nx; b.y=ny; if(typeof AUDIO2D!=='undefined') AUDIO2D.noise(null,{dur:0.4,fc:300,fc1:120,q:0.6,gain:0.22,decay:0.8}); return true; }
+    // the Ⓐ prompt rides along with it: push it away from you, the way you stand to it
+    dyn.blocks.forEach(b=>{ b.spot={x:b.x+0.5,z:b.y+0.5,r:1.25,label:'Push',who:'A stone ossuary',action:()=>{ if(b.solved){ UI.toast('It sits square on the plate.',900); return; } const P=ENGINE.P, dx=b.g.position.x-P.x, dz=b.g.position.z-P.z, ax=Math.abs(dx)>Math.abs(dz)?Math.sign(dx):0, az=ax?0:Math.sign(dz); tryPush(b,ax,az); }}; lv.spots.push(b.spot);
+      an.push(()=>{ b.spot.x=b.g.position.x; b.spot.z=b.g.position.z; b.spot.label=b.solved?'Look':'Push'; }); });
+    let hinted=false; an.push(()=>{ if(hinted) return; const P=ENGINE.P; dyn.blocks.forEach(b=>{ if(!hinted&&!b.solved&&Math.hypot(P.x-b.x-0.5,P.z-b.y-0.5)<3.2){ hinted=true; UI.toast('🪨 A stone ossuary on iron runners — Ⓐ Push it (or lean into it) to slide it a pace. The plate with the gold cross wants a weight.',4200); } }); });
     function onBlockMoved(b){ const pl=dyn.plates.find(p=>p.x===b.x&&p.y===b.y); if(!pl) return; b.solved=true; pl.m.position.y=-0.05; s().blocks[n+':'+b.k]=[b.x,b.y]; const g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='plate'); if(g) openGate(g,D.gates[g].msg); GAME.save(); if(typeof SFX!=='undefined') SFX.play('bossStrike'); }
     // ── Ⓐ ──
     const spot=(x,z,label,who,action,r,auto)=>lv.spots.push({x,z,r:r||1.0,label,who,action,auto,ar:0.5});
