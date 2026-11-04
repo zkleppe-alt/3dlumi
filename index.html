@@ -4239,7 +4239,7 @@ const ENGINE=(function(){
     const gy=L.ground(P.x,P.z); if(Math.hypot(P.x-J.lx,P.z-J.lz)>1.5){ J.on=false; J.h=0; J.v=0; P.y=gy; } J.lx=P.x; J.lz=P.z;   // set down somewhere new: no falling from where you were
     if(J.on){ const top=P.y+J.h; J.peak=Math.max(J.peak||top,top); J.v-=17*dt; let nh=top+J.v*dt; if(J.v<0&&nh<=gy){ J.on=false; J.v=0; J.h=0; P.y=gy; if(typeof COMBAT!=='undefined'&&COMBAT.landed) COMBAT.landed();
         /* V143: a long drop lands hard — he takes it on bent knees and a hand, and needs a moment to rise */
-        const drop=(J.peak||gy)-gy; J.peak=0; if(drop>2.4&&!(L.mounted&&L.mounted())&&!(typeof COMBAT!=='undefined'&&COMBAT.pl.leap)&&K.act&&K.act('land',0.9,{arms:true})){ holdT=Math.max(holdT,0.42); holdMode=null; } } else { if(gy>P.y) P.y=gy; J.h=nh-P.y; if(J.h<0){ J.on=false; J.h=0; P.y=gy; } } }
+        const drop=(J.peak||gy)-gy; J.peak=0; if(typeof SFX!=='undefined'&&SFX.play) SFX.play(drop>2.4?'stairStep':'step'); if(drop>2.4&&!(L.mounted&&L.mounted())&&!(typeof COMBAT!=='undefined'&&COMBAT.pl.leap)&&K.act&&K.act('land',0.9,{arms:true})){ holdT=Math.max(holdT,0.42); holdMode=null; } } else { if(gy>P.y) P.y=gy; J.h=nh-P.y; if(J.h<0){ J.on=false; J.h=0; P.y=gy; } } }
     else { if(gy<P.y-0.5){ J.on=true; J.v=0; J.h=0; } else P.y+=(gy-P.y)*Math.min(1,dt*(gy>P.y?16:10)); }   // stepping off a ledge: you fall, not float down
     // close quarters (a dungeon, the deep wood): the camera rides low behind your shoulder, and when you walk it settles in behind
     //  you again by itself unless you've looked about in the last moment — so a corridor stays ahead of you, walls on either hand
@@ -4620,6 +4620,8 @@ const MENU=(function(){
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
         +sec('Controls')+`<button class="gm-item" data-act="keys"><span>⌨ Keyboard Controls <span class="ds">see and change every key · 🧪 potion is ${typeof KEYS!=='undefined'?KEYS.keysFor('potion'):'P'}</span></span></button>`
+          +(typeof SFX!=='undefined'?sec('Sound')+`<button class="gm-item" data-act="vol:music"><span>🎵 Music ${SFX.volBar(SFX.musicVol)} ${Math.round(SFX.musicVol*100)}% <span class="ds">tap to change · the 2D game's own themes</span></span></button>`
+            +`<button class="gm-item" data-act="vol:sfx"><span>🔊 Sound effects ${SFX.volBar(SFX.sfxVol)} ${Math.round(SFX.sfxVol*100)}% <span class="ds">tap to change · blows, footsteps, wind and weather</span></span></button>`:'')
           +sec('Graphics')+['auto','low','medium','high','ultra'].map(t=>{ const cur=typeof HUD!=='undefined'?HUD.pref:'auto', act=typeof HUD!=='undefined'?HUD.tier:'medium';
             const lab={auto:`✨ Auto <span class="ds">chosen for this device — now ${act[0].toUpperCase()+act.slice(1)}</span>`,low:'Low <span class="ds">older phones: short view, plain light</span>',medium:'Medium <span class="ds">phones and tablets</span>',high:'High <span class="ds">computers: soft wide shadows, long views, glow and colour grading</span>',ultra:'Ultra <span class="ds">a strong graphics card: the longest views, the sharpest shadows</span>'}[t];
             return `<button class="gm-item ${cur===t?'worn':''}" data-act="gfx:${t}"><span>${lab}</span>${cur===t?'<i>✓</i>':''}</button>`; }).join('')
@@ -4673,6 +4675,7 @@ const MENU=(function(){
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }
     else if(k==='gfx'){ if(typeof HUD!=='undefined') HUD.setTier(v); note='Graphics: '+v; render(true); return; }
+    else if(k==='vol'&&typeof SFX!=='undefined'){ SFX.stepVol(v); SFX.play('menu',true); render(true); return; }
     else if(k==='mocap'){ const K=ENGINE.K; K.mocapOff=!K.mocapOff; try{ localStorage.setItem('klk3d_mocap',K.mocapOff?'0':'1'); }catch(e){} render(true); return; }
     else if(k==='look2'){ try{ localStorage.setItem('klk3d_look2',(typeof LOOK2!=='undefined'&&LOOK2)?'0':'1'); }catch(e){} GAME.save&&GAME.save(); location.reload(); return; }
     else if(k==='journal'){ toggle(false); if(typeof JOURNAL!=='undefined') JOURNAL.open(); return; }
@@ -7880,7 +7883,7 @@ const COMBAT=(function(){
   const potB=css(document.createElement('button'),'position:fixed;right:calc(30px + env(safe-area-inset-right,0px));bottom:calc(196px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:50%;border:1px solid rgba(111,223,138,.8);background:rgba(22,32,46,.6);color:#cfeccf;font:700 12px var(--f-body);cursor:pointer;touch-action:none');
   potB.className='act'; potB.id='potBtn'; potB.hidden=true; potB.setAttribute('aria-label','Drink a potion'); document.body.appendChild(potB);
   function potion(){ if(ENGINE.holding) return; const S0=GAME.S, inv=S0.inventory, order=[S0.quickPot,'potion','greaterPotion','elixir'].filter((k,i,a)=>k&&a.indexOf(k)===i); const id=order.find(k=>inv[k]>0&&SYS.POTIONS[k]&&SYS.POTIONS[k].heal);
-    if(!id){ UI.toast('No healing potions left',1200); return; } const m=GAME.drink(id); UI.toast(`${SYS.POTIONS[id].emoji||'🧪'} ${m}`,1200); hud(); }
+    if(!id){ UI.toast('No healing potions left',1200); return; } const m=GAME.drink(id); SFX.play('potion'); UI.toast(`${SYS.POTIONS[id].emoji||'🧪'} ${m}`,1200); hud(); }
   potB.addEventListener('pointerdown',e=>{ e.preventDefault(); potion(); });
   addEventListener('keydown',e=>{ const k=e.key.toLowerCase(); if(k==='p'&&A()&&!UI.open) potion(); if(k==='f'&&!e.repeat&&A()&&!UI.open) toggleLock(); });
   const bossBar=css(document.createElement('div'),'position:fixed;left:50%;transform:translateX(-50%);top:calc(104px + env(safe-area-inset-top,0px));width:min(calc(100vw - 32px),380px);pointer-events:none;text-align:center;font:400 15px var(--f-display);color:#f2c14e;text-shadow:0 2px 6px #000;z-index:5');
@@ -8007,11 +8010,12 @@ const COMBAT=(function(){
     return Math.min(dmg,Math.ceil(d.maxHp*BOSS_CAP))*(braced?0.3:1); }
   function hitFoe(d,dmg,crit,vx,vz,dist,knock){ const c=A();
     if(c.cfg.onHit&&c.cfg.onHit(d)===false){ d.hurt=3; pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.boss?2.6:1.6),d.z,'—','#a8b0c8'); return; }
-    dmg=Math.round(dmg); d.hp-=dmg; d.hurt=8; d.flash=5; d.squash=1; spark(d,crit); hitStop=Math.max(hitStop,(knock>=10?0.11:knock>=8?0.085:0.06)+(crit?0.03:0)); shake=Math.max(shake,(knock>=10?0.32:knock>=8?0.2:0.12)+(crit?0.08:0));
-    if(d.lunge){ d.lunge=0; d.lungeCd=50; }   // a blow breaks a lunge
+    dmg=Math.round(dmg); d.hp-=dmg; SFX.play('hit',crit); d.hurt=8; d.flash=5; d.squash=1; spark(d,crit); hitStop=Math.max(hitStop,(knock>=10?0.11:knock>=8?0.085:0.06)+(crit?0.03:0)); shake=Math.max(shake,(knock>=10?0.32:knock>=8?0.2:0.12)+(crit?0.08:0));
+    if(d.lunge&&!(styleOf(d)==='brute'&&d.lunge===1&&knock<8)){ d.lunge=0; d.lungeCd=50; }   // a blow breaks a wind-up (the brute's only a heavy one)
+    if(!d.boss&&!d.custom&&!d.ai&&d.hp>0&&knock>=(styleOf(d)==='brute'?10:8)&&!(d.down>0)){ d.down=48; d.lunge=0; d.stag=0; pop(d.x,ENGINE.level.ground(d.x,d.z)+1.2,d.z,'Down!','#ffc89a'); }   /* V146: a heavy blow knocks it off its feet */
     pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.boss?2.6:1.6),d.z,crit?dmg+'!':String(dmg),crit?'#ffd84a':'#fff');
     const m=dist||1; d.kdx=vx/m*knock*PX; d.kdz=vz/m*knock*PX; d.knock=8;
-    if(d.hp<=0){ d.alive=false; d.dying=18; deathBurst(d); const g=Math.max(1,Math.round((2+d.level)*S().goldMult));
+    if(d.hp<=0){ d.alive=false; d.dying=18; deathBurst(d); SFX.play(d.boss?'bossRoar':'demonDie'); const g=Math.max(1,Math.round((2+d.level)*S().goldMult));
       const r=GAME.gainXp(d.xp||5); GAME.addGold(g); if(r.up) UI.toast(`Level ${S().level}! A skill point to spend.`,2400);
       if(c.cfg.onKill) c.cfg.onKill(d); } hud(); }
   // a foe struck down: a burst of light, a ring of dust, and its spirit rising away
@@ -8030,8 +8034,8 @@ const COMBAT=(function(){
     pl.swing=Math.round(anim*60*0.9); pl.swingDur=pl.swing; ENGINE.K.swing(type==='heavy'?0:pl.combo===2?2:1,anim); lunge(aim(w.reach+1.6),w,type,hitAt);
     if(airH()>0.3&&!pl.plunge){ pl.airSwingH=airH(); pl.airSwingT=hitAt+6; pl.plunge=true; later.push([hitAt+3,()=>{ if(ENGINE.plunge) ENGINE.plunge(); }]); }   // V113: struck in the air — the blade reaches higher, then down you come in a plunge
     if(bowOn()) later.push([hitAt,()=>{ const f=fv(), p=P(); const m=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.5),glow(0xfff0b0)); c.fx.add(m);
-      c.arrows.push({x:p.x,z:p.z,vx:f.x*3.2*PX,vz:f.z*3.2*PX,t:26,m}); }]);
-    else later.push([hitAt,()=>{ slash(type); resolve(type); }]); }
+      c.arrows.push({x:p.x,z:p.z,vx:f.x*3.2*PX,vz:f.z*3.2*PX,t:26,m}); SFX.play('swing','light'); }]);
+    else later.push([Math.max(1,hitAt-2),()=>SFX.play('swing',type)],[hitAt,()=>{ slash(type); resolve(type); }]); }
   // ── the Spin Attack (Ocarina's): hold the swing — the blade gathers light at your feet — and let go to cut all the way round ──
   const SPIN={reach:2.25,mult:2.0,knock:10,hold:0.42,full:1.0}; const charge={on:false,t0:0,k:0,ready:false,ring:null};
   function chargeStart(){ const c=A(); if(!c||bowOn()) return; charge.on=true; charge.t0=now(); charge.k=0; charge.ready=false; }
@@ -8044,7 +8048,7 @@ const COMBAT=(function(){
     charge.ring.position.set(p.x,ENGINE.level.ground(p.x,p.z)+0.05,p.z); charge.ring.scale.setScalar(ps*(2.4-1.3*k)); charge.ring.material.opacity=0.35+0.5*k; charge.ring.material.color.setHex(k>=1?0xffffff:0xffe48a);
     if(k>=1&&!charge.ready){ charge.ready=true; pop(p.x,ENGINE.level.ground(p.x,p.z)+1.9*ps,p.z,'✦','#fff4b0'); }
     if(Math.random()<0.35){ const a=Math.random()*6.283, rr=(2.4-1.3*k)*0.6*ps, m=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.05),glow(0xfff0b0)); m.position.set(p.x+Math.cos(a)*rr,ENGINE.level.ground(p.x,p.z)+0.1,p.z+Math.sin(a)*rr); c.fx.add(m); c.rings.push({m,t:0,max:0,bit:{vx:-Math.cos(a)*0.8,vy:1.4,vz:-Math.sin(a)*0.8}}); } }
-  function spin(){ const c=A(), p=P(); if(!c) return; pl.swing=26; pl.swingDur=26; pl.combo=0; pl.lungeT=0; ENGINE.K.spinT=0; if(c.cfg.onSwing) c.cfg.onSwing();
+  function spin(){ const c=A(), p=P(); if(!c) return; SFX.play('swing','heavy'); pl.swing=26; pl.swingDur=26; pl.combo=0; pl.lungeT=0; ENGINE.K.spinT=0; if(c.cfg.onSwing) c.cfg.onSwing();
     const ps=VIEWMODE.ps(ENGINE.level), radiant=(SYS.WEAPON_ART&&SYS.WEAPON_ART[S().equip.weapon]||{}).fam==='radiant';
     const m=new THREE.Mesh(new THREE.RingGeometry(SPIN.reach*0.45,SPIN.reach*0.62,40),new THREE.MeshBasicMaterial({color:radiant?0xfff0a0:0xeef6ff,transparent:true,opacity:0.8,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending}));
     m.rotation.x=-Math.PI/2; m.position.set(p.x,ENGINE.level.ground(p.x,p.z)+0.85*Math.max(0.5,ps),p.z); m.scale.setScalar(Math.max(0.6,ps)*1.6); c.fx.add(m); c.rings.push({m,t:0,max:0,slash:1});
@@ -8075,11 +8079,12 @@ const COMBAT=(function(){
     c.foes.forEach(d=>{ if(!d.alive) return; const vx=d.x-p.x, vz=d.z-p.z, dist=Math.hypot(vx,vz); if(dist>reach+(d.boss?0.3:0)) return;
       if(dist>0.001&&(vx*f.x+vz*f.z)/dist<cut) return; if(!los(p.x,p.z,d.x,d.z)) return;
       let dmg=Math.max(1,Math.round(S().atk*w.mult)+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
+      if(!d.boss){ if(d.stag>0||d.down>0) dmg=Math.round(dmg*1.5); if(ENGINE.K.crouch&&(!d.alert||d.asleep)){ dmg*=2; pop(d.x,ENGINE.level.ground(d.x,d.z)+2.0,d.z,'✦ Sneak strike','#c8b0ff'); } }   /* V146: open after a parry or a fall; unaware — double */
       dmg=bossHitGate(d,dmg); if(dmg<0){ d.hurt=3; any=true; clang=true; return; } any=hit=true; hitFoe(d,dmg,crit,vx,vz,dist,w.knock); });
     c.adds.forEach(a=>{ if(!a.alive||a.flock) return; const vx=a.x-p.x, vz=a.z-p.z, dist=Math.hypot(vx,vz); if(dist>reach) return; if(dist>0.001&&(vx*f.x+vz*f.z)/dist<cut) return; if(!los(p.x,p.z,a.x,a.z)) return;
       /* V143: a SNEAK STRIKE — crouched, on a demon that hasn't noticed you: double the damage */
-      const sneakHit=ENGINE.K.crouch&&!a.alert&&!a.boss; const dmg=Math.max(1,Math.round(S().atk*w.mult*(sneakHit?2:1))); a.hp-=dmg; a.hurt=8; any=true; a.alert=true; pop(a.x,1.5,a.z,sneakHit?'✦ '+dmg:String(dmg)); if(sneakHit&&typeof UI!=='undefined'&&!pl._snkSaid){ pl._snkSaid=true; UI.toast('✦ Sneak strike — double damage on a demon that never saw you coming.',2200); } if(a.hp<=0) a.alive=false; });
-    if(any) pl.comboT=48; if(clang) UI.toast('Turned aside — strike it in the openings',900); }
+      const sneakHit=ENGINE.K.crouch&&!a.alert&&!a.boss; const dmg=Math.max(1,Math.round(S().atk*w.mult*(sneakHit?2:1))); a.hp-=dmg; a.hurt=8; any=true; a.alert=true; SFX.play('hit',sneakHit); pop(a.x,1.5,a.z,sneakHit?'✦ '+dmg:String(dmg)); if(sneakHit&&typeof UI!=='undefined'&&!pl._snkSaid){ pl._snkSaid=true; UI.toast('✦ Sneak strike — double damage on a demon that never saw you coming.',2200); } if(a.hp<=0) a.alive=false; });
+    if(any) pl.comboT=48; if(clang) SFX.play('block'); if(clang) UI.toast('Turned aside — strike it in the openings',900); }
   // the Ground Pound: a leap, the sword raised overhead, then down onto the earth — the ring, the dust, the jolt
   function special(){ const c=A(); pl.swing=30; pl.swingDur=30; pl.lungeT=0; pl.leap=1; pl.leapT=0; ENGINE.K.raise=1; aim(GP.radius+1.5); const p=P(), f=fv();
     later.push([12,()=>ENGINE.K.swing(0,0.42)]);
@@ -8095,7 +8100,7 @@ const COMBAT=(function(){
         if(a.mirror){ a.alive=false; if(c.cfg.onMirror) c.cfg.onMirror(a); return; }
         a.hp-=Math.max(1,Math.round(S().atk*GP.mult)); a.hurt=8; hits++; if(a.hp<=0) a.alive=false; });
       UI.toast('✦ Ground Pound!'+(hits?' ×'+hits:''),700); }]); }
-  function landed(){ const c=A(); if(!c||!pl.plunge){ pl.plunge=false; return; } pl.plunge=false; const p=P(), R=1.7; shake=Math.max(shake,0.35); hitStop=Math.max(hitStop,0.05); dust(p.x,p.z);
+  function landed(){ const c=A(); if(!c||!pl.plunge){ pl.plunge=false; return; } pl.plunge=false; SFX.play('bossStrike'); const p=P(), R=1.7; shake=Math.max(shake,0.35); hitStop=Math.max(hitStop,0.05); dust(p.x,p.z);
     const ring=new THREE.Mesh(new THREE.RingGeometry(0.2,0.42,32),new THREE.MeshBasicMaterial({color:0xffe87a,transparent:true,opacity:0.85,side:THREE.DoubleSide,depthWrite:false})); ring.rotation.x=-Math.PI/2; ring.position.set(p.x,ENGINE.level.ground(p.x,p.z)+0.06,p.z); c.fx.add(ring); c.rings.push({m:ring,t:0,max:R});
     c.foes.forEach(d=>{ if(!d.alive||(d.alt||0)>1.2) return; const vx=d.x-p.x, vz=d.z-p.z, dist=Math.hypot(vx,vz); if(dist>R+(d.boss?0.4:0)) return; let dmg=Math.max(1,Math.round(S().atk*0.8)); dmg=bossHitGate(d,dmg); if(dmg<0){ d.hurt=3; return; } hitFoe(d,dmg,false,vx,vz,dist,8); });
     c.adds.forEach(a=>{ if(!a.alive||a.flock||Math.hypot(a.x-p.x,a.z-p.z)>R) return; a.hp-=Math.max(1,Math.round(S().atk*0.8)); a.hurt=8; if(a.hp<=0) a.alive=false; }); }
@@ -8108,21 +8113,21 @@ const COMBAT=(function(){
   // V90: the roll bursts out fast and eases off (about two and a half tiles), and it can cut short the follow-through of a swing
   const DASH_N=9;
   function dodge(dir){ if(pl.dodgeCd>0||pl.dashing>0) return; if(pl.swing>0){ if(pl.swing>pl.swingDur*0.5) return; pl.swing=0; } pl.lungeT=0;
-    const f=fv(), c=A(), m=c&&c.cfg.dodgeMult?c.cfg.dodgeMult():1, d=dir&&dir.x!==undefined?dir:{x:-f.x,z:-f.z}, l=Math.hypot(d.x,d.z)||1, v=0.375*m; pl.dashx=d.x/l*v; pl.dashz=d.z/l*v; pl.dashing=DASH_N; pl.iframes=22; pl.dodgeCd=32;
+    const f=fv(), c=A(), m=c&&c.cfg.dodgeMult?c.cfg.dodgeMult():1, d=dir&&dir.x!==undefined?dir:{x:-f.x,z:-f.z}, l=Math.hypot(d.x,d.z)||1, v=0.375*m; pl.dashx=d.x/l*v; pl.dashz=d.z/l*v; pl.dashing=DASH_N; pl.iframes=22; pl.dodgeCd=32; SFX.play('dodge');
     /* V143: moving, it's a combat roll — he turns into it and tumbles through (the Mixamo roll); standing, the quick hop back as before */
     if(dir&&dir.x!==undefined&&Math.hypot(dir.x,dir.z)>0.1&&ENGINE.K.act&&ENGINE.K.act('roll',0.52,{arms:true})){ ENGINE.P.face=Math.atan2(d.x,d.z); pl.iframes=26; } }
   guardB.addEventListener('pointerdown',e=>{ e.preventDefault(); bDown(); }); ['pointerup','pointercancel','pointerleave'].forEach(k=>guardB.addEventListener(k,bUp));
 
   // ── the knight takes a blow ──
   function blockSpark(){ const p=P(); pop(p.x,ENGINE.level.ground(p.x,p.z)+1.8,p.z,'blocked','#a8d0ff'); }
-  function takeHit(inc){ S().hp=Math.max(0,S().hp-inc); hud(); if(!pl.blocking&&ENGINE.K.hit) ENGINE.K.hit(); pop(P().x,ENGINE.level.ground(P().x,P().z)+1.9,P().z,'-'+inc,'#ff8a8a'); if(!pl.blocking) hurtFlash();
+  function takeHit(inc){ S().hp=Math.max(0,S().hp-inc); SFX.play(pl.blocking?'block':'hurt'); hud(); if(!pl.blocking&&ENGINE.K.hit) ENGINE.K.hit(); pop(P().x,ENGINE.level.ground(P().x,P().z)+1.9,P().z,'-'+inc,'#ff8a8a'); if(!pl.blocking) hurtFlash();
     if(S().hp<=0){ S().hp=S().maxHp; pl.iframes=90; hud(); const c=A(); later.length=0; c.shots.forEach(s=>c.fx.remove(s.m)); c.shots=[];
       /* V139: he falls first — the sword-and-shield death plays out (held there, untouchable), then the defeat as before */
       if(ENGINE.K.act&&ENGINE.K.act('death',2.6,{arms:true})){ pl.iframes=220; ENGINE.hold(2.7,'down'); setTimeout(()=>{ c.cfg.onDeath&&c.cfg.onDeath(); },2500); }
       else c.cfg.onDeath&&c.cfg.onDeath();
       return true; } return false; }
   // the overworld rule: max(1, atk − def), less the damage reduction; guarding takes a tenth and shoves it off
-  function worldContact(d,dx,dz,dist){ let inc=Math.max(1,(d.atk||6)-S().def); inc=Math.max(1,Math.round(inc*(1-S().dmgReduce))); let kb=1.5, ifr=40;
+  function worldContact(d,dx,dz,dist,mult){ let inc=Math.max(1,Math.round((d.atk||6)*(mult||1))-S().def); inc=Math.max(1,Math.round(inc*(1-S().dmgReduce))); let kb=1.5, ifr=40;
     if(pl.blocking){ inc=Math.max(1,Math.ceil(inc*0.1)); blockSpark(); kb=3.2; ifr=70; }
     pl.iframes=ifr; push(d,-dx/dist,-dz/dist,kb); takeHit(inc); }
   function push(d,ux,uz,tiles){ for(let s=0;s<Math.ceil(tiles*4);s++){ const nx=d.x+ux*0.25, nz=d.z+uz*0.25; if(!walk(nx,nz)) break; d.x=nx; d.z=nz; } }
@@ -8136,7 +8141,7 @@ const COMBAT=(function(){
     for(let i=later.length-1;i>=0;i--){ if(--later[i][0]<=0){ const f=later[i][1]; later.splice(i,1); f(); } }
     stepDrops(); if(pl.airSwingT>0) pl.airSwingT--;
     if(pl.leap){ pl.leapT++; const k=pl.leapT; pl.jumpY=k<=12?Math.sin(k/12*Math.PI/2)*0.95:Math.max(0,0.95*(1-(k-12)/6)); if(k>=18){ pl.leap=0; pl.jumpY=0; } }   // up for twelve steps, down in six
-    if(pl.swing>0) pl.swing--; if(pl.iframes>0) pl.iframes--; pl.blocking=pl.bDown; if(pl.dodgeCd>0) pl.dodgeCd--; if(pl.comboT>0&&--pl.comboT<=0) pl.combo=0;
+    if(pl.swing>0) pl.swing--; if(pl.iframes>0) pl.iframes--; if(pl.guardBreak>0) pl.guardBreak--; pl.blocking=pl.bDown&&!(pl.guardBreak>0); if(pl.dodgeCd>0) pl.dodgeCd--; if(pl.comboT>0&&--pl.comboT<=0) pl.combo=0;
     if(pl.dashing>0){ const k=0.35+0.65*pl.dashing/DASH_N; pl.dashing--; const L0=ENGINE.level, nx=p.x+pl.dashx*k, nz=p.z+pl.dashz*k; if(L0.canMove(p.x,p.z,nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)) p.z=nz; }
     if(pl.lungeT>0){ const N=pl.lungeN||1, u0=(N-pl.lungeT)/N, u1=(N-pl.lungeT+1)/N, sm=u=>u*u*(3-2*u), k=sm(u1)-sm(u0); pl.lungeT--; const L0=ENGINE.level, nx=p.x+pl.lx*k, nz=p.z+pl.lz*k; if(L0.canMove(p.x,p.z,nx,p.z)&&!solid(nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)&&!solid(p.x,nz)) p.z=nz; }
     if(pl.buf>0){ pl.buf--; if(pl.swing<=0&&pl.dashing<=0){ pl.buf=0; attack(); } }
@@ -8144,6 +8149,7 @@ const COMBAT=(function(){
     const T=c.tune;
     c.foes.forEach(d=>{ if(d.dying>0){ d.dying--; return; } if(!d.alive) return; d.t++; if(d.hurt>0) d.hurt--;
       if(d.knock>0){ d.knock--; if(!d.boss){ const nx=d.x+d.kdx, nz=d.z+d.kdz; if(walk(nx,d.z)) d.x=nx; if(walk(d.x,nz)) d.z=nz; if(dun){ d.kdx*=0.72; d.kdz*=0.72; } return; } }
+      if(d.stag>0){ d.stag--; return; } if(d.down>0){ d.down--; return; }   /* V146: reeling from a parry, or knocked off its feet */
       const dx=p.x-d.x, dz=p.z-d.z, dist=Math.hypot(dx,dz)||1e-3;
       /* V144: asleep in its camp (sneak.js) — it stirs only if you come right up to it standing, brush past it crouched, or it's struck; and when one wakes, its camp wakes */
       if(d.asleep){ if(d.hurt>0||dist<(ENGINE.K.crouch?1.25:4.5)){ if(typeof SNEAK!=='undefined') SNEAK.wake(d.camp); else d.asleep=false; } else return; }
@@ -8166,6 +8172,9 @@ const COMBAT=(function(){
     separate();
     // shots, adds, the knight's arrows
     c.shots.forEach(s=>{ s.x+=s.vx; s.z+=s.vz; s.life--; if(s.life>0&&!walk(s.x,s.z)){ s.life=0; if(cfg.shotWall) cfg.shotWall(Math.floor(s.x),Math.floor(s.z)); }
+      /* V146: a parried shot flies back the way it came, and strikes whatever it meets */
+      if(s.ref){ if(s.life>0) for(const d of c.foes){ if(!d.alive||(d.alt||0)>1.6) continue; const vx=d.x-s.x, vz=d.z-s.z, dd=Math.hypot(vx,vz); if(dd>(d.boss?1.0:0.6)) continue; s.life=0; let dmg=Math.max(2,Math.round(S().atk*1.4)); dmg=bossHitGate(d,dmg); if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,true,vx,vz,dd||1,6); if(!d.boss&&d.alive){ d.stag=60; d.lunge=0; } break; } return; }
+      if(s.life>0&&!s.nova&&Math.hypot(s.x-p.x,s.z-p.z)<0.62&&pl.iframes<=0&&parryNow()){ s.ref=true; s.vx*=-1.5; s.vz*=-1.5; s.life=120; if(s.m.material&&s.m.material.color) s.m.material.color.setHex(0xffe27a); parry(s.from&&s.from.alive?s.from:{x:s.x,z:s.z,level:1},false); if(s.from) s.from.stag=0; pop(p.x,ENGINE.level.ground(p.x,p.z)+2.4,p.z,'Sent back!','#ffe27a'); return; }
       if(s.life>0&&Math.hypot(s.x-p.x,s.z-p.z)<0.5){ s.life=0; const tl=cfg.townLvl||10;
         if(s.dmg!==undefined){ if(s.nova){ if(s.burst===c._novaHit) return; c._novaHit=s.burst; } hurtFromBoss(s.dmg,s.nova); return; }   // a shot that carries its own blow
         if(!s.nova&&cfg.shotHit&&cfg.shotHit(s)) return;
@@ -8184,23 +8193,54 @@ const COMBAT=(function(){
         dmg=bossHitGate(d,dmg); s.t=0; if(dmg<0){ d.hurt=3; return; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; return; } });
     c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; c.fx.remove(s.m); return false; });
     if(cfg.tick) cfg.tick(); }
+  // V146: every demon fights its own way, and every blow is shown before it comes — the demon's whole body flashes red as
+  //  it winds up (bright on the last beat: that's the moment to guard). Its FORM says how it fights:
+  //    · the POUNCER (form 0) crouches and springs at you
+  //    · the CLAWER (form 1) rears back, then rakes twice, left and right
+  //    · the BRUTE (form 2) heaves up for a long beat and brings both fists down: guarding it breaks your guard, a
+  //      light blow won't stop it (only a heavy one does) — roll clear, or parry it, and it's open a long while after
+  //    · the SPITTER (form 3, once they're strong enough) keeps its distance, gathers a gob of hellfire and spits it
+  //  PARRY: guard the instant a blow lands (within a fifth of a second of pressing guard) and you turn it aside whole —
+  //  the demon reels, open, and your next blows bite half again as hard. A parried spit flies back at whoever threw it.
+  const PARRY_MS=200, ST={ pounce:{wind:18,windD:20}, claw:{wind:13,windD:14}, brute:{wind:34,windD:34}, spit:{wind:24,windD:24} };
+  const styleOf=d=>d.style||(d.style=d.boss||d.custom||d.ai?'boss':['pounce','claw','brute',(d.level||1)>=5?'spit':'claw'][(d.form||0)%4]);
+  let parryTip=false;
+  function parryNow(){ return pl.bDown&&!(pl.guardBreak>0)&&now()-pl.bAt<PARRY_MS; }
+  function parry(d,boss){ const p=P(); pl.iframes=Math.max(pl.iframes,16); hitStop=Math.max(hitStop,0.12); shake=Math.max(shake,0.2); SFX.play('parry');
+    pop(p.x,ENGINE.level.ground(p.x,p.z)+2.0,p.z,'PARRY!','#ffe27a'); spark(d,true);
+    if(boss){ d.state='stunned'; d.timer=84; d.walking=false; d.ring=0; d.mark=false; pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.alt||0)+2.8,d.z,'It reels — strike!','#ffd84a'); }
+    else { d.lunge=0; d.stag=72; d.lungeCd=80; d.kdx=-(p.x-d.x)*0.05; d.kdz=-(p.z-d.z)*0.05; d.knock=6; }
+    if(!pl._parried){ pl._parried=true; UI.toast('🛡 Parried! It’s open — your blows bite half again as hard while it reels.',2400); } }
+  // a demon's blow arriving: parried, broken through the guard (the brute), guarded, or taken
+  function strikeKnight(d,dx,dz,dist,mult,dun,heavy){ if(pl.iframes>0) return false; if(parryNow()){ parry(d,false); return 'parry'; }
+    if(heavy&&pl.blocking){ pl.guardBreak=70; pl.blocking=false; const p=P(); pop(p.x,ENGINE.level.ground(p.x,p.z)+2.0,p.z,'Guard broken!','#ff9a6a'); SFX.play('bossStrike'); shake=Math.max(shake,0.3); mult*=0.6; }
+    if(dun) hurtFromBoss((8+d.level*0.7)*mult); else worldContact(d,dx,dz,dist,mult); return true; }
   // ── a demon that has seen you: it closes in, fans out so a pack surrounds you rather than queueing, circles at arm's
-  //    length, then crouches (a red flash — your cue to guard or dodge) and LUNGES; a blow during the crouch breaks it,
-  //    and after a lunge it is open for a beat ──
-  function press(d,dx,dz,dist,aggro,speed,dun){ if(dist>aggro) { d.lunge=0; return false; } const c=A(), p=P(), ux=dx/dist, uz=dz/dist;
+  //    length, then winds up (the red flash — your cue to guard, parry or roll) and strikes in its own way; a blow during
+  //    the wind-up breaks it (not the brute's, unless the blow is heavy), and after it strikes it is open for a beat ──
+  function press(d,dx,dz,dist,aggro,speed,dun){ if(dist>aggro) { d.lunge=0; return false; } const c=A(), p=P(), ux=dx/dist, uz=dz/dist, sty=styleOf(d);
     if(d.lungeCd>0) d.lungeCd--;
-    if(d.lunge===1){ d.lt--; d.face=Math.atan2(dx,dz); d.lax=ux; d.laz=uz; if(d.lt<=0){ d.lunge=2; d.lt=11; } return true; }               // the crouch
-    if(d.lunge===2){ d.lt--; const sp=2.5*PX, nx=d.x+d.lax*sp, nz=d.z+d.laz*sp; if(walk(nx,d.z)) d.x=nx; if(walk(d.x,nz)) d.z=nz;             // the spring
-      if(dist<0.75&&pl.iframes<=0){ if(dun) hurtFromBoss(8+d.level*0.7); else worldContact(d,dx,dz,dist); d.lunge=3; d.lt=26; }
-      if(d.lt<=0){ d.lunge=3; d.lt=24; } return true; }
-    if(d.lunge===3){ d.lt--; if(d.lt<=0){ d.lunge=0; d.lungeCd=60+(Math.random()*50|0); } return true; }                                  // open, catching its breath
-    // close in, each to its own side of you
-    const slot=(c.foes.indexOf(d)%5-2)*0.55, want=1.5, ang=Math.atan2(-dz,-dx)+slot*(dist<3?1:0.3), tx=p.x+Math.cos(ang)*want, tz=p.z+Math.sin(ang)*want;
-    let mx=tx-d.x, mz=tz-d.z; const m=Math.hypot(mx,mz)||1, sp=Math.min(m,speed*PX*(dist>3?1.15:0.8)); mx=mx/m*sp; mz=mz/m*sp;
+    if(d.lunge===1){ d.lt--; d.face=Math.atan2(dx,dz); d.lax=ux; d.laz=uz; if(d.lt<=0){ d.lunge=2; d.lt=sty==='claw'?18:sty==='brute'?6:sty==='spit'?1:11; d.hit=0; } return true; }   // the wind-up
+    if(d.lunge===2){ d.lt--;
+      if(sty==='pounce'){ const sp=2.5*PX, nx=d.x+d.lax*sp, nz=d.z+d.laz*sp; if(walk(nx,d.z)) d.x=nx; if(walk(d.x,nz)) d.z=nz;             // the spring
+        if(dist<0.75&&pl.iframes<=0){ const r=strikeKnight(d,dx,dz,dist,1,dun); d.lunge=3; d.lt=r==='parry'?0:26; if(r==='parry') d.lunge=0; } }
+      else if(sty==='claw'){ const sp=(d.lt%9>5?1.1:0.2)*PX; if(walk(d.x+d.lax*sp,d.z)) d.x+=d.lax*sp; if(walk(d.x,d.z+d.laz*sp)) d.z+=d.laz*sp;   // two rakes, a step into each
+        if((d.lt===13||d.lt===4)){ SFX.play('swing','light'); const inFront=(dx*d.lax+dz*d.laz)/dist>0.3; if(dist<1.25&&inFront&&strikeKnight(d,dx,dz,dist,0.7,dun)==='parry') return true; } }
+      else if(sty==='brute'){ if(d.lt===2){ SFX.play('bossStrike'); shake=Math.max(shake,0.28); dust(d.x+d.lax*0.8,d.z+d.laz*0.8); const hx=d.x+d.lax*0.9-p.x, hz=d.z+d.laz*0.9-p.z;
+          if(Math.hypot(hx,hz)<1.35&&strikeKnight(d,dx,dz,dist,1.8,dun,true)==='parry'){ d.stag=110; return true; } } }
+      else if(sty==='spit'){ const sp=2.3*PX, m=new THREE.Mesh(new THREE.SphereGeometry(0.16,8,6),glow(0x9aff4a)); c.fx.add(m); SFX.play('cast');
+        c.shots.push({x:d.x+ux*0.4,z:d.z+uz*0.4,vx:ux*sp,vz:uz*sp,life:110,m,dmg:(dun?6:3)+d.level*0.7,from:d,spit:true}); d.lt=0; }
+      if(d.lt<=0){ d.lunge=3; d.lt=sty==='brute'?46:sty==='claw'?22:sty==='spit'?30:24; } return true; }
+    if(d.lunge===3){ d.lt--; if(d.lt<=0){ d.lunge=0; d.lungeCd=(sty==='spit'?50:60)+(Math.random()*50|0); } return true; }   // open, catching its breath
+    // close in, each to its own side of you (the spitter hangs back at a throw's length)
+    const slot=(c.foes.indexOf(d)%5-2)*0.55, want=sty==='spit'?4:1.5, ang=Math.atan2(-dz,-dx)+slot*(dist<3?1:0.3), tx=p.x+Math.cos(ang)*want, tz=p.z+Math.sin(ang)*want;
+    let mx=tx-d.x, mz=tz-d.z; const m=Math.hypot(mx,mz)||1, sp=Math.min(m,speed*PX*(dist>3?1.15:0.8)*(sty==='brute'?0.75:1)); mx=mx/m*sp; mz=mz/m*sp;
     if(dist<2.2){ const o=d.t*0.02*(c.foes.indexOf(d)%2?1:-1); mx+=-uz*0.35*PX*Math.sin(o+1); mz+=ux*0.35*PX*Math.sin(o+1); }                  // circling
     if(walk(d.x+mx,d.z)) d.x+=mx; if(walk(d.x,d.z+mz)) d.z+=mz; d.face=Math.atan2(dx,dz);
-    if(dist<2.4&&!(d.lungeCd>0)&&Math.random()<0.04){ d.lunge=1; d.lt=dun?20:18; }
-    if(dist<0.62&&pl.iframes<=0){ if(dun) hurtFromBoss(7+d.level*0.6); else worldContact(d,dx,dz,dist); }
+    const reach=sty==='spit'?(dist>2.2&&dist<6.5):sty==='brute'?dist<2.0:dist<2.4;
+    if(reach&&!(d.lungeCd>0)&&Math.random()<(sty==='spit'?0.03:0.04)){ const W0=ST[sty]||ST.pounce; d.lunge=1; d.lt=dun?W0.windD:W0.wind; d.lt0=d.lt; SFX.play('demonGrowl',d.level+(sty==='brute'?8:0));
+      if(!parryTip&&typeof UI!=='undefined'){ parryTip=true; UI.toast('🛡 It flashes red before it strikes — guard just as the blow lands to PARRY, or roll clear.',2600); } }
+    if(dist<0.62&&pl.iframes<=0&&d.lunge!==3) strikeKnight(d,dx,dz,dist,dun?0.85:1,dun);
     return true; }
   // ── bodies are solid: you can't walk through a foe, and foes don't stack in one another ──
   const rad=d=>(d.boss?0.85:0.42)*Math.max(0.55,VIEWMODE.ps(ENGINE.level));
@@ -8263,7 +8303,7 @@ const COMBAT=(function(){
     if(bossAir(d,dx,dz,dist,T,en,done)){ d.face=Math.atan2(dx,dz); return; }
     if(d.state==='idle'){ d.timer--; if(cfg.wide&&!cfg.bossIdle&&dist>4.5&&d.anchorx!==undefined){ const nx=d.anchorx+dx/dist*0.035, nz=d.anchorz+dz/dist*0.035; if(walk(nx,nz)){ d.anchorx=nx; d.anchorz=nz; } }   /* in the widened sanctum it stalks you across the hall rather than holding the middle */
       const k=cfg.bossIdle?cfg.bossIdle(d):0.02; d.x+=(d.anchorx-d.x)*k; d.z+=(d.anchorz-d.z)*k;
-      if(d.timer<=0){ const mv=d.pat.moves[d.moveIdx%d.pat.moves.length]; d.moveIdx++; const rage=d.hp<d.maxHp*0.5?0.7:1; d.move=mv; d.kind=mv.kind; d.state='telegraph'; d.telegraph=Math.round(mv.telegraph*rage); d.telMax=d.telegraph; } }
+      if(d.timer<=0){ const mv=d.pat.moves[d.moveIdx%d.pat.moves.length]; d.moveIdx++; const rage=d.hp<d.maxHp*0.5?0.7:1; d.move=mv; d.kind=mv.kind; d.state='telegraph'; SFX.play('bossTelegraph'); d.telegraph=Math.round(mv.telegraph*rage); d.telMax=d.telegraph; } }
     else if(d.state==='telegraph'){ d.telegraph--; if(d.kind==='charge'){ d.aimx=dx/dist; d.aimz=dz/dist; }
       if(d.telegraph<=0){ const mv=d.move;
         if(dist<T.novaRange){ const burst=(c._novaN=(c._novaN||0)+1); for(let i=0;i<T.novaShots;i++){ const a=i/T.novaShots*Math.PI*2+d.moveIdx*0.4; shot(d.x,d.z,Math.cos(a)*T.novaSpeed,Math.sin(a)*T.novaSpeed,T.novaLife,true,burst); } }
@@ -8277,11 +8317,11 @@ const COMBAT=(function(){
         else { d.state='idle'; d.timer=50; } } }
     else if(d.state==='charge'){ const cm=cfg.chargeMult?cfg.chargeMult(d):1; d.x+=d.chx*cm; d.z+=d.chz*cm; d.timer--;
       if(d.x<1.5){ d.x=1.5; d.chx*=-1; } if(d.x>cfg.W-1.5){ d.x=cfg.W-1.5; d.chx*=-1; } if(d.z<1.5){ d.z=1.5; d.chz*=-1; } if(d.z>cfg.H-1.5){ d.z=cfg.H-1.5; d.chz*=-1; }
-      if(Math.hypot(p.x-d.x,p.z-d.z)<0.8) hurtFromBoss((7+d.level*1.1)*en); if(d.timer<=0){ d.state='idle'; d.timer=40; done(); } }
+      if(Math.hypot(p.x-d.x,p.z-d.z)<0.8){ if(pl.iframes<=0&&parryNow()){ parry(d,true); return; } hurtFromBoss((7+d.level*1.1)*en); } if(d.timer<=0){ d.state='idle'; d.timer=40; done(); } }
     else if(d.state==='slam'){ d.timer--; if(d.timer<=0&&d.ring===0){ d.ring=1; d.ringR=0; d.ringJumped=false; }
       if(d.ring){ d.ringR+=(d.move.ringSpeed||4)*PX; const rd=Math.hypot(p.x-d.x,p.z-d.z); if(Math.abs(rd-d.ringR)<0.5&&!(d.wave&&cfg.ringSafe&&cfg.ringSafe())) ringHit(d,(5+d.level)*(d.wave?1.6:1)*en); if(cfg.ringTick) cfg.ringTick(d);
         if(d.ringR>(d.move.ringMax||120)*PX){ d.ring=0; d.wave=false; d.state='idle'; d.timer=42; done(); } } }
-    const cr=d.state==='telegraph'?T.hotRadius:0.7; if(dist<cr&&(d.alt||0)<0.8) hurtFromBoss((5+d.level*0.85)*en);
+    const cr=d.state==='telegraph'?T.hotRadius:0.7; if(dist<cr&&(d.alt||0)<0.8){ if(pl.iframes<=0&&parryNow()&&d.state!=='slam'){ parry(d,true); d.face=Math.atan2(dx,dz); return; } hurtFromBoss((5+d.level*0.85)*en); }
     d.face=Math.atan2(dx,dz); }
   function shot(x,z,vx,vz,life,nova,burst,dmg,col){ const c=A(), m=new THREE.Mesh(new THREE.SphereGeometry(nova?0.14:0.18,8,6),glow(col||(nova?0xffd0f0:0xff5a6a))); m.position.set(x,1,z); c.fx.add(m); c.shots.push({x,z,vx,vz,life,nova,burst,m,dmg}); }
   function add(o){ const c=A(), a=Object.assign({alive:true,hurt:0,maxHp:o.hp},o); a.g=o.model||demonModel(a.level,1,false); if(!o.model) a.g.scale.multiplyScalar(0.7); a.g.scale.multiplyScalar(VIEWMODE.ps(ENGINE.level)); ENGINE.level.scene.add(a.g); c.adds.push(a); return a; }
@@ -8297,10 +8337,12 @@ const COMBAT=(function(){
     c.foes.forEach(d=>{ const g=d.g; if(!d.alive&&d.dying<=0){ if(g.parent){ g.parent.remove(g); } return; }
       const gy=lv.ground(d.x,d.z); g.position.set(d.x,gy+(d.boss?(d.alt||0)+(d.alt>0.5?Math.sin(t*3)*0.12:0):Math.abs(Math.sin(t*4+d.t))*0.06+0.05),d.z);
       if(d.face!==undefined){ let r=d.face-g.rotation.y; r=Math.atan2(Math.sin(r),Math.cos(r)); g.rotation.y+=r*Math.min(1,dt*8); }
-      const tell=d.lunge===1, mats=g.userData.mats||[]; mats.forEach(m=>m.emissive&&m.emissive.setHex(d.flash>0?0xffffff:d.hurt>0?0x884444:tell?(Math.floor(t*14)%2?0xaa1010:0x440808):(d.boss&&d.state==='telegraph'?0x441122:0)));
+      const tell=d.lunge===1, late=tell&&d.lt<=6, mats=g.userData.mats||[]; mats.forEach(m=>m.emissive&&m.emissive.setHex(d.flash>0?0xffffff:d.hurt>0?0x884444:late?0xff2a10:tell?(Math.floor(t*14)%2?0xaa1010:0x440808):d.stag>0?(Math.floor(t*10)%2?0x6a5200:0x2a2000):(d.boss&&d.state==='telegraph'?0x441122:d.boss&&d.state==='stunned'?(Math.floor(t*8)%2?0x5a4a00:0):0)));   /* V146: the last beat of a wind-up burns bright — guard now; a reeling demon glints gold */
       if(d.flash>0&&!paused&&hitStop<=0) d.flash--;
-      { const s0=g.userData.s0b||(g.userData.s0b=g.scale.x); if(d.alive&&!d.boss){ d.squash=Math.max(0,(d.squash||0)-dt*6); const sq=d.squash||0, cr=tell?0.12:0; g.scale.set(s0*(1+sq*0.25+cr*0.5),s0*(1-sq*0.3-cr),s0*(1+sq*0.25+cr*0.5)); if(d.lunge===2) g.rotation.x=0.35; else g.rotation.x=d.knock>0?-0.42*(d.knock/8):0; } }   /* a struck foe staggers back */
-      if(d.asleep){ g.rotation.z=1.35; g.position.y=gy+0.12+Math.sin(t*1.3+d.t)*0.015; } else if(d._lay){ g.rotation.z*=0.8; if(Math.abs(g.rotation.z)<0.01){ g.rotation.z=0; d._lay=false; } }
+      { const s0=g.userData.s0b||(g.userData.s0b=g.scale.x); if(d.alive&&!d.boss){ d.squash=Math.max(0,(d.squash||0)-dt*6); const sty=styleOf(d), up=tell?1-d.lt/Math.max(1,d.lt0||18):0, sq=d.squash||0, cr=tell&&sty!=='brute'?0.12:0, gr=sty==='brute'?(tell?up*0.18:d.lunge===2?0.1:0):0; g.scale.set(s0*(1+sq*0.25+cr*0.5),s0*(1-sq*0.3-cr+gr),s0*(1+sq*0.25+cr*0.5));
+          if(sty==='brute'&&tell) g.rotation.x=-0.5*up; else if(sty==='brute'&&d.lunge===2) g.rotation.x=0.55; else if(sty==='claw'&&tell) g.rotation.x=-0.3*up; else if(sty==='claw'&&d.lunge===2){ g.rotation.x=0.25; g.rotation.z=Math.sin(d.lt*0.7)*0.4; } else if(d.lunge===2) g.rotation.x=0.35; else if(d.stag>0) g.rotation.x=-0.3+Math.sin(t*9)*0.12; else g.rotation.x=d.knock>0?-0.42*(d.knock/8):0;
+          if(!(sty==='claw'&&d.lunge===2)&&!d.asleep&&!(d.down>0)&&!d._lay) g.rotation.z=0; if(d.down>0){ g.rotation.z+=(1.35-g.rotation.z)*Math.min(1,dt*10); d._lay=true; } }   /* V146: each kind winds up its own way — the brute heaves up tall, the clawer rears and rakes; knocked down, it lies there */ }   /* a struck foe staggers back */
+      if(d.asleep){ g.rotation.z=1.35; g.position.y=gy+0.12+Math.sin(t*1.3+d.t)*0.015; } else if(d._lay&&!(d.down>0)){ g.rotation.z*=0.8; if(Math.abs(g.rotation.z)<0.01){ g.rotation.z=0; d._lay=false; } }
       if(d.asleep) d._lay=true;
       if(g.w1){ g.w1.rotation.y=Math.sin(t*12+d.t)*0.4; g['w-1'].rotation.y=-Math.sin(t*12+d.t)*0.4; }
       if(g.animate) g.animate(dt,d.state==='charge'||d.walking?'walk':'idle',1);
@@ -12330,7 +12372,7 @@ function riding(world){
     if(!ab){ UI.toast('Your companion must reach its final form to carry you.',1800); return; }
     if(ENGINE.level!==world){ UI.toast('You can only mount in the open world.',1400); return; }
     if(mounted){ const tx=Math.floor(P.x), ty=Math.floor(P.z); if(!world.WK(tx,ty)){ UI.toast('Find solid ground before dismounting!',1600); return; } mounted=false; P.y=world.ground(P.x,P.z); UI.toast('🚶 You dismount.',1000); }
-    else { if(busy()) return; mounted=true; const f=SYS.PETS[S().pet.id].forms[S().pet.form];
+    else { if(busy()) return; mounted=true; if(typeof SFX!=='undefined') SFX.play('mount'); const f=SYS.PETS[S().pet.id].forms[S().pet.form];
       UI.toast(`${f.emoji} You mount your ${f.name}! ${ab==='ride'?'Gallop — double speed.':ab==='fly'?'Soar over trees, water, and cliffs.':'Swim across water.'} Tap ${f.emoji} again to dismount.`,2400); }
     sync(); }
   btn.addEventListener('pointerdown',e=>{ e.preventDefault(); toggle(); });
@@ -16110,6 +16152,653 @@ const POST=(function(){
   window.KLK_POST=api; return api;
 })();
 
+// ── engine/audio2d.js ──
+// ════════════════════════════════════════════════════════════════
+//  AUDIO2D (V145) — the 2D game's own sound, brought over whole: its mixer (music and effects buses, a limiter, the
+//  levels saved in localStorage 'klk_audio' — shared with the 2D game), its recorded themes (two decks each, crossfaded
+//  at the loop so the seam never shows), its chiptune sequencer for the places that have no recording, and every one of its
+//  synthesised effects. Taken from the 2D index.html as it stands; only the file paths (music/) and the exports are new.
+//  sound.js decides what plays where in the 3D world.
+// ════════════════════════════════════════════════════════════════
+const AUDIO2D=(function(){
+  let musicUpdate=null;
+const VOL_STEPS=[0,0.25,0.5,0.75,1];
+let _audioPrefs={sfx:true,music:true,sfxVol:1,musicVol:1};
+try{ const p=JSON.parse(localStorage.getItem('klk_audio')||'{}');
+  if(typeof p.sfx==='boolean')_audioPrefs.sfx=p.sfx;
+  if(typeof p.music==='boolean')_audioPrefs.music=p.music;
+  if(typeof p.sfxVol==='number')_audioPrefs.sfxVol=Math.min(1,Math.max(0,p.sfxVol));
+  if(typeof p.musicVol==='number')_audioPrefs.musicVol=Math.min(1,Math.max(0,p.musicVol));
+  // an older save carried only the booleans: a muted flag means level 0
+  if(typeof p.sfxVol!=='number' && p.sfx===false)_audioPrefs.sfxVol=0;
+  if(typeof p.musicVol!=='number' && p.music===false)_audioPrefs.musicVol=0;
+}catch(e){}
+_audioPrefs.sfx   = _audioPrefs.sfxVol>0;
+_audioPrefs.music = _audioPrefs.musicVol>0;
+const audio = {
+  ctx:null, master:null, musicBus:null, sfxBus:null,
+  sfxOn:_audioPrefs.sfx, musicOn:_audioPrefs.music,
+  sfxVol:_audioPrefs.sfxVol, musicVol:_audioPrefs.musicVol,
+  MUSIC_BUS_BASE:0.85, SFX_BUS_BASE:1.45,   // the mix at 100% — levels scale these
+  track:null, trackId:null, step:0, nextTime:0, stepDur:0.15,
+  lastStep:0, voices:0,
+};
+// ── LUMINAR'S THEME ───────────────────────────────────────────────
+// The open world's song is a real recording (theme-luminar.mp3, sitting beside
+// index.html) rather than a chiptune pattern. It streams progressively and loops.
+// If the file is absent — index.html uploaded on its own, or opened locally —
+// we fall back to the chiptune 'overworld' track so the world is never silent.
+const THEME = { src:'music/theme-luminar.mp3', el:null, dead:false, want:false, vol:0.50 };
+// _legacy themeEl/themeStart/themePause built ONE looping element per track and
+// let the browser wrap it. They now delegate to the two-deck crossfade system
+// below so nothing can create a second, conflicting element for THEME.
+function themeEl(){ return rtEl(THEME); }
+function themeStart(){ return rtStart(THEME); }
+function themePause(){ rtPause(THEME); }
+// ── RECORDED WORLD THEMES ── each world can carry its own recording sitting
+//    beside index.html. A missing file marks that track dead and the world falls
+//    back to what it had before: Luminar -> chiptune, portal worlds -> silence.
+const RTRACKS = {
+  theme:   THEME,                                                                    // Luminar's open world
+  mistral: { src:'music/theme-mistral.mp3',       el:null, dead:false, want:false, vol:0.50 },
+  tabor:   { src:'music/theme-tabor.mp3',         el:null, dead:false, want:false, vol:0.50 },
+  sunfall: { src:'music/last-knight-sunfall.mp3', el:null, dead:false, want:false, vol:0.50 },
+  //  the morning music. Export the unused 47-second section of the overworld theme
+  //  as theme-dawn.mp3 and it plays from the moment the sun is released through the
+  //  walk home; if the file is absent, Sunfall's own theme simply keeps going.
+  //  ── v66 recordings ──
+  //  forest:     the wooded dungeons, the Forest of Disillusionment, the glade
+  //  inn:        every inn hearth (INTERIORS[...].theme==='inn')
+  //  home:       the Homestead, the title screen, and the closing credits
+  //  taborclean: Tabor once it is thawed — the uncleansed loop is deliberately
+  //              short and anxious; this one breathes.
+  forest:     { src:'music/theme-forest.mp3',         el:null, dead:false, want:false, vol:0.50 },
+  inn:        { src:'music/theme-inn.mp3',            el:null, dead:false, want:false, vol:0.46 },
+  home:       { src:'music/theme-homestead.mp3',      el:null, dead:false, want:false, vol:0.50 },
+  taborclean: { src:'music/theme-tabor-cleansed.mp3', el:null, dead:false, want:false, vol:0.50 },
+  uw:         { src:'music/underwater.mp3',          el:null, dead:false, want:false, vol:0.48 },
+  //  ── v81 recordings ──
+  //  dungeon: every chapel dungeon floor EXCEPT the forest-flagged ones (those already
+  //           carry `forest`) and except an active boss fight (still the 'boss' chiptune).
+  //  chapel:  a cleansed town's sanctuary AND the un-cleansed chapel interior alike —
+  //           both carry INTERIORS[id].theme==='sanctuary'.
+  dungeon:    { src:'music/last-knight---dungeon-theme.mp3', el:null, dead:false, want:false, vol:0.50 },
+  chapel:     { src:'music/last-knight-chapel-theme.mp3',    el:null, dead:false, want:false, vol:0.50 },
+};
+// ── CROSSFADE LOOPING ──────────────────────────────────────────────────
+// A track's tail rarely sits at the same level as its head, so a plain
+// loop=true wrap is audible — and MP3 adds a small frame-boundary gap on top.
+// Each recording therefore runs TWO decks: as the lead nears its end the other
+// starts from zero and the pair equal-power crossfade over XFADE seconds. The
+// seam becomes a musical overlap instead of a cut.
+const XFADE = 1.6;                     // seconds of overlap at the wrap
+function rtDecks(t){
+  if(t.dead) return null;
+  if(!t.decks){
+    try{
+      const d=[null,null];
+      for(let i=0;i<2;i++){
+        const a=new Audio();
+        a.loop=false;                  // WE own the wrap now, not the browser
+        a.preload='auto';
+        a.addEventListener('error', ()=>{ t.dead=true; t.decks=null; });
+        a.src=t.src;
+        d[i]=a;
+      }
+      t.decks=d; t.cur=0; t.xfading=false; t.gain=[1,0];
+    }catch(e){ t.dead=true; t.decks=null; return null; }
+    rtApplyVol(t);
+  }
+  return t.decks;
+}
+// the one place a deck's .volume is ever written: track vol x device level x
+// this deck's crossfade gain
+function rtApplyVol(t){
+  if(!t.decks || !t.gain) return;
+  const full=t.vol*audio.musicVol*(t.fk===undefined?1:t.fk);
+  for(let i=0;i<2;i++){ const a=t.decks[i];
+    if(a) a.volume=Math.min(1,Math.max(0, full*t.gain[i])); }
+}
+function rtEl(t){ const d=rtDecks(t); return d ? d[t.cur] : null; }   // the lead deck
+function rtStart(t){
+  if(t.dead || !audio.musicOn) return false;
+  const d=rtDecks(t); if(!d) return false;
+  t.want=true;
+  rtApplyVol(t);
+  const lead=d[t.cur];
+  // iOS refuses playback without a gesture; the rejection is harmless and the
+  // next input path calls audioUnlock(), which retries.
+  if(lead.paused){ try{ const p=lead.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){} }
+  return true;
+}
+function rtPause(t){
+  t.want=false; t.xfading=false;
+  if(!t.decks) return;
+  for(let i=0;i<2;i++){ const a=t.decks[i]; if(a&&!a.paused){ try{ a.pause(); }catch(e){} } }
+  t.gain=[t.cur===0?1:0, t.cur===1?1:0];   // leave it ready to resume cleanly
+  rtApplyVol(t);
+}
+function rtPauseAll(){ for(const k in RTRACKS) rtPause(RTRACKS[k]); }
+// one frame of crossfade bookkeeping for a playing track
+function rtTick(t){
+  if(t.dead || !t.want || !t.decks || !t.gain) return;
+  const lead=t.decks[t.cur], other=t.decks[1-t.cur];
+  if(!lead) return;
+  const dur=lead.duration;
+  if(!isFinite(dur) || dur<=0) return;            // metadata not in yet
+  const remain=dur-lead.currentTime;
+  // the tab slept through the whole overlap: wrap hard rather than fall silent
+  if(lead.ended && !t.xfading){
+    try{ lead.currentTime=0; const p=lead.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+    return;
+  }
+  if(!t.xfading && remain<=XFADE && remain>0){
+    t.xfading=true;
+    try{ other.currentTime=0; }catch(e){}
+    t.gain[1-t.cur]=0; rtApplyVol(t);
+    try{ const p=other.play(); if(p&&p.catch) p.catch(()=>{}); }catch(e){}
+  }
+  if(t.xfading){
+    let p=1-Math.max(0,remain)/XFADE; p=Math.min(1,Math.max(0,p));
+    t.gain[t.cur]=Math.cos(p*Math.PI/2);          // equal power: no dip mid-fade
+    t.gain[1-t.cur]=Math.sin(p*Math.PI/2);
+    rtApplyVol(t);
+    if(remain<=0.02 || lead.ended){               // the handover is done
+      try{ lead.pause(); lead.currentTime=0; }catch(e){}
+      t.cur=1-t.cur; t.xfading=false;
+      t.gain=[t.cur===0?1:0, t.cur===1?1:0];
+      rtApplyVol(t);
+    }
+  }
+}
+function rtTickAll(){ for(const k in RTRACKS){ const t=RTRACKS[k]; if(t.want) rtTick(t); } }
+// ── THE MIXER ──────────────────────────────────────────────────────────
+// One entry point per bus. Applies the level to the Web Audio gain AND to
+// every live <audio> recording, keeps the legacy on/off booleans in sync,
+// and writes the choice to localStorage.
+function audioSavePrefs(){
+  try{ localStorage.setItem('klk_audio', JSON.stringify({
+    sfx:audio.sfxOn, music:audio.musicOn, sfxVol:audio.sfxVol, musicVol:audio.musicVol })); }catch(e){}
+}
+function setMusicVol(v){
+  audio.musicVol=Math.min(1,Math.max(0,v));
+  audio.musicOn=audio.musicVol>0;
+  if(audio.musicBus) audio.musicBus.gain.value=audio.MUSIC_BUS_BASE*audio.musicVol;
+  for(const k in RTRACKS) rtApplyVol(RTRACKS[k]);
+  if(!audio.musicOn){ musicStop(); rtPauseAll(); }
+  else if(typeof musicUpdate==='function') musicUpdate();   // silence -> sound again, straight away
+  audioSavePrefs();
+}
+function setSfxVol(v){
+  audio.sfxVol=Math.min(1,Math.max(0,v));
+  audio.sfxOn=audio.sfxVol>0;
+  if(audio.sfxBus) audio.sfxBus.gain.value=audio.SFX_BUS_BASE*audio.sfxVol;
+  audioSavePrefs();
+}
+// step to the next level, wrapping past 100% back to off
+function stepVol(which){
+  const cur = which==='music' ? audio.musicVol : audio.sfxVol;
+  let i = VOL_STEPS.findIndex(s=>Math.abs(s-cur)<0.001);
+  i = (i<0 ? VOL_STEPS.length-1 : i+1) % VOL_STEPS.length;
+  (which==='music' ? setMusicVol : setSfxVol)(VOL_STEPS[i]);
+  return VOL_STEPS[i];
+}
+// a five-cell bar for the menu readout
+function volBar(v){
+  const n=Math.round(v*4);
+  let s='';
+  for(let i=0;i<4;i++) s += i<n ? '█' : '░';
+  return s;
+}
+function A(){   // lazily build the graph; returns a running context or null
+  if(audio.ctx){ if(audio.ctx.state==='suspended') audio.ctx.resume(); return audio.ctx.state==='running'?audio.ctx:null; }
+  try{
+    const C=window.AudioContext||window.webkitAudioContext; if(!C) return null;
+    const c=new C();
+    // a limiter on the master: lets the mix run hot without overlapping sounds clipping
+    const comp=c.createDynamicsCompressor();
+    comp.threshold.value=-3; comp.knee.value=8; comp.ratio.value=6;
+    comp.attack.value=0.003; comp.release.value=0.14;
+    comp.connect(c.destination);
+    audio.master=c.createGain(); audio.master.gain.value=0.9; audio.master.connect(comp);
+    audio.musicBus=c.createGain(); audio.musicBus.gain.value=audio.MUSIC_BUS_BASE*audio.musicVol; audio.musicBus.connect(audio.master);
+    audio.sfxBus=c.createGain();   audio.sfxBus.gain.value=audio.SFX_BUS_BASE*audio.sfxVol;       audio.sfxBus.connect(audio.master);
+    audio.ctx=c; if(c.state==='suspended') c.resume();
+    return c.state==='running'?c:null;
+  }catch(e){ audio.ctx=null; return null; }
+}
+function audioUnlock(){ A(); for(const k in RTRACKS){ if(RTRACKS[k].want) rtStart(RTRACKS[k]); } }   // called from every input path (iOS needs a gesture)
+
+// ── tiny synth helpers ────────────────────────────────────────────
+function hz(n){ return 440*Math.pow(2,(n-69)/12); }               // midi → frequency
+function noiseBuf(c, secs, decay){
+  const len=Math.max(1,Math.floor(c.sampleRate*secs)), b=c.createBuffer(1,len,c.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<len;i++){ const e=decay?Math.pow(1-i/len,decay):1; d[i]=(Math.random()*2-1)*e; }
+  return b;
+}
+// one shaped oscillator note
+function tone(bus, o){
+  const c=A(); if(!c) return;
+  const t0=c.currentTime+(o.delay||0);
+  const osc=c.createOscillator(); osc.type=o.type||'square';
+  osc.frequency.setValueAtTime(o.f0, t0);
+  if(o.f1 && o.f1!==o.f0) osc.frequency.exponentialRampToValueAtTime(Math.max(1,o.f1), t0+o.dur);
+  const g=c.createGain();
+  const peak=o.gain||0.2, atk=o.attack||0.004;
+  g.gain.setValueAtTime(0.0001,t0);
+  g.gain.exponentialRampToValueAtTime(peak, t0+atk);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+o.dur);
+  let node=osc;
+  if(o.filter){ const f=c.createBiquadFilter(); f.type=o.filter; f.frequency.setValueAtTime(o.fc||1200,t0);
+    if(o.fc1) f.frequency.exponentialRampToValueAtTime(Math.max(1,o.fc1), t0+o.dur);
+    if(o.q!==undefined) f.Q.value=o.q; node.connect(f); node=f; }
+  node.connect(g); g.connect(bus||audio.sfxBus);
+  osc.start(t0); osc.stop(t0+o.dur+0.02);
+}
+// one shaped noise burst
+function noise(bus, o){
+  const c=A(); if(!c) return;
+  const t0=c.currentTime+(o.delay||0);
+  const src=c.createBufferSource(); src.buffer=noiseBuf(c, o.dur, o.decay===undefined?1.6:o.decay);
+  let node=src;
+  if(o.filter!==null){ const f=c.createBiquadFilter(); f.type=o.filter||'bandpass';
+    f.frequency.setValueAtTime(o.fc||900,t0);
+    if(o.fc1) f.frequency.exponentialRampToValueAtTime(Math.max(1,o.fc1), t0+o.dur);
+    f.Q.value=o.q===undefined?1.0:o.q; src.connect(f); node=f; }
+  const g=c.createGain(); g.gain.setValueAtTime(o.gain||0.2,t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0+o.dur);
+  node.connect(g); g.connect(bus||audio.sfxBus);
+  src.start(t0);
+}
+const sfxAllowed=()=>audio.sfxOn && A();
+
+// ── COMBAT ────────────────────────────────────────────────────────
+function sfxSwing(type){ if(!sfxAllowed()) return;      // the blade cuts only AIR — a swish
+  const heavy=type==='heavy';
+  noise(null,{ dur:heavy?0.24:0.16, fc:heavy?900:1600, fc1:heavy?2200:3400, q:0.8, gain:heavy?0.3:0.22, decay:1.1 });
+  noise(null,{ dur:heavy?0.18:0.12, fc:heavy?400:700, fc1:heavy?900:1400, q:0.9, gain:heavy?0.14:0.1, decay:1.4, delay:0.01 });
+}
+function sfxHit(crit){ if(!sfxAllowed()) return;        // steel MEETS something — the ting
+  // the metal rings on contact: inharmonic bell partials (crits ring higher & longer)
+  const f=crit?1864:1568;
+  tone(null,{ type:'triangle', f0:f,      f1:f,      dur:crit?0.26:0.16, gain:crit?0.3:0.24, attack:0.001 });
+  tone(null,{ type:'sine',     f0:f*1.83, f1:f*1.83, dur:crit?0.18:0.11, gain:crit?0.17:0.13, attack:0.001 });
+  tone(null,{ type:'sine',     f0:f*2.71, f1:f*2.71, dur:0.08,           gain:0.06, attack:0.001 });
+  // …with a small thud of the blow landing beneath it
+  noise(null,{ dur:0.08, fc:1200, fc1:300, q:0.7, gain:crit?0.2:0.14, decay:2.4 });
+  tone(null,{ type:'square', f0:crit?220:170, f1:crit?70:60, dur:0.09, gain:0.1, filter:'lowpass', fc:900 });
+}
+function sfxBlock(){ if(!sfxAllowed()) return;          // a bright shield clang
+  tone(null,{ type:'square', f0:1500, f1:900, dur:0.16, gain:0.26, filter:'bandpass', fc:2200, q:3 });
+  tone(null,{ type:'triangle', f0:2400, f1:1500, dur:0.22, gain:0.18, delay:0.008 });
+  noise(null,{ dur:0.09, fc:3400, fc1:1400, q:2.4, gain:0.26, decay:2 });
+}
+function sfxDodge(){ if(!sfxAllowed()) return;          // a quick cloth-and-air swish
+  noise(null,{ dur:0.2, fc:700, fc1:2600, q:0.6, gain:0.4675, decay:0.7 });
+}
+function sfxHurt(){ if(!sfxAllowed()) return;           // the knight takes one
+  tone(null,{ type:'sawtooth', f0:340, f1:110, dur:0.22, gain:0.208, filter:'lowpass', fc:1400, fc1:400 });
+  noise(null,{ dur:0.12, fc:600, q:0.8, gain:0.13, decay:2 });
+}
+// ── DEMONS ────────────────────────────────────────────────────────
+function sfxDemonGrowl(level){ if(!sfxAllowed()) return;
+  const deep=Math.min(1,(level||3)/22);                 // bigger demons growl lower
+  const base=150-deep*55;
+  tone(null,{ type:'sawtooth', f0:base*1.5, f1:base*0.7, dur:0.42, gain:0.085, filter:'lowpass', fc:700, fc1:220, q:4 });
+  tone(null,{ type:'square', f0:base*0.52, f1:base*0.4, dur:0.46, gain:0.0595, filter:'lowpass', fc:400 });
+  noise(null,{ dur:0.4, fc:320, fc1:130, q:2.2, gain:0.0425, decay:1.1 });
+}
+function sfxDemonDie(){ if(!sfxAllowed()) return;       // a shriek collapsing inward
+  tone(null,{ type:'sawtooth', f0:900, f1:70, dur:0.5, gain:0.208, filter:'lowpass', fc:2600, fc1:300 });
+  noise(null,{ dur:0.42, fc:1800, fc1:180, q:1.1, gain:0.192, decay:1.5, delay:0.03 });
+}
+function sfxBossRoar(){ if(!sfxAllowed()) return;       // the guardian wakes
+  tone(null,{ type:'sawtooth', f0:110, f1:52, dur:1.1, gain:0.25, filter:'lowpass', fc:900, fc1:180, q:6 });
+  tone(null,{ type:'square', f0:74, f1:38, dur:1.2, gain:0.175, filter:'lowpass', fc:420 });
+  noise(null,{ dur:1.0, fc:420, fc1:110, q:1.6, gain:0.1375, decay:0.9 });
+  tone(null,{ type:'sawtooth', f0:220, f1:104, dur:0.9, gain:0.0875, filter:'lowpass', fc:1200, fc1:300, delay:0.05 });
+}
+function sfxBossTelegraph(){ if(!sfxAllowed()) return;  // it plants itself — a rising warning
+  tone(null,{ type:'square', f0:180, f1:640, dur:0.4, gain:0.2, filter:'bandpass', fc:700, q:1.4 });
+  tone(null,{ type:'triangle', f0:90, f1:320, dur:0.42, gain:0.1 });
+}
+function sfxBossStrike(){ if(!sfxAllowed()) return;     // and unleashes
+  noise(null,{ dur:0.34, fc:2200, fc1:220, q:0.8, gain:0.312, decay:1.5 });
+  tone(null,{ type:'sawtooth', f0:190, f1:48, dur:0.34, gain:0.228, filter:'lowpass', fc:1000, fc1:200 });
+}
+// ── MOVEMENT ──────────────────────────────────────────────────────
+let _stepFlip=0;
+function sfxStep(){ if(!sfxAllowed()) return;           // a soft boot on earth
+  _stepFlip^=1;
+  noise(null,{ dur:0.075, fc:_stepFlip?380:300, fc1:150, q:0.8, gain:0.112, decay:2.6 });
+  tone(null,{ type:'sine', f0:_stepFlip?95:80, f1:52, dur:0.07, gain:0.053 });
+}
+function sfxStairStep(){ if(!sfxAllowed()) return;      // boot on cut stone — brighter, harder
+  noise(null,{ dur:0.09, fc:1500, fc1:520, q:1.0, gain:0.168, decay:2.4 });
+  tone(null,{ type:'triangle', f0:300, f1:150, dur:0.08, gain:0.059 });
+}
+function sfxHoof(){ if(!sfxAllowed()) return;           // a hoof-fall at the gallop
+  _stepFlip^=1;
+  noise(null,{ dur:0.09, fc:_stepFlip?520:430, fc1:170, q:1.2, gain:0.206, decay:3 });
+  tone(null,{ type:'sine', f0:_stepFlip?150:120, f1:62, dur:0.09, gain:0.098 });
+}
+function sfxWagon(){ if(!sfxAllowed()) return;          // axle creak + a wheel over ruts
+  tone(null,{ type:'sawtooth', f0:210+Math.random()*70, f1:150, dur:0.3, gain:0.150, filter:'bandpass', fc:420, q:1.6 });
+  noise(null,{ dur:0.16, fc:240, fc1:120, q:0.7, gain:0.102, decay:1.6 });
+}
+function sfxMount(){ if(!sfxAllowed()) return;          // a whinny as you swing up
+  tone(null,{ type:'sawtooth', f0:520, f1:880, dur:0.14, gain:0.336, filter:'bandpass', fc:1200, q:1.4 });
+  tone(null,{ type:'sawtooth', f0:880, f1:420, dur:0.36, gain:0.352, filter:'bandpass', fc:1000, q:1.3, delay:0.13 });
+  noise(null,{ dur:0.3, fc:1100, fc1:500, q:0.9, gain:0.128, decay:1.2, delay:0.13 });
+}
+// ── WORLD ─────────────────────────────────────────────────────────
+function sfxDoor(open){ if(!sfxAllowed()) return;       // hinges, then the latch
+  if(open){
+    tone(null,{ type:'sawtooth', f0:150, f1:260, dur:0.34, gain:0.375, filter:'bandpass', fc:420, q:1.5 });
+    noise(null,{ dur:0.3, fc:500, fc1:900, q:0.9, gain:0.135, decay:1 });
+    noise(null,{ dur:0.1, fc:220, fc1:90, q:0.6, gain:0.45, decay:2.4, delay:0.3 });
+  } else {
+    tone(null,{ type:'sawtooth', f0:260, f1:140, dur:0.26, gain:0.36, filter:'bandpass', fc:400, q:1.5 });
+    noise(null,{ dur:0.12, fc:200, fc1:80, q:0.6, gain:0.465, decay:2.4, delay:0.24 });
+  }
+}
+function sfxBleat(){ if(!sfxAllowed()) return;          // a soft pastoral sheep bleat
+  tone(null,{ type:'sawtooth', f0:420, f1:360, dur:0.16, gain:0.05, filter:'bandpass', fc:900, q:3 });
+  tone(null,{ type:'sawtooth', f0:360, f1:300, dur:0.22, gain:0.045, delay:0.14, filter:'bandpass', fc:800, q:3 });
+}
+function sfxPortal(){ if(!sfxAllowed()) return;         // a rising otherworldly shimmer + airy whoosh
+  [0,0.08,0.16,0.24].forEach((d,i)=>tone(null,{ type:'sine', f0:320+i*140, f1:900+i*220, dur:0.5, gain:0.12, delay:d, filter:'bandpass', fc:1200, fc1:2600, q:2 }));
+  tone(null,{ type:'triangle', f0:180, f1:70, dur:0.7, gain:0.14, delay:0.1, filter:'lowpass', fc:900 });
+  noise(null,{ dur:0.7, fc:600, fc1:3200, q:0.7, gain:0.1, decay:0.7 });
+  noise(null,{ dur:0.4, fc:2400, fc1:400, q:1.2, gain:0.07, decay:1.2, delay:0.3 });
+}
+function sfxClick(){ if(!sfxAllowed()) return;          // the gentle tick of text advancing
+  tone(null,{ type:'square', f0:1250, f1:1250, dur:0.03, gain:0.0704, attack:0.001, filter:'bandpass', fc:1400, q:0.8 });
+}
+function sfxMenu(up){ if(!sfxAllowed()) return;
+  tone(null,{ type:'square', f0:up?680:480, dur:0.05, gain:0.09, filter:'lowpass', fc:2400 });
+}
+function sfxPotion(){ if(!sfxAllowed()) return;         // cork, glug, and warmth returning
+  noise(null,{ dur:0.05, fc:2000, q:3, gain:0.297, decay:3 });
+  for(let i=0;i<3;i++) tone(null,{ type:'sine', f0:300+i*40, f1:200+i*30, dur:0.09, gain:0.231, delay:0.06+i*0.07, filter:'lowpass', fc:1200 });
+  [72,76,79].forEach((n,i)=>tone(null,{ type:'triangle', f0:hz(n), dur:0.22, gain:0.198, delay:0.26+i*0.05 }));
+}
+function sfxCoin(){ if(!sfxAllowed()) return;
+  tone(null,{ type:'square', f0:hz(88), dur:0.07, gain:0.168 });
+  tone(null,{ type:'square', f0:hz(93), dur:0.16, gain:0.168, delay:0.06 });
+}
+function sfxLevelUp(){ if(!sfxAllowed()) return;        // the knight grows
+  [72,76,79,84].forEach((n,i)=>{
+    tone(null,{ type:'square', f0:hz(n), dur:0.16, gain:0.225, delay:i*0.08 });
+    tone(null,{ type:'triangle', f0:hz(n-12), dur:0.2, gain:0.15, delay:i*0.08 });
+  });
+  tone(null,{ type:'square', f0:hz(88), dur:0.5, gain:0.225, delay:0.34 });
+}
+// ── THE FLOOR FALLS QUIET ── the chest appears on the plaza.
+// _legacy: this moment borrowed sfxLevelUp(). It read as a reward, but it read
+//   as the WRONG reward — the same fanfare as gaining a level, in a game where
+//   you gain levels constantly. This is its own sound: a rising perfect fifth
+//   answered an octave up, over a held low drone, so it lands as ANNOUNCEMENT
+//   rather than congratulation. Deliberately slower than sfxLevelUp (0.11s
+//   between notes vs 0.08) and on triangle rather than square, so the two are
+//   not mistaken for one another even through a phone speaker.
+function sfxRevealChest(){ if(!sfxAllowed()) return;
+  [67,74,79].forEach((n,i)=>{                                  // G, D, G — a fifth, then the octave
+    tone(null,{ type:'triangle', f0:hz(n),    dur:0.22, gain:0.20, delay:i*0.11 });
+    tone(null,{ type:'sine',     f0:hz(n+12), dur:0.18, gain:0.08, delay:i*0.11 });
+  });
+  tone(null,{ type:'triangle', f0:hz(86), dur:0.62, gain:0.20, delay:0.34 });   // the answer, up high
+  tone(null,{ type:'sine',     f0:hz(43), dur:0.85, gain:0.13, delay:0.00 });   // the drone beneath
+}
+// ── FISHING ───────────────────────────────────────────────────────
+function sfxCast(){ if(!sfxAllowed()) return;           // the line whips out and plops
+  noise(null,{ dur:0.22, fc:1200, fc1:3000, q:1.6, gain:0.144, decay:0.8 });
+  tone(null,{ type:'sine', f0:700, f1:220, dur:0.1, gain:0.176, delay:0.22, filter:'lowpass', fc:1600 });
+  noise(null,{ dur:0.16, fc:900, fc1:300, q:1.2, gain:0.112, decay:1.4, delay:0.22 });
+}
+function sfxBite(){ if(!sfxAllowed()) return;           // something takes it — look sharp
+  tone(null,{ type:'square', f0:hz(81), dur:0.07, gain:0.216 });
+  tone(null,{ type:'square', f0:hz(88), dur:0.1, gain:0.216, delay:0.08 });
+  noise(null,{ dur:0.1, fc:800, fc1:1800, q:2, gain:0.144, decay:1.4 });
+}
+function sfxCatch(){ if(!sfxAllowed()) return;          // it breaks the surface
+  noise(null,{ dur:0.3, fc:600, fc1:2400, q:1, gain:0.434, decay:0.9 });
+  [76,79,84].forEach((n,i)=>tone(null,{ type:'square', f0:hz(n), dur:0.18, gain:0.248, delay:0.14+i*0.07 }));
+}
+function sfxFishAway(){ if(!sfxAllowed()) return;       // ...and it's gone
+  tone(null,{ type:'triangle', f0:hz(72), f1:hz(60), dur:0.3, gain:0.147 });
+  noise(null,{ dur:0.18, fc:700, fc1:260, q:1.2, gain:0.126, decay:1.4 });
+}
+
+// ── MUSIC: a tiny chiptune sequencer ──────────────────────────────
+//  Patterns are 32 sixteenth-steps. lead = pulse melody, bass = triangle,
+//  drum = noise ('k' kick · 's' snare · 'h' hat · '.' rest). Scheduled a
+//  quarter-second ahead off the game loop, so no stray timers.
+const _=null;
+const MUSIC = {
+  // the open road: a wandering minstrel's lyre — plucked broken chords, no drums,
+  // A minor → F → C → G, mixed low so it stays behind the game
+  overworld:{ bpm:92, vol:0.55, pluck:true, wave:'triangle',
+    lead:[57,_,60,_,64,_,69,_, 53,_,57,_,60,_,65,_, 60,_,64,_,67,_,72,_, 55,_,59,_,62,_,67,64],
+    bass:[45,_,_,_,52,_,_,_, 41,_,_,_,48,_,_,_, 48,_,_,_,55,_,_,_, 43,_,_,_,50,_,_,_],
+    drum:'................................' },
+  // town: the same air, lighter on its feet
+  town:{ bpm:112, lead:[79,_,81,_,83,_,81,_, 79,_,76,_,74,_,76,_, 77,_,79,_,81,_,79,_, 77,_,74,_,72,_,_,_],
+    bass:[48,_,55,_,48,_,55,_, 53,_,48,_,53,_,48,_, 50,_,57,_,50,_,57,_, 55,_,43,_,55,_,_,_],
+    drum:'k.h.s.h.k.h.s.h.k.h.s.h.k.h.s.hh', wave:'square' },
+  // the crypts: slow, minor, a held breath
+  dungeon:{ bpm:76, lead:[69,_,_,_,71,_,_,_, 72,_,_,_,_,_,_,_, 68,_,_,_,69,_,_,_, _,_,_,_,_,_,_,_],
+    bass:[33,_,_,_,_,_,_,_, 33,_,_,_,_,_,_,_, 32,_,_,_,_,_,_,_, 32,_,_,_,31,_,_,_],
+    drum:'k.......k.......k.......k......s', wave:'triangle' },
+  // under the leaves: modal, curious, wandering
+  forest:{ bpm:88, lead:[64,_,67,_,71,_,_,_, 69,_,67,_,64,_,_,_, 62,_,64,_,67,_,_,_, 66,_,_,_,_,_,_,_],
+    bass:[40,_,_,_,47,_,_,_, 45,_,_,_,40,_,_,_, 38,_,_,_,45,_,_,_, 43,_,_,_,_,_,_,_],
+    drum:'k...h...k...h...k...h...k...h.h.', wave:'triangle' },
+  // the Great Sea: a rolling swell
+  sail:{ bpm:96, lead:[74,_,_,78,_,_,81,_, _,_,78,_,74,_,_,_, 76,_,_,79,_,_,83,_, _,_,79,_,76,_,_,_],
+    bass:[38,_,_,45,_,_,50,_, 45,_,_,38,_,_,_,_, 40,_,_,47,_,_,52,_, 47,_,_,40,_,_,_,_],
+    drum:'k..h..h.k..h..h.k..h..h.k..h..h.', wave:'square' },
+  // a guardian stirs: driving, chromatic, no rest
+  boss:{ bpm:140, lead:[69,69,_,72,_,71,_,69, 68,_,69,_,_,_,_,_, 69,69,_,74,_,72,_,71, 69,_,68,_,69,_,_,_],
+    bass:[33,33,_,33,_,33,_,33, 32,32,_,32,_,32,_,32, 33,33,_,33,_,33,_,33, 31,31,_,31,_,32,_,32],
+    drum:'k.h.s.h.k.h.s.h.k.h.s.h.k.h.sshh', wave:'square' },
+  // the Destroyer: the same engine, lower and meaner
+  finale:{ bpm:152, lead:[68,68,_,71,_,70,_,68, 67,_,68,_,63,_,_,_, 68,68,_,73,_,71,_,70, 68,_,67,_,68,_,_,_],
+    bass:[32,32,_,32,_,32,_,32, 31,31,_,31,_,31,_,31, 32,32,_,32,_,32,_,32, 30,30,_,30,_,31,_,31],
+    drum:'ksh.s.h.ksh.s.h.ksh.s.h.ksh.sshh', wave:'sawtooth' },
+};
+function musicPlay(id){
+  if(audio.trackId===id) return;
+  audio.trackId=id; audio.track=MUSIC[id]||null; audio.step=0;
+  const c=A(); if(!c || !audio.track) return;
+  audio.stepDur = 60/audio.track.bpm/4;                 // sixteenth notes
+  audio.nextTime = c.currentTime + 0.06;
+}
+function musicStop(){ audio.trackId=null; audio.track=null; }
+function musicNote(t, n, wave, gain, dur, bus, pluck){
+  const c=audio.ctx;
+  const osc=c.createOscillator(); osc.type=wave;
+  osc.frequency.setValueAtTime(hz(n), t);
+  const g=c.createGain();
+  g.gain.setValueAtTime(0.0001,t);
+  g.gain.exponentialRampToValueAtTime(gain, t+(pluck?0.002:0.012));   // a pluck bites instantly
+  g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+  osc.connect(g); g.connect(bus);
+  osc.start(t); osc.stop(t+dur+0.02);
+  if(pluck){ // a faint octave shimmer, like the paired course of a lyre string
+    const o2=c.createOscillator(); o2.type='triangle'; o2.frequency.setValueAtTime(hz(n+12), t);
+    const g2=c.createGain(); g2.gain.setValueAtTime(0.0001,t);
+    g2.gain.exponentialRampToValueAtTime(gain*0.25, t+0.002);
+    g2.gain.exponentialRampToValueAtTime(0.0001, t+dur*0.6);
+    o2.connect(g2); g2.connect(bus); o2.start(t); o2.stop(t+dur);
+  }
+}
+function musicDrum(t, ch){
+  const c=audio.ctx, bus=audio.musicBus;
+  if(ch==='k'){ const o=c.createOscillator(); o.type='sine';
+    o.frequency.setValueAtTime(150,t); o.frequency.exponentialRampToValueAtTime(45,t+0.11);
+    const g=c.createGain(); g.gain.setValueAtTime(0.34,t); g.gain.exponentialRampToValueAtTime(0.0001,t+0.13);
+    o.connect(g); g.connect(bus); o.start(t); o.stop(t+0.15); return; }
+  const dur = ch==='s'?0.13:0.035;
+  const src=c.createBufferSource(); src.buffer=noiseBuf(c,dur,ch==='s'?2:3);
+  const f=c.createBiquadFilter(); f.type=ch==='s'?'bandpass':'highpass';
+  f.frequency.value= ch==='s'?1500:7000; f.Q.value=ch==='s'?0.9:0.7;
+  const g=c.createGain(); g.gain.setValueAtTime(ch==='s'?0.2:0.075,t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  src.connect(f); f.connect(g); g.connect(bus); src.start(t);
+}
+function musicPump(){   // called once per frame from loop(); schedules ~250ms ahead
+  const c=audio.ctx;
+  if(!c || !audio.track || !audio.musicOn || c.state!=='running') return;
+  // if the tab slept (phone lock), nextTime is far in the past — resync rather
+  // than burst-playing every missed note at once on refocus
+  if(audio.nextTime < c.currentTime) audio.nextTime = c.currentTime + 0.05;
+  const tr=audio.track, bus=audio.musicBus;
+  while(audio.nextTime < c.currentTime + 0.25){
+    const s=audio.step % 32, t=audio.nextTime;
+    const v=tr.vol||1;
+    const ln=tr.lead[s]; if(ln!==null && ln!==undefined) musicNote(t, ln, tr.wave, 0.13*v, audio.stepDur*(tr.pluck?2.2:3.2), bus, tr.pluck);
+    const bn=tr.bass[s]; if(bn!==null && bn!==undefined) musicNote(t, bn, 'triangle', 0.22*v, audio.stepDur*3.6, bus, tr.pluck);
+    const dc=tr.drum[s]; if(dc && dc!=='.') musicDrum(t, dc);
+    audio.nextTime += audio.stepDur; audio.step++;
+  }
+}
+
+  return { audio, RTRACKS, rtStart, rtPause, rtPauseAll, rtTick, rtTickAll, rtApplyVol, setMusicVol, setSfxVol, stepVol, volBar, A, audioUnlock, hz, noiseBuf, tone, noise, musicPlay, musicStop, musicPump, MUSIC, sfx:{swing:sfxSwing, hit:sfxHit, block:sfxBlock, dodge:sfxDodge, hurt:sfxHurt, demonGrowl:sfxDemonGrowl, demonDie:sfxDemonDie, bossRoar:sfxBossRoar, bossTelegraph:sfxBossTelegraph, bossStrike:sfxBossStrike, step:sfxStep, stairStep:sfxStairStep, hoof:sfxHoof, wagon:sfxWagon, mount:sfxMount, door:sfxDoor, bleat:sfxBleat, portal:sfxPortal, click:sfxClick, menu:sfxMenu, potion:sfxPotion, coin:sfxCoin, levelUp:sfxLevelUp, revealChest:sfxRevealChest, cast:sfxCast, bite:sfxBite, catch:sfxCatch, fishAway:sfxFishAway},
+    set onUpdate(f){ musicUpdate=f; } };
+})();
+
+// ── engine/sound.js ──
+// ════════════════════════════════════════════════════════════════
+//  SOUND (V145) — the 2D game's music and effects (audio2d.js), set to the 3D world:
+//   · MUSIC by place — Luminar's theme out on the realm (the Homestead's own song on your land), the inn hearth, the chapel
+//     song in a sanctuary, the dungeon recording on a chapel's floors (the boss chiptune when its guardian is up and near),
+//     the forest recording in the woods, each portal world's own (Tabor breathes out once it's thawed), the Deep's
+//     underwater song, the sail tune on the water, the finale at Abaddon's throne; the town tune in other rooms. Moving
+//     between places the recordings fade across one another (a recording you leave keeps its place, and picks up where it
+//     left off when you come back).
+//   · EFFECTS on what happens — every swing, blow, guard, roll, the knight hurt, a demon's growl as it winds up, its fall,
+//     the boss's roar; footsteps by the ground underfoot (earth, stone, planks, sand, snow, shallows); hooves; doors and
+//     portals; coins and levelling up; potions; the fish biting; the menus and the turning of a dialogue page.
+//   · AMBIENCE, made on the fly: wind (stronger high up, on the wing and in storms), rain and thunder, the sea on a shore,
+//     birds by day, crickets at night, a crackling hearth in an inn or by a camp's embers.
+//  The levels are the 2D game's own (☰ → Sound; saved in 'klk_audio', shared with the 2D game). SFX.play(name, ...args)
+// ════════════════════════════════════════════════════════════════
+const SFX=(function(){
+  const AU=AUDIO2D, au=AU.audio, RT=AU.RTRACKS, X=AU.sfx;
+  const lv=()=>ENGINE.level, id=()=>(lv()&&lv().id)||'', S=()=>GAME.S||{};
+  /* V146: the parry — steel turned on steel, ringing high and clean */
+  X.parry=()=>{ if(!au.sfxOn||!AU.A()) return; [2637,3951,5274].forEach((f,i)=>AU.tone(null,{type:i?'sine':'triangle',f0:f,f1:f*0.98,dur:0.45-i*0.12,gain:[0.26,0.12,0.06][i],attack:0.001})); AU.noise(null,{dur:0.06,fc:4200,q:0.8,gain:0.18,decay:2.5}); AU.tone(null,{type:'square',f0:180,f1:60,dur:0.1,gain:0.1,filter:'lowpass',fc:900}); };
+  function play(n,...a){ try{ const f=X[n]; if(f) f(...a); }catch(e){} }
+  // ── where am I: the music for this place ──
+  function bossNear(){ const L=lv(), c=L&&L.combat; if(!c||!c.foes) return false; const P=ENGINE.P;
+    return c.foes.some(d=>d.alive&&d.boss&&!d.asleep&&Math.hypot(d.x-P.x,d.z-P.z)<16); }
+  const RIDE=()=>{ const L=lv(); return L&&L.riding; };
+  function musicFor(){ const i=id(), s=S();
+    if(i==='finale') return 'finale';
+    if(/^deep:/.test(i)) return 'rt:uw';
+    if(bossNear()) return 'boss';
+    if(/^(forest|glade|monkcave|robbycave)$/.test(i)) return 'rt:forest';
+    if(/^chapel\d+:/.test(i)||/^mistral:chapel/.test(i)||/^sunfall:lamp/.test(i)) return 'rt:dungeon';
+    if(/^sanct\d/.test(i)||/^sunfall:cath/.test(i)) return 'rt:chapel';
+    if(/^in:/.test(i)){ if(/inn/.test(i)) return 'rt:inn'; if(/^in:home_/.test(i)) return 'rt:home'; return 'town'; }
+    if(i==='surf'||i==='regatta') return 'sail';
+    if(i==='pw:mistral') return 'rt:mistral';
+    if(i==='pw:tabor') return s.tabor&&s.tabor.thawed?'rt:taborclean':'rt:tabor';
+    if(i==='pw:sunfall'||/^sunfall:/.test(i)) return 'rt:sunfall';
+    if(/^(keep|lists|petring|school:|marioHut|mistral:throne|sunfall:house)/.test(i)) return 'town';
+    if(i==='world'){ if(s.boating) return 'sail'; const L=lv(), P=ENGINE.P; if(L.region&&L.region(Math.floor(P.x),Math.floor(P.z))==='homestead') return 'rt:home'; return 'rt:theme'; }
+    return 'rt:theme'; }
+  // ── playing it: the recordings fade across one another; the chiptunes start and stop on the beat ──
+  let want=null, lastT=performance.now();
+  function musicTick(dt){ want=musicFor(); const rk=want&&want.slice(0,3)==='rt:'?want.slice(3):null, ok=rk&&RT[rk]&&!RT[rk].dead&&au.musicOn;
+    for(const k in RT){ const t=RT[k]; if(t.dead) continue; const on=ok&&k===rk; if(t.fk===undefined) t.fk=0;
+      if(on){ if(!t.want) AU.rtStart(t); t.fk=Math.min(1,t.fk+dt/1.4); }
+      else if(t.want){ t.fk=Math.max(0,t.fk-dt/1.1); if(t.fk<=0) AU.rtPause(t); }
+      if(t.want){ AU.rtApplyVol(t); AU.rtTick(t); } }
+    /* no recording (or the file's missing): the 2D game's chiptune for it (Luminar's theme falls back to the overworld tune) */
+    let seq=ok?null:(rk?({theme:'overworld',home:'overworld',dungeon:'dungeon',forest:'forest',inn:'town',chapel:'town'}[rk]||null):want);
+    if(!au.musicOn) seq=null;
+    if(seq!==au.trackId){ if(seq) AU.musicPlay(seq); else AU.musicStop(); }
+    AU.musicPump(); }
+  AU.onUpdate=()=>{ for(const k in RT){ const t=RT[k]; if(t.want&&!au.musicOn) AU.rtPause(t); } };
+  // ── a sound for the ground underfoot ──
+  const tn=(o)=>AU.tone(null,o), nz=(o)=>AU.noise(null,o);
+  let flip=0;
+  function step(surf,soft){ if(!au.sfxOn||!AU.A()) return; flip^=1; const k=soft?0.55:1;
+    if(surf==='stone') { nz({dur:0.08,fc:flip?1500:1300,fc1:520,q:1.0,gain:0.12*k,decay:2.4}); tn({type:'triangle',f0:flip?290:260,f1:140,dur:0.07,gain:0.04*k}); }
+    else if(surf==='wood'){ nz({dur:0.09,fc:flip?700:600,fc1:240,q:1.4,gain:0.12*k,decay:2.2}); tn({type:'sine',f0:flip?150:130,f1:70,dur:0.1,gain:0.07*k}); }
+    else if(surf==='sand'){ nz({dur:0.13,fc:2600,fc1:900,q:0.6,gain:0.07*k,decay:1.4}); }
+    else if(surf==='snow'){ nz({dur:0.16,fc:flip?900:760,fc1:300,q:0.9,gain:0.1*k,decay:1.2}); nz({dur:0.06,fc:3200,q:2,gain:0.025*k,decay:2,delay:0.04}); }
+    else if(surf==='water'){ nz({dur:0.22,fc:1800,fc1:600,q:0.7,gain:0.1*k,decay:1.3}); nz({dur:0.1,fc:3600,q:1.2,gain:0.04*k,decay:2,delay:0.05}); }
+    else { nz({dur:0.075,fc:flip?380:300,fc1:150,q:0.8,gain:0.1*k,decay:2.6}); tn({type:'sine',f0:flip?95:80,f1:52,dur:0.07,gain:0.045*k}); nz({dur:0.06,fc:2400,q:1.5,gain:0.016*k,decay:2.5}); } }
+  const WATER=new Set([3,20,21,29]), ROAD=new Set([2,12]);
+  function surface(){ const i=id(), L=lv(), P=ENGINE.P;
+    if(/^in:/.test(i)) return /keep|forge|guard/.test(i)?'stone':'wood';
+    if(/^(chapel|sanct|keep|deep|mistral:|sunfall:|finale|monkcave|robbycave|school)/.test(i)) return 'stone';
+    if(!L||!L.T) return 'earth'; const tx=Math.floor(P.x), tz=Math.floor(P.z), t=L.T(tx,tz);
+    if(WATER.has(t)) return 'water'; if(ROAD.has(t)) return 'stone';
+    if(L.desert&&L.desert(tx,tz)) return 'sand'; if(i==='pw:tabor'&&!(S().tabor&&S().tabor.thawed)) return 'snow';
+    if(L.weather&&L.weather.climate&&L.weather.climate(P.x,P.z)==='snow'&&L.trek&&L.trek.box){ const b=L.trek.box; if(P.x>=b[0]&&P.x<=b[2]&&P.z>=b[1]&&P.z<=b[3]) return 'snow'; }
+    return 'earth'; }
+  // ── the ambience: wind, rain, the sea, birds, crickets, a hearth — all made here, nothing to load ──
+  let amb=null;
+  function loopSrc(c,buf,type,fc,q){ const s=c.createBufferSource(); s.buffer=buf; s.loop=true; const f=c.createBiquadFilter(); f.type=type; f.frequency.value=fc; f.Q.value=q||0.7; const g=c.createGain(); g.gain.value=0; s.connect(f); f.connect(g); g.connect(amb.bus); s.start(); return {s,f,g}; }
+  function buildAmb(){ const c=AU.A(); if(!c||amb) return amb; amb={bus:c.createGain()}; amb.bus.gain.value=1; amb.bus.connect(au.sfxBus);
+    const n=c.sampleRate*4; const brown=c.createBuffer(1,n,c.sampleRate), white=c.createBuffer(1,n,c.sampleRate), fire=c.createBuffer(1,n,c.sampleRate);
+    { const d=brown.getChannelData(0); let l=0; for(let i=0;i<n;i++){ l=(l+0.02*(Math.random()*2-1))/1.02; d[i]=l*3.2; } }
+    { const d=white.getChannelData(0); for(let i=0;i<n;i++) d[i]=Math.random()*2-1; }
+    { const d=fire.getChannelData(0); let lp=0; for(let i=0;i<n;i++){ lp=lp*0.985+(Math.random()*2-1)*0.015; d[i]=lp*1.6; if(Math.random()<0.0009){ const L=40+Math.random()*260, a=0.25+Math.random()*0.5; for(let j=0;j<L&&i+j<n;j++) d[i+j]+=(Math.random()*2-1)*a*Math.exp(-j/(L*0.25)); } } }
+    amb.wind=loopSrc(c,brown,'lowpass',520,0.6); amb.rain=loopSrc(c,white,'bandpass',3200,0.35); amb.sea=loopSrc(c,brown,'lowpass',900,0.5); amb.fire=loopSrc(c,fire,'lowpass',2600,0.7);
+    amb.t={wind:0,rain:0,sea:0,fire:0}; amb.nextBird=2; amb.nextCrick=1; amb.nextThunder=12; amb.seaN=0; amb.scan=0; return amb; }
+  function ease(node,v){ const c=au.ctx; node.g.gain.setTargetAtTime(v,c.currentTime,0.6); }
+  function chirp(){ const b=2200+Math.random()*1800, n=2+(Math.random()*4|0); for(let i=0;i<n;i++) tn({type:'sine',f0:b*(1+Math.random()*0.1),f1:b*(1.25+Math.random()*0.35),dur:0.06+Math.random()*0.05,gain:0.018+Math.random()*0.012,delay:i*(0.09+Math.random()*0.05),attack:0.006}); }
+  function crickets(){ for(let i=0;i<3;i++) tn({type:'sine',f0:4300,f1:4300,dur:0.03,gain:0.008,delay:i*0.05,attack:0.003}); }
+  function thunder(){ nz({dur:2.6,fc:220,fc1:60,q:0.5,gain:0.34,decay:1.0,filter:'lowpass',delay:0.3+Math.random()*1.4}); nz({dur:0.5,fc:900,fc1:200,q:0.6,gain:0.12,decay:2,filter:'lowpass'}); }
+  function ambTick(dt){ if(!au.sfxOn){ if(amb) for(const k of ['wind','rain','sea','fire']) ease(amb[k],0); return; } if(!buildAmb()) return;
+    const i=id(), L=lv(), P=ENGINE.P, s=S(); const out=i==='world'||/^pw:/.test(i)||/^road:/.test(i)||i==='northreach'||i==='glade'||i==='forest'||i==='surf'||i==='regatta';
+    const wx=L&&L.weather&&L.weather.now, kind=wx?wx.kind:null, amt=wx?(wx.amount||0):0, R=RIDE(), flying=R&&R.mounted&&P.y>(L.ground?L.ground(P.x,P.z):0)+1.5;
+    const night=(typeof DAYNIGHT!=='undefined'&&DAYNIGHT.state)?(DAYNIGHT.state().night||0):0;
+    /* the sea: how much water lies round you (looked at a few times a second) */
+    amb.scan-=dt; if(amb.scan<=0){ amb.scan=0.4; let w=0; if(out&&L&&L.T){ const tx=Math.floor(P.x), tz=Math.floor(P.z); for(let dz=-7;dz<=7;dz+=2) for(let dx=-7;dx<=7;dx+=2) if(WATER.has(L.T(tx+dx,tz+dz))) w++; } amb.seaN=w/64; }
+    const high=Math.max(0,Math.min(1,((P.y||0)-3)/10));
+    ease(amb.wind,out?0.035+high*0.07+(flying?0.12:0)+((kind==='storm'||kind==='snow'||kind==='sand')?0.09*amt:0):(/^(chapel|sanct)/.test(i)?0.012:0));
+    amb.wind.f.frequency.setTargetAtTime(380+high*500+(flying?600:0)+Math.sin(performance.now()/2700)*120,au.ctx.currentTime,0.8);
+    ease(amb.rain,out&&(kind==='rain'||kind==='storm')?0.11*amt:0);
+    const sw=0.6+0.4*Math.sin(performance.now()/1000*0.7)*Math.sin(performance.now()/1000*0.23+1);
+    ease(amb.sea,out?Math.min(0.16,(s.boating?0.12:0)+amb.seaN*0.22)*sw:0);
+    const camp=L&&L.sneak&&L.sneak.camps?L.sneak.camps.some(c=>Math.hypot(c.x-P.x,c.z-P.z)<7):false;
+    ease(amb.fire,/^in:.*inn/.test(i)?0.07:camp?0.09:0);
+    if(out&&!kind&&night<0.4&&!/^pw:sunfall/.test(i)){ amb.nextBird-=dt; if(amb.nextBird<=0){ amb.nextBird=2+Math.random()*6; chirp(); } }
+    if(out&&night>0.6&&kind!=='rain'&&kind!=='storm'&&kind!=='snow'){ amb.nextCrick-=dt; if(amb.nextCrick<=0){ amb.nextCrick=0.5+Math.random()*0.9; crickets(); } }
+    if(out&&kind==='storm'&&amt>0.5){ amb.nextThunder-=dt; if(amb.nextThunder<=0){ amb.nextThunder=9+Math.random()*16; thunder(); } } }
+  // ── footsteps and hooves: a step each stride's worth of ground covered ──
+  let px=null, pz=null, acc=0, lastLv=null;
+  function feetTick(dt){ const P=ENGINE.P, L=lv(); if(!P||!L) return; if(L!==lastLv||px===null){ lastLv=L; px=P.x; pz=P.z; acc=0; return; }
+    const d=Math.hypot(P.x-px,P.z-pz); px=P.x; pz=P.z; if(d>1.2||dt<=0) return; const v=d/dt, R=RIDE();
+    if(ENGINE.airH>0.05||GAME.S.boating||/^deep:/.test(id())) { acc=0; return; }
+    if(R&&R.mounted){ acc+=d; if(acc>1.25){ acc=0; play('hoof'); } return; }
+    const stride=0.42+Math.min(0.5,v*0.08); acc+=d; if(acc>=stride){ acc=0; step(surface(),!!ENGINE.K.crouch); } }
+  // ── the knight's world, watched for what it says out loud ──
+  let gold=null, level=null;
+  function watch(){ const s=S(); if(gold!==null&&s.gold>gold) play('coin'); if(level!==null&&s.level>level) play('levelUp'); gold=s.gold; level=s.level; }
+  function hookUI(){
+    const toast=UI.toast; UI.toast=function(m,...a){ try{ const t=String(m); if(/A bite!/.test(t)) play('bite'); else if(/You caught/.test(t)) play('catch'); else if(/got away|slipped (off|free)/i.test(t)) play('fishAway'); else if(/chest|strongbox/i.test(t)) play('revealChest'); }catch(e){} return toast.call(this,m,...a); };
+    const sheet=UI.sheet; UI.sheet=function(...a){ play('menu',true); return sheet.apply(this,a); };
+    const go=ENGINE.go; ENGINE.go=function(to,...a){ try{ const from=id(); if(to!==from&&!ENGINE.busy){ if(/^pw:/.test(to)||/^pw:/.test(from)&&to==='world') play('portal'); else play('door',true); } }catch(e){} return go.call(this,to,...a); };
+    const say=document.getElementById('say'); if(say) say.addEventListener('click',()=>play('blip'),true);
+    if(typeof GAME!=='undefined'&&GAME.save){ } }
+  // ── the first touch or key opens the sound (a browser rule) ──
+  const unlock=()=>{ AU.audioUnlock(); };
+  ['pointerdown','keydown','touchstart'].forEach(k=>addEventListener(k,unlock,{capture:true,passive:true}));
+  let hooked=false;
+  function frame(){ const t=performance.now(), dt=Math.min(0.1,(t-lastT)/1000); lastT=t;
+    try{ if(typeof ENGINE!=='undefined'&&ENGINE.level&&typeof GAME!=='undefined'&&GAME.S){ if(!hooked){ hooked=true; hookUI(); } musicTick(dt); if(au.ctx&&au.ctx.state==='running'){ ambTick(dt); feetTick(dt); watch(); } } }catch(e){ if(!frame._e){ frame._e=1; console.warn('sound',e); } }
+    requestAnimationFrame(frame); }
+  requestAnimationFrame(frame);
+  return { play, step, get music(){ return want; }, setMusic:AU.setMusicVol, setSfx:AU.setSfxVol, stepVol:AU.stepVol, volBar:AU.volBar, get musicVol(){ return au.musicVol; }, get sfxVol(){ return au.sfxVol; } };
+})();
+
 // ── cities/luminar.js ──
 // ════════════════════════════════════════════════════════════════
 //  LUMINAR — the whole realm, Hearthvale to Hellgate. Wiring only: which door opens which room,
@@ -16208,7 +16897,7 @@ const POST=(function(){
   if(typeof PASTIME_DATA!=='undefined') world._sailing=sailing(world,PASTIME_DATA);    // your boat on the open sea, the southern isles, the realm's secrets
   // ⛰ Mount Tabor in Luminar thaws when the mountain behind its gate does (_ttThawAt: the overworld follows taborProgress.thawed)
   { let was=null; world.anim.push(()=>{ const now=!!(S().tabor&&S().tabor.thawed); if(was!==null&&now!==was) world.retile(SX(72),SY(252),SX(118),SY(299)); was=now; }); }
-  const RIDING=riding(world);   // your companion's final form carries you
+  const RIDING=riding(world); world.riding=RIDING;   // your companion's final form carries you
   const DEEP=(typeof PASTIME_DATA!=='undefined'&&PASTIME_DATA.deep)?deepSystem(world,PASTIME_DATA.deep,RIDING):null;   // 🌊 the deep: the Sea Dragon dives at five eddies
   minimap(world,()=>{ const out=[], s=S(), c=world.combat, h=s.hunt;   // the round window on the realm, top right
     if(c) c.foes.forEach(d=>{ if(!d.alive||typeof d.zi!=='number'||d.boss) return;
