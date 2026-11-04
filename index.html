@@ -2318,14 +2318,16 @@ function buildKnight(){
         if(K.air>0.02) K._airT=(K._airT||0)+dt; else K._airT=0;
         if(K._st!==K._st0){ if(K._st==='drawn'&&K._st0==='sheathed'&&!K._act) K._act={n:'draw',t:0,dur:0.5,w:0.6,arms:false}; K._st0=K._st; }
         const A0=K._act;
-        if(A0) ov={n:A0.n,u:A0.t/A0.dur,w:A0.w};
-        else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.85}:{n:sk===0?'atk3':sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8};   /* a quick cut takes less of the clip's lunge */
+        if(A0) ov={n:A0.n,u:A0.t/A0.dur,w:A0.w,fade:10};
+        else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.85}:{n:sk===0?'atk3':sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8,fade:16};   /* a quick cut takes less of the clip's lunge */
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
         else if(K._st==='sheathing') ov={n:'sheath',u:Math.min(1,K._shT||0),w:0.7};
         else if(K._bw>0.01) ov={n:'block',t:t,w:K._bw};
         const S1=typeof GAME!=='undefined'&&GAME.S, hurt=!K.npc&&S1&&S1.maxHp&&S1.hp<S1.maxHp*0.25, calm=K._st==='sheathed';
         if(K.npc&&!ov&&(K._talk||0)>0.2) ov={n:'agree',t:t+(K._tph||0),w:0.45*K._talk};   /* the folk nod along as they talk */
-        RG.step(dt,a,rf,veff/K.hipY,ov,K.npc?{idle:'idleCalm',walk:'walk',run:'walk'}:K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
+        /* V142: walk or run by how fast he truly goes (in hip heights a second), eased — not the hand-keyed gait's own blend */
+        const vH=veff/K.hipY; K._rfM=(K._rfM||0)+(smooth01((vH-2.9)/0.6)-(K._rfM||0))*Math.min(1,dt*5);
+        RG.step(dt,a,K._rfM,vH,ov,K.npc?{idle:'idleCalm',walk:'walk',run:'walk'}:K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
         K._rArm=!!(A0&&A0.arms!==false);
         const kq=(o,out)=>{ out.identity(); for(let q=o.parent;q&&q!==K;q=q.parent) out.premultiply(q.quaternion); return out; };
         const turn=(o,n)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,w); };
@@ -2759,25 +2761,38 @@ const RIG=(function(){
     //  it stands on the ground
     const hipH=PB.Hips.y, nat=NAT;
     const Q={}, P={};
-    function measure(n,stance){ const ac=A[n]; if(!ac) return 1; for(const k in A) A[k].weight=0; ac.weight=1; let zmin=1e9, zmax=-1e9;
-      for(let i=0;i<=24;i++){ ac.time=dur[n]*i/24; mixer.update(0); root.updateMatrixWorld(true); B.LeftFoot.getWorldPosition(_m); zmin=Math.min(zmin,_m.z); zmax=Math.max(zmax,_m.z); }
-      return ((zmax-zmin)/(stance*dur[n]))/hipH; }
+    // how fast each gait really travels (hip heights a second), and where in its cycle the left foot is furthest forward — so
+    //  every gait is played from the same moment of the stride, and blending a walk into a run never crosses the feet
+    const PH0=NAT.__ph||(NAT.__ph={});
+    function measure(n,stance){ const ac=A[n]; if(!ac) return 1; for(const k in A) A[k].weight=0; ac.weight=1; let zmin=1e9, zmax=-1e9, at=0;
+      for(let i=0;i<=24;i++){ ac.time=dur[n]*i/24; mixer.update(0); root.updateMatrixWorld(true); B.LeftFoot.getWorldPosition(_m); const z=_m.z-B.Hips.getWorldPosition(_s).z; if(z<zmin) zmin=z; if(z>zmax){ zmax=z; at=i/24; } }
+      PH0[n]=at; ac.weight=0; return ((zmax-zmin)/(stance*dur[n]))/hipH; }
     const stanceOf=n=>/run/i.test(n)?0.36:0.6; const natOf=n=>nat[n]!==undefined?nat[n]:(nat[n]=A[n]?measure(n,stanceOf(n)):1);
     natOf('walk'); if(A.run) natOf('run');
-    let ph=Math.random(), tIdle=Math.random()*5;
+    let ph=Math.random(), tIdle=Math.random()*5, cpsS=0.8;
+    // V142: every clip's weight eases toward where it's wanted (a crossfade, never a cut), and the weights always add up to
+    //  one (short of one, the mixer would drift toward the T-pose); a clip fading out keeps the time it had
+    const W={}, TT={};
     const rig={ root, bones:B, actions:A, nat, hipH, dur,
       addClip(name,clip){ addClip(name,clip); delete nat[name]; },
       // blend and pose: move 0..1 (standing → moving), run 0..1 (walk → run), v the ground speed in hip heights a second
-      // ov: a clip laid over the gaits — {n:name, t:its time (seconds, or u 0..1 of it), w:how much} — a blow, the guard, a fall
-      //  set: which clips stand for the idle, the walk and the run just now ({idle,walk,run} — sword drawn or sheathed, hurt)
+      // ov: a clip laid over the gaits — {n:name, t:its time (seconds, or u 0..1 of it), w:how much, fade:per second} — a blow, the guard, a fall
+      //  set: which clips stand for the idle, the walk and the run just now ({idle,walk,run,idleAt} — sword drawn or sheathed, hurt)
       step(dt,move,run,v,ov,set){ const S0=set||{}, nI=A[S0.idle]?S0.idle:A.idle?'idle':'idleCalm', nW=A[S0.walk]?S0.walk:'walk', nR=A[S0.run]?S0.run:A.run?'run':nW;
-        const ow=ov&&A[ov.n]?Math.max(0,Math.min(1,ov.w)):0, keep=1-ow; const wW=move*(1-run)*keep, wR=move*run*keep, wI=(1-move)*keep;
-        const vW=natOf(nW), vR=natOf(nR), cpsW=(vW>0?v/vW:1)/dur[nW], cpsR=(vR>0?v/vR:1)/dur[nR], cps=Math.max(0.35,Math.min(2.2,cpsW*(1-run)+cpsR*run));
-        if(move>0.02) ph=(ph+cps*dt)%1; tIdle=(tIdle+dt)%dur[nI];
-        for(const k in A) A[k].weight=0;
-        if(nW===nR){ A[nW].weight=wW+wR; A[nW].time=ph*dur[nW]; } else { A[nW].weight=wW; A[nW].time=ph*dur[nW]; A[nR].weight=wR; A[nR].time=ph*dur[nR]; }
-        A[nI].weight+=wI; if(nI!==nW&&nI!==nR) A[nI].time=tIdle; if(S0.idleAt!==undefined&&wI>0.5&&nI===nW) A[nI].time=S0.idleAt*dur[nI];
-        if(ow>0){ const o=A[ov.n]; o.weight+=ow; o.time=ov.u!==undefined?Math.max(0,Math.min(0.999,ov.u))*dur[ov.n]:(ov.t%dur[ov.n]); }
+        const ow=ov&&A[ov.n]?Math.max(0,Math.min(1,ov.w)):0, keep=1-ow;
+        const vW=natOf(nW), vR=natOf(nR), cpsW=(vW>0?v/vW:1)/dur[nW], cpsR=(vR>0?v/vR:1)/dur[nR];
+        // the cadence: what the ground asks for, within what looks like a stride (past it the feet give a little), and eased
+        const cpsT=Math.max(0.45/dur[nW],Math.min(1.5/((1-run)*dur[nW]+run*dur[nR]),cpsW*(1-run)+cpsR*run)); cpsS+=(cpsT-cpsS)*Math.min(1,dt*4);
+        if(move>0.02) ph=(ph+cpsS*dt)%1; tIdle+=dt;
+        const tg={}; const add=(n,w)=>{ if(A[n]&&w>0) tg[n]=(tg[n]||0)+w; };
+        add(nW,move*(1-run)*keep); add(nR,move*run*keep); add(nI,(1-move)*keep); if(ow>0) add(ov.n,ow);
+        const rate=dt*(ov&&ov.fade?ov.fade:9); let sum=0;
+        for(const k in A){ const w0=W[k]||0, w1=w0+((tg[k]||0)-w0)*Math.min(1,rate); W[k]=w1<0.002&&!tg[k]?0:w1; sum+=W[k]; }
+        for(const k in A){ const a2=A[k], w=sum>0?W[k]/sum:0; a2.weight=w; if(w<=0) continue;
+          if(ov&&k===ov.n&&ow>0) TT[k]=ov.u!==undefined?Math.max(0,Math.min(0.999,ov.u))*dur[k]:(ov.t%dur[k]);
+          else if(k===nW||k===nR) TT[k]=(((ph+(PH0[k]||0))%1+1)%1)*dur[k];
+          else if(k===nI) TT[k]=S0.idleAt!==undefined&&nI===nW?S0.idleAt*dur[k]:tIdle%dur[k];
+          a2.time=TT[k]!==undefined?TT[k]:0; }
         mixer.update(0); root.updateMatrixWorld(true); grab(Q,P); },
       q(n,out){ return out.copy(Q[n]).multiply(_inv.copy(QB[n]).invert()); },   // its turn from the bind pose, in the rig's space
       p(n){ return P[n]; }, pb(n){ return PB[n]; } };
@@ -4035,7 +4050,7 @@ const ENGINE=(function(){
   //  and crouch is a toggle (X / ✚→ / the 🦶 button): a slow creep, low, that the demons are slower to notice. Either one turns
   //  the other off; mounting, swimming and the rest keep their own pace. Remembered for the session.
   const PACE={ sprint:false, crouch:false,
-    mult(Lv){ if(Lv&&(Lv.interior||Lv.close)) return this.crouch?0.5:this.sprint?1:0.8; return this.crouch?0.34:this.sprint?1:0.52; },
+    mult(Lv){ if(Lv&&(Lv.interior||Lv.close)) return this.crouch?0.45:this.sprint?1:0.66; return this.crouch?0.27:this.sprint?1:0.38; },
     toggle(k){ if(k==='sprint'){ this.sprint=!this.sprint; if(this.sprint) this.crouch=false; } else { this.crouch=!this.crouch; if(this.crouch) this.sprint=false; }
       K.crouch=this.crouch; if(typeof UI!=='undefined') UI.toast(this.crouch?'🦶 Crouching — creeping low':this.sprint?'🏃 Sprinting':(k==='crouch'?'🚶 Standing — walking':'🚶 Walking'),1100); this.paint(); },
     paint(){ const s=document.getElementById('sprintBtn'), c=document.getElementById('crouchBtn'); if(s) s.classList.toggle('on',this.sprint); if(c) c.classList.toggle('on',this.crouch); } };
@@ -12319,13 +12334,23 @@ function riding(world){
   world.canMove=(fx,fz,tx,tz)=>{ const bx=Math.floor(tx), by=Math.floor(tz), ab=mounted&&ability();
     if(ab&&!busy()){ if(!inB(bx,by)) return false; if(world.barrierAt(bx,by)>=0) return false; const t=world.T(bx,by);
       if(world.WK(bx,by)) return baseMove(fx,fz,tx,tz)||true;                      // no heights for a rider
-      return ab==='fly'?FLY_PASS.has(t):ab==='swim'?SWIM_PASS.has(t):false; }
+      return ab==='fly'?true:ab==='swim'?SWIM_PASS.has(t):false; }   /* V142: on the wing, over roofs, walls and crags alike (the story's barriers still hold) */
     if(S().livery==='robby'&&!busy()&&inB(bx,by)&&(bx!==Math.floor(fx)||by!==Math.floor(fz))){ const t=world.T(bx,by);
       if((t===39||t===40||FLY_PASS.has(t))&&world.barrierAt(bx,by)<0){ const hf=world.E(Math.floor(fx),Math.floor(fz)), ht=world.E(bx,by); if(ht<=hf||t===33||t===32) return true; } }
     return baseMove(fx,fz,tx,tz); };
   world.mounted=()=>mounted;   // (on foot, the grand view slows his pace to his size; mounted it doesn't)
   world.speedMult=()=>{ const b=baseSpeed?baseSpeed():1, ab=mounted&&ability(); return ab?b*(ab==='ride'?2:1.4):b; };
-  world.ground=(x,z)=>{ const g=baseGround(x,z), ab=mounted&&ability(); if(ab==='fly') return Math.max(g,-0.1)+0.15; if(ab==='swim'&&SWIM_PASS.has(world.T(Math.floor(x),Math.floor(z)))) return -0.2; return g; };
+  // V142: FLIGHT ABOVE IT ALL — the height of whatever stands at a spot (the camera's own map of what's solid: roofs, towers,
+  //  walls, trees, crags, the watchtowers), and the Dove keeps above the highest of it under her and a little ahead, with a
+  //  clear margin over the canopy — climbing quickly to clear a ridge, settling slowly back down after it
+  const topAt=(x,z)=>{ const g=Math.max(baseGround(x,z),-0.1), r=world.roll?world.roll(x,z)||0:0; let y=g; if(world.camBlock) while(y<g+22&&world.camBlock(x,z,y-r)) y+=0.5;
+    if(world.T(Math.floor(x),Math.floor(z))===1) y=Math.max(y,g+4.8);   /* the crowns of the new trees stand well above the trunk the camera map knows */
+    return y; };
+  let flyY=null;
+  function flyTarget(){ const sx=Math.sin(P.face), sz=Math.cos(P.face); let top=-1e9;
+    for(const [f,l] of [[0,0],[1.5,0],[3,0],[4.5,0],[6.5,0],[9,0],[1.5,1.5],[1.5,-1.5],[0,1.5],[0,-1.5],[4,2],[4,-2]]){ const x=P.x+sx*f+sz*l, z=P.z+sz*f-sx*l; top=Math.max(top,topAt(x,z)); }
+    return Math.max(top+1.6,Math.max(baseGround(P.x,P.z),-0.1)+3.5); }
+  world.ground=(x,z)=>{ const g=baseGround(x,z), ab=mounted&&ability(); if(ab==='fly'){ if(flyY!==null&&Math.hypot(x-P.x,z-P.z)<2.5) return flyY; return Math.max(g,-0.1)+0.15; } if(ab==='swim'&&SWIM_PASS.has(world.T(Math.floor(x),Math.floor(z)))) return -0.2; return g; };
   // ── the steed under the knight ──
   function build(){ const p=S().pet; if(!p) return; const key=p.id+':'+p.form+(typeof PETLOOKS!=='undefined'?PETLOOKS.key(S()):''); if(model&&modelKey===key) return; if(model) world.scene.remove(model);
     const L=STEED_LOOK[p.id]||STEED_LOOK.faithful; model=horseModel({kind:L.kind,coat:L.coat,mane:L.mane}); if(typeof petLookApply!=='undefined') petLookApply(model,PETLOOKS.shown(),S().mountSkin,L.kind); model.visible=false; world.scene.add(model); modelKey=key; }
@@ -12335,7 +12360,8 @@ function riding(world){
     // V99: a smoothed speed and the rate of turn (for the lean into a bend), and the rider coupled to the steed's own back
     spS+=(raw-spS)*Math.min(1,dt*5); let dy=P.face-lf; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); lf=P.face; yawR+=((dy/Math.max(dt,1e-3))-yawR)*Math.min(1,dt*6);
     const bank=Math.max(-0.35,Math.min(0.35,-yawR*0.12*Math.min(1,spS*2.5)));
-    air=ab==='fly'?0.9+Math.sin(t*2)*0.12:0; model.visible=true; const sc=0.85*vs; model.scale.setScalar(sc);
+    if(ab==='fly'){ const tg=flyTarget(); if(flyY===null) flyY=Math.max(baseGround(P.x,P.z),-0.1)+0.15; flyY+=(tg-flyY)*Math.min(1,dt*(tg>flyY?4.5:1.1)); P.y=flyY; } else flyY=null;
+    air=ab==='fly'?0.15+Math.sin(t*2)*0.12:0; model.visible=true; const sc=0.85*vs; model.scale.setScalar(sc);
     model.position.set(P.x,(world.ground(P.x,P.z)-(ab==='fly'?0.15:0))+air*vs,P.z); model.rotation.y=P.face; model.userData.gallop(t,spS,ab==='fly'?1:0,bank);
     const body=model.userData.body, seat=model.userData.seat||1.12, by=body?body.position.y:0, bp=body?body.rotation.x:0, bz=body?body.rotation.z:0;
     lagY+=(by-lagY)*Math.min(1,dt*9);   // the rider's seat follows the back with a little give
