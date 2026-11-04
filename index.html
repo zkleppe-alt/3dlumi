@@ -1724,6 +1724,7 @@ const KEYS=(function(){
     {id:'left',label:'◀ Left',canon:'a',def:['a','arrowleft'],grp:'Move'}, {id:'right',label:'▶ Right',canon:'d',def:['d','arrowright'],grp:'Move'},
     {id:'turnl',label:'↺ Turn the view left',canon:'turnl',def:[',',null],grp:'Move'}, {id:'turnr',label:'↻ Turn the view right',canon:'turnr',def:['.',null],grp:'Move'},
     {id:'jump',label:'⤴ Jump',canon:'jump',def:['space',null],grp:'Move'},
+    {id:'sprint',label:'🏃 Sprint on / off',canon:'sprint',def:['v',null],grp:'Move'}, {id:'crouch',label:'🦶 Crouch on / off (creep, unseen)',canon:'crouch',def:['x',null],grp:'Move'},
     {id:'dodge',label:'💨 Dodge roll (the way you are moving)',canon:'dodge',def:['alt','c'],grp:'Fight'},
     {id:'act',label:'Ⓐ Talk · open · next line',canon:'e',def:['e','enter'],grp:'Act'}, {id:'strike',label:'⚔ Swing (or left click)',canon:' ',def:['j',null],grp:'Fight'},
     {id:'guard',label:'🛡 Guard, hold (or right click)',canon:'shift',def:['shift','k'],grp:'Fight'}, {id:'lock',label:'🎯 Lock on / let go (or middle click)',canon:'f',def:['q','f'],grp:'Fight'}, {id:'potion',label:'🧪 Drink a potion',canon:'p',def:['1','h'],grp:'Fight'},
@@ -2323,7 +2324,7 @@ function buildKnight(){
         else if(K._st==='sheathing') ov={n:'sheath',u:Math.min(1,K._shT||0),w:0.7};
         else if(K._bw>0.01) ov={n:'block',t:t,w:K._bw};
         const S1=typeof GAME!=='undefined'&&GAME.S, hurt=S1&&S1.maxHp&&S1.hp<S1.maxHp*0.25, calm=K._st==='sheathed';
-        RG.step(dt,a,rf,veff/K.hipY,ov,{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
+        RG.step(dt,a,rf,veff/K.hipY,ov,K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
         K._rArm=!!(A0&&A0.arms!==false);
         const kq=(o,out)=>{ out.identity(); for(let q=o.parent;q&&q!==K;q=q.parent) out.premultiply(q.quaternion); return out; };
         const turn=(o,n)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,w); };
@@ -2336,6 +2337,7 @@ function buildKnight(){
         if(K._rArm){ point(AR.sh,'RightArm','RightForeArm'); point(AR.el,'RightForeArm','RightHand'); }
         // the springs that keep the left arm loose follow the pose he's now in, so nothing snaps when the clips ease out
         sArmL.x.x=AL.sh.rotation.x; sArmL.z.x=AL.sh.rotation.z; sArmL.e.x=AL.el.rotation.x; } }
+    if(K.crouch&&!(K.mocap&&!K.mocapOff&&K._mw>0.5)){ hips.position.y-=0.13; torso.rotation.x+=0.3; L.hip.rotation.x-=0.45; R.hip.rotation.x-=0.45; L.knee.rotation.x+=0.75; R.knee.rotation.x+=0.75; }   /* V140: crouched, the hand-keyed way */
     K.mot.v=vS; K.mot.acc=acc; K.mot.vy=vy; K.mot.a=a; K.mot.rf=rf; K.mot.ph=ph;
     // the guard, eased in and out (~0.1 s): upper arm forward and in, forearm level across the chest, the shield squarely
     //  in front of him with its point down; a slight crouch and the torso turned shield-side into the blow
@@ -2759,7 +2761,7 @@ const RIG=(function(){
         if(move>0.02) ph=(ph+cps*dt)%1; tIdle=(tIdle+dt)%dur[nI];
         for(const k in A) A[k].weight=0;
         if(nW===nR){ A[nW].weight=wW+wR; A[nW].time=ph*dur[nW]; } else { A[nW].weight=wW; A[nW].time=ph*dur[nW]; A[nR].weight=wR; A[nR].time=ph*dur[nR]; }
-        A[nI].weight+=wI; if(nI!==nW&&nI!==nR) A[nI].time=tIdle;
+        A[nI].weight+=wI; if(nI!==nW&&nI!==nR) A[nI].time=tIdle; if(S0.idleAt!==undefined&&wI>0.5&&nI===nW) A[nI].time=S0.idleAt*dur[nI];
         if(ow>0){ const o=A[ov.n]; o.weight+=ow; o.time=ov.u!==undefined?Math.max(0,Math.min(0.999,ov.u))*dur[ov.n]:(ov.t%dur[ov.n]); }
         mixer.update(0); root.updateMatrixWorld(true); grab(Q,P); },
       q(n,out){ return out.copy(Q[n]).multiply(_inv.copy(QB[n]).invert()); },   // its turn from the bind pose, in the rig's space
@@ -4010,6 +4012,14 @@ const ENGINE=(function(){
   // ── HUD ──
   const plateH=$('placeName'), zoneEl=$('zone'), talkB=$('talk'), swingB=$('swing'), say=$('say'), sayWho=$('sayWho'), sayText=$('sayText'), sayMore=$('sayMore'), fade=$('fade'), acts=$('acts');
   let lastZone='', near=null, convo=null, busy=false, ps=1, presT=0, holdT=0, holdMode=null;
+  // V140: THE PACE — on foot he walks (a brisk walk, the stick's push for slower); sprint is a toggle (V / L3 / the 🏃 button),
+  //  and crouch is a toggle (X / ✚→ / the 🦶 button): a slow creep, low, that the demons are slower to notice. Either one turns
+  //  the other off; mounting, swimming and the rest keep their own pace. Remembered for the session.
+  const PACE={ sprint:false, crouch:false,
+    mult(Lv){ if(Lv&&(Lv.interior||Lv.close)) return this.crouch?0.5:this.sprint?1:0.8; return this.crouch?0.34:this.sprint?1:0.52; },
+    toggle(k){ if(k==='sprint'){ this.sprint=!this.sprint; if(this.sprint) this.crouch=false; } else { this.crouch=!this.crouch; if(this.crouch) this.sprint=false; }
+      K.crouch=this.crouch; if(typeof UI!=='undefined') UI.toast(this.crouch?'🦶 Crouching — creeping low':this.sprint?'🏃 Sprinting':(k==='crouch'?'🚶 Standing — walking':'🚶 Walking'),1100); this.paint(); },
+    paint(){ const s=document.getElementById('sprintBtn'), c=document.getElementById('crouchBtn'); if(s) s.classList.toggle('on',this.sprint); if(c) c.classList.toggle('on',this.crouch); } };
   function show(){ sayWho.textContent=convo.who; sayText.textContent=convo.lines[convo.i]; sayMore.textContent=convo.i<convo.lines.length-1?'Tap to continue':'Tap to close'; say.hidden=false; }
   function speak(who,lines,f,then){ convo={who,lines,i:0,f,then}; show(); }
   function act(){
@@ -4070,6 +4080,7 @@ const ENGINE=(function(){
     if(L&&L.custom){ const b=keyBtn[k]; if(b){ held[b]=true; pressed[b]=true; e.preventDefault(); } return; }
     if(keyBtn[k]==='B'&&L&&L.combat){ COMBAT.bDown(); e.preventDefault(); return; }
     if(k==='jump'){ e.preventDefault(); jump(); return; }
+    if(k==='sprint'||k==='crouch'){ e.preventDefault(); if(!e.repeat) PACE.toggle(k); return; }
     if(k==='dodge'){ e.preventDefault(); if(L&&L.combat&&!convo&&!busy) COMBAT.dodge(moveDir()); return; }
     if(k===' '){ if(!e.repeat){ strike(); if(L&&L.combat) COMBAT.chargeStart(); } e.preventDefault(); } if(k==='e'||k==='enter') act(); });
   // the way the keys are pushing you, in the world (for a dodge roll that goes where you're heading)
@@ -4173,7 +4184,7 @@ const ENGINE=(function(){
     if(holdT>0) holdT-=dt; const hold=holdT>0;   // ENGINE.hold(s): sat in a chair and the like — no walking, swinging or guarding
     if(typeof COMBAT!=='undefined') COMBAT.frame(dt,!!(convo||busy||paused||hold));
     const l=(convo||busy||paused||hold)?0:Math.hypot(ix,iz);
-    if(l>0.08){ const onFoot=!(L.mounted&&L.mounted())&&!(L.driving&&L.driving()), sp=(L.speed||4.3)*(onFoot?FOOT_PACE(L,ps):1)*(GAME.fx.swift?1.3:1)*(L.speedMult?L.speedMult():1)*(L.combat?(COMBAT.moveMul?COMBAT.moveMul():COMBAT.pl.blocking?0.6:1):1), s=Math.min(1,l)*sp*dt/l, sn=Math.sin(yaw), cs=Math.cos(yaw), mx=(ix*cs+iz*sn)*s, mz=(-ix*sn+iz*cs)*s;
+    if(l>0.08){ const onFoot=!(L.mounted&&L.mounted())&&!(L.driving&&L.driving()), sp=(L.speed||4.3)*(onFoot?FOOT_PACE(L,ps)*PACE.mult(L):1)*(GAME.fx.swift?1.3:1)*(L.speedMult?L.speedMult():1)*(L.combat?(COMBAT.moveMul?COMBAT.moveMul():COMBAT.pl.blocking?0.6:1):1), s=Math.min(1,l)*sp*dt/l, sn=Math.sin(yaw), cs=Math.cos(yaw), mx=(ix*cs+iz*sn)*s, mz=(-ix*sn+iz*cs)*s;
       const okX=L.canMove(P.x,P.z,P.x+mx,P.z)&&!blocked(P.x+mx,P.z); if(okX) P.x+=mx; const okZ=L.canMove(P.x,P.z,P.x,P.z+mz)&&!blocked(P.x,P.z+mz); if(okZ) P.z+=mz;
       // corner help: pushing into a wall beside an opening slides you onto the opening's line, so a one-tile
       // corridor can be entered without lining up by hand
@@ -4242,7 +4253,7 @@ const ENGINE=(function(){
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     { const PO=window.KLK_POST; if(PO&&PO.on) PO.render(L.scene,cam); else R.render(L.scene,cam); } requestAnimationFrame(frame); }   /* V135: High/Ultra draw through post.js */
 
-  return { add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
+  return { pace:PACE, add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();
 
 // ── engine/pets.js ──
@@ -8096,12 +8107,14 @@ const COMBAT=(function(){
       if(d.knock>0){ d.knock--; if(!d.boss){ const nx=d.x+d.kdx, nz=d.z+d.kdz; if(walk(nx,d.z)) d.x=nx; if(walk(d.x,nz)) d.z=nz; if(dun){ d.kdx*=0.72; d.kdz*=0.72; } return; } }
       const dx=p.x-d.x, dz=p.z-d.z, dist=Math.hypot(dx,dz)||1e-3;
       if(d.ai){ d.ai(d,dx,dz,dist,T); return; }   // a fight with its own rules (the finale)
-      if(!dun){ if(press(d,dx,dz,dist,7,0.9)) return;
+      /* V140: creeping low (crouch) a demon that hasn't seen you only notices you close by; once it has, it keeps after you */
+      const sneak=ENGINE.K.crouch&&!d.alert; if(dist>12) d.alert=false;
+      if(!dun){ if(press(d,dx,dz,dist,sneak?3:7,0.9)){ d.alert=true; return; }
         let vx=Math.cos(d.t*0.03)*0.25*PX, vz=Math.sin(d.t*0.04)*0.25*PX; if(walk(d.x+vx,d.z)) d.x+=vx; if(walk(d.x,d.z+vz)) d.z+=vz; d.face=Math.atan2(vx,vz); return; }
       if(d.boss&&d.pat){ bossStep(d,dx,dz,dist,T); return; }
       // a chapel demon: inside 3 tiles it presses and lunges like any demon; to 6 it gives chase, axis-first so it slides along walls; otherwise patrol its post
-      if(dist<3&&press(d,dx,dz,dist,3,0.8,true)) return;
-      const chase=dist<6; let mx,mz;
+      if(dist<3&&press(d,dx,dz,dist,3,0.8,true)){ d.alert=true; return; }
+      const chase=dist<(sneak?2.6:6); if(chase) d.alert=true; let mx,mz;
       if(chase){ if(Math.abs(dx)>Math.abs(dz)){ mx=Math.sign(dx)*0.8*PX; mz=Math.sign(dz)*0.3*PX; } else { mz=Math.sign(dz)*0.8*PX; mx=Math.sign(dx)*0.3*PX; } }
       else { mx=d.pdx*0.45*PX; mz=d.pdz*0.45*PX; if(Math.hypot(d.x-d.hx,d.z-d.hz)>d.patrol){ if(Math.abs(d.hx-d.x)>Math.abs(d.hz-d.z)){ d.pdx=Math.sign(d.hx-d.x)||1; d.pdz=0; } else { d.pdz=Math.sign(d.hz-d.z)||1; d.pdx=0; } mx=d.pdx*0.45*PX; mz=d.pdz*0.45*PX; } }
       const nx=d.x+mx, nz=d.z+mz; let okX=walk(nx,d.z), okZ=walk(d.x,nz);
@@ -14675,7 +14688,7 @@ const ROADLIFE=(function(){
 //  and play. Left stick walks, right stick turns the view (the same Tears-of-the-Kingdom curve as the touch look-stick).
 //  Defaults:  Ⓐ talk / open / next line when there is something to talk to — otherwise jump
 //    Ⓑ  dodge roll  (in a menu: back)            Ⓧ / RT  swing (hold to charge)        Ⓨ  talk / open
-//    LB / LT  guard (hold)    RB / R3  lock on    L3 / ✚↓  mount    ✚↑ potion   ✚← surface    Start / View  menu
+//    LB / LT  guard (hold)    RB / R3  lock on    ✚↓  mount    L3 sprint (toggle)   ✚→ crouch (toggle)    ✚↑ potion   ✚← surface    Start / View  menu
 //  ☰ → 🎮 Controller Controls (V91): every action takes two buttons of your choosing — tap a slot, press the button;
 //  plus swap the sticks, invert the look, and look speed. Saved on this device (localStorage 'klk3d_pad').
 //  In a menu or a panel the stick and the ✚ move a highlight between its buttons, Ⓐ presses, Ⓑ closes (always).
@@ -14686,7 +14699,7 @@ const PAD=(function(){
   const ACTIONS=[
     {id:'act',label:'⤴ Talk · next line · or jump',def:[0,null]}, {id:'talk',label:'💬 Talk / open',def:[3,null]},
     {id:'strike',label:'⚔ Swing (hold to charge)',def:[2,7]}, {id:'guard',label:'🛡 Guard (hold)',def:[4,6]}, {id:'dodge',label:'💨 Dodge roll',def:[1,null]},
-    {id:'lock',label:'🎯 Lock on / let go',def:[5,11]}, {id:'potion',label:'🧪 Drink a potion',def:[12,null]}, {id:'mount',label:'🐎 Mount / dismount',def:[10,13]},
+    {id:'lock',label:'🎯 Lock on / let go',def:[5,11]}, {id:'potion',label:'🧪 Drink a potion',def:[12,null]}, {id:'mount',label:'🐎 Mount / dismount',def:[13,null]}, {id:'sprint',label:'🏃 Sprint on / off',def:[10,null]}, {id:'crouch',label:'🦶 Crouch on / off',def:[15,null]},
     {id:'surface',label:'🌊 Surface (underwater)',def:[14,null]}, {id:'menu',label:'☰ Menu',def:[9,8]} ];
   const BN=['Ⓐ','Ⓑ','Ⓧ','Ⓨ','LB','RB','LT','RT','View','Start','L3','R3','✚↑','✚↓','✚←','✚→','Home'], bname=i=>i==null?'—':(BN[i]||'Button '+i);
   const defs=()=>{ const b={}; ACTIONS.forEach(a=>b[a.id]=a.def.slice()); return b; };
@@ -14758,7 +14771,7 @@ const PAD=(function(){
       if(E.act===1){ held.act=(talking||canTalk||custom)?'e':'jump'; press(held.act); } if(E.act===-1&&held.act){ release(held.act); held.act=null; }
       hold('dodge',custom?'shift':'dodge'); hold('strike',' '); hold('talk','e'); hold('guard','shift');
       const tap=(id,key)=>{ if(E[id]===1){ press(key); release(key); } };
-      tap('lock','f'); tap('mount','r'); tap('potion','p'); tap('surface','u'); tap('menu','m'); }
+      tap('lock','f'); tap('mount','r'); tap('sprint','sprint'); tap('crouch','crouch'); tap('potion','p'); tap('surface','u'); tap('menu','m'); }
     prev=gp.buttons.map(x=>x.pressed||x.value>0.5); }
   requestAnimationFrame(poll);
   return { get connected(){ return idx!==null; }, open:()=>{ msg=''; listen=null; draw(); }, binds:()=>binds };
@@ -14786,6 +14799,7 @@ const HUD=(function(){
     body.touch #stickZone{display:block} body.touch #look{display:none!important} body.mg #stickZone{display:none!important}
     #stick{z-index:2;transition:opacity .25s;opacity:.7} #stick.live{opacity:1;transition:none} body.notouch #stick{display:none!important}
     .act{touch-action:none;transition:width .15s,height .15s} #lockBtn{font-size:20px}
+    .paceBtn{font-size:18px} .paceBtn.on{background:rgba(242,193,78,.85)!important;color:#1a1410!important} body.notouch .paceBtn{display:none!important} body.mg .paceBtn{display:none!important}
     body.notouch #mhint{display:block}`;
   document.head.appendChild(css);
   let s=1, ready=false;
@@ -14797,6 +14811,10 @@ const HUD=(function(){
   let lockB=null;
   function lockBtn(){ if(lockB) return lockB; lockB=document.createElement('button'); lockB.className='act'; lockB.id='lockBtn'; lockB.textContent='🎯'; lockB.hidden=true; lockB.setAttribute('aria-label','Lock on');
     lockB.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); if(typeof COMBAT!=='undefined'&&COMBAT.toggleLock) COMBAT.toggleLock(); }); document.body.appendChild(lockB); return lockB; }
+  // V140: the pace toggles for the left thumb (keyboard: V sprint, X crouch; controller: L3, ✚→) — two small buttons over the stick
+  let paceB=null;
+  function paceBtns(){ if(paceB) return paceB; paceB=[['sprintBtn','🏃','sprint','Sprint'],['crouchBtn','🦶','crouch','Crouch']].map(([id,ic,k,lab])=>{ const b=document.createElement('button'); b.className='act paceBtn'; b.id=id; b.textContent=ic; b.setAttribute('aria-label',lab);
+      b.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); if(typeof ENGINE!=='undefined'&&ENGINE.pace) ENGINE.pace.toggle(k); }); document.body.appendChild(b); return b; }); return paceB; }
   function foesNear(){ const L=typeof ENGINE!=='undefined'&&ENGINE.level; if(!L||!L.combat||!L.combat.foes) return false; const P=ENGINE.P; return L.combat.foes.some(f=>f.alive&&Math.hypot(f.x-P.x,f.z-P.z)<14); }
   function layout(){ const {w,h}=scale(); const sa=v=>`calc(${px(v)} + env(safe-area-inset-right,0px))`, sb=v=>`calc(${px(v)} + env(safe-area-inset-bottom,0px))`, sl=v=>`calc(${px(v)} + env(safe-area-inset-left,0px))`;
     const vis=el=>el&&!el.hidden&&el.style.display!=='none'&&getComputedStyle(el).display!=='none';
@@ -14814,6 +14832,7 @@ const HUD=(function(){
     place(inner,R1,IA); place(outer,R2,OA);
     // the stick's resting corner, and its size
     const st=$('stick'), SK=Math.round(118*s); if(st){ st._home=()=>{ put(st,{width:px(SK),height:px(SK),left:sl(22*s),bottom:sb(22*s),top:'auto'}); }; if(!st.classList.contains('live')) st._home(); const kn=$('knob'); put(kn,{width:px(SK*0.42),height:px(SK*0.42),margin:`${px(-SK*0.21)} 0 0 ${px(-SK*0.21)}`}); }
+    { const PB=paceBtns(), z=40*s; PB.forEach((b,i)=>put(b,{width:px(z),height:px(z),left:sl(22*s+SK+10*s),bottom:sb(22*s+i*(z+8*s)),right:'auto',top:'auto'})); }
     // the dialogue box sits clear of both thumbs
     const say=$('say'); if(say){ const side=Math.max(SK+30*s, R2+O+m); const free=w-2*side; if(free>=280) put(say,{bottom:sb(10*s),width:px(Math.min(460,free)),left:'50%',transform:'translateX(-50%)'}); else put(say,{bottom:sb(Math.max(SK, R1+S/2)+24*s),width:`min(calc(100vw - 24px),440px)`,left:'50%',transform:'translateX(-50%)'}); }
     ready=true; }
