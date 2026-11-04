@@ -2323,8 +2323,9 @@ function buildKnight(){
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
         else if(K._st==='sheathing') ov={n:'sheath',u:Math.min(1,K._shT||0),w:0.7};
         else if(K._bw>0.01) ov={n:'block',t:t,w:K._bw};
-        const S1=typeof GAME!=='undefined'&&GAME.S, hurt=S1&&S1.maxHp&&S1.hp<S1.maxHp*0.25, calm=K._st==='sheathed';
-        RG.step(dt,a,rf,veff/K.hipY,ov,K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
+        const S1=typeof GAME!=='undefined'&&GAME.S, hurt=!K.npc&&S1&&S1.maxHp&&S1.hp<S1.maxHp*0.25, calm=K._st==='sheathed';
+        if(K.npc&&!ov&&(K._talk||0)>0.2) ov={n:'agree',t:t+(K._tph||0),w:0.45*K._talk};   /* the folk nod along as they talk */
+        RG.step(dt,a,rf,veff/K.hipY,ov,K.npc?{idle:'idleCalm',walk:'walk',run:'walk'}:K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
         K._rArm=!!(A0&&A0.arms!==false);
         const kq=(o,out)=>{ out.identity(); for(let q=o.parent;q&&q!==K;q=q.parent) out.premultiply(q.quaternion); return out; };
         const turn=(o,n)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,w); };
@@ -2418,8 +2419,19 @@ function buildKnight(){
     const pick=(o,v)=>{ o.v*=0.5; o.x=v; }, rAbs=swing>=0||K.raise>0||K.charge>0||K.spinT>=0||mode==='sit', lAbs=gk>0.02||mode==='sit';
     if(rAbs){ pick(sArmR.x,AR.sh.rotation.x); pick(sArmR.y,AR.sh.rotation.y); pick(sArmR.z,AR.sh.rotation.z); pick(sArmR.e,AR.el.rotation.x); pick(sHandR,AR.hand.rotation.x); }
     if(lAbs){ pick(sArmL.x,AL.sh.rotation.x); pick(sArmL.e,AL.el.rotation.x); pick(sArmL.z,AL.sh.rotation.z); pick(sArmL.y,AL.sh.rotation.y); }
+    // V141: FEET ON THE HILLS — each foot is set on the ground beneath it: the pelvis drops for the lower foot, and the other
+    //  leg folds at the knee (the hip keeping the foot under it) by as much as its ground rises. Only standing and walking,
+    //  outdoors; the camera-near and the player first
+    if(K.footIK&&(mode==='walk'||mode==='idle')&&!(K.air>0.02)&&!(K.dash>0)&&typeof ENGINE!=='undefined'&&ENGINE.level&&ENGINE.level.ground&&!ENGINE.level.interior&&!K._act) footIK();
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);
   };
+  const _fa=new THREE.Vector3(), _fk=new THREE.Vector3(); let _fdS=0;
+  function footIK(){ const lv=ENGINE.level, par=K.parent; if(!par) return; K.updateMatrixWorld(true); _ws.setFromMatrixScale(K.matrixWorld); const wsc=_ws.y||1;
+    K.getWorldPosition(_fk); const g0=lv.ground(_fk.x,_fk.z), lt=Math.abs(L.knee.position.y)||0.3, ls=K.hipY-lt+0.012, cap=K.hipY*0.3, off=[];
+    for(const G of [L,R]){ G.knee.localToWorld(_fa.set(0,-ls,0)); let o=(lv.ground(_fa.x,_fa.z)-g0)/wsc; if(!isFinite(o)) o=0; off.push(Math.max(-cap,Math.min(cap,o))); }
+    const drop=Math.min(0,off[0],off[1]); _fdS+=(drop-_fdS)*0.35; hips.position.y+=_fdS;
+    [L,R].forEach((G,i)=>{ const rise=Math.max(0,off[i]-_fdS); if(rise<0.003) return; const k=Math.max(0,G.knee.rotation.x), D2=lt*lt+ls*ls+2*lt*ls*Math.cos(k), D=Math.sqrt(D2), Dn=Math.max((lt+ls)*0.45,D-rise);
+      const kn=Math.acos(Math.max(-1,Math.min(1,(Dn*Dn-lt*lt-ls*ls)/(2*lt*ls)))), dk=kn-k; if(dk>0.001){ G.knee.rotateX(dk); G.hip.rotateX(-dk*0.5); } }); }
   // ── the sheath and the back-carry ──
   const sheathP=pivot(0.21,-0.075,0.05,torso); sheathP.rotation.set(-2.3,0,-0.22);     // left hip: the hilt up and forward, the point down and back, a little out from the leg
   const backP=pivot(-0.13,0.3,-0.2,torso); backP.rotation.set(0.12,0,-2.55);           // across the back: the hilt over the right shoulder
@@ -2729,7 +2741,10 @@ const RIG=(function(){
     c.q.forEach((v,i)=>tr.push(new THREE.QuaternionKeyframeTrack(D.bones[i][0]+'.quaternion',c.T,v)));
     if(c.p) tr.push(new THREE.VectorKeyframeTrack('Hips.position',c.T,c.p));
     return new THREE.AnimationClip(name,c.dur,tr); }
-  function make(){ if(!ok) return null;
+  // V141: the clips are built once and shared by every rig (the knight's and the townsfolk's), and each gait's measured speed
+  //  is kept once for them all; a rig for one of the folk takes only the clips the folk use
+  const CLIPS={}, NAT={}; const clipOf=n=>CLIPS[n]||(CLIPS[n]=clipFrom(n,D.clips[n]));
+  function make(opts){ if(!ok) return null; opts=opts||{};
     const root=new THREE.Group(); root.scale.setScalar(D.unit||0.01); const B={}, list=[];
     D.bones.forEach(([n,p,t,r])=>{ const b=new THREE.Bone(); b.name=n; b.position.fromArray(t); b.quaternion.fromArray(r); B[n]=b; list.push(b); (p<0?root:list[p]).add(b); });
     root.updateMatrixWorld(true);
@@ -2739,23 +2754,23 @@ const RIG=(function(){
     grab(QB,PB);
     const mixer=new THREE.AnimationMixer(root), A={}, dur={};
     function addClip(name,clip){ if(A[name]){ A[name].stop(); } const ac=mixer.clipAction(clip); ac.play(); ac.weight=0; A[name]=ac; dur[name]=clip.duration; }
-    for(const n in D.clips) addClip(n,clipFrom(n,D.clips[n]));
+    for(const n in D.clips) if(!opts.only||opts.only.includes(n)) addClip(n,clipOf(n));
     // how fast each gait really travels (in hip heights a second): the reach of a foot's swing over the part of the cycle
     //  it stands on the ground
-    const hipH=PB.Hips.y, nat={};
+    const hipH=PB.Hips.y, nat=NAT;
     const Q={}, P={};
     function measure(n,stance){ const ac=A[n]; if(!ac) return 1; for(const k in A) A[k].weight=0; ac.weight=1; let zmin=1e9, zmax=-1e9;
       for(let i=0;i<=24;i++){ ac.time=dur[n]*i/24; mixer.update(0); root.updateMatrixWorld(true); B.LeftFoot.getWorldPosition(_m); zmin=Math.min(zmin,_m.z); zmax=Math.max(zmax,_m.z); }
       return ((zmax-zmin)/(stance*dur[n]))/hipH; }
     const stanceOf=n=>/run/i.test(n)?0.36:0.6; const natOf=n=>nat[n]!==undefined?nat[n]:(nat[n]=A[n]?measure(n,stanceOf(n)):1);
-    natOf('walk'); natOf('run');
-    let ph=0, tIdle=0;
+    natOf('walk'); if(A.run) natOf('run');
+    let ph=Math.random(), tIdle=Math.random()*5;
     const rig={ root, bones:B, actions:A, nat, hipH, dur,
       addClip(name,clip){ addClip(name,clip); delete nat[name]; },
       // blend and pose: move 0..1 (standing → moving), run 0..1 (walk → run), v the ground speed in hip heights a second
       // ov: a clip laid over the gaits — {n:name, t:its time (seconds, or u 0..1 of it), w:how much} — a blow, the guard, a fall
       //  set: which clips stand for the idle, the walk and the run just now ({idle,walk,run} — sword drawn or sheathed, hurt)
-      step(dt,move,run,v,ov,set){ const S0=set||{}, nI=A[S0.idle]?S0.idle:'idle', nW=A[S0.walk]?S0.walk:'walk', nR=A[S0.run]?S0.run:'run';
+      step(dt,move,run,v,ov,set){ const S0=set||{}, nI=A[S0.idle]?S0.idle:A.idle?'idle':'idleCalm', nW=A[S0.walk]?S0.walk:'walk', nR=A[S0.run]?S0.run:A.run?'run':nW;
         const ow=ov&&A[ov.n]?Math.max(0,Math.min(1,ov.w)):0, keep=1-ow; const wW=move*(1-run)*keep, wR=move*run*keep, wI=(1-move)*keep;
         const vW=natOf(nW), vR=natOf(nR), cpsW=(vW>0?v/vW:1)/dur[nW], cpsR=(vR>0?v/vR:1)/dur[nR], cps=Math.max(0.35,Math.min(2.2,cpsW*(1-run)+cpsR*run));
         if(move>0.02) ph=(ph+cps*dt)%1; tIdle=(tIdle+dt)%dur[nI];
@@ -3797,6 +3812,10 @@ function faceLife(K,st,t,dt,ph,talking,P,f){ const FG=K.userData.face; if(!FG) r
 function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hypot(f.x-P.x,f.z-P.z);
   const st=K.userData._cs||(K.userData._cs={hy:0,met:false,wave:0,tk:0});
   if(d<3.2&&!st.met){ st.met=true; if(((Math.floor(ph*100)*7)%10)/10<0.45) st.wave=1.6; } if(d>6) st.met=false;
+  /* V141: the townsfolk and the cast on the motion-capture rig too (rig.js) — a relaxed idle, a real walk, a nod as they talk —
+     and their feet on the slope; each gets its rig the first time you come near (none on the Low graphics tier) */
+  if(K.mocap===undefined){ K.npc=true; K.footIK=true; K._tph=ph*3; K.mocap=(typeof RIG!=='undefined'&&RIG.ok&&!(typeof HUD!=='undefined'&&HUD.tier==='low')&&d<18)?RIG.make({only:['idleCalm','walk','agree']}):undefined; }
+  K._talk=st.tk;
   K.animate(Math.min(dt,0.05),f.walking?'walk':'idle',0.5);
   let hy=0; if(d<2.6){ let a=Math.atan2(P.x-f.x,P.z-f.z)-K.rotation.y; a=Math.atan2(Math.sin(a),Math.cos(a)); hy=Math.max(-0.75,Math.min(0.75,a)); }
   st.hy+=(hy-st.hy)*Math.min(1,dt*5); r.head.rotation.y+=st.hy*0.8; r.torso.rotation.y+=st.hy*0.2;
@@ -16074,7 +16093,7 @@ const POST=(function(){
   if(false&&typeof ROADS!=='undefined') ROADS.attach(world);
   if(typeof TREK!=='undefined') TREK.attach(world);
   /* V137: the knight's motion-captured idle, walk and run (rig.js); ☰ → System can switch back to the hand-keyed gait */
-  if(typeof RIG!=='undefined'&&RIG.ok){ try{ ENGINE.K.mocap=RIG.make(); ENGINE.K.mocapOff=localStorage.getItem('klk3d_mocap')==='0'; }catch(e){ console.warn('rig',e); } }
+  if(typeof RIG!=='undefined'&&RIG.ok){ try{ ENGINE.K.mocap=RIG.make(); ENGINE.K.footIK=true; ENGINE.K.mocapOff=localStorage.getItem('klk3d_mocap')==='0'; }catch(e){ console.warn('rig',e); } }
   if(typeof WEATHER!=='undefined') world.weather=WEATHER.attach(world);
   if(typeof ROADLIFE!=='undefined') world.roadlife=ROADLIFE.attach(world);   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
   if(typeof LANDMARKS!=='undefined') LANDMARKS.attach(world);   // V127: watchtowers to climb, camps, the mill, the drowned chapel, a shrine, a spring   // V121: the Pilgrim's Pass — the mountain trek from Shadowmere to Hellgate   // V115: the high roads: the long journeys between distant towns   // V114: the Scholar's Way, the old road north to Mario's tower school
