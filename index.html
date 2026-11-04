@@ -9137,6 +9137,229 @@ function chapelLevels(C,spec){
   return { enter, get run(){ return R; } };
 }
 
+// ── engine/catacomb.js ──
+// ════════════════════════════════════════════════════════════════
+//  CATACOMB (V147) — the way into a chapel is DOWN. Beside the chapel, in its churchyard, a mausoleum; its stair goes down
+//  into the catacombs where the town's faithful are buried — and, deepest of all, its general. A dungeon in the Ocarina
+//  manner, the same every time you play: halls and crypts joined by archways, small keys for locked doors, a map and a
+//  compass, sarcophagi to shove onto pressure plates, lamps to light before the first gutters out, chasms you can't yet
+//  cross. Rooms you clear stay cleared and every door you open stays open (GAME.S.cata[town]).
+//  This first build: Hearthvale — the churchyard mausoleum and the first level, the Ossuary of the Shepherds.
+//  Layout legend:  # rock · . floor · , an open archway · S the stair up (out) · v the stair down · L a locked door (small key)
+//   1 2 3… iron gates (opened by the floor's rules) · C chest · T sarcophagus · B a sarcophagus you can push · P pressure plate
+//   O pillar · l a lamp to light · t a tablet · X chasm · R an iron ring on a post (for the Shepherd's Staff, later)
+//   p c b s demons on their posts (pouncer, clawer, brute, spitter — combat.js)
+//  CATACOMB.attach(world, {town, door, td})  ·  levels 'cata<town>:<n>'
+// ════════════════════════════════════════════════════════════════
+const CATACOMB=(function(){
+  const LV={ 0:[ { name:'The Ossuary of the Shepherds',
+    rows:[
+'#########################################',
+'#############T.............T#############',
+'#############.......v.......#############',
+'#############...............#############',
+'#############...O.......O...#############',
+'#############...............#############',
+'#############.......b.......#############',
+'#############...O.......O...#############',
+'#############...............#############',
+'#############T.............T#############',
+'###################222###################',
+'#....XXXX...#T.............T#..........T#',
+'#....XXXX.t.#...............#.O.....P...#',
+'#.C..XXXX...#...O.......O...#...........#',
+'#....XXXX...,......p........#...........#',
+'#..R.XXXX...,..........p....#...B.......#',
+'#....XXXX...,...............#...........#',
+'#....XXXX...#...O...c...O111#...........#',
+'#....XXXX...#...........#...#.O.......C.#',
+'#....XXXX...#T..........#.C.#...........#',
+'###################,,,###########333#####',
+'#############...............#..........T#',
+'#############T...t.........T#...........#',
+'#############..O.........O..#..l.....l..#',
+'#############...............L...........#',
+'#############T..............L.....p.....#',
+'#############...............#...........#',
+'#############..O.........O..#...........#',
+'#############...............#.....l.....#',
+'#############T......S......T#T.........T#',
+'#########################################'],
+    chests:{ '26,19':{key:1}, '38,18':{map:true}, '2,13':{gold:60,pot:['potion',2]} },
+    gates:{ '1':{when:'clear',rect:[13,11,27,19],msg:'⛓ The last demon falls — the bars over the alcove grind up into the vault.'},
+            '2':{when:'plate',msg:'⛓ Somewhere behind you, a gate rumbles up into the ceiling.'},
+            '3':{when:'lamps',msg:'🕯 All three burn together — the gate lifts.'} },
+    tablets:{ '17,22':['A stone, cut deep and worn soft by hands','Here sleep the shepherds of Hearthvale, who kept the flock and kept the faith.','“I am the good shepherd: the good shepherd giveth his life for the sheep.” — John 10:11','(The chapel above is bound. Its doors will not open from outside — the way to it is through here, and down before it is up.)'],
+              '10,12':['A tablet by the chasm','Our General lies below us, with his crook beside him. He kept this flock to the end.','(Across the chasm an iron ring is set in a post. Something long and hooked could catch it.)'] },
+    look:{ '9,15':['An iron ring, across the chasm','It is set in a post on the far side, beside a chest no one has reached in a long time.','A shepherd’s crook could catch that ring — if you had one.'] } } ] };
+  const SOLID=new Set(['#','T','O','C','l','t','R','X','v','B']);
+  const st=t=>{ const S=GAME.S; S.cata=S.cata||{}; return S.cata[t]||(S.cata[t]={keys:0,doors:{},chests:{},gates:{},cleared:{},blocks:{},map:{}}); };
+  let mouth=null;   // where the stair comes up in the world: {x,z,face}
+  function leaveTo(){ if(mouth) ENGINE.go('world',{x:mouth.x,z:mouth.z,face:mouth.face,yaw:mouth.face}); else ENGINE.go('world'); }
+  // ── a web in a corner, painted once ──
+  let webTex=null; function web(){ if(webTex) return webTex; const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d'); g.strokeStyle='rgba(230,226,214,0.55)'; g.lineWidth=1.2;
+    for(let i=0;i<7;i++){ const a=i/6*Math.PI/2; g.beginPath(); g.moveTo(0,0); g.lineTo(Math.cos(a)*128,Math.sin(a)*128); g.stroke(); }
+    for(let r=16;r<128;r+=16){ g.beginPath(); for(let i=0;i<=6;i++){ const a=i/6*Math.PI/2, rr=r*(0.92+((i*7+r)%5)*0.03); i?g.lineTo(Math.cos(a)*rr,Math.sin(a)*rr):g.moveTo(Math.cos(a)*rr,Math.sin(a)*rr); } g.stroke(); }
+    return webTex=new THREE.CanvasTexture(c); }
+  function build(t,n,D,td){ const rows=D.rows, H=rows.length, W=rows[0].length, at=(x,y)=>rows[y]&&rows[y][x], s=()=>st(t), id='cata'+t+':'+n;
+    const T=CHAPEL_THEME(t), dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex(), CW=3.6;
+    const pal={wall:dk(T.wall,0.72),top:dk(T.top,0.6),fA:dk(T.fA,0.86),fB:dk(T.fB,0.86),trim:T.trim,stone:0x8a8070,lid:0x9a9080,iron:0x2a2a30,wood:0x5a3a22,linen:0xd8ccb0};
+    const scene=new THREE.Scene(), bg=new THREE.Color(0x0a0709); scene.background=bg; scene.fog=new THREE.Fog(bg,5,21);
+    const lv={id,name:td.name+' Catacombs',scene,folk:[],spots:[],anim:[],cam:{pitch:0.22,dist:2.9,min:1.5,max:4.6,lookH:0.15},speed:4.4,interior:true,actorS:0.78,dmapShow:true};
+    const hemi=new THREE.HemisphereLight(0xe8d0b8,0x2a1e1a,0.62); scene.add(hemi); const lamp=new THREE.PointLight(0xffd8a0,0.9,8,1.5); scene.add(lamp);
+    const room=group(0,0,0,scene), an=lv.anim, dyn={doors:{},chests:{},lamps:[],blocks:[],plates:[]};
+    // which walls face a hall (only those are drawn), the floor, the pits
+    const wallC=(x,y)=>at(x,y)==='#'||at(x,y)===undefined, floorC=(x,y)=>{ const c=at(x,y); return c!==undefined&&c!=='#'&&c!=='X'; };
+    const WI=wallInset((x,y)=>wallC(x,y),(x,y)=>floorC(x,y)||at(x,y)==='X',0.06);
+    const fl=[], wl=[], pit=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(c==='#'){ let face=false; for(let dy=-1;dy<=1&&!face;dy++) for(let dx=-1;dx<=1;dx++){ const q=at(x+dx,y+dy); if(q!==undefined&&q!=='#'){ face=true; break; } } if(face) wl.push([x,y]); } else if(c==='X') pit.push([x,y]); else fl.push([x,y]); }
+    inst(fl,UNIT,detailify(new THREE.MeshLambertMaterial(),{mode:'stone'}),([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((x+y)%2?pal.fA:pal.fB).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
+    inst(wl,UNIT,bmat(0xffffff,'brick'),([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx,CW,q.sz); m.setPosition(q.cx,0,q.cz); cc.setHex(pal.wall).offsetHSL(0,0,(hsh(x,y)-0.5)*0.07); },room);
+    inst(wl,UNIT,null,([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx+0.05,0.28,q.sz+0.05); m.setPosition(q.cx,0,q.cz); cc.setHex(dk(pal.wall,0.62)); },room);   // the plinth course
+    // the chasm: a long drop into the dark, its sides cut stone
+    pit.forEach(([x,y])=>{ B(1,0.2,1,0x020103,x+0.5,-6.2,y+0.5,room); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ if(at(x+a,y+b)==='X') return; B(a?0.08:1,1.2,a?1:0.08,dk(pal.wall,0.32),x+0.5+a*0.5,-1.2,y+0.5+b*0.5,room); B(a?0.08:1,4.9,a?1:0.08,0x0a0708,x+0.5+a*0.5,-6.1,y+0.5+b*0.5,room); B(a?0.14:1,0.06,a?1:0.14,pal.stone,x+0.5+a*0.47,-0.06,y+0.5+b*0.47,room); }); });
+    // the burial niches (loculi) cut along the walls: a dark shelf, and on it the shrouded dead, two rows high
+    const faces=[]; wl.forEach(([x,y])=>[[0,1],[0,-1],[1,0],[-1,0]].forEach(([a,b])=>{ const c=at(x+a,y+b); if(c==='.'&&hsh(x*3+a,y*5+b)<0.42) faces.push([x,y,a,b]); }));
+    const QQ=new THREE.Quaternion(), V1=new THREE.Vector3(), V2=new THREE.Vector3();
+    const nicheAt=([x,y,a,b],h)=>{ const q=WI.box(x,y); return [q.cx+a*(q.sx/2+0.001)*(a?1:0)+0,h,q.cz+b*(q.sz/2+0.001)]; };
+    inst(faces.flatMap(f=>[[f,0.62],[f,1.48]]),UNIT,null,([f,h],m,cc)=>{ const [px,,pz]=nicheAt(f,h); const [,,a,b]=f; m.makeScale(a?0.06:0.86,0.5,a?0.86:0.06); m.setPosition(px-a*0.02,h,pz-b*0.02); cc.setHex(0x0c0a0c); },room,false);
+    inst(faces.flatMap(f=>[[f,0.62],[f,1.48]]).filter(([f,h])=>hsh(f[0]*7+h*10,f[1])<0.8),new THREE.CylinderGeometry(0.13,0.13,0.72,8).rotateZ(Math.PI/2),new THREE.MeshLambertMaterial(),([f,h],m,cc)=>{ const [px,,pz]=nicheAt(f,h); const [,,a,b]=f; QQ.setFromAxisAngle(V1.set(0,1,0),a?Math.PI/2:0); m.compose(V2.set(px-a*0.08,h+0.14,pz-b*0.08),QQ,new THREE.Vector3(1,0.85,1)); cc.setHex(pal.linen).offsetHSL(0,0,(hsh(f[0],f[1]+h)-0.5)*0.1); },room);
+    // the vault: a dark roof, and stone ribs across the halls every few paces
+    const ceil=new THREE.Mesh(new THREE.PlaneGeometry(W+4,H+4),new THREE.MeshBasicMaterial({color:0x0a0809,side:THREE.DoubleSide})); ceil.rotation.x=Math.PI/2; ceil.position.set(W/2,CW+0.02,H/2); room.add(ceil);
+    for(let y=1;y<H-1;y++){ if(y%3) continue; let x=0; while(x<W){ while(x<W&&!floorC(x,y)&&at(x,y)!=='X') x++; const x0=x; while(x<W&&(floorC(x,y)||at(x,y)==='X')) x++; const len=x-x0; if(len>=5&&wallC(x0-1,y)&&wallC(x,y)){ B(len+0.1,0.32,0.34,dk(pal.wall,0.85),x0+len/2,CW-0.32,y+0.5,room); B(0.22,CW-0.3,0.3,dk(pal.wall,0.82),x0+0.11,0,y+0.5,room); B(0.22,CW-0.3,0.3,dk(pal.wall,0.82),x-0.11,0,y+0.5,room); } } }
+    // ledger stones in the floor, a carved cross on each
+    fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x+11,y*3)>0.07) return; B(0.78,0.025,0.92,dk(pal.stone,0.9),x+0.5,0,y+0.5,room); B(0.06,0.03,0.5,dk(pal.stone,0.55),x+0.5,0,y+0.45,room); B(0.32,0.03,0.06,dk(pal.stone,0.55),x+0.5,0,y+0.32,room); });
+    // webs in the high corners, roots hanging down through the vault
+    { const wm=new THREE.MeshBasicMaterial({map:web(),transparent:true,depthWrite:false,side:THREE.DoubleSide,fog:true});
+      fl.forEach(([x,y])=>{ const L=wallC(x-1,y), R=wallC(x+1,y), U=wallC(x,y-1), Dn=wallC(x,y+1); if(!((L||R)&&(U||Dn))||hsh(x*5,y*7)>0.5) return; const m=new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.9),wm); m.rotation.x=Math.PI/2; m.rotation.z=(L?0:Math.PI/2)+(U?0:Math.PI/2)*(L?-1:1); m.position.set(x+(L?0.45:0.55),CW-0.04,y+(U?0.45:0.55)); room.add(m); });
+      fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x*13,y*17)>0.05) return; for(let k=0;k<4;k++){ const l=0.4+hsh(x+k,y)*1.1; const r=Cy(0.012,0.02,l,4,0x3a2a1a,x+0.3+k*0.13,CW-l,y+0.3+hsh(k,y)*0.4,room); r.rotation.z=(hsh(k,x)-0.5)*0.3; } }); }
+    // torches in sconces along the walls, and three real lights that move to the ones nearest you
+    const SC=[]; wl.forEach(([x,y])=>{ if(hsh(x*7,y*11)>0.16) return; const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>at(x+a,y+b)==='.'); if(!o) return; const q=WI.box(x,y);
+      const px=q.cx+o[0]*q.sx/2, pz=q.cz+o[1]*q.sz/2, g=group(px+o[0]*0.08,0,pz+o[1]*0.08,room); B(0.08,0.32,0.08,0x2a2420,0,1.6,0,g); Cy(0.09,0.05,0.12,6,0x3a3028,0,1.92,0,g); themeFire(g,an,0,2.02,0,0.55,T); SC.push([px+o[0]*0.4,pz+o[1]*0.4]); });
+    const PL=[0,1,2].map(()=>{ const l=new THREE.PointLight(T.fire[0],0,7.5,1.6); scene.add(l); return l; });
+    an.push(t2=>{ const P=ENGINE.P; SC.slice().sort((a,b)=>Math.hypot(a[0]-P.x,a[1]-P.z)-Math.hypot(b[0]-P.x,b[1]-P.z)).slice(0,3).forEach((p,k)=>{ PL[k].position.set(p[0],2.1,p[1]); PL[k].intensity=0.85+Math.sin(t2*9+k*2)*0.07; }); });
+    // dust in the lamplight
+    { const N=90, g=new THREE.BufferGeometry(), pos=new Float32Array(N*3); for(let i=0;i<N;i++){ pos[i*3]=Math.random()*10-5; pos[i*3+1]=Math.random()*CW; pos[i*3+2]=Math.random()*10-5; } g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+      const pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xffd8a0,size:0.018,transparent:true,opacity:0.4,depthWrite:false})); scene.add(pts);
+      an.push((t2,dt)=>{ const P=ENGINE.P; pts.position.set(P.x,0,P.z); const a=g.attributes.position.array; for(let i=0;i<N;i++){ a[i*3+1]+=0.05*(dt||0.016); if(a[i*3+1]>CW) a[i*3+1]=0; a[i*3]+=Math.sin(t2*0.3+i)*0.002; } g.attributes.position.needsUpdate=true; }); }
+    // ── the things in the halls ──
+    const BLK=[]; const comp=(ch,x0,y0,seen)=>{ const out=[], q=[[x0,y0]]; seen.add(x0+','+y0); while(q.length){ const [x,y]=q.pop(); out.push([x,y]); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const k=(x+a)+','+(y+b); if(!seen.has(k)&&at(x+a,y+b)===ch){ seen.add(k); q.push([x+a,y+b]); } }); } return out; };
+    const seen=new Set();
+    const sarc=(x,y,c)=>{ const along=wallC(x-1,y)||wallC(x+1,y)?'z':'x', g=group(x+0.5,0,y+0.5,room); if(along==='x') g.rotation.y=Math.PI/2;
+      B(0.82,0.6,1.7,c||pal.stone,0,0,0,g); B(0.92,0.12,1.8,pal.lid,0,0.6,0,g); B(0.06,0.02,1.1,dk(pal.trim,0.7),0,0.72,0,g); B(0.5,0.02,0.06,dk(pal.trim,0.7),0,0.72,-0.25,g);
+      /* a lamb carved at the head: the shepherds' mark */ const lb=group(0,0.72,0.62,g); Sp(0.09,0xe8e0d0,0,0.06,0,lb); Sp(0.05,0xe8e0d0,0,0.1,0.1,lb); return g; };
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), cx=x+0.5, cz=y+0.5, k=x+','+y;
+      if(c==='T') shade(sarc(x,y));
+      else if(c==='O'){ Cy(0.3,0.36,CW,10,dk(pal.stone,0.9),cx,0,cz,room); Cy(0.44,0.44,0.22,10,dk(pal.stone,0.8),cx,0,cz,room); Cy(0.44,0.3,0.26,10,dk(pal.stone,0.8),cx,CW-0.26,cz,room); }
+      else if(c==='C'){ const g=group(cx,0,cz,room); g.rotation.y=wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2; B(0.74,0.44,0.5,0x5e3c20,0,0,0,g); [-0.26,0.26].forEach(o=>B(0.06,0.46,0.52,0xc8a040,o,0,0,g));
+        const lid=group(0,0.44,-0.25,g); B(0.76,0.14,0.52,0x6e4828,0,0,0.26,lid); [-0.26,0.26].forEach(o=>B(0.06,0.15,0.53,0xc8a040,o,0,0.26,lid)); B(0.1,0.12,0.03,0xe8c766,0,0.3,0.26,g); shade(g); dyn.chests[k]=lid; }
+      else if(c==='l'){ const g=group(cx,0,cz,room); Cy(0.2,0.26,0.1,8,0x5a4a30,0,0,0,g); Cy(0.05,0.07,1.0,6,0x8a6a30,0,0.1,0,g); Cy(0.3,0.14,0.18,10,0x9a7a3a,0,1.1,0,g); const fg=group(0,1.28,0,g); themeFire(fg,an,0,0,0,0.75,T); fg.visible=false;
+        const L=new THREE.PointLight(T.fire[0],0,6,1.6); L.position.set(0,1.6,0); g.add(L); dyn.lamps.push({k,x,y,fg,L,lit:0}); }
+      else if(c==='t'){ const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>at(x+a,y+b)==='.')||[0,1]; const g=group(cx,0,cz,room); g.rotation.y=Math.atan2(o[0],o[1]); B(0.72,1.15,0.2,0x8a8478,0,0,0,g); B(0.8,0.12,0.26,0x7a7468,0,0,0,g); for(let i=0;i<4;i++) B(0.46,0.025,0.02,0x3a3630,0,0.55+i*0.12,0.11,g); B(0.06,0.24,0.02,0x3a3630,0,0.95,0.11,g); B(0.18,0.05,0.02,0x3a3630,0,1.02,0.11,g); }
+      else if(c==='R'){ const g=group(cx,0,cz,room); Cy(0.16,0.2,1.3,8,pal.stone,0,0,0,g); const r=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.045,8,20),new THREE.MeshPhongMaterial({color:0x6a6a74,shininess:60})); r.position.set(0,1.55,0); r.rotation.y=Math.PI/2; g.add(r); }
+      else if(c==='S'){ const g=group(cx,0,cz,room); for(let i=0;i<5;i++) B(1,0.18*(i+1),0.24,pal.stone,0,0,-0.1+i*0.22,g); const sh=new THREE.Mesh(new THREE.PlaneGeometry(1,2.4),new THREE.MeshBasicMaterial({color:0xfff2d8,transparent:true,opacity:0.22,depthWrite:false})); sh.position.set(0,1.6,0.52); g.add(sh);
+        const L=new THREE.PointLight(0xfff0d0,0.7,5,1.6); L.position.set(0,2.2,0.2); g.add(L); }
+      else if(c==='v'){ const g=group(cx,0,cz,room); B(1,0.02,1,0x020203,0,0.0,0,g); for(let i=0;i<4;i++) B(0.9,0.12,0.22,dk(pal.stone,0.8-i*0.15),0,-0.18-i*0.24,0.36-i*0.24,g); B(0.1,0.3,1.1,pal.stone,-0.55,0,0,g); B(0.1,0.3,1.1,pal.stone,0.55,0,0,g); [-0.58,0.58].forEach(o=>B(0.2,2.2,0.2,dk(pal.stone,0.85),o,0,0.42,g)); B(1.4,0.3,0.26,dk(pal.stone,0.85),0,2.2,0.42,g); B(1.0,2.2,0.05,0x030203,0,0,-0.55,g); }   /* an archway down into the dark */
+      else if(c==='P'){ const g=group(cx,0,cz,room); const pl=B(0.84,0.08,0.84,0x6a6458,0,0,0,g); B(0.5,0.09,0.06,0xd8b060,0,0,0,g); B(0.06,0.09,0.5,0xd8b060,0,0,0,g); dyn.plates.push({x,y,m:pl,g}); }
+      else if(c==='B'){ const g=sarc(x,y,0x9a8e7a); shade(g); g.rotation.y=0; dyn.blocks.push({k,x0:x,y0:y,x,y,g,mv:null}); }
+      else if((c==='L'||/[1-9]/.test(c))&&!seen.has(k)){ const cells=comp(c,x,y,seen), vert=cells.every(q=>q[0]===cells[0][0]), xs=cells.map(q=>q[0]), ys=cells.map(q=>q[1]);
+        const len=vert?Math.max(...ys)-Math.min(...ys)+1:Math.max(...xs)-Math.min(...xs)+1, mx=(Math.min(...xs)+Math.max(...xs))/2+0.5, mz=(Math.min(...ys)+Math.max(...ys))/2+0.5, g=group(mx,0,mz,room), HT=2.7;
+        B(vert?0.6:len,CW-HT,vert?len:0.6,dk(pal.wall,0.9),mx,HT,mz,room);   // the lintel over it
+        const leaf=group(0,0,0,g);
+        if(c==='L'){ B(vert?0.16:len-0.04,HT,vert?len-0.04:0.16,pal.wood,0,0,0,leaf); [0.5,1.3,2.1].forEach(h=>B(vert?0.2:len,0.1,vert?len:0.2,pal.iron,0,h,0,leaf)); const lk=group(0,1.15,0,leaf); B(vert?0.28:0.3,0.36,vert?0.3:0.28,0x8a6a2a,0,0,0,lk); Sp(0.06,0x1a1208,vert?0.15:0,0.18,vert?0:0.15,lk); }
+        else { const n=Math.round(len*5); for(let i=0;i<=n;i++){ const o=-len/2+i*len/n; B(vert?0.06:0.06,HT,vert?0.06:0.06,pal.iron,vert?0:o,0,vert?o:0,leaf); } [0.4,1.4,2.4].forEach(h=>B(vert?0.08:len,0.08,vert?len:0.08,pal.iron,0,h,0,leaf)); }
+        dyn.doors[k]={ch:c,cells,leaf,u:0,want:0}; } }
+    // ── what's solid ──
+    const doorOf=(x,y)=>{ for(const k in dyn.doors) if(dyn.doors[k].cells.some(q=>q[0]===x&&q[1]===y)) return dyn.doors[k]; return null; };
+    const isOpen=dk2=>{ const d=dyn.doors[dk2]; return d.ch==='L'?!!s().doors[n+':'+dk2]:!!s().gates[n+':'+d.ch]; };
+    const blockAt=(x,y)=>dyn.blocks.find(b=>b.x===x&&b.y===y);
+    const ok=(x,y)=>{ const c=at(x,y); if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='L'||/[1-9]/.test(c)){ const d=doorOf(x,y); const k=Object.keys(dyn.doors).find(q=>dyn.doors[q]===d); return isOpen(k)&&d.u>0.85; } if(blockAt(x,y)) return false; return true; };
+    const okAt=(px,pz)=>{ const x=Math.floor(px), y=Math.floor(pz); return ok(x,y)||(wallC(x,y)&&WI.free(px,pz)&&(()=>{ const u=px-x, v=pz-y; return (u<WI.m&&ok(x-1,y))||(u>1-WI.m&&ok(x+1,y))||(v<WI.m&&ok(x,y-1))||(v>1-WI.m&&ok(x,y+1)); })()); };
+    lv._dyn=dyn; lv._ok=(x,y)=>ok(x,y);
+    lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!okAt(tx+ox,tz+oz)) return false; for(const b of BLK){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.24&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; } return true; };
+    lv.ground=()=>0;
+    lv.camBlock=(fx,fz,y)=>{ const x=Math.floor(fx), z=Math.floor(fz); return y>CW-0.15||((wallC(x,z)&&!WI.free(fx,fz))&&y<CW); };
+    lv.dmap={W,H,wall:(x,y)=>wallC(x,y),solid:(x,y)=>!ok(x,y)&&!wallC(x,y),known:()=>!!s().map[n]};
+    const sAt=rows.findIndex(r=>r.includes('S')), sx=rows[sAt].indexOf('S');
+    lv.spawn={x:sx+0.5,z:sAt-1+0.5,face:Math.PI,yaw:0};
+    lv.zone=()=>`${D.name} · B${n+1}${s().keys?` · 🗝×${s().keys}`:''}${s().map[n]?' · 🗺':''}`;
+    lv.follow=p=>{ lamp.position.set(p.x,p.y+1.8,p.z); };
+    // ── the rules that open the gates ──
+    function openGate(ch,msg){ const S0=s(); if(S0.gates[n+':'+ch]) return; S0.gates[n+':'+ch]=true; GAME.save(); for(const k in dyn.doors) if(dyn.doors[k].ch===ch) dyn.doors[k].want=1; if(msg) UI.toast(msg,2600); if(typeof SFX!=='undefined') SFX.play('door',true); }
+    const inRect=(d,r)=>d.hx>=r[0]&&d.hx<=r[2]+1&&d.hz>=r[1]&&d.hz<=r[3]+1;
+    function checkClear(){ for(const ch in D.gates){ const g=D.gates[ch]; if(g.when!=='clear'||s().gates[n+':'+ch]) continue; if(!lv.combat.foes.some(d=>d.alive&&inRect(d,g.rect))) openGate(ch,g.msg); } }
+    an.push((t2,dt)=>{ dt=dt||0.016; for(const k in dyn.doors){ const d=dyn.doors[k]; const w=isOpen(k)?1:0; if(d.u!==w){ d.u=w>d.u?Math.min(1,d.u+dt/0.9):Math.max(0,d.u-dt/0.6); d.leaf.position.y=d.u*2.75; d.leaf.visible=d.u<0.99; } } });
+    // ── the lamps: light all three before the first one gutters out ──
+    const LAMP_T=12;
+    function lampsTick(){ const g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lamps'); if(!g||!dyn.lamps.length) return; const done=!!s().gates[n+':'+g], now=performance.now()/1000;
+      dyn.lamps.forEach(L=>{ if(done){ L.fg.visible=true; L.L.intensity=1.1; return; } if(L.lit&&now-L.lit>LAMP_T){ L.lit=0; UI.toast('🕯 A cold breath — the flame gutters out. Light all three before the first one dies.',2400); }
+        L.fg.visible=!!L.lit; L.L.intensity=L.lit?1.0*Math.min(1,(LAMP_T-(now-L.lit))/3+0.3):0; });
+      if(!done&&dyn.lamps.every(L=>L.lit)) openGate(g,D.gates[g].msg); }
+    an.push(lampsTick);
+    // ── the sarcophagus you can push: lean into it, and it grinds a pace along ──
+    let lean=0, leanDir=null;
+    an.push((t2,dt)=>{ dt=dt||0.016; const P=ENGINE.P, mi=ENGINE.moveInput(); dyn.blocks.forEach(b=>{ if(b.mv){ b.mv.u=Math.min(1,b.mv.u+dt/0.38); const u=b.mv.u, e=u*u*(3-2*u); b.g.position.set(b.mv.fx+(b.x-b.mv.fx)*e+0.5,0,b.mv.fz+(b.y-b.mv.fz)*e+0.5); if(u>=1){ b.mv=null; onBlockMoved(b); } } });
+      if(Math.hypot(mi.x,mi.z)<0.5||ENGINE.holding){ lean=0; return; } const ax=Math.abs(mi.x)>Math.abs(mi.z)?Math.sign(mi.x):0, az=ax?0:Math.sign(mi.z);
+      const px=Math.floor(P.x), pz=Math.floor(P.z), b=blockAt(px+ax,pz+az); if(!b||b.mv||b.solved){ lean=0; return; }
+      const lat=ax?Math.abs(P.z-(b.y+0.5)):Math.abs(P.x-(b.x+0.5)), gap=ax?Math.abs(P.x-(b.x+0.5)):Math.abs(P.z-(b.y+0.5)); if(lat>0.38||gap>1.05){ lean=0; return; }
+      const dir=ax+','+az; if(dir!==leanDir){ leanDir=dir; lean=0; } lean+=dt; if(lean<0.45) return; lean=0;
+      const nx=b.x+ax, ny=b.y+az, cc=at(nx,ny); if(!(cc==='.'||cc==='P'||cc===',')||blockAt(nx,ny)||doorOf(nx,ny)){ return; }
+      b.mv={fx:b.x,fz:b.y,u:0}; b.x=nx; b.y=ny; if(typeof SFX!=='undefined'){ AUDIO2D.noise(null,{dur:0.4,fc:300,fc1:120,q:0.6,gain:0.22,decay:0.8}); } });
+    function onBlockMoved(b){ const pl=dyn.plates.find(p=>p.x===b.x&&p.y===b.y); if(!pl) return; b.solved=true; pl.m.position.y=-0.05; s().blocks[n+':'+b.k]=[b.x,b.y]; const g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='plate'); if(g) openGate(g,D.gates[g].msg); GAME.save(); if(typeof SFX!=='undefined') SFX.play('bossStrike'); }
+    // ── Ⓐ ──
+    const spot=(x,z,label,who,action,r,auto)=>lv.spots.push({x,z,r:r||1.0,label,who,action,auto,ar:0.5});
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), k=x+','+y;
+      if(c==='C') spot(x+0.5,y+0.5,'Open','Chest',()=>{ const S0=s(); if(S0.chests[n+':'+k]){ UI.toast('📭 Empty.',900); return; } const it=D.chests[k]||{gold:20}; S0.chests[n+':'+k]=true; dyn.chests[k].rotation.x=-1.9; const parts=[];
+        if(it.key){ S0.keys=(S0.keys||0)+it.key; parts.push('🗝 a small key'); } if(it.map){ S0.map[n]=true; parts.push('🗺 the map of this level'); } if(it.gold){ GAME.addGold(it.gold); parts.push(it.gold+' gold'); }
+        if(it.pot){ const [p,q]=it.pot; GAME.S.inventory[p]=(GAME.S.inventory[p]||0)+q; const P=SYS.POTIONS[p]||{emoji:'🧪',name:p}; parts.push(`${q} ${P.emoji} ${P.name}`); }
+        GAME.changed(); GAME.save(); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play('revealChest');
+        if(it.key) ENGINE.speak('A small key',['Iron, plain, and well used. It will open one locked door on this level.']); else if(it.map) ENGINE.speak('The map',['A map of this level, drawn by the brothers who kept the tombs. Every hall is on it now (tap the little map to see it large).']); else UI.toast('📦 '+parts.join(' · '),2400); },1.1);
+      else if(c==='l') spot(x+0.5,y+0.5,'Light','A lamp',()=>{ const L=dyn.lamps.find(q=>q.k===k), g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lamps'); if(!L||(g&&s().gates[n+':'+g])||L.lit) return; L.lit=performance.now()/1000; if(typeof SFX!=='undefined') SFX.play('cast');
+        const left=dyn.lamps.filter(q=>!q.lit).length; if(left) UI.toast(`🕯 It catches. ${left} still dark — quickly, before it gutters.`,1600); },1.0);
+      else if(c==='t'&&D.tablets[k]) spot(x+0.5,y+0.5,'Read','A tablet',()=>ENGINE.speak(D.tablets[k][0],D.tablets[k].slice(1)),1.1);
+      else if(c==='S') spot(x+0.5,y+0.5,'Leave','The stair up',()=>{ leaveTo(); setTimeout(()=>UI.toast('🌿 Up into the daylight of the churchyard.',1600),450); },0.8,'any');
+      else if(c==='v') spot(x+0.5,y+0.5,'Down','The stair down',()=>ENGINE.speak('The stair down',['It winds down into the dark — deeper, toward the general’s tomb.','(The deeper levels are still being dug: they come in the next update.)']),1.3); }
+    for(const k in D.look||{}){ const [x,y]=k.split(',').map(Number); spot(x+0.5,y+0.5,'Look',D.look[k][0],()=>ENGINE.speak(D.look[k][0],D.look[k].slice(1)),1.2); }
+    for(const k in dyn.doors){ const d=dyn.doors[k]; if(d.ch!=='L') continue; const c0=d.cells[0], c1=d.cells[d.cells.length-1], mx=(c0[0]+c1[0])/2+0.5, mz=(c0[1]+c1[1])/2+0.5;
+      const sides=[[-1,0],[1,0],[0,-1],[0,1]].filter(([a,b])=>at(Math.round(mx-0.5)+a,Math.round(mz-0.5)+b)==='.'); sides.forEach(([a,b])=>spot(mx+a*0.9,mz+b*0.9,'Unlock','A locked door',()=>{ const S0=s(); if(S0.doors[n+':'+k]) return; if(!(S0.keys>0)){ ENGINE.speak('A locked door',['Iron-bound oak, and a lock as big as your hand.','You need a small key. Somewhere on this level there is one.']); return; }
+        S0.keys--; S0.doors[n+':'+k]=true; GAME.save(); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play('door',true); UI.toast('🗝 The key turns, and the door grinds up into the lintel.',1800); },1.0)); }
+    // ── the fight ──
+    const STY={p:0,c:1,b:2,s:3};
+    COMBAT.arena(lv,{mode:'dungeon',tier:t,townLvl:td.lvl,W,H,walk:(x,y)=>ok(x,y),los:(x,y)=>!wallC(x,y),
+      onKill:d=>{ s().cleared[n+':'+d.post]=true; GAME.save(); checkClear(); },
+      onDeath:()=>{ ENGINE.go(id,()=>lv.spawn); setTimeout(()=>{ GAME.S.hp=GAME.S.maxHp; ENGINE.hud(); UI.toast('💫 You fall… and wake at the foot of the stair, mended.',2400); },450); } });
+    lv.onEnter=()=>{ COMBAT.clear(lv); const S0=s();
+      for(const k in dyn.doors){ const d=dyn.doors[k]; d.u=isOpen(k)?1:0; d.leaf.position.y=d.u*2.75; d.leaf.visible=d.u<0.99; }
+      for(const k in dyn.chests) dyn.chests[k].rotation.x=S0.chests[n+':'+k]?-1.9:0;
+      dyn.blocks.forEach(b=>{ const sv=S0.blocks[n+':'+b.k]; b.mv=null; if(sv){ b.x=sv[0]; b.y=sv[1]; b.solved=true; } else { b.x=b.x0; b.y=b.y0; b.solved=false; } b.g.position.set(b.x+0.5,0,b.y+0.5); });   /* a sarcophagus shoved wrong goes back to its place when you come back */
+      dyn.plates.forEach(p=>p.m.position.y=dyn.blocks.some(b=>b.solved&&b.x===p.x&&b.y===p.y)?-0.05:0);
+      dyn.lamps.forEach(L=>L.lit=0);
+      for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(!(c in STY)) continue; const post=x+','+y; if(S0.cleared[n+':'+post]) continue; const brute=c==='b', dirs=[[1,0],[-1,0],[0,1],[0,-1]][(x+y)%4];
+        COMBAT.foe(lv,{x:x+0.5,z:y+0.5,hx:x+0.5,hz:y+0.5,post,pdx:dirs[0],pdz:dirs[1],patrol:brute?2:4,hp:brute?80:35,level:td.lvl+(brute?1:0),xp:brute?22:9,atk:brute?9:7,form:STY[c],style:['pounce','claw','brute','spit'][STY[c]]}); }
+      if(!S0.seen){ S0.seen=true; GAME.save(); setTimeout(()=>ENGINE.speak(td.name+' Catacombs',['Cool air, and the smell of old stone and candle-wax. The shepherds of Hearthvale are buried here, shelf above shelf.','The chapel overhead is bound by the dark. The way to it is through the tombs below.','Doors here stay open once opened, and halls stay cleared. Look for a small key — and a map.']),600); } };
+    return lv; }
+  // ── the churchyard: a mausoleum beside the chapel, its gate standing open on a stair going down ──
+  function attach(world,o){ const t=o.town, td=o.td; if(!LV[t]) return null; const T=world.T, WD=world.W, b=o.door; if(!b) return null;
+    LV[t].forEach((D,n)=>ENGINE.add({id:'cata'+t+':'+n,lazy:()=>build(t,n,D,td)}));
+    const ds=world.doorStep(b.id), fx=Math.sin(ds.face), fz=Math.cos(ds.face);   // the way the chapel faces
+    const bx=b.x+b.w/2, by=b.y+b.h/2, open=(x,y)=>{ for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=x+dx, yy=y+dy; if(!world.walkTile(xx,yy)) return false; if(xx>=b.x-1&&xx<=b.x+b.w&&yy>=b.y-1&&yy<=b.y+b.h) return false; } return true; };
+    let best=null, bs=1e9; for(let y=Math.floor(b.y-7);y<=b.y+b.h+7;y++) for(let x=Math.floor(b.x-7);x<=b.x+b.w+7;x++){ if(!open(x,y)) continue; const vx=x+0.5-bx, vz=y+0.5-by, d=Math.hypot(vx,vz), front=(vx*fx+vz*fz)/(d||1);
+      const sc=d+(front>0.6?6:0)+(front<-0.5?3:0)+Math.abs(Math.hypot(x+0.5-ds.x,y+0.5-ds.z)-4.5)*0.4; if(sc<bs){ bs=sc; best=[x,y]; } }
+    if(!best) return null; const mx=best[0]+0.5, mz=best[1]+0.5, gy=world.ground(mx,mz), face=ds.face;   // it opens the same way as the chapel
+    const g=group(mx,gy,mz,world.scene); g.rotation.y=face; const st0=0x9a9284, st1=0x7a7468, rf=0x5a5450;
+    B(1.9,0.18,2.1,st1,0,-0.05,0,g); B(1.7,1.9,1.7,st0,0,0.1,-0.1,g); const roof=prism(2.0,0.7,2.0,rf); roof.position.set(0,2.0,-0.1); g.add(roof); B(0.12,0.5,0.12,0xd8c890,0,2.6,-0.1,g); B(0.34,0.1,0.12,0xd8c890,0,2.86,-0.1,g);
+    B(0.9,1.4,0.06,0x0a0808,0,0.18,0.76,g); [-0.52,0.52].forEach(o=>B(0.18,1.7,0.18,st1,o,0.1,0.78,g)); B(1.2,0.22,0.22,st1,0,1.72,0.78,g);
+    for(let i=0;i<5;i++) B(0.04,1.3,0.04,0x2a2a30,-0.3+i*0.15,0.2,0.84,g);   // the gate, standing open (drawn back to one side)
+    g.children.slice(-5).forEach((m,i)=>{ m.position.x=-0.9-i*0.02; m.position.z=0.84+i*0.12; });
+    [-0.75,0.75].forEach(o=>{ Cy(0.05,0.06,0.18,6,0xf0e8d0,o,0.1,1.05,g); themeFlame(o,0.34,1.05,g,world.anim,1.2,CHAPEL_THEME(t)); });
+    for(let i=0;i<7;i++){ const sd=i%2?1:-1, iv=Sp(0.16+hsh(i,3)*0.1,0x3e6a32,sd*(0.86+hsh(i,1)*0.06),0.2+hsh(i,2)*1.7,-0.1+(hsh(i,4)-0.5)*1.2,g); iv.scale.x=0.35; }   // ivy up the side walls
+    shade(g); const ps=typeof VIEWMODE!=='undefined'?VIEWMODE.ps(world):1;
+    mouth={x:mx+fx*1.7,z:mz+fz*1.7,face};
+    world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:'The mausoleum',action:()=>{ ENGINE.go('cata'+t+':0'); }});
+    { const base=world.canMove; world.canMove=(fx,fz,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.2&&d<Math.hypot(fx-mx,fz-mz)) return false; return base(fx,fz,tx,tz); }; }   // its walls are solid
+    return {x:mx,z:mz,mouth}; }
+  return { attach, get mouth(){ return mouth; }, LV };
+})();
+
 // ── engine/guardians.js ──
 // ════════════════════════════════════════════════════════════════
 //  GUARDIANS — what makes each sanctum its own fight, from the game's own ticks:
@@ -12280,7 +12503,7 @@ const DUNMAP=(function(){ const seen={}, cv=document.createElement('canvas'), dp
     if(px>=0&&pz>=0&&px<D.W&&pz<D.H) S[pz*D.W+px]=2;
     const z=size(), cell=big?Math.max(3,Math.min(10,Math.floor(z/Math.max(D.W,D.H)))):(D.cell||7), ox=big?(z-D.W*cell)/2:z/2-P.x*cell, oy=big?(z-D.H*cell)/2:z/2-P.z*cell;
     g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,z,z); g.save(); g.beginPath(); g.rect(0,0,z,z); g.clip();
-    for(let y=0;y<D.H;y++) for(let x=0;x<D.W;x++){ const v=S[y*D.W+x]; if(!v) continue; const X=ox+x*cell, Y=oy+y*cell; if(X<-cell||Y<-cell||X>z||Y>z) continue;
+    for(let y=0;y<D.H;y++) for(let x=0;x<D.W;x++){ const v=S[y*D.W+x]||(D.known&&D.known()?1:0); if(!v) continue; const X=ox+x*cell, Y=oy+y*cell; if(X<-cell||Y<-cell||X>z||Y>z) continue;
       g.fillStyle=D.wall(x,y)?(D.trees?'#2f5a34':'#6a6478'):D.solid(x,y)?'#8a7a5a':v===2?'#d8b24a':'#4a4652'; g.fillRect(X,Y,cell,cell); }
     // the ways out, down and up, the chests and the people, once you've seen them
     L.spots.forEach(q=>{ const x=Math.floor(q.x), y=Math.floor(q.z); if(x<0||y<0||x>=D.W||y>=D.H||!S[y*D.W+x]) return; const lb=q.label||'';
@@ -16699,7 +16922,7 @@ const SFX=(function(){
     if(/^deep:/.test(i)) return 'rt:uw';
     if(bossNear()) return 'boss';
     if(/^(forest|glade|monkcave|robbycave)$/.test(i)) return 'rt:forest';
-    if(/^chapel\d+:/.test(i)||/^mistral:chapel/.test(i)||/^sunfall:lamp/.test(i)) return 'rt:dungeon';
+    if(/^chapel\d+:/.test(i)||/^cata\d/.test(i)||/^mistral:chapel/.test(i)||/^sunfall:lamp/.test(i)) return 'rt:dungeon';
     if(/^sanct\d/.test(i)||/^sunfall:cath/.test(i)) return 'rt:chapel';
     if(/^in:/.test(i)){ if(/inn/.test(i)) return 'rt:inn'; if(/^in:home_/.test(i)) return 'rt:home'; return 'town'; }
     if(i==='surf'||i==='regatta') return 'sail';
@@ -16735,7 +16958,7 @@ const SFX=(function(){
   const WATER=new Set([3,20,21,29]), ROAD=new Set([2,12]);
   function surface(){ const i=id(), L=lv(), P=ENGINE.P;
     if(/^in:/.test(i)) return /keep|forge|guard/.test(i)?'stone':'wood';
-    if(/^(chapel|sanct|keep|deep|mistral:|sunfall:|finale|monkcave|robbycave|school)/.test(i)) return 'stone';
+    if(/^(chapel|cata|sanct|keep|deep|mistral:|sunfall:|finale|monkcave|robbycave|school)/.test(i)) return 'stone';
     if(!L||!L.T) return 'earth'; const tx=Math.floor(P.x), tz=Math.floor(P.z), t=L.T(tx,tz);
     if(WATER.has(t)) return 'water'; if(ROAD.has(t)) return 'stone';
     if(L.desert&&L.desert(tx,tz)) return 'sand'; if(i==='pw:tabor'&&!(S().tabor&&S().tabor.thawed)) return 'snow';
@@ -16890,7 +17113,8 @@ const SFX=(function(){
   if(typeof RIG!=='undefined'&&RIG.ok){ try{ ENGINE.K.mocap=RIG.make(); ENGINE.K.footIK=true; ENGINE.K.mocapOff=localStorage.getItem('klk3d_mocap')==='0'; }catch(e){ console.warn('rig',e); } }
   if(typeof WEATHER!=='undefined') world.weather=WEATHER.attach(world);
   if(typeof ROADLIFE!=='undefined') world.roadlife=ROADLIFE.attach(world);
-  if(typeof SNEAK!=='undefined') world.sneak=SNEAK.attach(world);   /* V144: the sleeping demon camps */   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
+  if(typeof SNEAK!=='undefined') world.sneak=SNEAK.attach(world);
+  if(typeof CATACOMB!=='undefined'&&CHAPELS[0]) world.cata=CATACOMB.attach(world,{town:0,door:chapelDoor(0),td:CHAPELS[0].td});   /* V147: Hearthvale's churchyard mausoleum and the catacombs under it */   /* V144: the sleeping demon camps */   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
   if(typeof LANDMARKS!=='undefined') LANDMARKS.attach(world);   // V127: watchtowers to climb, camps, the mill, the drowned chapel, a shrine, a spring   // V121: the Pilgrim's Pass — the mountain trek from Shadowmere to Hellgate   // V115: the high roads: the long journeys between distant towns   // V114: the Scholar's Way, the old road north to Mario's tower school
   if(typeof GREEK!=='undefined'){ const gx=SX(46.5), gz=SY(20.5); GREEK.place(world,world.scene,world.anim,gx,gz,'john14_6',{y:world.ground?world.ground(gx,gz):0}); }   // a scrap of John by Hearthvale's chapel door
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
