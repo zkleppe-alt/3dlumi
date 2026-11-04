@@ -4188,7 +4188,8 @@ const ENGINE=(function(){
   // ── what's in reach ──
   function nearest(){ let best=null, bd=1.7;
     L.folk.forEach(f=>{ if(f.mute) return; const d=Math.hypot(f.x-P.x,f.z-P.z)-(f.reach||0); if(d<bd){ bd=d; best={label:f.label||'Talk',who:f.who,lines:f.lines,next:f.next,f}; } });
-    L.spots.forEach(s=>{ const d=Math.hypot(s.x-P.x,s.z-P.z)-(s.r||1)+1.0; if(d<bd){ bd=d; best=s; } });
+    L.spots.forEach(s=>{ if(s.far||(s.hide&&s.hide())) return; const d=Math.hypot(s.x-P.x,s.z-P.z)-(s.r||1)+1.0; if(d<bd){ bd=d; best=s; } });
+    if(!best) L.spots.forEach(s=>{ if(!s.far||(s.hide&&s.hide())) return; const d=Math.hypot(s.x-P.x,s.z-P.z)-(s.r||1)+1.0; if(d<bd){ bd=d; best=s; } });   /* V149: a far reach (the crook) only when nothing is close at hand */
     return best; }
   // folk are solid, but only a step INTO them is refused — a step away always is allowed, so you can never be stuck inside
   // someone who walked into you (and the foes of a fight are solid the same way, COMBAT.solid)
@@ -8953,6 +8954,8 @@ function chapelLevels(C,spec){
               :`<button class="gm-btn" data-act="again">↻ Try again</button>`),
           act:b=>{ if(b==='again') ask(); else if(b==='go'){ S.ownedGear[C.reward]=true; if(C.aog) S.ownedGear[C.aog]=true; S.skillPoints+=2; S.chapels=Math.max(S.chapels,C.town+1); GAME.recalc(); S.hp=S.maxHp; GAME.changed(); GAME.save();
             UI.close(); if(spec.onCleanse) spec.onCleanse(); leave(`🙏 ${td.general} blesses you! ${td.name} is cleansed. 📖 ${td.div} restored.`); } } }); } });
+    if(spec.trialDone&&spec.trialDone()){ UI.sheet({title:`${td.general}'s blessing`,wide:true,html:`<div class="gm-sec">${UI.esc(td.head)}</div><p class="gm-q">"You answered me below, among my flock, and you have broken what bound me. Go with God, knight."</p><div class="gm-item worn"><span>+2 skill points${C.aog?' · '+SYS.EQUIP[C.aog].emoji+' '+UI.esc(SYS.EQUIP[C.aog].name):''}</span></div><button class="gm-btn" data-act="go">🙏 Receive the blessing &amp; cleanse the town</button>`,
+      act:b=>{ if(b!=='go') return; S.ownedGear[C.reward]=true; if(C.aog) S.ownedGear[C.aog]=true; S.skillPoints+=2; S.chapels=Math.max(S.chapels,C.town+1); GAME.recalc(); S.hp=S.maxHp; GAME.changed(); GAME.save(); UI.close(); if(spec.onCleanse) spec.onCleanse(); leave(`🙏 ${td.general} blesses you! ${td.name} is cleansed. 📖 ${td.div} restored.`); } }); return; }
     ask(); }
 
   // every open cell must be reachable from the way in. If a floor comes out of the generator in pieces,
@@ -9110,7 +9113,7 @@ function chapelLevels(C,spec){
             UI.toast('🙏 You rise, restored. Should you fall, you will wake here by the fire.',2600); if(!R.restVerse){ R.restVerse=true; ENGINE.speak('By the fire',['“He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul.” — Psalm 23:2–3','Rest as long as you like. The fire will keep.']); } } };
         lv.anim.push(tick); UI.toast('🔥 You sink into the chair by the fire…',1600); },1.1);
       else if(t===22&&ftype!=='library') spot(x,y,'Look','The hearth',()=>UI.toast('🔥 The fire is kept up. Someone still comes here.',1400),1.0);
-      else if(t===8) spot(x,y,i?'Down':'Leave',i?'The stair down':'The door',()=>{ if(i) ENGINE.go(idOf(i-1),()=>arrival(i-1,true)); else leave('🌿 You step back outside.'); },0.8);
+      else if(t===8) spot(x,y,spec.down&&top?'Down':i?'Down':'Leave',spec.down&&top?'The stair down to the catacombs':i?'The stair down':'The door',()=>{ if(spec.down&&top){ spec.down(); return; } if(i) ENGINE.go(idOf(i-1),()=>arrival(i-1,true)); else leave('🌿 You step back outside.'); },0.8);
       else if(t===7) spot(x,y+0.6,'Talk',td.general,()=>{ if(!R.bossDead){ ENGINE.speak(td.general,[`The demon ${td.boss} binds me — strike it down first!`]); return; } if(dyn.general&&dyn.general.fall<1){ UI.toast('…he is still coming down.',900); return; } trial(lv); },1.4); }
     if(dyn.podium) lv.spots.push({x:f.podium.x+0.5,z:f.podium.y+0.5,r:1.3,label:'Open',who:'The chest on the dais',action:()=>{ if(!dyn.podium.visible) return; if(R.chests['podium:'+i]){ UI.toast('📭 Empty — the key is already yours.',900); return; }
       R.chests['podium:'+i]=true; GAME.save(); dyn.kc.open(()=>{ R.hasKey=true; ENGINE.speak('An iron key',['Black with age, warm from the light it lay in. It will not last — use it on the stone that seals the stair.']); }); }});
@@ -9134,45 +9137,52 @@ function chapelLevels(C,spec){
       else if(f.podium&&!R.hinted){ R.hinted=true; setTimeout(()=>ENGINE.speak('The chapel is bound',['Demons hold these halls, and a stone seals the stair to the next floor.','Hunt down every demon on the floor. When the last one falls, a chest rises from the dais in the great hall — the iron key inside opens the stone.','(The count of demons left is up in the corner, under the floor number.)']),450); }
       else setTimeout(()=>UI.toast(f.podium&&!R.opened[i]?`⬆ Floor ${i+1}/${N} — 👹 slay every demon to raise the key`:`⬆ Floor ${i+1}/${N}`,1800),400); };
     return lv; }
-  return { enter, get run(){ return R; } };
+  // V149: a chapel entered from its catacombs: straight up into the nave (the top floor), where the guardian waits
+  function enterTop(){ R=fresh(); R.briefed=true; R.hinted=true; GAME.save(); ENGINE.go(idOf(N-1),lv=>arrival(N-1,false)); }
+  return { enter, enterTop, get run(){ return R; } };
 }
 
 // ── engine/catacomb.js ──
 // ════════════════════════════════════════════════════════════════
-//  CATACOMB (V147) — the way into a chapel is DOWN. Beside the chapel, in its churchyard, a mausoleum; its stair goes down
-//  into the catacombs where the town's faithful are buried — and, deepest of all, its general. A dungeon in the Ocarina
-//  manner, the same every time you play: halls and crypts joined by archways, small keys for locked doors, a map and a
-//  compass, sarcophagi to shove onto pressure plates, lamps to light before the first gutters out, chasms you can't yet
-//  cross. Rooms you clear stay cleared and every door you open stays open (GAME.S.cata[town]).
-//  This first build: Hearthvale — the churchyard mausoleum and the first level, the Ossuary of the Shepherds.
-//  Layout legend:  # rock · . floor · , an open archway · S the stair up (out) · v the stair down · L a locked door (small key)
-//   1 2 3… iron gates (opened by the floor's rules) · C chest · T sarcophagus · B a sarcophagus you can push · P pressure plate
-//   O pillar · l a lamp to light · t a tablet · X chasm · R an iron ring on a post (for the Shepherd's Staff, later)
-//   p c b s demons on their posts (pouncer, clawer, brute, spitter — combat.js)
-//  CATACOMB.attach(world, {town, door, td})  ·  levels 'cata<town>:<n>'
+//  CATACOMB (V147–V149) — the way into a chapel is DOWN. Beside the chapel, in its churchyard, a mausoleum; its stair goes
+//  down into the catacombs where the town's faithful are buried — and, deepest of all, its general. A dungeon in the
+//  Ocarina manner, the same every time you play: small keys for locked doors, one map and one compass for the whole of it,
+//  sarcophagi to shove onto pressure plates, lamps to light before the first gutters out, a floor that gives way, a
+//  mini-boss, and at the bottom the general's tomb — his spirit spars with you (it teaches the parry), asks the doctrine he
+//  died defending, and gives you his relic, the dungeon's item. Hearthvale's is the SHEPHERD'S STAFF: a crook that catches
+//  iron rings across a chasm and swings you over, pulls levers out of reach, and drags a stone ossuary toward you. With it
+//  the way back opens: the boss key, the great door, and the stair up into the chapel's nave, where the guardian waits.
+//  Cleansed, the catacombs stay open — candlelit, quiet, the brothers tending the tombs again.
+//  Rooms you clear stay cleared; every door you open stays open (GAME.S.cata[town]).
+//  Layout legend:  # rock · . floor · , open archway · S the stair out (to the churchyard) · v a stair down · u a stair up
+//   N the stair up into the nave · L locked door (small key) · G the great door (boss key) · 1-9 iron gates (the floor's rules)
+//   C chest · Q the great chest (the boss key) · T sarcophagus · A the general's tomb · B a stone ossuary you push (or pull)
+//   P pressure plate · O pillar · l lamp · t tablet · k lectern (the brothers' records) · X chasm · R an iron ring on a post
+//   Y lever · K cracked floor (it gives way) · p c b s demons on their posts (pouncer, clawer, brute, spitter) · m the Warden
+//  CATACOMB.attach(world, {town, door, td, C, nave(), cleansed()})  ·  levels 'cata<town>:<n>'
 // ════════════════════════════════════════════════════════════════
 const CATACOMB=(function(){
-  const LV={ 0:[ { name:'The Ossuary of the Shepherds',
-    rows:[
+  const LV={ 0:[
+  { name:'The Ossuary of the Shepherds', rows:[
 '#########################################',
-'#############T.............T#############',
-'#############.......v.......#############',
-'#############...............#############',
-'#############...O.......O...#############',
-'#############...............#############',
-'#############.......b.......#############',
-'#############...O.......O...#############',
-'#############...............#############',
-'#############T.............T#############',
-'###################222###################',
+'#T.........T#T.............T#############',
+'#.....N.....#.......v.......#############',
+'#...........#...............#############',
+'#..O.....O..#...O.......O...#############',
+'#.........k.#...............#############',
+'#...........#.......b.......#############',
+'#..O.....O..#...O.......O...#############',
+'#...........#...............#############',
+'#...........#T.............T#############',
+'##GG###############222###################',
 '#....XXXX...#T.............T#..........T#',
 '#....XXXX.t.#...............#.O.....P...#',
 '#.C..XXXX...#...O.......O...#...........#',
-'#....XXXX...,......p........#...........#',
+'#....XXXX...,.....p.........#...........#',
 '#..R.XXXX...,..........p....#...B.......#',
 '#....XXXX...,...............#...........#',
 '#....XXXX...#...O...c...O111#...........#',
-'#....XXXX...#...........#...#.O.......C.#',
+'#....XXXX.R.#...........#...#.O.......C.#',
 '#....XXXX...#T..........#.C.#...........#',
 '###################,,,###########333#####',
 '#############...............#..........T#',
@@ -9183,49 +9193,140 @@ const CATACOMB=(function(){
 '#############...............#...........#',
 '#############..O.........O..#...........#',
 '#############...............#.....l.....#',
-'#############T......S......T#T.........T#',
+'#############.......S.......#T.........T#',
 '#########################################'],
+    links:{ '20,29':{to:'world'}, '20,2':{to:1,at:[20,27],face:Math.PI}, '6,2':{to:'nave'} },
     chests:{ '26,19':{key:1}, '38,18':{map:true}, '2,13':{gold:60,pot:['potion',2]} },
     gates:{ '1':{when:'clear',rect:[13,11,27,19],msg:'⛓ The last demon falls — the bars over the alcove grind up into the vault.'},
-            '2':{when:'plate',msg:'⛓ Somewhere behind you, a gate rumbles up into the ceiling.'},
+            '2':{when:'plates',cells:['36,12'],msg:'⛓ Somewhere behind you, a gate rumbles up into the ceiling.'},
             '3':{when:'lamps',msg:'🕯 All three burn together — the gate lifts.'} },
+    rings:{ '3,15':{land:[4,15]}, '10,18':{land:[9,18]} },
+    books:{ '10,5':0 },
     tablets:{ '17,22':['A stone, cut deep and worn soft by hands','Here sleep the shepherds of Hearthvale, who kept the flock and kept the faith.','“I am the good shepherd: the good shepherd giveth his life for the sheep.” — John 10:11','(The chapel above is bound. Its doors will not open from outside — the way to it is through here, and down before it is up.)'],
-              '10,12':['A tablet by the chasm','Our General lies below us, with his crook beside him. He kept this flock to the end.','(Across the chasm an iron ring is set in a post. Something long and hooked could catch it.)'] },
-    look:{ '9,15':['An iron ring, across the chasm','It is set in a post on the far side, beside a chest no one has reached in a long time.','A shepherd’s crook could catch that ring — if you had one.'] } } ] };
-  const SOLID=new Set(['#','T','O','C','l','t','R','X','v','B']);
-  const st=t=>{ const S=GAME.S; S.cata=S.cata||{}; return S.cata[t]||(S.cata[t]={keys:0,doors:{},chests:{},gates:{},cleared:{},blocks:{},map:{}}); };
-  let mouth=null;   // where the stair comes up in the world: {x,z,face}
+              '10,12':['A tablet by the chasm','Our General lies below us, with his crook beside him. He kept this flock to the end.','Beyond the chasm is the great door, and the stair to the nave. Only the one who bears his crook will cross.'] } },
+  { name:'The Lamp-lit Crypts', rows:[
+'#########################################',
+'#############T.............T#############',
+'#############...............#############',
+'#############...............#############',
+'#############....KKKKKKK....#############',
+'#############....KKKKKKK....#############',
+'#############....KKKKKKK....#############',
+'#############...............#############',
+'#############..t............#############',
+'#############T.............T#############',
+'###################LLL###################',
+'#############..............T#T......#.C.#',
+'#############k......s.......#.......#...#',
+'#############...O.......O...#...p....111#',
+'#############.....c....c....,...........#',
+'#############...............,...........#',
+'#############...............,...........#',
+'#############...O.......O...#.......p...#',
+'#############...............#.T.........#',
+'######C######T..............#...........#',
+'######2############,,,###################',
+'#T..........#...............#########Q###',
+'#...........#....t.........T#...XXX.#5#.#',
+'#..B........#..O.........O..#Y..XXX....##',
+'#...........,...............4...XXX.P..B#',
+'#...........,T..............4...XXX....##',
+'#.....P..B..,...............#.R.XXX.....#',
+'#..P........#..O.........O..#...XXX.....#',
+'#...........#...............#...XXX.R..v#',
+'#..........T#.......u.......#T..XXX.....#',
+'#########################################'],
+    links:{ '20,29':{to:0,at:[20,3],face:0}, '39,28':{to:2,at:[37,28],face:-Math.PI/2} },
+    fall:{ to:2, at:[20,5] },
+    chests:{ '38,11':{key:1}, '6,19':{compass:true}, '37,21':{bosskey:true} },
+    gates:{ '1':{when:'clear',rect:[29,11,39,19],msg:'⛓ The room falls quiet — the bars over the alcove lift.'},
+            '2':{when:'plates',cells:['3,27','6,26'],msg:'⛓ Both plates sink home — the bars before the alcove grind up.'},
+            '4':{when:'lever',msg:'⛓ The lever drops — the gate to the landing rattles up. A short way back.'},
+            '5':{when:'plates',cells:['36,24'],msg:'⛓ The ossuary settles on the plate, and the little gate above it lifts.'} },
+    rings:{ '30,26':{land:[31,27]}, '36,28':{land:[35,27]} },
+    pull:{ '39,24':true },
+    books:{ '13,12':2 },
+    tablets:{ '17,22':['A tablet at the foot of the stair','The brothers lit these crypts every night for four hundred years.','Then the shadow came, and put the lamps out one by one.'],
+              '15,8':['Cut into the wall','The floor of this hall is thin, and the dead lie close beneath it. Walk softly — or do not.'] } },
+  { name:'The General’s Tomb', rows:[
+'#########################################',
+'#############T.............T#############',
+'#############...............#############',
+'#############..........c....#############',
+'#############...O.......O...#############',
+'#############...............#############',
+'#############....p..........#############',
+'#############...O.....p.O...#############',
+'#############...............#############',
+'#############T.............T#############',
+'###################,,,###################',
+'#############...............#############',
+'#############..O.........O..#############',
+'#############...............#############',
+'#############...............#############',
+'#############.......m.......#############',
+'#############...............#############',
+'#############...............#############',
+'#############..O.........O..#############',
+'#############...............#############',
+'###################111###################',
+'#############T.............T#...XXX....T#',
+'#############...............#...XXX.....#',
+'#############....l..A..l....#...XXXR....#',
+'#############...............,...XXX.....#',
+'#############...............,...XXX.....#',
+'#############..k............,...XXX.....#',
+'#############...............#..RXXX.....#',
+'#############...............#...XXX...u.#',
+'#############T.............T#...XXX.....#',
+'#########################################'],
+    links:{ '38,28':{to:1,at:[38,27],face:Math.PI} }, spawn:[20,5],
+    chests:{},
+    gates:{ '1':{when:'clear',rect:[13,11,27,19],msg:'⛓ The Warden falls. The gate to the tomb lifts, slow as a held breath.'} },
+    rings:{ '35,23':{land:[36,24]}, '31,27':{land:[30,26]} },
+    books:{ '15,26':1 },
+    tablets:{} } ] };
+  const SOLID=new Set(['#','T','O','C','Q','l','t','k','R','X','v','B','A','Y','N']);
+  const st=t=>{ const S=GAME.S; S.cata=S.cata||{}; const c=S.cata[t]||(S.cata[t]={}); ['doors','chests','gates','cleared','blocks','map','levers'].forEach(k=>{ if(!c[k]||typeof c[k]!=='object') c[k]={}; }); c.keys=c.keys||0; return c; };
+  let mouth=null, OPT={};
+  const cleansed=t=>!!(OPT.cleansed&&OPT.cleansed(t));
   function leaveTo(){ if(mouth) ENGINE.go('world',{x:mouth.x,z:mouth.z,face:mouth.face,yaw:mouth.face}); else ENGINE.go('world'); }
+  const txt=s=>String(s).replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&');
   // ── a web in a corner, painted once ──
   let webTex=null; function web(){ if(webTex) return webTex; const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d'); g.strokeStyle='rgba(230,226,214,0.55)'; g.lineWidth=1.2;
     for(let i=0;i<7;i++){ const a=i/6*Math.PI/2; g.beginPath(); g.moveTo(0,0); g.lineTo(Math.cos(a)*128,Math.sin(a)*128); g.stroke(); }
     for(let r=16;r<128;r+=16){ g.beginPath(); for(let i=0;i<=6;i++){ const a=i/6*Math.PI/2, rr=r*(0.92+((i*7+r)%5)*0.03); i?g.lineTo(Math.cos(a)*rr,Math.sin(a)*rr):g.moveTo(Math.cos(a)*rr,Math.sin(a)*rr); } g.stroke(); }
     return webTex=new THREE.CanvasTexture(c); }
-  function build(t,n,D,td){ const rows=D.rows, H=rows.length, W=rows[0].length, at=(x,y)=>rows[y]&&rows[y][x], s=()=>st(t), id='cata'+t+':'+n;
+  // the general's spirit: his own figure, gone pale and full of light
+  function spirit(tint){ const p=person('general',{tint:tint||'#5a3a7a'}), mats=[]; p.traverse(m=>{ if(!m.isMesh) return; const mm=new THREE.MeshLambertMaterial({color:new THREE.Color(m.material.color||0xffffff).lerp(new THREE.Color(0xc8dcff),0.55),transparent:true,opacity:0.72,emissive:0x1a2a4a}); m.material=mm; mats.push(mm); m.castShadow=false; });
+    const g=new THREE.Group(); g.add(p); const halo=new THREE.Mesh(new THREE.SphereGeometry(0.62,14,10),new THREE.MeshBasicMaterial({color:0x9ab8ff,transparent:true,opacity:0.12,depthWrite:false})); halo.position.y=0.8; g.add(halo); g.userData.mats=mats; return g; }
+  function build(t,n,D,td){ const rows=D.rows, H=rows.length, W=rows[0].length, at=(x,y)=>rows[y]&&rows[y][x], s=()=>st(t), id='cata'+t+':'+n, C=OPT.C||{}, clean=()=>cleansed(t);
     const T=CHAPEL_THEME(t), dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex(), CW=3.6;
     const pal={wall:dk(T.wall,0.72),top:dk(T.top,0.6),fA:dk(T.fA,0.86),fB:dk(T.fB,0.86),trim:T.trim,stone:0x8a8070,lid:0x9a9080,iron:0x2a2a30,wood:0x5a3a22,linen:0xd8ccb0};
     const scene=new THREE.Scene(), bg=new THREE.Color(0x0a0709); scene.background=bg; scene.fog=new THREE.Fog(bg,5,21);
     const lv={id,name:td.name+' Catacombs',scene,folk:[],spots:[],anim:[],cam:{pitch:0.22,dist:2.9,min:1.5,max:4.6,lookH:0.15},speed:4.4,interior:true,actorS:0.78,dmapShow:true};
     const hemi=new THREE.HemisphereLight(0xe8d0b8,0x2a1e1a,0.62); scene.add(hemi); const lamp=new THREE.PointLight(0xffd8a0,0.9,8,1.5); scene.add(lamp);
-    const room=group(0,0,0,scene), an=lv.anim, dyn={doors:{},chests:{},lamps:[],blocks:[],plates:[]};
-    // which walls face a hall (only those are drawn), the floor, the pits
+    const room=group(0,0,0,scene), an=lv.anim, dyn={doors:{},chests:{},lamps:[],blocks:[],plates:[],levers:{},crack:null};
     const wallC=(x,y)=>at(x,y)==='#'||at(x,y)===undefined, floorC=(x,y)=>{ const c=at(x,y); return c!==undefined&&c!=='#'&&c!=='X'; };
     const WI=wallInset((x,y)=>wallC(x,y),(x,y)=>floorC(x,y)||at(x,y)==='X',0.06);
-    const fl=[], wl=[], pit=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(c==='#'){ let face=false; for(let dy=-1;dy<=1&&!face;dy++) for(let dx=-1;dx<=1;dx++){ const q=at(x+dx,y+dy); if(q!==undefined&&q!=='#'){ face=true; break; } } if(face) wl.push([x,y]); } else if(c==='X') pit.push([x,y]); else fl.push([x,y]); }
+    const fl=[], wl=[], pit=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(c==='#'){ let face=false; for(let dy=-1;dy<=1&&!face;dy++) for(let dx=-1;dx<=1;dx++){ const q=at(x+dx,y+dy); if(q!==undefined&&q!=='#'){ face=true; break; } } if(face) wl.push([x,y]); } else if(c==='X'||c==='K') pit.push([x,y]); if(c!=='#'&&c!=='X'&&c!=='K') fl.push([x,y]); }
     inst(fl,UNIT,detailify(new THREE.MeshLambertMaterial(),{mode:'stone'}),([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((x+y)%2?pal.fA:pal.fB).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
     inst(wl,UNIT,bmat(0xffffff,'brick'),([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx,CW,q.sz); m.setPosition(q.cx,0,q.cz); cc.setHex(pal.wall).offsetHSL(0,0,(hsh(x,y)-0.5)*0.07); },room);
     inst(wl,UNIT,null,([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx+0.05,0.28,q.sz+0.05); m.setPosition(q.cx,0,q.cz); cc.setHex(dk(pal.wall,0.62)); },room);   // the plinth course
-    // the chasm: a long drop into the dark, its sides cut stone
-    pit.forEach(([x,y])=>{ B(1,0.2,1,0x020103,x+0.5,-6.2,y+0.5,room); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ if(at(x+a,y+b)==='X') return; B(a?0.08:1,1.2,a?1:0.08,dk(pal.wall,0.32),x+0.5+a*0.5,-1.2,y+0.5+b*0.5,room); B(a?0.08:1,4.9,a?1:0.08,0x0a0708,x+0.5+a*0.5,-6.1,y+0.5+b*0.5,room); B(a?0.14:1,0.06,a?1:0.14,pal.stone,x+0.5+a*0.47,-0.06,y+0.5+b*0.47,room); }); });
+    // the chasms (and under the thin floor, the drop): a long fall into the dark, its sides cut stone
+    const pitAt=(x,y)=>at(x,y)==='X'||at(x,y)==='K';
+    pit.forEach(([x,y])=>{ B(1,0.2,1,0x020103,x+0.5,-6.2,y+0.5,room); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ if(pitAt(x+a,y+b)) return; B(a?0.08:1,1.2,a?1:0.08,dk(pal.wall,0.32),x+0.5+a*0.5,-1.2,y+0.5+b*0.5,room); B(a?0.08:1,4.9,a?1:0.08,0x0a0708,x+0.5+a*0.5,-6.1,y+0.5+b*0.5,room); if(at(x,y)==='X') B(a?0.14:1,0.06,a?1:0.14,pal.stone,x+0.5+a*0.47,-0.06,y+0.5+b*0.47,room); }); });
+    // the thin floor: cracked flags over the drop, until it gives
+    { const ks=pit.filter(([x,y])=>at(x,y)==='K'); if(ks.length){ const g=group(0,0,0,room); dyn.crack={g,tiles:[]}; ks.forEach(([x,y])=>{ const tg=group(x+0.5,0,y+0.5,g); B(0.98,0.1,0.98,(x+y)%2?pal.fA:pal.fB,0,-0.1,0,tg); for(let i=0;i<2;i++){ const c=B(0.45+hsh(x,y+i)*0.35,0.006,0.014,0x241a12,(hsh(x+i,y)-0.5)*0.3,0,(hsh(y,x+i)-0.5)*0.5,tg); c.rotation.y=hsh(i,x*y)*3; } dyn.crack.tiles.push({g:tg,vy:0}); }); } }
     // the burial niches (loculi) cut along the walls: a dark shelf, and on it the shrouded dead, two rows high
     const faces=[]; wl.forEach(([x,y])=>[[0,1],[0,-1],[1,0],[-1,0]].forEach(([a,b])=>{ const c=at(x+a,y+b); if(c==='.'&&hsh(x*3+a,y*5+b)<0.42) faces.push([x,y,a,b]); }));
     const QQ=new THREE.Quaternion(), V1=new THREE.Vector3(), V2=new THREE.Vector3();
-    const nicheAt=([x,y,a,b],h)=>{ const q=WI.box(x,y); return [q.cx+a*(q.sx/2+0.001)*(a?1:0)+0,h,q.cz+b*(q.sz/2+0.001)]; };
+    const nicheAt=([x,y,a,b],h)=>{ const q=WI.box(x,y); return [q.cx+a*(q.sx/2+0.001),h,q.cz+b*(q.sz/2+0.001)]; };
     inst(faces.flatMap(f=>[[f,0.62],[f,1.48]]),UNIT,null,([f,h],m,cc)=>{ const [px,,pz]=nicheAt(f,h); const [,,a,b]=f; m.makeScale(a?0.06:0.86,0.5,a?0.86:0.06); m.setPosition(px-a*0.02,h,pz-b*0.02); cc.setHex(0x0c0a0c); },room,false);
     inst(faces.flatMap(f=>[[f,0.62],[f,1.48]]).filter(([f,h])=>hsh(f[0]*7+h*10,f[1])<0.8),new THREE.CylinderGeometry(0.13,0.13,0.72,8).rotateZ(Math.PI/2),new THREE.MeshLambertMaterial(),([f,h],m,cc)=>{ const [px,,pz]=nicheAt(f,h); const [,,a,b]=f; QQ.setFromAxisAngle(V1.set(0,1,0),a?Math.PI/2:0); m.compose(V2.set(px-a*0.08,h+0.14,pz-b*0.08),QQ,new THREE.Vector3(1,0.85,1)); cc.setHex(pal.linen).offsetHSL(0,0,(hsh(f[0],f[1]+h)-0.5)*0.1); },room);
     // the vault: a dark roof, and stone ribs across the halls every few paces
     const ceil=new THREE.Mesh(new THREE.PlaneGeometry(W+4,H+4),new THREE.MeshBasicMaterial({color:0x0a0809,side:THREE.DoubleSide})); ceil.rotation.x=Math.PI/2; ceil.position.set(W/2,CW+0.02,H/2); room.add(ceil);
-    for(let y=1;y<H-1;y++){ if(y%3) continue; let x=0; while(x<W){ while(x<W&&!floorC(x,y)&&at(x,y)!=='X') x++; const x0=x; while(x<W&&(floorC(x,y)||at(x,y)==='X')) x++; const len=x-x0; if(len>=5&&wallC(x0-1,y)&&wallC(x,y)){ B(len+0.1,0.32,0.34,dk(pal.wall,0.85),x0+len/2,CW-0.32,y+0.5,room); B(0.22,CW-0.3,0.3,dk(pal.wall,0.82),x0+0.11,0,y+0.5,room); B(0.22,CW-0.3,0.3,dk(pal.wall,0.82),x-0.11,0,y+0.5,room); } } }
+    for(let y=1;y<H-1;y++){ if(y%3) continue; let x=0; while(x<W){ while(x<W&&!floorC(x,y)&&!pitAt(x,y)) x++; const x0=x; while(x<W&&(floorC(x,y)||pitAt(x,y))) x++; const len=x-x0; if(len>=5&&wallC(x0-1,y)&&wallC(x,y)){ B(len+0.1,0.32,0.34,dk(pal.wall,0.85),x0+len/2,CW-0.32,y+0.5,room); B(0.22,CW-0.3,0.3,dk(pal.wall,0.82),x0+0.11,0,y+0.5,room); B(0.22,CW-0.3,0.3,dk(pal.wall,0.82),x-0.11,0,y+0.5,room); } } }
     // ledger stones in the floor, a carved cross on each
     fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x+11,y*3)>0.07) return; B(0.78,0.025,0.92,dk(pal.stone,0.9),x+0.5,0,y+0.5,room); B(0.06,0.03,0.5,dk(pal.stone,0.55),x+0.5,0,y+0.45,room); B(0.32,0.03,0.06,dk(pal.stone,0.55),x+0.5,0,y+0.32,room); });
     // webs in the high corners, roots hanging down through the vault
@@ -9236,7 +9337,7 @@ const CATACOMB=(function(){
     const SC=[]; wl.forEach(([x,y])=>{ if(hsh(x*7,y*11)>0.16) return; const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>at(x+a,y+b)==='.'); if(!o) return; const q=WI.box(x,y);
       const px=q.cx+o[0]*q.sx/2, pz=q.cz+o[1]*q.sz/2, g=group(px+o[0]*0.08,0,pz+o[1]*0.08,room); B(0.08,0.32,0.08,0x2a2420,0,1.6,0,g); Cy(0.09,0.05,0.12,6,0x3a3028,0,1.92,0,g); themeFire(g,an,0,2.02,0,0.55,T); SC.push([px+o[0]*0.4,pz+o[1]*0.4]); });
     const PL=[0,1,2].map(()=>{ const l=new THREE.PointLight(T.fire[0],0,7.5,1.6); scene.add(l); return l; });
-    an.push(t2=>{ const P=ENGINE.P; SC.slice().sort((a,b)=>Math.hypot(a[0]-P.x,a[1]-P.z)-Math.hypot(b[0]-P.x,b[1]-P.z)).slice(0,3).forEach((p,k)=>{ PL[k].position.set(p[0],2.1,p[1]); PL[k].intensity=0.85+Math.sin(t2*9+k*2)*0.07; }); });
+    an.push(t2=>{ const P=ENGINE.P; SC.slice().sort((a,b)=>Math.hypot(a[0]-P.x,a[1]-P.z)-Math.hypot(b[0]-P.x,b[1]-P.z)).slice(0,3).forEach((p,k)=>{ PL[k].position.set(p[0],2.1,p[1]); PL[k].intensity=(clean()?1.05:0.85)+Math.sin(t2*9+k*2)*0.07; }); });
     // dust in the lamplight
     { const N=90, g=new THREE.BufferGeometry(), pos=new Float32Array(N*3); for(let i=0;i<N;i++){ pos[i*3]=Math.random()*10-5; pos[i*3+1]=Math.random()*CW; pos[i*3+2]=Math.random()*10-5; } g.setAttribute('position',new THREE.BufferAttribute(pos,3));
       const pts=new THREE.Points(g,new THREE.PointsMaterial({color:0xffd8a0,size:0.018,transparent:true,opacity:0.4,depthWrite:false})); scene.add(pts);
@@ -9247,109 +9348,203 @@ const CATACOMB=(function(){
     const sarc=(x,y,c)=>{ const along=wallC(x-1,y)||wallC(x+1,y)?'z':'x', g=group(x+0.5,0,y+0.5,room); if(along==='x') g.rotation.y=Math.PI/2;
       B(0.82,0.6,1.7,c||pal.stone,0,0,0,g); B(0.92,0.12,1.8,pal.lid,0,0.6,0,g); B(0.06,0.02,1.1,dk(pal.trim,0.7),0,0.72,0,g); B(0.5,0.02,0.06,dk(pal.trim,0.7),0,0.72,-0.25,g);
       /* a lamb carved at the head: the shepherds' mark */ const lb=group(0,0.72,0.62,g); Sp(0.09,0xe8e0d0,0,0.06,0,lb); Sp(0.05,0xe8e0d0,0,0.1,0.1,lb); return g; };
+    const chestModel=(x,y,great)=>{ const g=group(x+0.5,0,y+0.5,room), k=great?1.3:1; g.rotation.y=wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2;
+      B(0.74*k,0.44*k,0.5*k,great?0x3a2a4a:0x5e3c20,0,0,0,g); [-0.26,0.26].forEach(o=>B(0.06,0.46*k,0.52*k,great?0xe8c040:0xc8a040,o*k,0,0,g));
+      const lid=group(0,0.44*k,-0.25*k,g); B(0.76*k,0.14*k,0.52*k,great?0x4a3a5a:0x6e4828,0,0,0.26*k,lid); [-0.26,0.26].forEach(o=>B(0.06,0.15*k,0.53*k,great?0xe8c040:0xc8a040,o*k,0,0.26*k,lid)); B(0.1,0.12,0.03,0xe8c766,0,0.3*k,0.26*k,g);
+      if(great){ const gl=new THREE.PointLight(0xffd88a,0.5,3,2); gl.position.set(0,1.0,0.3); g.add(gl); } shade(g); return lid; };
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), cx=x+0.5, cz=y+0.5, k=x+','+y;
-      if(c==='T'){ const g=sarc(x,y); shade(g); const along=Math.abs(Math.sin(g.rotation.y))>0.5; RECT.push({x:x+0.5,z:y+0.5,hx:along?0.92:0.47,hz:along?0.47:0.92}); }   /* the whole tomb is solid, end to end */
+      if(c==='T'){ const g=sarc(x,y); shade(g); const along=Math.abs(Math.sin(g.rotation.y))>0.5; RECT.push({x:cx,z:cz,hx:along?0.92:0.47,hz:along?0.47:0.92}); }   /* the whole tomb is solid, end to end */
+      else if(c==='A'){ const g=group(cx,0,cz,room);   /* the general's own tomb: broad, raised on a step, his effigy on the lid with his crook */
+        B(1.9,0.18,2.9,dk(pal.stone,0.8),0,0,0,g); B(1.2,0.75,2.3,0x9a9284,0,0.18,0,g); B(1.34,0.14,2.44,0xb0a898,0,0.93,0,g); const ef=group(0,1.07,0,g); B(0.42,0.16,1.5,0xc8c0b0,0,0,0,ef); Sp(0.14,0xc8c0b0,0,0.12,-0.78,ef); B(0.5,0.12,0.18,0xc8c0b0,0,0.04,-0.45,ef);
+        const crook=group(0.3,0.1,0,ef); B(0.05,0.05,1.5,0x8a6a3a,0,0,0.05,crook); const hk=new THREE.Mesh(new THREE.TorusGeometry(0.12,0.025,6,12,Math.PI),mt(0x8a6a3a)); hk.position.set(0,0,-0.72); hk.rotation.y=Math.PI/2; crook.add(hk);
+        [-0.7,0.7].forEach(o=>{ Cy(0.05,0.06,0.2,6,0xf0e8d0,o*1.1,0.18,1.2,g); themeFlame(o*1.1,0.44,1.2,g,an,1.2,T); }); shade(g); RECT.push({x:cx,z:cz,hx:0.95,hz:1.45}); const fw=group(0,1.07,0,g); for(let i=0;i<9;i++){ const f=Sp(0.05,[0xf4e8f0,0xe8c0d8,0xf8f0c0][i%3],(hsh(i,1)-0.5)*0.5,0.16,0.3+(hsh(i,2)-0.5)*0.5,fw); Sp(0.02,0xe8c040,f.position.x,0.2,f.position.z,fw); } dyn.tomb={g,x:cx,z:cz,fw}; }   /* flowers on the lid, once he is at rest */
       else if(c==='O'){ Cy(0.3,0.36,CW,10,dk(pal.stone,0.9),cx,0,cz,room); Cy(0.44,0.44,0.22,10,dk(pal.stone,0.8),cx,0,cz,room); Cy(0.44,0.3,0.26,10,dk(pal.stone,0.8),cx,CW-0.26,cz,room); }
-      else if(c==='C'){ const g=group(cx,0,cz,room); g.rotation.y=wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2; B(0.74,0.44,0.5,0x5e3c20,0,0,0,g); [-0.26,0.26].forEach(o=>B(0.06,0.46,0.52,0xc8a040,o,0,0,g));
-        const lid=group(0,0.44,-0.25,g); B(0.76,0.14,0.52,0x6e4828,0,0,0.26,lid); [-0.26,0.26].forEach(o=>B(0.06,0.15,0.53,0xc8a040,o,0,0.26,lid)); B(0.1,0.12,0.03,0xe8c766,0,0.3,0.26,g); shade(g); dyn.chests[k]=lid; }
+      else if(c==='C') dyn.chests[k]=chestModel(x,y,false);
+      else if(c==='Q') dyn.chests[k]=chestModel(x,y,true);
       else if(c==='l'){ const g=group(cx,0,cz,room); Cy(0.2,0.26,0.1,8,0x5a4a30,0,0,0,g); Cy(0.05,0.07,1.0,6,0x8a6a30,0,0.1,0,g); Cy(0.3,0.14,0.18,10,0x9a7a3a,0,1.1,0,g); const fg=group(0,1.28,0,g); themeFire(fg,an,0,0,0,0.75,T); fg.visible=false;
         const L=new THREE.PointLight(T.fire[0],0,6,1.6); L.position.set(0,1.6,0); g.add(L); dyn.lamps.push({k,x,y,fg,L,lit:0}); }
       else if(c==='t'){ const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>at(x+a,y+b)==='.')||[0,1]; const g=group(cx,0,cz,room); g.rotation.y=Math.atan2(o[0],o[1]); B(0.72,1.15,0.2,0x8a8478,0,0,0,g); B(0.8,0.12,0.26,0x7a7468,0,0,0,g); for(let i=0;i<4;i++) B(0.46,0.025,0.02,0x3a3630,0,0.55+i*0.12,0.11,g); B(0.06,0.24,0.02,0x3a3630,0,0.95,0.11,g); B(0.18,0.05,0.02,0x3a3630,0,1.02,0.11,g); }
-      else if(c==='R'){ const g=group(cx,0,cz,room); Cy(0.16,0.2,1.3,8,pal.stone,0,0,0,g); const r=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.045,8,20),new THREE.MeshPhongMaterial({color:0x6a6a74,shininess:60})); r.position.set(0,1.55,0); r.rotation.y=Math.PI/2; g.add(r); }
-      else if(c==='S'){ const g=group(cx,0,cz,room); for(let i=0;i<5;i++) B(1,0.18*(i+1),0.24,pal.stone,0,0,-0.1+i*0.22,g); const sh=new THREE.Mesh(new THREE.PlaneGeometry(1,2.4),new THREE.MeshBasicMaterial({color:0xfff2d8,transparent:true,opacity:0.22,depthWrite:false})); sh.position.set(0,1.6,0.52); g.add(sh);
-        const L=new THREE.PointLight(0xfff0d0,0.7,5,1.6); L.position.set(0,2.2,0.2); g.add(L); }
-      else if(c==='v'){ const g=group(cx,0,cz,room); B(1,0.02,1,0x020203,0,0.0,0,g); for(let i=0;i<4;i++) B(0.9,0.12,0.22,dk(pal.stone,0.8-i*0.15),0,-0.18-i*0.24,0.36-i*0.24,g); B(0.1,0.3,1.1,pal.stone,-0.55,0,0,g); B(0.1,0.3,1.1,pal.stone,0.55,0,0,g); [-0.58,0.58].forEach(o=>B(0.2,2.2,0.2,dk(pal.stone,0.85),o,0,0.42,g)); B(1.4,0.3,0.26,dk(pal.stone,0.85),0,2.2,0.42,g); B(1.0,2.2,0.05,0x030203,0,0,-0.55,g); }   /* an archway down into the dark */
+      else if(c==='k'){ const g=group(cx,0,cz,room); B(0.3,0.95,0.3,0x5a3a22,0,0,0,g); const tp=B(0.7,0.06,0.5,0x7a5432,0,0.98,0,g); tp.rotation.x=0.4; const bk=B(0.56,0.05,0.4,0xf4eee0,0,1.03,0,g); bk.rotation.x=0.4; Cy(0.03,0.03,0.12,6,0xf0e8d0,0.3,1.02,0.1,g); themeFlame(0.3,1.18,0.1,g,an,0.8,T); shade(g); }
+      else if(c==='R'){ const g=group(cx,0,cz,room); Cy(0.16,0.2,1.3,8,pal.stone,0,0,0,g); const r=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.045,8,20),new THREE.MeshPhongMaterial({color:0x8a8a96,shininess:70})); r.position.set(0,1.55,0); r.rotation.y=Math.PI/2; g.add(r); }
+      else if(c==='Y'){ const g=group(cx,0,cz,room); B(0.5,0.5,0.5,dk(pal.stone,0.8),0,0,0,g); const arm=group(0,0.5,0,g); B(0.07,0.75,0.07,pal.iron,0,0,0,arm); Sp(0.08,0xb08a3a,0,0.78,0,arm); arm.rotation.x=-0.7; dyn.levers[k]={arm}; }
+      else if(c==='S'||c==='u'){ const g=group(cx,0,cz,room); const fz=wallC(x,y+1)?1:-1; for(let i=0;i<5;i++) B(1,0.18*(i+1),0.24,pal.stone,0,0,fz*(-0.1+i*0.22),g);
+        if(c==='S'){ const sh=new THREE.Mesh(new THREE.PlaneGeometry(1,2.4),new THREE.MeshBasicMaterial({color:0xfff2d8,transparent:true,opacity:0.22,depthWrite:false})); sh.position.set(0,1.6,0.52*fz); g.add(sh); const L=new THREE.PointLight(0xfff0d0,0.7,5,1.6); L.position.set(0,2.2,0.2*fz); g.add(L); } }
+      else if(c==='N'){ const g=group(cx,0,cz,room); for(let i=0;i<6;i++) B(1,0.2*(i+1),0.2,0xb0a898,0,0,0.45-i*0.18,g); const sh=new THREE.Mesh(new THREE.PlaneGeometry(1.1,2.6),new THREE.MeshBasicMaterial({color:0xd8c8ff,transparent:true,opacity:0.18,depthWrite:false})); sh.position.set(0,1.7,-0.55); g.add(sh); [-0.62,0.62].forEach(o=>B(0.2,2.6,0.2,0xb0a898,o,0,0.45,g)); B(1.45,0.3,0.26,0xb0a898,0,2.6,0.45,g); }
+      else if(c==='v'){ const g=group(cx,0,cz,room); const fz=wallC(x,y-1)||!floorC(x,y-1)?-1:1; g.rotation.y=fz>0?Math.PI:0; B(1,0.02,1,0x020203,0,0.0,0,g); for(let i=0;i<4;i++) B(0.9,0.12,0.22,dk(pal.stone,0.8-i*0.15),0,-0.18-i*0.24,0.36-i*0.24,g); B(0.1,0.3,1.1,pal.stone,-0.55,0,0,g); B(0.1,0.3,1.1,pal.stone,0.55,0,0,g); [-0.58,0.58].forEach(o=>B(0.2,2.2,0.2,dk(pal.stone,0.85),o,0,0.42,g)); B(1.4,0.3,0.26,dk(pal.stone,0.85),0,2.2,0.42,g); B(1.0,2.2,0.05,0x030203,0,0,-0.55,g); }   /* an archway down into the dark */
       else if(c==='P'){ const g=group(cx,0,cz,room); const pl=B(0.84,0.08,0.84,0x6a6458,0,0,0,g); B(0.5,0.09,0.06,0xd8b060,0,0,0,g); B(0.06,0.09,0.5,0xd8b060,0,0,0,g); dyn.plates.push({x,y,m:pl,g}); }
       else if(c==='B'){ const g=group(cx,0,cz,room); B(0.92,0.06,0.92,0x4a4038,0,0,0,g); B(0.86,0.66,0.86,0xb0a48c,0,0.06,0,g); B(0.94,0.12,0.94,0xc2b69c,0,0.72,0,g);
           B(0.08,0.03,0.5,0x8a6a2a,0,0.84,0,g); B(0.32,0.03,0.08,0x8a6a2a,0,0.84,-0.1,g);   /* a gilt cross on the lid */
           [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const r=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.022,6,14),new THREE.MeshPhongMaterial({color:0x5a5a62,shininess:50})); r.position.set(a*0.44,0.45,b*0.44); r.rotation.y=a?Math.PI/2:0; g.add(r); });   /* iron rings on every side, to drag it by */
-          shade(g); dyn.blocks.push({k,x0:x,y0:y,x,y,g,mv:null});
-          for(let i=1;i<=3;i++){ const m=B(0.7,0.012,0.05,0x2a221c,cx-0.5-i*0.0+0,0,cz+(i-2)*0.25,room); m.position.x=cx-0.9; m.scale.x=1.2; }   /* scrape marks where it has been dragged before */ }
-      else if((c==='L'||/[1-9]/.test(c))&&!seen.has(k)){ const cells=comp(c,x,y,seen), vert=cells.every(q=>q[0]===cells[0][0]), xs=cells.map(q=>q[0]), ys=cells.map(q=>q[1]);
+          shade(g); dyn.blocks.push({k,x0:x,y0:y,x,y,g,mv:null,pull:!!(D.pull&&D.pull[k])}); }
+      else if((c==='L'||c==='G'||/[1-9]/.test(c))&&!seen.has(k)){ const cells=comp(c,x,y,seen), vert=cells.length>1?cells.every(q=>q[0]===cells[0][0]):(wallC(x,y-1)&&wallC(x,y+1)), xs=cells.map(q=>q[0]), ys=cells.map(q=>q[1]);
         const len=vert?Math.max(...ys)-Math.min(...ys)+1:Math.max(...xs)-Math.min(...xs)+1, mx=(Math.min(...xs)+Math.max(...xs))/2+0.5, mz=(Math.min(...ys)+Math.max(...ys))/2+0.5, g=group(mx,0,mz,room), HT=2.7;
         B(vert?0.6:len,CW-HT,vert?len:0.6,dk(pal.wall,0.9),mx,HT,mz,room);   // the lintel over it
         const leaf=group(0,0,0,g);
-        if(c==='L'){ B(vert?0.16:len-0.04,HT,vert?len-0.04:0.16,pal.wood,0,0,0,leaf); [0.5,1.3,2.1].forEach(h=>B(vert?0.2:len,0.1,vert?len:0.2,pal.iron,0,h,0,leaf)); const lk=group(0,1.15,0,leaf); B(vert?0.28:0.3,0.36,vert?0.3:0.28,0x8a6a2a,0,0,0,lk); Sp(0.06,0x1a1208,vert?0.15:0,0.18,vert?0:0.15,lk); }
-        else { const n=Math.round(len*5); for(let i=0;i<=n;i++){ const o=-len/2+i*len/n; B(vert?0.06:0.06,HT,vert?0.06:0.06,pal.iron,vert?0:o,0,vert?o:0,leaf); } [0.4,1.4,2.4].forEach(h=>B(vert?0.08:len,0.08,vert?len:0.08,pal.iron,0,h,0,leaf)); }
-        dyn.doors[k]={ch:c,cells,leaf,u:0,want:0}; } }
+        if(c==='L'||c==='G'){ const great=c==='G'; B(vert?0.16:len-0.04,HT,vert?len-0.04:0.16,great?0x3a2a4a:pal.wood,0,0,0,leaf); [0.5,1.3,2.1].forEach(h=>B(vert?0.2:len,0.1,vert?len:0.2,great?0xc8a040:pal.iron,0,h,0,leaf));
+          const lk=group(0,1.15,0,leaf); B(vert?0.28:0.36,great?0.5:0.36,vert?0.36:0.28,great?0xe8c040:0x8a6a2a,0,0,0,lk); Sp(0.06,0x1a1208,vert?0.15:0,0.2,vert?0:0.15,lk);
+          if(great){ const em=group(0,1.75,0,leaf); [1,-1].forEach(sd=>{ const cr=group(0,0,0,em); B(vert?0.04:0.05,0.6,vert?0.05:0.04,0xe8c040,0,0,0,cr); cr.position[vert?'x':'z']=sd*0.1; }); } }   /* the great door: the crook and the cross in gold */
+        else { const n2=Math.round(len*5); for(let i=0;i<=n2;i++){ const o=-len/2+i*len/n2; B(0.06,HT,0.06,pal.iron,vert?0:o,0,vert?o:0,leaf); } [0.4,1.4,2.4].forEach(h=>B(vert?0.08:len,0.08,vert?len:0.08,pal.iron,0,h,0,leaf)); }
+        dyn.doors[k]={ch:c,cells,leaf,u:0}; } }
     // ── what's solid ──
-    const doorOf=(x,y)=>{ for(const k in dyn.doors) if(dyn.doors[k].cells.some(q=>q[0]===x&&q[1]===y)) return dyn.doors[k]; return null; };
-    const isOpen=dk2=>{ const d=dyn.doors[dk2]; return d.ch==='L'?!!s().doors[n+':'+dk2]:!!s().gates[n+':'+d.ch]; };
+    const doorKey=(x,y)=>{ for(const k in dyn.doors) if(dyn.doors[k].cells.some(q=>q[0]===x&&q[1]===y)) return k; return null; };
+    const isOpen=k=>{ const d=dyn.doors[k]; if(clean()) return true; return d.ch==='L'||d.ch==='G'?!!s().doors[n+':'+k]:!!s().gates[n+':'+d.ch]; };
     const blockAt=(x,y)=>dyn.blocks.find(b=>b.x===x&&b.y===y);
-    const ok=(x,y)=>{ const c=at(x,y); if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='L'||/[1-9]/.test(c)){ const d=doorOf(x,y); const k=Object.keys(dyn.doors).find(q=>dyn.doors[q]===d); return isOpen(k)&&d.u>0.85; } if(blockAt(x,y)) return false; return true; };
+    const fell=()=>!!s().fell||clean();
+    const ok=(x,y)=>{ const c=at(x,y); if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='K') return !fell(); if(c==='L'||c==='G'||/[1-9]/.test(c)){ const k=doorKey(x,y); return isOpen(k)&&dyn.doors[k].u>0.85; } if(blockAt(x,y)) return false; return true; };
     const okAt=(px,pz)=>{ const x=Math.floor(px), y=Math.floor(pz); return ok(x,y)||(wallC(x,y)&&WI.free(px,pz)&&(()=>{ const u=px-x, v=pz-y; return (u<WI.m&&ok(x-1,y))||(u>1-WI.m&&ok(x+1,y))||(v<WI.m&&ok(x,y-1))||(v>1-WI.m&&ok(x,y+1)); })()); };
     lv._dyn=dyn; lv._ok=(x,y)=>ok(x,y);
     lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!okAt(tx+ox,tz+oz)) return false; for(const b of BLK){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.24&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; }
       for(const r of RECT){ const inT=Math.abs(tx-r.x)<r.hx+0.26&&Math.abs(tz-r.z)<r.hz+0.26, inF=Math.abs(fx-r.x)<r.hx+0.26&&Math.abs(fz-r.z)<r.hz+0.26; if(inT&&!inF) return false; }
-      for(const b of dyn.blocks){ const bx=b.g.position.x, bz=b.g.position.z; if(Math.abs(tx-bx)<0.47+0.26&&Math.abs(tz-bz)<0.47+0.26&&!(Math.abs(fx-bx)<0.73&&Math.abs(fz-bz)<0.73)) return false; } return true; };   /* nothing half-walks into a tomb */
+      for(const b of dyn.blocks){ const bx=b.g.position.x, bz=b.g.position.z; if(Math.abs(tx-bx)<0.73&&Math.abs(tz-bz)<0.73&&!(Math.abs(fx-bx)<0.73&&Math.abs(fz-bz)<0.73)) return false; } return true; };   /* nothing half-walks into a tomb */
     lv.ground=()=>0;
     lv.camBlock=(fx,fz,y)=>{ const x=Math.floor(fx), z=Math.floor(fz); return y>CW-0.15||((wallC(x,z)&&!WI.free(fx,fz))&&y<CW); };
-    lv.dmap={W,H,wall:(x,y)=>wallC(x,y),solid:(x,y)=>!ok(x,y)&&!wallC(x,y),known:()=>!!s().map[n]};
-    const sAt=rows.findIndex(r=>r.includes('S')), sx=rows[sAt].indexOf('S');
-    lv.spawn={x:sx+0.5,z:sAt-1+0.5,face:Math.PI,yaw:0};
-    lv.zone=()=>`${D.name} · B${n+1}${s().keys?` · 🗝×${s().keys}`:''}${s().map[n]?' · 🗺':''}`;
+    // the dungeon's one map and one compass: the map shows every hall of every level; the compass marks the chests left, and the great chest
+    const marks=()=>{ if(!s().compass) return []; const out=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), k=x+','+y; if((c==='C'||c==='Q')&&!s().chests[n+':'+k]) out.push({x:x+0.5,y:y+0.5,col:c==='Q'?'#ff9a3a':'#ffd84a'}); } return out; };
+    lv.dmap={W,H,wall:(x,y)=>wallC(x,y),solid:(x,y)=>!ok(x,y)&&!wallC(x,y),known:()=>!!(s().map&&s().map.all)||clean(),get marks(){ return marks(); }};
+    const linkAt=Object.keys(D.links||{}); const firstIn=linkAt.find(k=>/[Su]/.test(at(...k.split(',').map(Number))));
+    if(D.spawn) lv.spawn={x:D.spawn[0]+0.5,z:D.spawn[1]+0.5,face:Math.PI,yaw:0}; else { const [sx,sy]=(firstIn||'20,28').split(',').map(Number); lv.spawn={x:sx+0.5,z:sy+(wallC(sx,sy+1)?-0.5:1.5),face:wallC(sx,sy+1)?Math.PI:0,yaw:0}; }
+    lv.zone=()=>{ const S0=s(); return `${D.name} · B${n+1}${clean()?' · ✨ cleansed':''}${S0.keys?` · 🗝×${S0.keys}`:''}${S0.bosskey&&!clean()?' · 🔑':''}${S0.map&&S0.map.all?' · 🗺':''}${S0.compass?' · 🧭':''}`; };
     lv.follow=p=>{ lamp.position.set(p.x,p.y+1.8,p.z); };
     // ── the rules that open the gates ──
-    function openGate(ch,msg){ const S0=s(); if(S0.gates[n+':'+ch]) return; S0.gates[n+':'+ch]=true; GAME.save(); for(const k in dyn.doors) if(dyn.doors[k].ch===ch) dyn.doors[k].want=1; if(msg) UI.toast(msg,2600); if(typeof SFX!=='undefined') SFX.play('door',true); }
+    function openGate(ch,msg){ const S0=s(); if(S0.gates[n+':'+ch]) return; S0.gates[n+':'+ch]=true; GAME.save(); if(msg) UI.toast(msg,2600); if(typeof SFX!=='undefined') SFX.play('door',true); }
     const inRect=(d,r)=>d.hx>=r[0]&&d.hx<=r[2]+1&&d.hz>=r[1]&&d.hz<=r[3]+1;
-    function checkClear(){ for(const ch in D.gates){ const g=D.gates[ch]; if(g.when!=='clear'||s().gates[n+':'+ch]) continue; if(!lv.combat.foes.some(d=>d.alive&&inRect(d,g.rect))) openGate(ch,g.msg); } }
-    an.push((t2,dt)=>{ dt=dt||0.016; for(const k in dyn.doors){ const d=dyn.doors[k]; const w=isOpen(k)?1:0; if(d.u!==w){ d.u=w>d.u?Math.min(1,d.u+dt/0.9):Math.max(0,d.u-dt/0.6); d.leaf.position.y=d.u*2.75; d.leaf.visible=d.u<0.99; } } });
+    function checkClear(){ for(const ch in D.gates){ const g=D.gates[ch]; if(g.when!=='clear'||s().gates[n+':'+ch]) continue; if(!lv.combat.foes.some(d=>d.alive&&!d.spar&&inRect(d,g.rect))) openGate(ch,g.msg); } }
+    an.push((t2,dt)=>{ dt=dt||0.016; for(const k in dyn.doors){ const d=dyn.doors[k]; const w=isOpen(k)?1:0; if(d.u!==w){ d.u=w>d.u?Math.min(1,d.u+dt/0.9):Math.max(0,d.u-dt/0.6); } d.leaf.position.y=d.u*2.75; d.leaf.visible=d.u<0.99; } });
     // ── the lamps: light all three before the first one gutters out ──
     const LAMP_T=12;
-    function lampsTick(){ const g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lamps'); if(!g||!dyn.lamps.length) return; const done=!!s().gates[n+':'+g], now=performance.now()/1000;
+    function lampsTick(){ if(!dyn.lamps.length) return; const g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lamps'), done=!g||clean()||!!s().gates[n+':'+g], now=performance.now()/1000;
       dyn.lamps.forEach(L=>{ if(done){ L.fg.visible=true; L.L.intensity=1.1; return; } if(L.lit&&now-L.lit>LAMP_T){ L.lit=0; UI.toast('🕯 A cold breath — the flame gutters out. Light all three before the first one dies.',2400); }
         L.fg.visible=!!L.lit; L.L.intensity=L.lit?1.0*Math.min(1,(LAMP_T-(now-L.lit))/3+0.3):0; });
       if(!done&&dyn.lamps.every(L=>L.lit)) openGate(g,D.gates[g].msg); }
     an.push(lampsTick);
-    // ── the sarcophagus you can push: lean into it, and it grinds a pace along ──
+    // ── the ossuaries: lean into one (or Ⓐ Push) and it grinds a pace along; with the Staff, hook one and drag it toward you ──
     let lean=0, leanDir=null;
     an.push((t2,dt)=>{ dt=dt||0.016; const P=ENGINE.P, mi=ENGINE.moveInput(); dyn.blocks.forEach(b=>{ if(b.mv){ b.mv.u=Math.min(1,b.mv.u+dt/0.38); const u=b.mv.u, e=u*u*(3-2*u); b.g.position.set(b.mv.fx+(b.x-b.mv.fx)*e+0.5,0,b.mv.fz+(b.y-b.mv.fz)*e+0.5); if(u>=1){ b.mv=null; onBlockMoved(b); } } });
       if(Math.hypot(mi.x,mi.z)<0.5||ENGINE.holding){ lean=0; return; } const ax=Math.abs(mi.x)>Math.abs(mi.z)?Math.sign(mi.x):0, az=ax?0:Math.sign(mi.z);
       const px=Math.floor(P.x), pz=Math.floor(P.z), b=blockAt(px+ax,pz+az); if(!b||b.mv||b.solved){ lean=0; return; }
       const lat=ax?Math.abs(P.z-(b.y+0.5)):Math.abs(P.x-(b.x+0.5)), gap=ax?Math.abs(P.x-(b.x+0.5)):Math.abs(P.z-(b.y+0.5)); if(lat>0.38||gap>1.05){ lean=0; return; }
-      const dir=ax+','+az; if(dir!==leanDir){ leanDir=dir; lean=0; } lean+=dt; if(lean<0.45) return; lean=0;
-      tryPush(b,ax,az); });
-    function tryPush(b,ax,az){ if(b.mv||b.solved) return false; const nx=b.x+ax, ny=b.y+az, cc=at(nx,ny); if(!(cc==='.'||cc==='P'||cc===',')||blockAt(nx,ny)||doorOf(nx,ny)||RECT.some(r=>Math.abs(nx+0.5-r.x)<r.hx+0.4&&Math.abs(ny+0.5-r.z)<r.hz+0.4)){ UI.toast('It won’t go any further that way.',1000); return false; }
+      const dir=ax+','+az; if(dir!==leanDir){ leanDir=dir; lean=0; } lean+=dt; if(lean<0.45) return; lean=0; tryPush(b,ax,az,true); });
+    function tryPush(b,ax,az,quiet){ if(b.mv||b.solved) return false; const nx=b.x+ax, ny=b.y+az, cc=at(nx,ny), P=ENGINE.P;
+      if(!(cc==='.'||cc==='P'||cc===','||cc==='B')||blockAt(nx,ny)||doorKey(nx,ny)||(Math.floor(P.x)===nx&&Math.floor(P.z)===ny)||RECT.some(r=>Math.abs(nx+0.5-r.x)<r.hx+0.4&&Math.abs(ny+0.5-r.z)<r.hz+0.4)){ if(!quiet) UI.toast('It won’t go any further that way.',1000); return false; }
       b.mv={fx:b.x,fz:b.y,u:0}; b.x=nx; b.y=ny; if(typeof AUDIO2D!=='undefined') AUDIO2D.noise(null,{dur:0.4,fc:300,fc1:120,q:0.6,gain:0.22,decay:0.8}); return true; }
-    // the Ⓐ prompt rides along with it: push it away from you, the way you stand to it
-    dyn.blocks.forEach(b=>{ b.spot={x:b.x+0.5,z:b.y+0.5,r:1.25,label:'Push',who:'A stone ossuary',action:()=>{ if(b.solved){ UI.toast('It sits square on the plate.',900); return; } const P=ENGINE.P, dx=b.g.position.x-P.x, dz=b.g.position.z-P.z, ax=Math.abs(dx)>Math.abs(dz)?Math.sign(dx):0, az=ax?0:Math.sign(dz); tryPush(b,ax,az); }}; lv.spots.push(b.spot);
-      an.push(()=>{ b.spot.x=b.g.position.x; b.spot.z=b.g.position.z; b.spot.label=b.solved?'Look':'Push'; }); });
-    let hinted=false; an.push(()=>{ if(hinted) return; const P=ENGINE.P; dyn.blocks.forEach(b=>{ if(!hinted&&!b.solved&&Math.hypot(P.x-b.x-0.5,P.z-b.y-0.5)<3.2){ hinted=true; UI.toast('🪨 A stone ossuary on iron runners — Ⓐ Push it (or lean into it) to slide it a pace. The plate with the gold cross wants a weight.',4200); } }); });
-    function onBlockMoved(b){ const pl=dyn.plates.find(p=>p.x===b.x&&p.y===b.y); if(!pl) return; b.solved=true; pl.m.position.y=-0.05; s().blocks[n+':'+b.k]=[b.x,b.y]; const g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='plate'); if(g) openGate(g,D.gates[g].msg); GAME.save(); if(typeof SFX!=='undefined') SFX.play('bossStrike'); }
+    function onBlockMoved(b){ const pl=dyn.plates.find(p=>p.x===b.x&&p.y===b.y); if(!pl) return; b.solved=true; pl.m.position.y=-0.05; s().blocks[n+':'+b.k]=[b.x,b.y]; GAME.save(); if(typeof SFX!=='undefined') SFX.play('bossStrike');
+      for(const ch in D.gates){ const g=D.gates[ch]; if(g.when!=='plates'||s().gates[n+':'+ch]) continue; if(g.cells.every(c=>dyn.blocks.some(q=>q.solved&&q.x+','+q.y===c))) openGate(ch,g.msg); else UI.toast('⛓ The plate sinks — but something else is still wanted.',1800); } }
+    // ── the Shepherd's Staff: a crook on a long haft. What it can reach, it catches ──
+    const staff=()=>!!s().staff;
+    let hooking=null;
+    function hookLine(tx,ty,tz){ const P=ENGINE.P, from=new THREE.Vector3(P.x,1.1,P.z), to=new THREE.Vector3(tx,ty,tz), L=from.distanceTo(to), m=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,1,5),mt(0x8a6a3a));
+      m.position.copy(from).add(to).multiplyScalar(0.5); m.scale.y=L; m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),to.clone().sub(from).normalize()); scene.add(m); if(typeof SFX!=='undefined') SFX.play('swing','light'); return m; }
+    an.push((t2,dt)=>{ const h=hooking; if(!h) return; h.u=Math.min(1,h.u+(dt||0.016)/h.dur); const P=ENGINE.P;
+      if(h.kind==='ring'){ const e=h.u*h.u*(3-2*h.u); P.x=h.fx+(h.tx-h.fx)*e; P.z=h.fz+(h.tz-h.fz)*e; h.line.position.set((P.x+h.rx)/2,1.3,(P.z+h.rz)/2); const v=new THREE.Vector3(h.rx-P.x,0.4,h.rz-P.z); h.line.scale.y=Math.max(0.2,v.length()); h.line.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),v.normalize()); }
+      if(h.u>=1){ scene.remove(h.line); hooking=null; if(h.done) h.done(); } });
+    function across(ax,az,bx,bz){ const n2=Math.ceil(Math.hypot(bx-ax,bz-az)*4); let gap=false; for(let i=1;i<n2;i++){ const u=i/n2, c=at(Math.floor(ax+(bx-ax)*u),Math.floor(az+(bz-az)*u)); if(c==='#') return false; if(c==='X') gap=true; } return gap; }
+    function hookRing(k){ const [x,y]=k.split(',').map(Number), R=D.rings[k], P=ENGINE.P; if(!staff()){ ENGINE.speak('An iron ring',['It is set in a post across the gap, well out of reach.','A shepherd’s crook could catch it — if you had one.']); return; }
+      if(Math.hypot(P.x-R.land[0]-0.5,P.z-R.land[1]-0.5)<1.6){ UI.toast('You’re already on this side.',900); return; } if(hooking) return;
+      P.face=Math.atan2(x+0.5-P.x,y+0.5-P.z); ENGINE.hold(0.75); const line=hookLine(x+0.5,1.55,y+0.5); hooking={kind:'ring',u:0,dur:0.7,fx:P.x,fz:P.z,tx:R.land[0]+0.5,tz:R.land[1]+0.5,rx:x+0.5,rz:y+0.5,line}; if(!s().hooked){ s().hooked=true; setTimeout(()=>UI.toast('🪝 The crook catches the ring — and swings you across.',2000),300); } }
+    function hookLever(k){ const L=dyn.levers[k], g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lever'); if(!g) return; if(s().levers[n+':'+k]||clean()){ UI.toast('The lever is down.',800); return; }
+      const [x,y]=k.split(',').map(Number), P=ENGINE.P, far=Math.hypot(P.x-x-0.5,P.z-y-0.5)>1.6; if(far&&!staff()){ ENGINE.speak('A lever',['Out of reach.']); return; }
+      if(far){ const line=hookLine(x+0.5,1.1,y+0.5); hooking={kind:'pull',u:0,dur:0.45,line}; }
+      s().levers[n+':'+k]=true; L.arm.rotation.x=0.7; openGate(g,D.gates[g].msg); }
+    // the Ⓐ prompts that ride along with the ossuaries: push it away from you; hook one marked for it, and draw it toward you
+    dyn.blocks.forEach(b=>{ b.spot={x:b.x+0.5,z:b.y+0.5,r:b.pull?5:1.25,label:'Push',who:'A stone ossuary',action:()=>{ if(b.solved){ UI.toast('It sits square on the plate.',900); return; } const P=ENGINE.P, dx=b.g.position.x-P.x, dz=b.g.position.z-P.z, d=Math.hypot(dx,dz), ax=Math.abs(dx)>Math.abs(dz)?Math.sign(dx):0, az=ax?0:Math.sign(dz);
+        if(d<1.3){ tryPush(b,ax,az); return; } if(!b.pull) return; if(!staff()){ ENGINE.speak('A stone ossuary',['It sits in a slot cut into the wall, flush at the back — there is no getting behind it to push.','It has iron rings on its sides. Something hooked could drag it out.']); return; }
+        const lat=ax?Math.abs(dz):Math.abs(dx); if(lat>0.45){ UI.toast('Stand square to it to hook it.',1000); return; } if(hooking) return; const line=hookLine(b.g.position.x,0.45,b.g.position.z); hooking={kind:'pull',u:0,dur:0.3,line}; tryPush(b,-ax,-az); }};
+      lv.spots.push(b.spot); an.push(()=>{ b.spot.x=b.g.position.x; b.spot.z=b.g.position.z; const P=ENGINE.P, d=Math.hypot(P.x-b.spot.x,P.z-b.spot.z); b.spot.label=b.solved?'Look':d<1.3?'Push':staff()?'Hook':'Look'; b.spot.far=d>=1.3; b.spot.r=d<1.3?1.25:(b.pull?5:1.25); }); });
+    let hinted=false; an.push(()=>{ if(hinted||clean()) return; const P=ENGINE.P; dyn.blocks.forEach(b=>{ if(!hinted&&!b.solved&&!b.pull&&Math.hypot(P.x-b.x-0.5,P.z-b.y-0.5)<3.2){ hinted=true; if(!s().pushTip){ s().pushTip=true; UI.toast('🪨 A stone ossuary on iron runners — Ⓐ Push it (or lean into it) to slide it a pace. A plate with a gold cross wants a weight.',4200); } } }); });
+    // ── the thin floor: step on it, and down you go ──
+    let falling=false;
+    an.push((t2,dt)=>{ if(!dyn.crack) return; dyn.crack.g.visible=!fell()||falling; if(falling){ dyn.crack.tiles.forEach((q,i)=>{ q.vy+=(dt||0.016)*9; q.g.position.y-=q.vy*(dt||0.016); q.g.rotation.x+=(dt||0.016)*(i%3-1); }); return; }
+      if(fell()||ENGINE.busy||!D.fall) return; const P=ENGINE.P; if(at(Math.floor(P.x),Math.floor(P.z))!=='K') return; falling=true; ENGINE.hold(0.9); if(typeof SFX!=='undefined') SFX.play('bossStrike'); UI.toast('💥 The floor gives way!',1400);
+      setTimeout(()=>{ s().fell=true; GAME.save(); ENGINE.go('cata'+t+':'+D.fall.to,{x:D.fall.at[0]+0.5,z:D.fall.at[1]+0.5,face:Math.PI,yaw:0}); setTimeout(()=>{ const S0=GAME.S; S0.hp=Math.max(1,S0.hp-Math.round(S0.maxHp*0.05)); ENGINE.hud(); falling=false; UI.toast('…and you land hard, among the dead, a level below.',2200); },500); },700); });
     // ── Ⓐ ──
     const spot=(x,z,label,who,action,r,auto)=>lv.spots.push({x,z,r:r||1.0,label,who,action,auto,ar:0.5});
+    const give=(k,it)=>{ const S0=s(), parts=[]; if(it.key){ S0.keys=(S0.keys||0)+it.key; parts.push('🗝 a small key'); } if(it.map){ S0.map.all=true; parts.push('🗺 the map'); } if(it.compass){ S0.compass=true; parts.push('🧭 the compass'); } if(it.bosskey){ S0.bosskey=true; parts.push('🔑 the great key'); }
+      if(it.gold){ GAME.addGold(it.gold); parts.push(it.gold+' gold'); } if(it.pot){ const [p,q]=it.pot; GAME.S.inventory[p]=(GAME.S.inventory[p]||0)+q; const P=SYS.POTIONS[p]||{emoji:'🧪',name:p}; parts.push(`${q} ${P.emoji} ${P.name}`); }
+      GAME.changed(); GAME.save(); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play(it.bosskey?'levelUp':'revealChest');
+      if(it.key) ENGINE.speak('A small key',['Iron, plain, and well used. It will open one locked door in the catacombs.']);
+      else if(it.map) ENGINE.speak('The map',['A map of every level of the catacombs, drawn by the brothers who kept the tombs. Every hall is on it now (tap the little map to see it large).']);
+      else if(it.compass) ENGINE.speak('The compass',['Its needle points at what is still hidden. Every chest you have not opened now shows on your map — the great chest in orange.']);
+      else if(it.bosskey) ENGINE.speak('The great key',['Heavy, gold, and warm to the touch. A crook and a cross are cut into its bow.','It opens the great door beyond the chasm on the first level — and the stair to the nave, where the guardian waits.']);
+      else UI.toast('📦 '+parts.join(' · '),2400); };
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), k=x+','+y;
-      if(c==='C') spot(x+0.5,y+0.5,'Open','Chest',()=>{ const S0=s(); if(S0.chests[n+':'+k]){ UI.toast('📭 Empty.',900); return; } const it=D.chests[k]||{gold:20}; S0.chests[n+':'+k]=true; dyn.chests[k].rotation.x=-1.9; const parts=[];
-        if(it.key){ S0.keys=(S0.keys||0)+it.key; parts.push('🗝 a small key'); } if(it.map){ S0.map[n]=true; parts.push('🗺 the map of this level'); } if(it.gold){ GAME.addGold(it.gold); parts.push(it.gold+' gold'); }
-        if(it.pot){ const [p,q]=it.pot; GAME.S.inventory[p]=(GAME.S.inventory[p]||0)+q; const P=SYS.POTIONS[p]||{emoji:'🧪',name:p}; parts.push(`${q} ${P.emoji} ${P.name}`); }
-        GAME.changed(); GAME.save(); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play('revealChest');
-        if(it.key) ENGINE.speak('A small key',['Iron, plain, and well used. It will open one locked door on this level.']); else if(it.map) ENGINE.speak('The map',['A map of this level, drawn by the brothers who kept the tombs. Every hall is on it now (tap the little map to see it large).']); else UI.toast('📦 '+parts.join(' · '),2400); },1.1);
-      else if(c==='l') spot(x+0.5,y+0.5,'Light','A lamp',()=>{ const L=dyn.lamps.find(q=>q.k===k), g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lamps'); if(!L||(g&&s().gates[n+':'+g])||L.lit) return; L.lit=performance.now()/1000; if(typeof SFX!=='undefined') SFX.play('cast');
+      if(c==='C'||c==='Q') spot(x+0.5,y+0.5,'Open',c==='Q'?'The great chest':'Chest',()=>{ const S0=s(); if(S0.chests[n+':'+k]){ UI.toast('📭 Empty.',900); return; } S0.chests[n+':'+k]=true; dyn.chests[k].rotation.x=-1.9; give(k,(D.chests||{})[k]||{gold:20}); },1.1);
+      else if(c==='l') spot(x+0.5,y+0.5,'Light','A lamp',()=>{ const L=dyn.lamps.find(q=>q.k===k), g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lamps'); if(!L||!g||clean()||s().gates[n+':'+g]||L.lit) return; L.lit=performance.now()/1000; if(typeof SFX!=='undefined') SFX.play('cast');
         const left=dyn.lamps.filter(q=>!q.lit).length; if(left) UI.toast(`🕯 It catches. ${left} still dark — quickly, before it gutters.`,1600); },1.0);
       else if(c==='t'&&D.tablets[k]) spot(x+0.5,y+0.5,'Read','A tablet',()=>ENGINE.speak(D.tablets[k][0],D.tablets[k].slice(1)),1.1);
-      else if(c==='S') spot(x+0.5,y+0.5,'Leave','The stair up',()=>{ leaveTo(); setTimeout(()=>UI.toast('🌿 Up into the daylight of the churchyard.',1600),450); },0.8,'any');
-      else if(c==='v') spot(x+0.5,y+0.5,'Down','The stair down',()=>ENGINE.speak('The stair down',['It winds down into the dark — deeper, toward the general’s tomb.','(The deeper levels are still being dug: they come in the next update.)']),1.3); }
-    for(const k in D.look||{}){ const [x,y]=k.split(',').map(Number); spot(x+0.5,y+0.5,'Look',D.look[k][0],()=>ENGINE.speak(D.look[k][0],D.look[k].slice(1)),1.2); }
-    for(const k in dyn.doors){ const d=dyn.doors[k]; if(d.ch!=='L') continue; const c0=d.cells[0], c1=d.cells[d.cells.length-1], mx=(c0[0]+c1[0])/2+0.5, mz=(c0[1]+c1[1])/2+0.5;
-      const sides=[[-1,0],[1,0],[0,-1],[0,1]].filter(([a,b])=>at(Math.round(mx-0.5)+a,Math.round(mz-0.5)+b)==='.'); sides.forEach(([a,b])=>spot(mx+a*0.9,mz+b*0.9,'Unlock','A locked door',()=>{ const S0=s(); if(S0.doors[n+':'+k]) return; if(!(S0.keys>0)){ ENGINE.speak('A locked door',['Iron-bound oak, and a lock as big as your hand.','You need a small key. Somewhere on this level there is one.']); return; }
-        S0.keys--; S0.doors[n+':'+k]=true; GAME.save(); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play('door',true); UI.toast('🗝 The key turns, and the door grinds up into the lintel.',1800); },1.0)); }
+      else if(c==='k'&&D.books&&D.books[k]!==undefined&&C.books&&C.books[D.books[k]]){ const bk=C.books[D.books[k]]; spot(x+0.5,y+0.5,'Read',bk.title,()=>ENGINE.speak(txt(bk.title),bk.lines.map(txt)),1.1); }
+      else if(c==='R'&&D.rings&&D.rings[k]){ const R=D.rings[k]; lv.spots.push({x:x+0.5,z:y+0.5,r:6.2,far:true,label:'Hook',who:'An iron ring',action:()=>hookRing(k),hide:()=>{ const P=ENGINE.P; return !across(P.x,P.z,x+0.5,y+0.5); }}); }   /* only offered from the far side of the gap */
+      else if(c==='Y'){ lv.spots.push({x:x+0.5,z:y+0.5,r:1.1,label:'Pull',who:'A lever',action:()=>hookLever(k),hide:()=>!!s().levers[n+':'+k]||clean()}); lv.spots.push({x:x+0.5,z:y+0.5,r:5.6,far:true,label:'Hook',who:'A lever',action:()=>hookLever(k),hide:()=>!staff()||!!s().levers[n+':'+k]||clean()}); }
+      else if(D.links&&D.links[k]){ const L=D.links[k];
+        if(L.to==='world') spot(x+0.5,y+0.5,'Leave','The stair up',()=>{ leaveTo(); setTimeout(()=>UI.toast('🌿 Up into the daylight of the churchyard.',1600),450); },0.8,'any');
+        else if(L.to==='nave') spot(x+0.5,y+0.5,'Climb','The stair to the nave',()=>{ if(clean()){ ENGINE.go('sanct'+t); return; } ENGINE.speak('The stair to the nave',['Light from above, the colour of old glass. The chapel’s floor is just overhead — and the thing that keeps it.'],null,()=>{ if(OPT.nave) OPT.nave(); }); },1.2);
+        else spot(x+0.5,y+0.5,c==='v'?'Down':'Up',c==='v'?'The stair down':'The stair up',()=>ENGINE.go('cata'+t+':'+L.to,{x:L.at[0]+0.5,z:L.at[1]+0.5,face:L.face||0,yaw:(L.face||0)+Math.PI}),c==='v'?1.3:0.8,c==='u'?'any':undefined); } }
+    if(D.fall){ const ks=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(at(x,y)==='K') ks.push([x,y]); const ax=ks.reduce((a,q)=>a+q[0],0)/ks.length, ay=Math.max(...ks.map(q=>q[1]));
+      lv.spots.push({x:ax+0.5,z:ay+1.4,r:1.3,label:'Drop',who:'The broken floor',action:()=>{ if(!fell()) return; ENGINE.go('cata'+t+':'+D.fall.to,{x:D.fall.at[0]+0.5,z:D.fall.at[1]+0.5,face:Math.PI,yaw:0}); },hide:()=>!fell()}); }
+    for(const k in dyn.doors){ const d=dyn.doors[k]; if(d.ch!=='L'&&d.ch!=='G') continue; const xs=d.cells.map(q=>q[0]), ys=d.cells.map(q=>q[1]), mx=(Math.min(...xs)+Math.max(...xs))/2+0.5, mz=(Math.min(...ys)+Math.max(...ys))/2+0.5, cx0=d.cells[0][0], cy0=d.cells[0][1];
+      [[-1,0],[1,0],[0,-1],[0,1]].filter(([a,b])=>floorC(cx0+a,cy0+b)&&!d.cells.some(q=>q[0]===cx0+a&&q[1]===cy0+b)).forEach(([a,b])=>spot(mx+a*0.95,mz+b*0.95,'Unlock',d.ch==='G'?'The great door':'A locked door',()=>{ const S0=s(); if(isOpen(k)) return;
+        if(d.ch==='G'){ if(!S0.bosskey){ ENGINE.speak('The great door',['Dark oak bound in gold, a crook and a cross worked into it. The lock is the size of your palm.','It wants the great key — and the great key is somewhere below.']); return; } S0.bosskey=false; }
+        else { if(!(S0.keys>0)){ ENGINE.speak('A locked door',['Iron-bound oak, and a lock as big as your hand.','You need a small key. Somewhere in the catacombs there is one for it.']); return; } S0.keys--; }
+        S0.doors[n+':'+k]=true; GAME.save(); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play('door',true); UI.toast(d.ch==='G'?'🔑 The great key turns. The great door grinds up — and beyond it, light on a stair.':'🗝 The key turns, and the door grinds up into the lintel.',2200); },1.0)); }
+    // ── the general's tomb: his spirit, the spar, the question, the crook ──
+    let spar=null, ghost=null;
+    if(dyn.tomb){ ghost=spirit(OPT.tint); ghost.position.set(dyn.tomb.x,1.2,dyn.tomb.z+0.2); ghost.visible=false; room.add(ghost);
+      an.push(t2=>{ if(!ghost.visible) return; ghost.position.y=(spar?0:1.25)+Math.sin(t2*1.6)*0.05; ghost.children[1].material.opacity=0.1+Math.sin(t2*2)*0.03; });
+      spot(dyn.tomb.x,dyn.tomb.z+1.9,'Kneel',td.general+'’s tomb',()=>tombKneel(),1.4); }
+    function tombKneel(){ const S0=s(); if(spar) return;
+      if(clean()){ ENGINE.speak(td.general+'’s tomb',['Flowers on the lid now, and the candles kept. He is at rest.','“Blessed are the dead which die in the Lord… that they may rest from their labours; and their works do follow them.” — Revelation 14:13']); return; }
+      if(S0.trial){ ghost.visible=true; ENGINE.speak(td.general,['Go up, knight. The crook will carry you over the chasms the brothers cut.','The great key is in the crypts above us — the ossuary in the wall will give it up to the crook. Then the great door, and the nave.']); return; }
+      ghost.visible=true; if(typeof SFX!=='undefined') SFX.play('portal');
+      ENGINE.speak(td.general,['Light — and footsteps that are not a brother’s.','You came down through my flock to find me. Good. The shadow upstairs has kept me here, between my bones and my rest, a long while.','Before I give you my crook, I will see you stand. A shepherd must turn the wolf aside before he can strike it.','Guard as my blow lands — not before, not after — and you will turn it whole. Turn two of them, or drive me back, and I will know.'],null,startSpar); }
+    function startSpar(){ const P=ENGINE.P, tx=dyn.tomb.x, tz=dyn.tomb.z+2.6; ghost.visible=false; const g=spirit(OPT.tint);
+      const f=COMBAT.foe(lv,{x:tx,z:tz,hx:tx,hz:tz,post:'spar',pdx:1,pdz:0,patrol:3,hp:70,level:td.lvl+1,xp:0,atk:6,form:1,style:'claw',model:g,spar:true}); if(!f) return; f.alert=true; f.lungeCd=40;
+      spar={f,parries:0,wasStag:false}; UI.toast('⚔ The spar — watch for the red flash, and Guard as the blow lands.',2600); }
+    an.push(()=>{ if(!spar) return; const f=spar.f, S0=GAME.S;
+      if(f.stag>0&&!spar.wasStag){ spar.parries++; UI.toast(spar.parries>=2?'🛡 Turned whole — twice.':'🛡 One turned. Again.',1400); } spar.wasStag=f.stag>0;
+      if(spar.parries>=2||!f.alive||f.hp<=f.maxHp*0.35){ endSpar(true); return; }
+      if(S0.hp<S0.maxHp*0.3){ endSpar(false); } });
+    function endSpar(won){ const f=spar.f; spar=null; f.alive=false; f.dying=0; if(f.g&&f.g.parent) f.g.parent.remove(f.g); ghost.visible=true; GAME.S.hp=GAME.S.maxHp; ENGINE.hud();
+      if(!won){ ENGINE.speak(td.general,['Enough. Rise.','You took the blow on the guard after it had landed, or stood and let it land. Watch me, not my sword: I go red before I strike, and brightest just before. That is the moment.','Kneel again when you are ready.']); return; }
+      ENGINE.speak(td.general,['…Well stood. You can turn a blow.','But a sword was never what the wolf wanted from me. It asked a question, the same one it asked in the garden — yea, hath God said? — and I reached for the page and found I had only ever had the memory of it.','So I will ask you what I could not answer.'],null,()=>askTrial()); }
+    function askTrial(){ const tr=C.trial||{q:'What is Scripture?',a:0,o:['God-breathed'],ex:''}, rw=SYS.EQUIP[C.reward]||{emoji:'🪝',name:'Shepherd’s Staff'};
+      const ask=()=>UI.sheet({title:`${td.general}'s question`,wide:true,html:`<div class="gm-sec">${UI.esc(td.head)}</div><p class="gm-q">"Answer rightly what you know of the faith I died defending."</p><p class="gm-q"><b>${UI.esc(tr.q)}</b></p>`+
+          tr.o.map((o,i)=>`<button class="gm-item" data-act="${i}"><span>${String.fromCharCode(65+i)}. ${UI.esc(o)}</span></button>`).join('')+'<p class="gm-hint">Tap an answer. (The brothers’ record on the lectern here holds what he kept.)</p>',
+        act:a=>{ const okA=+a===tr.a; UI.sheet({title:`${td.general}'s question`,wide:true,html:`<div class="card${okA?'':' lost'}"><h3>${okA?'✓ Rightly answered.':'✗ Not quite.'}</h3></div><p class="gm-q">${UI.esc(tr.ex)}</p>`+
+            (okA?`<div class="gm-sec">He gives you</div><div class="gm-item worn"><span>${rw.emoji} ${UI.esc(rw.name)} · and his teaching, in your journal</span></div><button class="gm-btn" data-act="take">🙏 Take the crook</button>`:`<button class="gm-btn" data-act="again">↻ Try again</button>`),
+          act:b=>{ if(b==='again') ask(); else if(b==='take'){ UI.close(); takeStaff(rw); } } }); } });
+      ask(); }
+    function takeStaff(rw){ const S0=s(), G=GAME.S; S0.trial=true; S0.staff=true; G.ownedGear=G.ownedGear||{}; if(C.reward) G.ownedGear[C.reward]=true; GAME.recalc&&GAME.recalc(); GAME.changed(); GAME.save(); if(typeof SFX!=='undefined') SFX.play('levelUp');
+      const doc=(C.books&&C.books[1])?C.books[1].lines.map(txt).filter(l=>!/will ask you|Learn it/.test(l)).join(' '):'';
+      if(typeof JOURNAL!=='undefined') JOURNAL.write(`Down in the catacombs under Hearthvale's chapel, ${td.general}'s spirit sparred with me and asked me what Scripture is. ${td.head}: ${doc} He gave me his crook — the Shepherd's Staff.`,{});
+      if(typeof LIBRARY!=='undefined'&&LIBRARY.codexAdd) LIBRARY.codexAdd(td.head,'2 Timothy 3:16','All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness.');
+      ENGINE.speak(td.general,['Then take my crook. It kept my sheep; let it keep you.',`${rw.emoji} ${rw.name} — and Ⓐ Hook with it: catch the iron rings across a chasm and it swings you over; pull a lever out of reach; draw a stone ossuary out of its slot toward you.`,'The way on is east, across the chasm, and up. The great key lies in the crypts above. Then the great door on the first level — and the nave.','“Thy rod and thy staff they comfort me.” — Psalm 23:4'],null,()=>UI.toast('🪝 The Shepherd’s Staff is yours — and his teaching is in your journal.',2600)); }
     // ── the fight ──
-    const STY={p:0,c:1,b:2,s:3};
+    const STY={p:0,c:1,b:2,s:3,m:2};
     COMBAT.arena(lv,{mode:'dungeon',tier:t,townLvl:td.lvl,W,H,walk:(x,y)=>ok(x,y),los:(x,y)=>!wallC(x,y),
-      onKill:d=>{ s().cleared[n+':'+d.post]=true; GAME.save(); checkClear(); },
-      onDeath:()=>{ ENGINE.go(id,()=>lv.spawn); setTimeout(()=>{ GAME.S.hp=GAME.S.maxHp; ENGINE.hud(); UI.toast('💫 You fall… and wake at the foot of the stair, mended.',2400); },450); } });
-    lv.onEnter=()=>{ COMBAT.clear(lv); const S0=s();
+      onKill:d=>{ if(d.spar) return; s().cleared[n+':'+d.post]=true; GAME.save(); checkClear(); if(d.warden) UI.toast('⚔ The Warden of the Tombs falls.',2000); },
+      onDeath:()=>{ spar=null; ENGINE.go(id,()=>lv.spawn); setTimeout(()=>{ GAME.S.hp=GAME.S.maxHp; ENGINE.hud(); UI.toast('💫 You fall… and wake at the foot of the stair, mended.',2400); },450); } });
+    let wardenSaid=false;
+    an.push(()=>{ if(wardenSaid||!lv.combat) return; const w=lv.combat.foes.find(d=>d.warden&&d.alive); if(!w) return; const P=ENGINE.P; if(Math.hypot(w.x-P.x,w.z-P.z)<7){ wardenSaid=true; UI.toast('👹 The Warden of the Tombs — a brute: its fists come down after a long heave. Roll clear, or parry, and strike while it reels.',4000); } });
+    lv.onEnter=()=>{ COMBAT.clear(lv); const S0=s(); spar=null; falling=false; hooking=null;
       for(const k in dyn.doors){ const d=dyn.doors[k]; d.u=isOpen(k)?1:0; d.leaf.position.y=d.u*2.75; d.leaf.visible=d.u<0.99; }
       for(const k in dyn.chests) dyn.chests[k].rotation.x=S0.chests[n+':'+k]?-1.9:0;
-      dyn.blocks.forEach(b=>{ const sv=S0.blocks[n+':'+b.k]; b.mv=null; if(sv){ b.x=sv[0]; b.y=sv[1]; b.solved=true; } else { b.x=b.x0; b.y=b.y0; b.solved=false; } b.g.position.set(b.x+0.5,0,b.y+0.5); });   /* a sarcophagus shoved wrong goes back to its place when you come back */
+      for(const k in dyn.levers) dyn.levers[k].arm.rotation.x=S0.levers[n+':'+k]||clean()?0.7:-0.7;
+      dyn.blocks.forEach(b=>{ const sv=S0.blocks[n+':'+b.k]; b.mv=null; if(sv){ b.x=sv[0]; b.y=sv[1]; b.solved=true; } else { b.x=b.x0; b.y=b.y0; b.solved=false; } b.g.position.set(b.x+0.5,0,b.y+0.5); });   /* an ossuary shoved wrong goes back to its place when you come back */
       dyn.plates.forEach(p=>p.m.position.y=dyn.blocks.some(b=>b.solved&&b.x===p.x&&b.y===p.y)?-0.05:0);
       dyn.lamps.forEach(L=>L.lit=0);
-      for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(!(c in STY)) continue; const post=x+','+y; if(S0.cleared[n+':'+post]) continue; const brute=c==='b', dirs=[[1,0],[-1,0],[0,1],[0,-1]][(x+y)%4];
-        COMBAT.foe(lv,{x:x+0.5,z:y+0.5,hx:x+0.5,hz:y+0.5,post,pdx:dirs[0],pdz:dirs[1],patrol:brute?2:4,hp:brute?80:35,level:td.lvl+(brute?1:0),xp:brute?22:9,atk:brute?9:7,form:STY[c],style:['pounce','claw','brute','spit'][STY[c]]}); }
-      if(!S0.seen){ S0.seen=true; GAME.save(); setTimeout(()=>ENGINE.speak(td.name+' Catacombs',['Cool air, and the smell of old stone and candle-wax. The shepherds of Hearthvale are buried here, shelf above shelf.','The chapel overhead is bound by the dark. The way to it is through the tombs below.','Doors here stay open once opened, and halls stay cleared. Look for a small key — and a map.']),600); } };
+      if(dyn.crack) dyn.crack.tiles.forEach(q=>{ q.vy=0; q.g.position.y=0; q.g.rotation.x=0; });
+      if(ghost) ghost.visible=!!S0.trial&&!clean(); if(dyn.tomb) dyn.tomb.fw.visible=clean();
+      if(!clean()) for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(!(c in STY)) continue; const post=x+','+y; if(S0.cleared[n+':'+post]) continue; const brute=c==='b', ward=c==='m', dirs=[[1,0],[-1,0],[0,1],[0,-1]][(x+y)%4];
+        const f=COMBAT.foe(lv,{x:x+0.5,z:y+0.5,hx:x+0.5,hz:y+0.5,post,pdx:dirs[0],pdz:dirs[1],patrol:ward?3:brute?2:4,hp:ward?240:brute?80:35,level:td.lvl+(ward?2:brute?1:0),xp:ward?70:brute?22:9,atk:ward?11:brute?9:7,form:STY[c],style:['pounce','claw','brute','spit'][STY[c]],warden:ward});
+        if(f&&ward){ f.g.scale.multiplyScalar(1.55); f.name='The Warden of the Tombs'; } }
+      if(clean()) folkIn();
+      if(n===0&&!S0.seen&&!clean()){ S0.seen=true; GAME.save(); setTimeout(()=>ENGINE.speak(td.name+' Catacombs',['Cool air, and the smell of old stone and candle-wax. The shepherds of Hearthvale are buried here, shelf above shelf.','The chapel overhead is bound by the dark. The way to it is through the tombs below.','Doors here stay open once opened, and halls stay cleared. Look for small keys, and the map.']),600); }
+      if(clean()&&!S0.cleanSeen){ S0.cleanSeen=true; GAME.save(); setTimeout(()=>UI.toast('✨ The catacombs are quiet now — every lamp lit, the brothers back at their work.',2600),600); } };
+    // cleansed: the brothers are back, tending the tombs
+    let folked=false; function folkIn(){ if(folked||typeof addPerson!=='function') return; folked=true; const sp=lv.spawn;
+      try{ addPerson(lv,scene,'monk',sp.x+1.6,sp.z-1.2,0,'Brother Tobiah',[n===0?'We came back down the day the chapel was cleansed. Four hundred years of lamps — we will not let them go out again.':'Every name on every shelf, read aloud once a year. It takes the whole of Lent.','“I am the resurrection, and the life: he that believeth in me, though he were dead, yet shall he live.” — John 11:25'],{rest:Math.PI}); }catch(e){} }
     return lv; }
   // ── the churchyard: a mausoleum beside the chapel, its gate standing open on a stair going down ──
-  function attach(world,o){ const t=o.town, td=o.td; if(!LV[t]) return null; const T=world.T, WD=world.W, b=o.door; if(!b) return null;
+  function attach(world,o){ OPT=o||{}; const t=o.town, td=o.td; if(!LV[t]) return null; const b=o.door; if(!b) return null;
     LV[t].forEach((D,n)=>ENGINE.add({id:'cata'+t+':'+n,lazy:()=>build(t,n,D,td)}));
     const ds=world.doorStep(b.id), fx=Math.sin(ds.face), fz=Math.cos(ds.face);   // the way the chapel faces
     const bx=b.x+b.w/2, by=b.y+b.h/2, open=(x,y)=>{ for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=x+dx, yy=y+dy; if(!world.walkTile(xx,yy)) return false; if(xx>=b.x-1&&xx<=b.x+b.w&&yy>=b.y-1&&yy<=b.y+b.h) return false; } return true; };
@@ -9358,17 +9553,16 @@ const CATACOMB=(function(){
     if(!best) return null; const mx=best[0]+0.5, mz=best[1]+0.5, gy=world.ground(mx,mz), face=ds.face;   // it opens the same way as the chapel
     const g=group(mx,gy,mz,world.scene); g.rotation.y=face; const st0=0x9a9284, st1=0x7a7468, rf=0x5a5450;
     B(1.9,0.18,2.1,st1,0,-0.05,0,g); B(1.7,1.9,1.7,st0,0,0.1,-0.1,g); const roof=prism(2.0,0.7,2.0,rf); roof.position.set(0,2.0,-0.1); g.add(roof); B(0.12,0.5,0.12,0xd8c890,0,2.6,-0.1,g); B(0.34,0.1,0.12,0xd8c890,0,2.86,-0.1,g);
-    B(0.9,1.4,0.06,0x0a0808,0,0.18,0.76,g); [-0.52,0.52].forEach(o=>B(0.18,1.7,0.18,st1,o,0.1,0.78,g)); B(1.2,0.22,0.22,st1,0,1.72,0.78,g);
-    for(let i=0;i<5;i++) B(0.04,1.3,0.04,0x2a2a30,-0.3+i*0.15,0.2,0.84,g);   // the gate, standing open (drawn back to one side)
-    g.children.slice(-5).forEach((m,i)=>{ m.position.x=-0.9-i*0.02; m.position.z=0.84+i*0.12; });
-    [-0.75,0.75].forEach(o=>{ Cy(0.05,0.06,0.18,6,0xf0e8d0,o,0.1,1.05,g); themeFlame(o,0.34,1.05,g,world.anim,1.2,CHAPEL_THEME(t)); });
+    B(0.9,1.4,0.06,0x0a0808,0,0.18,0.76,g); [-0.52,0.52].forEach(o2=>B(0.18,1.7,0.18,st1,o2,0.1,0.78,g)); B(1.2,0.22,0.22,st1,0,1.72,0.78,g);
+    for(let i=0;i<5;i++){ const bar=B(0.04,1.3,0.04,0x2a2a30,0,0.2,0,g); bar.position.x=-0.9-i*0.02; bar.position.z=0.84+i*0.12; }   // the gate, standing open (drawn back to one side)
+    [-0.75,0.75].forEach(o2=>{ Cy(0.05,0.06,0.18,6,0xf0e8d0,o2,0.1,1.05,g); themeFlame(o2,0.34,1.05,g,world.anim,1.2,CHAPEL_THEME(t)); });
     for(let i=0;i<7;i++){ const sd=i%2?1:-1, iv=Sp(0.16+hsh(i,3)*0.1,0x3e6a32,sd*(0.86+hsh(i,1)*0.06),0.2+hsh(i,2)*1.7,-0.1+(hsh(i,4)-0.5)*1.2,g); iv.scale.x=0.35; }   // ivy up the side walls
-    shade(g); const ps=typeof VIEWMODE!=='undefined'?VIEWMODE.ps(world):1;
+    shade(g);
     mouth={x:mx+fx*1.7,z:mz+fz*1.7,face};
     world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:'The mausoleum',action:()=>{ ENGINE.go('cata'+t+':0'); }});
-    { const base=world.canMove; world.canMove=(fx,fz,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.2&&d<Math.hypot(fx-mx,fz-mz)) return false; return base(fx,fz,tx,tz); }; }   // its walls are solid
+    { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.2&&d<Math.hypot(fx2-mx,fz2-mz)) return false; return base(fx2,fz2,tx,tz); }; }   // its walls are solid
     return {x:mx,z:mz,mouth}; }
-  return { attach, get mouth(){ return mouth; }, LV };
+  return { attach, get mouth(){ return mouth; }, LV, has:t=>!!LV[t] };
 })();
 
 // ── engine/guardians.js ──
@@ -12558,7 +12752,13 @@ function goalSystem(world,opt){
         return {text:s.homecoming?'Sunfall’s sun has set. The realm is at peace.':f.rescued?'Walk Madison home — back through the arch.':all&&lit>=all?'Every lamp burns. Climb Vesper’s cathedral to the Pretender.':`Light Sunfall’s lamps${all?` — ${lit} of ${all}`:''}, ring by ring. Follow the golden trail.`}; }
       return {text:'Follow the golden trail.'}; }
     if(s.tutorial&&!s.tutorial.done) return {text:'Speak with Tobias — he has more to teach you.',at:T('Hearthvale')};
-    if((s.chapels|0)<10){ const td=SYS.TOWN_DATA[s.chapels|0]; return {text:`Cleanse ${td.name}’s chapel — ${td.general} is bound within.`,at:T(td.name)}; }
+    if((s.chapels|0)<10){ const td=SYS.TOWN_DATA[s.chapels|0], ch=s.chapels|0;
+      /* V149: a chapel entered from its catacombs: the goal follows you down */
+      if(typeof CATACOMB!=='undefined'&&CATACOMB.has(ch)){ const c=(s.cata&&s.cata[ch])||{}, m=CATACOMB.mouth, at=m?[m.x,m.z]:T(td.name), inC=lv&&/^cata/.test(lv.id||'');
+        const tx=!c.seen?`${td.name}’s chapel is barred — go down through the mausoleum in its churchyard.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep in the catacombs.`:`Back down into ${td.name}’s catacombs — ${td.general}’s tomb lies deepest.`)
+          :!c.bosskey&&!(c.doors&&c.doors['0:2,10'])?'Climb with the crook: the great key lies in the crypts above the tomb.':!(c.doors&&c.doors['0:2,10'])?'The great door on the first level — across the chasm.':`Up the stair to the nave — ${td.boss} waits.`;
+        return inC?{text:tx}:{text:tx,at}; }
+      return {text:`Cleanse ${td.name}’s chapel — ${td.general} is bound within.`,at:T(td.name)}; }
     if(!s.abaddonWon) return {text:'Every chapel stands. Face Abaddon in the Hellgate keep.',at:T('Hellgate')};
     // V118: Mario's letter — the Scholar's Way, north of Hearthvale, until you reach his tower
     if(s.school&&s.school.invited&&!s.school.met&&typeof SX==='function') return {text:'Mario’s letter: climb the Scholar’s Way, north of Hearthvale, to his tower school.',at:[SX(45.5),SY(3.5)]};
@@ -17125,7 +17325,7 @@ const SFX=(function(){
   if(typeof WEATHER!=='undefined') world.weather=WEATHER.attach(world);
   if(typeof ROADLIFE!=='undefined') world.roadlife=ROADLIFE.attach(world);
   if(typeof SNEAK!=='undefined') world.sneak=SNEAK.attach(world);
-  if(typeof CATACOMB!=='undefined'&&CHAPELS[0]) world.cata=CATACOMB.attach(world,{town:0,door:chapelDoor(0),td:CHAPELS[0].td});   /* V147: Hearthvale's churchyard mausoleum and the catacombs under it */   /* V144: the sleeping demon camps */   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
+  if(typeof CATACOMB!=='undefined'&&CHAPELS[0]) world.cata=CATACOMB.attach(world,{town:0,door:chapelDoor(0),td:CHAPELS[0].td,C:CHAPELS[0],tint:WD.generalTints[0],cleansed:t=>cleansed(t),nave:()=>chapel(0).enterTop()});   /* V147: Hearthvale's churchyard mausoleum and the catacombs under it */   /* V144: the sleeping demon camps */   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
   if(typeof LANDMARKS!=='undefined') LANDMARKS.attach(world);   // V127: watchtowers to climb, camps, the mill, the drowned chapel, a shrine, a spring   // V121: the Pilgrim's Pass — the mountain trek from Shadowmere to Hellgate   // V115: the high roads: the long journeys between distant towns   // V114: the Scholar's Way, the old road north to Mario's tower school
   if(typeof GREEK!=='undefined'){ const gx=SX(46.5), gz=SY(20.5); GREEK.place(world,world.scene,world.anim,gx,gz,'john14_6',{y:world.ground?world.ground(gx,gz):0}); }   // a scrap of John by Hearthvale's chapel door
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
@@ -17168,10 +17368,11 @@ const SFX=(function(){
   // ── every building's way in ──
   const back=id=>({level:'world',spawn:world.doorStep(id)});
   const chapels={};
-  function chapel(t){ return chapels[t]||(chapels[t]=chapelLevels(CHAPELS[t],{id:'chapel'+t,town:t,tint:WD.generalTints[t],exit:back(Object.keys(WD.chapelTown).find(k=>WD.chapelTown[k]===t)),
+  function chapel(t){ const viaCata=typeof CATACOMB!=='undefined'&&CATACOMB.has(t); return chapels[t]||(chapels[t]=chapelLevels(CHAPELS[t],{id:'chapel'+t,town:t,tint:WD.generalTints[t],
+    down:viaCata?()=>ENGINE.go('cata'+t+':0',{x:6.5,z:3.5,face:0,yaw:Math.PI}):null, trialDone:viaCata?()=>!!(S().cata&&S().cata[t]&&S().cata[t].trial):null,exit:back(Object.keys(WD.chapelTown).find(k=>WD.chapelTown[k]===t)),
     onCleanse:()=>{ spawnDemons(); }})); }
   function enterFor(b){ const id=b.interior||b.id, J=I[id]; if(!J) return null;
-    if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
+    if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(typeof CATACOMB!=='undefined'&&CATACOMB.has(t)&&t<=S().chapels) ENGINE.speak(b.name,['The doors are barred from within. A cold shadow seeps out from under them.','The old way in is from below: in the churchyard a mausoleum stands open, its stair going down into the catacombs.']); else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
       else ENGINE.speak(b.name,[t>S().chapels?'The doors will not open. Something waits beyond, for a knight who has cleansed the towns before it.':'The doors are barred.']); }; }
     if(id==='sg_keep') return ()=>ENGINE.go('keep');
     if(id==='home_barn') return ()=>SERVICES.openStables();
