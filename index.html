@@ -2286,7 +2286,7 @@ function buildKnight(){
     const hyG=(1-rw)*Math.max(gL.d,gR.d)+rw*Math.max(gL.y,Math.max(gL.d,gR.d)-0.004), hyI=K.hipY-0.012-0.01*(0.5+0.5*breath)-0.012*Math.abs(shiftS);
     const hy=a*hyG+ia*hyI;
     const vy=hyPrev===null||dt<=0?0:(hy-hyPrev)/dt; hyPrev=hy;
-    const sway=a*0.016*sc*stL*(1-0.6*rf)+ia*0.022*sc*shiftS, roll=a*0.04*stL*(1-0.5*rf)+ia*0.03*shiftS, pYaw=-0.12*a*lp*(1-0.3*rf);
+    const sway=a*0.016*sc*stL*(1-0.6*rf)+ia*0.022*sc*shiftS, roll=a*0.028*stL*(1-0.5*rf)+ia*0.03*shiftS, pYaw=-0.08*a*lp*(1-0.3*rf);
     hips.position.set(sway,hy,0); hips.rotation.set(0,pYaw,roll);
     [[L,gL,1],[R,gR,-1]].forEach(([G,g,sd])=>{ const fI=(sd>0?0.035:-0.025)*sc, dn=hyI+sd*hx*Math.sin(roll);
       legIK(G,fI,dn,lt,ls); const ih=G.hip.rotation.x, ik=G.knee.rotation.x;   // at rest: planted by IK
@@ -2297,11 +2297,11 @@ function buildKnight(){
     if(--gazeT<=0||!primed){ primed=true; gazeT=90+Math.random()*200; const r=Math.random(); gazeY=r<0.35?0:(Math.random()-0.5)*0.9; gazeX=(Math.random()-0.6)*0.18; }
     const gy=spr(sGy,ia*gazeY*smooth01((Math.sin(t*0.17+1)+0.6)),40,11,dt), gx=spr(sGx,ia*gazeX,40,11,dt);
     head.rotation.set(-(torso.rotation.x)*0.8+0.03*breath*ia+gx, -torso.rotation.y*0.7+gy, -(torso.rotation.z)*0.6);
-    chest.scale.set(1+0.014*breath*ia,1,1+0.014*breath*ia);
+    chest.scale.set(1+0.022*breath*ia,1+0.006*breath*ia,1+0.022*breath*ia);
     // the arms swing against the legs, a beat behind (springs), elbows bending as they come forward
     // the arms hang loose: they swing a beat behind the legs (and further in a run), the elbow folding as each comes
     //  forward and opening as it goes back, the forearm and wrist trailing; at rest they settle, breathe and drift
-    const lpA=Math.cos(TAU*(ph-0.05)), armSw=a*(0.42+0.36*rf)*lpA, fwdR=Math.max(0,armSw), fwdL=Math.max(0,-armSw), drift=ia*0.03*Math.sin(t*0.7);
+    const lpA=Math.cos(TAU*(ph-0.05)), armSw=a*(0.3+0.48*rf)*lpA, fwdR=Math.max(0,armSw), fwdL=Math.max(0,-armSw), drift=ia*0.03*Math.sin(t*0.7);
     AL.sh.rotation.x=spr(sArmL.x,armSw*0.5-0.24-0.25*rf-0.02*breath*ia+drift,48,7,dt); AL.el.rotation.x=spr(sArmL.e,-0.62-0.3*rf-0.3*fwdL,40,6,dt); AL.sh.rotation.z=spr(sArmL.z,K.armOut+0.04*breath*ia+0.05*a*stL+0.06*rf,40,6,dt); AL.sh.rotation.y=spr(sArmL.y,-0.12*armSw+(K.shTurn||0),40,6,dt);
     // V137: MOTION CAPTURE — the rig (rig.js) plays its idle / walk / run, and its pose is laid onto his pivots: pelvis, chest
     //  and head take the bones' turn; thighs, shins, upper arms and forearms are pointed along the bones; the pelvis rides
@@ -2323,21 +2323,26 @@ function buildKnight(){
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
         else if(K._st==='sheathing') ov={n:K._carry==='back'?'sheath':'sheathHip',u:Math.min(1,K._shT||0),w:0.7};
         else if(K._bw>0.01) ov={n:'block',t:t,w:K._bw};
-        const S1=typeof GAME!=='undefined'&&GAME.S, hurt=!K.npc&&S1&&S1.maxHp&&S1.hp<S1.maxHp*0.25, calm=K._st==='sheathed';
+        const S1=typeof GAME!=='undefined'&&GAME.S, hurt=!K.npc&&S1&&S1.maxHp&&S1.hp<S1.maxHp*0.25, calm=K._st==='sheathed'||!(K.alert||K.guarding||swing>=0||K.raise>0||K.charge>0);   /* V155: no fight on, no fighting stance */
         if(K.npc&&!ov&&(K._talk||0)>0.2) ov={n:'agree',t:t+(K._tph||0),w:0.45*K._talk};   /* the folk nod along as they talk */
         /* V142: walk or run by how fast he truly goes (in hip heights a second), eased — not the hand-keyed gait's own blend */
         const vH=veff/K.hipY; K._rfM=(K._rfM||0)+(smooth01((vH-2.9)/0.6)-(K._rfM||0))*Math.min(1,dt*5);
         RG.step(dt,a,K._rfM,vH,ov,K.npc?{idle:'idleCalm',walk:'walk',run:'walk'}:K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
         K._rArm=!!(A0&&A0.arms!==false);
         const kq=(o,out)=>{ out.identity(); for(let q=o.parent;q&&q!==K;q=q.parent) out.premultiply(q.quaternion); return out; };
-        const turn=(o,n)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,w); };
-        const point=(o,a0,b0)=>{ _mv.subVectors(RG.p(b0),RG.p(a0)).normalize(); kq(o,_mp); _mv.applyQuaternion(_mp.invert()); _mq.setFromUnitVectors(_MD,_mv); o.quaternion.slerp(_mq,w); };
+        const turn=(o,n,ww)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,ww); };
+        const point=(o,a0,b0,ww)=>{ _mv.subVectors(RG.p(b0),RG.p(a0)).normalize(); kq(o,_mp); _mv.applyQuaternion(_mp.invert()); _mq.setFromUnitVectors(_MD,_mv); o.quaternion.slerp(_mq,ww); };
+        // V155: EASIER ON HIS FEET. Out of a fight the clips are laid on more lightly, over the hand-keyed rest (breathing, the
+        //  weight shifting from leg to leg, arms hanging loose): standing, most of the stance is the relaxed one; walking, the
+        //  clip keeps the legs (the feet stay true to the ground) but much less of its hip roll, shoulder turn and arm swing
+        K._rlx=(K._rlx||0)+(((calm&&!ov)?1:0)-(K._rlx||0))*Math.min(1,dt*3); const rx=K._rlx, wk=a*(1-K._rfM), sw=1-0.72*wk*rx;
+        const wI=w*(1-0.62*ia*rx), wHip=wI*sw, wTor=wI*(1-0.7*wk*rx), wLeg=wI*(1-0.4*wk*rx), wArm=wI*(1-0.7*wk*rx);
         const hp=RG.p('Hips'), hb=RG.pb('Hips'), k=K.hipY/RG.hipH;
-        hips.position.y+=((K.hipY*hp.y/hb.y)-hips.position.y)*w; hips.position.x+=((hp.x-hb.x)*k*0.6-hips.position.x)*w;
-        turn(hips,'Hips'); turn(torso,'Spine2'); turn(head,'Head');
-        point(L.hip,'LeftUpLeg','LeftLeg'); point(L.knee,'LeftLeg','LeftFoot'); point(R.hip,'RightUpLeg','RightLeg'); point(R.knee,'RightLeg','RightFoot');
-        point(AL.sh,'LeftArm','LeftForeArm'); point(AL.el,'LeftForeArm','LeftHand');
-        if(K._rArm){ point(AR.sh,'RightArm','RightForeArm'); point(AR.el,'RightForeArm','RightHand'); }
+        hips.position.y+=((K.hipY*hp.y/hb.y)-hips.position.y)*wLeg; hips.position.x+=((hp.x-hb.x)*k*0.6*(1-0.6*wk*rx)-hips.position.x)*wHip;
+        turn(hips,'Hips',wHip); turn(torso,'Spine2',wTor); turn(head,'Head',wTor);
+        point(L.hip,'LeftUpLeg','LeftLeg',wLeg); point(L.knee,'LeftLeg','LeftFoot',wLeg); point(R.hip,'RightUpLeg','RightLeg',wLeg); point(R.knee,'RightLeg','RightFoot',wLeg);
+        point(AL.sh,'LeftArm','LeftForeArm',wArm); point(AL.el,'LeftForeArm','LeftHand',wArm);
+        if(K._rArm){ point(AR.sh,'RightArm','RightForeArm',w); point(AR.el,'RightForeArm','RightHand',w); }
         // the springs that keep the left arm loose follow the pose he's now in, so nothing snaps when the clips ease out
         sArmL.x.x=AL.sh.rotation.x; sArmL.z.x=AL.sh.rotation.z; sArmL.e.x=AL.el.rotation.x; } }
     if(K.crouch&&!(K.mocap&&!K.mocapOff&&K._mw>0.5)){ hips.position.y-=0.13; torso.rotation.x+=0.3; L.hip.rotation.x-=0.45; R.hip.rotation.x-=0.45; L.knee.rotation.x+=0.75; R.knee.rotation.x+=0.75; }   /* V140: crouched, the hand-keyed way */
@@ -3796,7 +3801,7 @@ const castPerson=(function(){
       if(pt.seg==='skirtF'||pt.seg==='skirtB'){ const s=pt.seg==='skirtF'?'F':'B', key=s+pt.mat; m=clothM[key]||(clothM[key]=cloth(rigid(pt.mat).clone(),U[s],0.9)); }
       else m=rigid(pt.mat);
       const par=FG[pt.seg+pt.side]?FG[pt.seg+pt.side]:pt.seg==='torso'?r.torso:pt.seg==='head'?r.head:pt.seg==='plume'?r.plume:pt.seg==='skirtF'?skF:pt.seg==='skirtB'?skB:pt.seg==='cape'?r.capeP:seg[pt.seg][pt.side];
-      const mesh=new THREE.Mesh(g,m); mesh.castShadow=true; par.add(mesh); });
+      const mesh=new THREE.Mesh(g,m); mesh.castShadow=true; mesh.userData.mat=pt.mat; par.add(mesh); });
     // the cloth moves with the stride: the hinges follow the thighs, the hems flutter a beat behind them
     const sp=(o,tg,k,c,dt)=>{ const n=Math.max(1,Math.ceil(dt/0.017)), h=dt/n; for(let i=0;i<n;i++){ o.v+=(k*(tg-o.x)-c*o.v)*h; o.x+=o.v*h; } return o.x; };
     const S={f:{x:0,v:0},b:{x:0,v:0},cf:{x:0,v:0},cb:{x:0,v:0}}; let lx0=null;
@@ -3841,7 +3846,7 @@ function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hy
   if(st.tk>0.01){ const g=Math.max(0,Math.sin(t*2.2+ph)), g2=Math.sin(t*1.4+ph); r.AR.sh.rotation.x+=st.tk*(-0.45-0.35*g); r.AR.el.rotation.x+=st.tk*(-0.7-0.2*g); r.AR.sh.rotation.z+=st.tk*0.15*g2;
     r.AL.sh.rotation.x+=st.tk*(-0.2-0.2*Math.max(0,Math.sin(t*1.9+ph+1.7))); r.AL.el.rotation.x+=st.tk*-0.5; r.head.rotation.x+=st.tk*0.06*Math.sin(t*3.1+ph); }
   faceLife(K,st,t,dt,ph,talking,d<4.5?P:null,f);
-  if(st.wave>0&&!talking){ st.wave-=dt; const w=Math.min(1,st.wave*3,(1.6-st.wave)*4); r.AR.sh.rotation.z-=w*2.5; r.AR.sh.rotation.x+=w*-0.2; r.AR.el.rotation.x+=w*(-0.5+Math.sin(t*11)*0.3); } }
+  if(st.wave>0&&!talking){ st.wave-=dt; const w=Math.min(1,st.wave*3,(1.6-st.wave)*4); r.AR.sh.rotation.z-=w*1.15; r.AR.sh.rotation.x+=w*-0.35; r.AR.el.rotation.x+=w*(-1.45+Math.sin(t*9)*0.25); }   /* V155: a friendly hand raised, elbow bent — not an arm thrust out */ }
 // ════════════════════════════════════════════════════════════════
 //  THE FOLK KIT — the townsfolk put together the way the 2D game makes its villagers (tools/sculpt_cast.py kit →
 //  KIT_DATA.man / .woman): from the outfit's own colours (OUTFITS_2D: skin, hair, top, bottom, the hat or the apron),
@@ -10938,7 +10943,13 @@ function finaleLevel(F,spec){
     K.position.set(x,y,z); K.rotation.y=-0.25; scene.add(K); const mats=[];
     K.traverse(m=>{ if(!m.isMesh||!m.material||!m.material.color||m.userData.outline) return; m.material=m.material.clone(); mats.push({m:m.material,c:m.material.color.clone()}); m.material.color.lerp(new THREE.Color(0x4a4440),0.5); });
     const linkM=new THREE.MeshPhongMaterial({color:0x7a7a84,shininess:90,specular:0xc8c8d0,emissive:0x101014});
-    ['sword','sheathP','backP'].forEach(k=>{ if(K.rig&&K.rig[k]) K.rig[k].visible=false; });   // no sword for a prisoner
+    ['sword','sheathP','backP'].forEach(k=>{ if(K.rig&&K.rig[k]) K.rig[k].visible=false; });   // no sword for a prisoner:
+    // his sword hangs at his hip, baked into his figure's plate: the grip is its own piece; the blade and guard stand out past
+    //  the cuirass's side (x > 0.245), so a copy of those pieces without those faces leaves him without it
+    K.rig.torso.children.forEach(m=>{ if(!m.isMesh) return; if(m.userData.mat==='grip'){ m.visible=false; return; } if(m.userData.mat!=='white'&&m.userData.mat!=='gold') return;
+      const g=m.geometry.clone(), P=g.attributes.position, I=g.index; if(!I) return; const keep=[];
+      for(let i=0;i<I.count;i+=3){ const a=I.getX(i), b2=I.getX(i+1), c=I.getX(i+2); const out=v=>P.getX(v)>0.245||(m.userData.mat==='gold'&&P.getX(v)>0.19&&P.getY(v)<0.22); if(out(a)&&out(b2)&&out(c)) continue; keep.push(a,b2,c); }
+      g.setIndex(keep); m.geometry=g; });
     const collar=new THREE.Mesh(new THREE.TorusGeometry(0.15,0.04,6,14),linkM); collar.rotation.x=Math.PI/2; scene.add(collar);
     const links=[]; for(let k=0;k<14;k++){ const m=new THREE.Mesh(linkG,linkM); scene.add(m); links.push({m,v:new THREE.Vector3()}); }
     ANCH.set(W/2+0.7,0.18+1.05,0.5);   // the ring on the throne's arm the chain is bolted to
