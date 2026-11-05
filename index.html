@@ -2307,7 +2307,7 @@ function buildKnight(){
     //  and head take the bones' turn; thighs, shins, upper arms and forearms are pointed along the bones; the pelvis rides
     //  the hips' rise and sway. Eased in on foot, out for anything the clips don't cover (sitting, fishing, riding, the air,
     //  the dodge) — and the sword arm keeps its own carry (it's set below), as do the blows, the guard and the rest
-    { if(K._act){ K._act.t+=dt; if(K._act.t>=K._act.dur) K._act=null; } const want=K.mocap&&!K.mocapOff&&(mode==='walk'||mode==='idle'||K._act)&&mode!=='ride'&&mode!=='fish'&&mode!=='sit'&&mode!=='kneel'?1:0; K._mw=(K._mw||0)+(want-(K._mw||0))*Math.min(1,dt*6);
+    { if(K._act){ K._act.t+=dt; if(K._act.t>=K._act.dur) K._act=null; } const want=K.mocap&&!K.mocapOff&&(mode==='walk'||mode==='idle'||K._act)&&mode!=='ride'&&mode!=='fish'&&mode!=='sit'&&mode!=='kneel'&&mode!=='climb'?1:0; K._mw=(K._mw||0)+(want-(K._mw||0))*Math.min(1,dt*6);
       const w=K._mw; if(w>0.01&&K.mocap){ const RG=K.mocap;
         // the clips laid over the gaits: a blow (the body of Mixamo's sword-and-shield attacks, timed to the swing — the sword arm
         //  keeps its own cut), the guard (the block stance: knees bent, weight back behind the shield)
@@ -2388,6 +2388,10 @@ function buildKnight(){
     // V151: kneeling — before a tomb, before a general's blessing: one knee to the floor, the other foot planted, head bowed
     if(mode==='kneel'){ hips.position.set(0,K.hipY-0.34,0.04); hips.rotation.set(0,0,0); L.hip.rotation.set(-1.45,0,0); L.knee.rotation.x=1.5; R.hip.rotation.set(0.32,0,0); R.knee.rotation.x=1.8;
       torso.rotation.set(0.26,0,0); head.rotation.set(0.38,0,0); AL.sh.rotation.set(-0.35,0,0.12); AL.el.rotation.x=-0.55; AR.sh.rotation.set(-0.7,0.25,-0.1); AR.el.rotation.x=-0.95; capeP.rotation.x=0.18; }
+    // V156: climbing a ladder — facing the rungs, hands up over the head reaching rung over rung, knees lifting in turn
+    if(mode==='climb'){ const c=Math.sin(t*7), c2=Math.cos(t*7); hips.position.set(0,K.hipY-0.02,0.02); hips.rotation.set(0,0,0);
+      L.hip.rotation.set(-0.55-0.55*Math.max(0,c),0,0.04); L.knee.rotation.x=0.7+0.8*Math.max(0,c); R.hip.rotation.set(-0.55-0.55*Math.max(0,-c),0,-0.04); R.knee.rotation.x=0.7+0.8*Math.max(0,-c);
+      torso.rotation.set(-0.08,0,0); head.rotation.set(-0.35,0,0); AL.sh.rotation.set(-2.55-0.35*c2,0,0.12); AL.el.rotation.x=-0.55+0.35*c2; AR.sh.rotation.set(-2.55+0.35*c2,0,-0.12); AR.el.rotation.x=-0.55-0.35*c2; capeP.rotation.x=0.12; }
     // V129: fishing — sat on the bank, knees drawn up, the rod held out in both hands over the water; slow breaths, the head
     //  following the float; when a fish takes, the rod bows and he leans back to it
     pole.visible=mode==='fish';
@@ -9170,7 +9174,7 @@ function chapelLevels(C,spec){
           G0.mats.forEach(q=>q.m.color.lerpColors(new THREE.Color(q.c).lerp(new THREE.Color(0x7a7a80),0.65),q.c,k)); beam.material.opacity=0.28*Math.sin(Math.min(1,(T0-2.6)/3)*Math.PI); flash.intensity=2.2*Math.max(0,1-(T0-2.6)/1.2); }
         if(T0>3.8&&!down){ down=true; G0.fall=0.001; }
         if(T0>6.9){ lv.cine=null; G0.links.forEach(L=>L.m.visible=false); room.remove(beam); scene.remove(flash); G0.raising=false; G0.fall=1;
-          ENGINE.speak(td.general,['…Breath. I have breath.','“Thus saith the Lord GOD unto these bones; Behold, I will cause breath to enter into you, and ye shall live.” — Ezekiel 37:5','I was dead, knight. Truly dead. I knew His words by heart and never trusted the One who spoke them — and the shadow took me in that doubt, and hung me here to mock Him.','And He has called me out of it, as He called Lazarus out of the tomb. Not the chains, not the grave could keep what He wants back. I am born again — and this time I know Him, not only His words.','“I am the resurrection, and the life: he that believeth in me, though he were dead, yet shall he live.” — John 11:25','Come. Kneel with me here, and receive His blessing for this town.'],null,()=>{ GAME.S.cata=GAME.S.cata||{}; if(typeof JOURNAL!=='undefined') JOURNAL.write(`I broke the chains in the nave of ${td.name}'s chapel, and the Lord raised ${td.general} from the dead before my eyes — breath came into him, and he stood up upon his feet (Ezekiel 37:10). He is born again.`,{}); }); } };
+          ENGINE.speak(td.general,['…Breath. I have breath.','“Thus saith the Lord GOD unto these bones; Behold, I will cause breath to enter into you, and ye shall live.” — Ezekiel 37:5',...(spec.raiseWhy||['I was dead, knight. Truly dead. I knew His words by heart and never trusted the One who spoke them — and the shadow took me in that doubt, and hung me here to mock Him.','And He has called me out of it, as He called Lazarus out of the tomb. Not the chains, not the grave could keep what He wants back. I am born again — and this time I know Him, not only His words.']),'“I am the resurrection, and the life: he that believeth in me, though he were dead, yet shall he live.” — John 11:25','Come. Kneel with me here, and receive His blessing for this town.'],null,()=>{ GAME.S.cata=GAME.S.cata||{}; if(typeof JOURNAL!=='undefined') JOURNAL.write(`I broke the chains in the nave of ${td.name}'s chapel, and the Lord raised ${td.general} from the dead before my eyes — breath came into him, and he stood up upon his feet (Ezekiel 37:10). He is born again.`,{}); }); } };
       const sm=u=>{ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); }; }
     lv.onEnter=sp=>{ if(lv._restIn) setTimeout(lv._restIn,600); COMBAT.clear(lv); onStair=true; g=G.map(r=>r.slice());
       dyn.seals.forEach(s=>{ s.visible=!R.opened[i]; s.position.y=0; }); showCandles(); if(dyn.podium){ dyn.podium.visible=!!R.risen[i]; dyn.kc.set(R.chests['podium:'+i]?'open':'up'); }
@@ -9421,12 +9425,198 @@ const CATACOMB=(function(){
     gates:{},
     rings:{ '49,25':{land:[48,25]}, '42,33':{land:[43,33]} },
     books:{ '21,15':1 },
-    tablets:{ '35,15':['The brothers’ last entry, cut in haste','Fifteen years ago the shadow came, and the General fell with Hearthvale. We laid him here. Not a month later we heard the lid of his tomb grind open below us.','In the morning the tomb was empty. Only his crook lay in the dust — the thing would not touch it.','We do not know where they have laid him. (John 20:13)'] } } ] };
-  const SOLID=new Set(['#','T','O','C','Q','l','t','k','R','X','v','B','A','Y','N','F']);
-  const LAYOUT=2; const st=t=>{ const S=GAME.S; S.cata=S.cata||{}; if(S.cata[t]&&S.cata[t].v!==LAYOUT) S.cata[t]={}; const c=S.cata[t]||(S.cata[t]={}); c.v=LAYOUT; ['doors','chests','gates','cleared','blocks','map','levers'].forEach(k=>{ if(!c[k]||typeof c[k]!=='object') c[k]={}; }); c.keys=c.keys||0; return c; };
-  let mouth=null, OPT={};
-  const cleansed=t=>!!(OPT.cleansed&&OPT.cleansed(t));
-  function leaveTo(){ if(mouth) ENGINE.go('world',{x:mouth.x,z:mouth.z,face:mouth.face,yaw:mouth.face}); else ENGINE.go('world'); }
+    tablets:{ '35,15':['The brothers’ last entry, cut in haste','Fifteen years ago the shadow came, and the General fell with Hearthvale. We laid him here. Not a month later we heard the lid of his tomb grind open below us.','In the morning the tomb was empty. Only his crook lay in the dust — the thing would not touch it.','We do not know where they have laid him. (John 20:13)'] } } ],
+  1:[
+  { name:'The Smiths’ Undercroft', rows:[
+'############################################',
+'############################################',
+'####...........#############...........#####',
+'####..k..N.....#############.....Q.....#####',
+'####...........#############...........#####',
+'####...........#############...........#####',
+'####...........#############...........#####',
+'####...........#############...........#####',
+'####...........#############...........#####',
+'#########GG#####################333#########',
+'####..Z.....Z.....Z.....Z................###',
+'####..........................w.....w....###',
+'#..#.............................t....V..###',
+'#..#........................s............###',
+'#C.1....O.......O.........O..............###',
+'#..#........p...........................C###',
+'#..#..................E..................###',
+'####.........E...........................###',
+'####.........................E...........###',
+'####....O.......O....c....O..............###',
+'####...p............................H....###',
+'####..............~~~~~~~~~~~~~~~~~~.....###',
+'####.....................................###',
+'####################,,,,####################',
+'################............#............###',
+'################.t..........#...T.....Y..###',
+'################............#............###',
+'################...E....E...4..t.........###',
+'################............4............###',
+'################.Z........Z.#............###',
+'################............#...T...T..v.###',
+'################.....S......#............###',
+'############################################',
+'############################################'],
+    tall:[{r:[4,10,40,22],h:6.6}], raised:[{r:[37,11,40,21],h:2.6}],
+    links:{ '21,31':{to:'world'}, '9,3':{to:'nave'}, '39,30':{to:1,at:[40,4],face:Math.PI/2} },
+    shafts:{ '38,12':{to:1,at:[36,5]} },
+    chests:{ '1,14':{map:true}, '40,15':{gold:40,pot:['potion',1]}, '33,3':{bosskey:true} },
+    gates:{ '1':{when:'clear',rect:[4,10,40,22],msg:'⛓ The forge hall falls quiet — the bars over the little alcove in the west wall grind up.'},
+            '3':{when:'winch',msg:'⛓ Two winches, two pairs of hands — the portcullis groans up into the vault.'},
+            '4':{when:'lever',msg:'⛓ The lever drops — the gate to the entry hall rattles up. A short way back.'} },
+    winches:['30,11','36,11'],
+    rings:{}, books:{ '6,3':0 },
+    tablets:{ '17,25':['A tablet over the forge door','Here lie the smiths of Ironhold, who kept the fires and kept the faith.','“Iron sharpeneth iron; so a man sharpeneth the countenance of his friend.” — Proverbs 27:17','(The chapel above is bound. The way to it is down — through the old mine workings under the forge.)'],
+              '33,12':['Cut into the lintel, between the two winches','“Two are better than one… For if they fall, the one will lift up his fellow: but woe to him that is alone when he falleth; for he hath not another to help him up.” — Ecclesiastes 4:9–10','(The winches stand too far apart for one pair of hands.)'],
+              '31,27':['A smith’s epitaph','He worked the bellows sixty years and never once worked alone. — the brothers of the forge'] } },
+  { name:'The Deep Workings', rows:[
+'################################################',
+'################################################',
+'#############################..............#####',
+'#############################.t..........u.#####',
+'#############################..............#####',
+'#############################..............#####',
+'#############################..............#####',
+'#############################..............#####',
+'#############################.~P~~~~B~~~~~.#####',
+'#############################..............#####',
+'#############################..............#####',
+'###################################222##########',
+'####................XXXX...................#####',
+'####.C..............XXXX...F...............#####',
+'####.............k..XXXX...............p...#####',
+'####................XXXX...................#####',
+'####................XXXXR..................#####',
+'####................XXXX....O......O.......#####',
+'####................XXXX...................#...#',
+'####...........H....XXXX...................#...#',
+'####................XXXX.......p...........W.J.#',
+'####........F.......XXXX...................#...#',
+'####................XXXX...................#...#',
+'####................XXXX............b......#####',
+'####.....s..........XXXX...................#####',
+'####...............RXXXX....O......O.......#####',
+'####................XXXX...................#####',
+'####................XXXX.~~~~~~~~~~~~~~~~~.#####',
+'####............c...XXXX................C..#####',
+'####................XXXX................F..#####',
+'####................XXXX...................#####',
+'#########LL#####################################',
+'####.................###########################',
+'####.................###########################',
+'####..O...........O..###########################',
+'####.................#...#######################',
+'####........m........1..v#######################',
+'####.................#...#######################',
+'####.................###########################',
+'####..O...........O..###########################',
+'####.................###########################',
+'####.................###########################',
+'################################################',
+'################################################'],
+    tall:[{r:[4,12,42,30],h:7.2}], raised:[{r:[4,12,14,22],h:2.6}],
+    links:{ '41,3':{to:0,at:[38,30],face:-Math.PI/2}, '24,36':{to:2,at:[22,4],face:0} }, spawn:[36,5],
+    chests:{ '5,13':{key:1}, '40,28':{compass:true} },
+    gates:{ '1':{when:'clear',rect:[4,32,20,41],msg:'⛓ The Iron Warden falls. In the east wall, a gate grinds up over a stair going down — to the tomb.'},
+            '2':{when:'plates',cells:['31,8'],msg:'⛓ The ore cart settles on the plate — the gate down into the workings lifts.'} },
+    rings:{ '19,25':{land:[18,25]}, '24,16':{land:[25,16]} }, books:{ '17,14':2 },
+    cage:'45,20',
+    tablets:{ '30,3':['Scratched into the timber of the shaft','The old workings run under the whole of Ironhold. The smiths dug their iron here — and buried their dead in the galleries they had finished with.','Mind the ore cart. It runs on the old rails, and wants a strong shove.'] } },
+  { name:'Miriam’s Tomb', rows:[
+'############################################',
+'############################################',
+'#################...........################',
+'#################.....u.....################',
+'#################...........################',
+'#################...........################',
+'#################...........################',
+'#################.F.......F.################',
+'#################...........################',
+'####################,,,,,###################',
+'####################.....###################',
+'#################...........################',
+'################.............###############',
+'###############.......O.......##############',
+'##############.................#############',
+'#############..k.............t..##........##',
+'#############...................##......C.##',
+'#############...................##.E......##',
+'############.....................#........##',
+'############.....................#........##',
+'############....O.....A.....O....W....H...##',
+'############.....................#........##',
+'############.....................#.Z......##',
+'#############...................##........##',
+'#############...................##........##',
+'#############....l.........l....##........##',
+'##############.................#############',
+'###############.......O.......##############',
+'################.............###############',
+'#################...........################',
+'####################.....###################',
+'############################################',
+'############################################',
+'############################################',
+'############################################',
+'############################################'],
+    tall:[{r:[34,15,41,25],h:5.6}], raised:[{r:[37,15,41,19],h:2.4}], dome:{c:[22,20],r:9,h:5.0},
+    links:{ '22,3':{to:1,at:[23,36],face:-Math.PI/2} }, spawn:[22,5],
+    chests:{ '40,16':{gold:80,pot:['potion',2]} },
+    gates:{}, rings:{}, books:{ '15,15':1 },
+    tablets:{ '29,15':['The brothers’ last entry, cut deep','Fifteen years ago the shadow came, and the General fell with Ironhold. She would not let us help her hold the gate. We laid her here, in the armour she forged.','Within the month her tomb stood open and empty. Her hammer lay where they had thrown it down. The thing would not touch it.'] } } ]
+  };
+  // V156: each town's catacombs in their own words — what is buried there, the general's tomb, the vision, the tool he or she
+  //  gives, the way back up; and how the town's own way down looks from the churchyard
+  const CFG={
+    0:{ entrance:'mausoleum', wayIn:'in the churchyard a mausoleum stands open, its stair going down into the catacombs.', motif:'lamb',
+      intro:['Cool air, and the smell of old stone and candle-wax. The shepherds of Hearthvale are buried here, shelf above shelf.','The chapel overhead is bound by the dark. The way to it is through the tombs below.','Doors here stay open once opened, and halls stay cleared. Look for small keys, and the map.'],
+      warden:{name:'The Warden of the Tombs',tip:'👹 The Warden of the Tombs — a brute: its fists come down after a long heave. Roll clear, or parry, and strike while it reels.'},
+      tool:{flag:'staff',relic:'crook',emoji:'🪝',name:'Shepherd’s Staff',take:'🙏 Take the crook',zone:''},
+      greatKey:['Heavy, gold, and warm to the touch. A crook and a cross are cut into its bow.','It opens the great door beyond the chasm on the first level — and the stair to the nave, where the guardian waits.'],
+      tomb:{ clean:['Still empty — and now it always will be. The brothers have laid flowers in it anyway, and left the lid where it lies.','“He is not here: for he is risen.” — Matthew 28:6 · The General walks the wall of Hearthvale again.'],
+        again:['Go up, knight. The crook will carry you over the chasms the brothers cut.','The great key is in the crypts above — the ossuary set in the wall will give it up to the crook. Then the great door on the first level, the brothers’ fire, and the nave — where my body hangs.','Break the chains. And trust the One who raises the dead.'],
+        open:['The tomb lies open, the lid dragged aside — and it is empty. Only his crook lies in the dust where he was laid.','You kneel. And the dome fills with a light that does not come from the oculus.'],
+        vision:['Do not be afraid. I am not a ghost, knight — I am dead, and my body is not here.','I fell fifteen years ago, when the shadow took Hearthvale. Within the month it took my body from this tomb and carried it up into the nave, and hung it there in chains, to mock the One I served. But the dead are not lost to God. He lets you see me now, as He sees me.','I knew every word of His book by heart, and never once trusted the One who spoke it. That is how the shadow took me.','Before you go up to break those chains, let me see you stand. A shepherd must turn the wolf aside before he can strike it. In this light my blows cannot kill you — but they will teach you.','Guard as my blow lands — not before, not after — and you will turn it whole. Turn two of them, or drive me back.'],
+        sparWin:['…Well stood. You can turn a blow.','But a sword was never what the wolf wanted from me. It asked a question, the same one it asked in the garden — yea, hath God said? — and I reached for the page and found I had only ever had the memory of it.','So I will ask you what I could not answer.'],
+        give:['Then take my crook — the shadow would not touch it. It kept my sheep; let it keep you.','{tool} — and Ⓐ Hook with it: catch the iron rings across a chasm and it swings you over; pull a lever out of reach; draw a stone ossuary out of its slot toward you.','The way on is east, across the chasm, and up. The great key lies in the crypts above. Then the great door on the first level, the brothers’ fire — and the nave, where my body hangs in its chains.','“Thy rod and thy staff they comfort me.” — Psalm 23:4'],
+        toast:'🪝 The Shepherd’s Staff is yours — and his teaching is in your journal.',
+        journal:'Down in the catacombs under Hearthvale\'s chapel I found {general}\'s tomb empty — the shadow has his body chained in the nave. The Lord gave me a vision of him: he sparred with me and asked me what Scripture is. {head}: {doc} He gave me his crook — the Shepherd\'s Staff.',
+        codex:['2 Timothy 3:16','All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness.'] },
+      folk:{name:'Brother Hollis',first:'We came back down the day the chapel was cleansed. Four hundred years of lamps — we will not let them go out again.',rest:'Every name on every shelf, read aloud once a year. It takes the whole of Lent.'},
+      raiseWhy:null,
+      goal:(c,inC,td)=>!c.seen?`${td.name}’s chapel is barred — go down through the mausoleum in its churchyard.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep in the catacombs.`:`Back down into ${td.name}’s catacombs — ${td.general}’s tomb lies deepest.`)
+        :!c.bosskey&&!(c.doors&&c.doors['0:3,16'])?'Climb with the crook: the great key lies in the crypts above the tomb.':!(c.doors&&c.doors['0:3,16'])?'The great door on the first level — across the chasm.':`Up the stair to the nave — ${td.boss} waits.` },
+    1:{ entrance:'adit', wayIn:'in the churchyard the old mine adit stands open, its rails running down into the workings under the forge.', motif:'hammer',
+      intro:['Warm, still air, and the smell of iron and old coal-smoke. The smiths of Ironhold are buried here, in the galleries their fathers dug.','The chapel overhead is bound by the dark. The way to it is down, through the old workings.','Furnaces gone cold, anvils left where they stood. Doors stay open once opened; halls stay cleared. Look for keys, and the map.'],
+      warden:{name:'The Iron Warden',tip:'👹 The Iron Warden — a brute in slag and iron: its blows come down after a long heave. Roll clear, or parry, and strike while it reels.'},
+      tool:{flag:'hammer',relic:'hammer',emoji:'🔨',name:'Smith’s Hammer',take:'🙏 Take the hammer',zone:' · 🔨'},
+      greatKey:['Heavy, gold, and warm to the touch. A hammer and a cross are cut into its bow.','It opens the great door at the head of the forge hall — and the stair to the nave, where the guardian waits.'],
+      tomb:{ clean:['Still empty — and now it always will be. The smiths have laid a new-forged nail in it, the way they mark a grave they are glad of.','“He is not here: for he is risen.” — Matthew 28:6 · The General keeps the gate of Ironhold again — and lets others help her hold it.'],
+        again:['Go up, knight. Break the cracked stone with the hammer — the miner the shadow caged is behind the wall in the workings above.','Free him. Then the two winches in the forge hall, the great key, the great door — and the nave, where my body hangs.','You cannot raise that gate alone. Neither could I. That was the whole of my trouble.'],
+        open:['The tomb lies open, the lid shoved aside — and it is empty. Only a smith’s hammer lies in the dust where she was laid.','You kneel. And the dome fills with a light that does not come from the forges.'],
+        vision:['Do not be afraid. I am not a ghost, knight — I am dead, and my body is not here.','I fell fifteen years ago, when the shadow took Ironhold. Within the month it dragged me out of this tomb and up into the nave, and hung me there in chains — the woman who never needed anyone, hung up for the town to see. But the dead are not lost to God. He lets you see me now, as He sees me.','I forged my own armour. I would take no gift I had not earned. I prayed the way a soldier reports: my position, my strength, nothing asked. And when the Wraith came it did not break my guard. It only waited for the end of a strength that had never come from anywhere but me.','Before you go up, let me see you stand. Guard as my blow lands — not before, not after — and you will turn it whole. Turn two of them, or drive me back.'],
+        sparWin:['…Well stood. You turned it — and you did not try to take the blow on your own arm alone. You let the shield do what a shield is for.','My strength was never the question. The question is where strength comes from. So I will ask you what I could not answer.'],
+        give:['Then take my hammer — and my armour, as a gift this time, not a wage. I forged them both, and thought I had made myself strong. Let the hammer break what you cannot move — and do not mistake it for the strength.','{tool} — Ⓐ Smash with it: cracked stone and the locks the shadow forged give way to it.','Above you, in the workings, the shadow caged a man behind a fall of stone — he came down to keep the forge-lamp lit and never went home. Break the wall. Free him.','The portcullis in the forge hall has two winches, too far apart for one pair of hands. You will need him. “Bear ye one another’s burdens.” — Galatians 6:2'],
+        toast:'🔨 The Smith’s Hammer is yours — and her teaching is in your journal.',
+        journal:'Deep in the old workings under Ironhold\'s chapel I found {general}\'s tomb empty — her body hangs in the nave. The Lord gave me a vision of her: she sparred with me and asked me who God is. {head}: {doc} She gave me her hammer — the Smith\'s Hammer — and told me I would not raise the gate alone.',
+        codex:['Exodus 3:14','And God said unto Moses, I AM THAT I AM.'] },
+      folk:{name:'Brother Tubal',first:'We lit the forge-lamps again the day the chapel was cleansed. Fifteen years cold. I had forgotten the sound of a bellows.',rest:'She comes down sometimes, the General, and works the bellows for us. She asks for help with the heavy pieces now. You would not believe what that costs her — or how glad she is to pay it.'},
+      raiseWhy:['I was dead, knight. Truly dead. I trusted no strength but my own — and when mine ran out, there was nothing under me, and the shadow hung me here to show the town what self-made strength is worth.','And He has called me out of it, as He called Lazarus out of the tomb — and I could do nothing to help Him do it. Nothing at all. I am born again, and this time I know where strength comes from.'],
+      goal:(c,inC,td)=>!c.seen?`${td.name}’s chapel is barred — go down through the old mine adit in its churchyard.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep in the old workings.`:`Back down into ${td.name}’s workings — ${td.general}’s tomb lies deepest.`)
+        :!c.helper?'Break the cracked wall in the workings with the hammer, and free the caged miner.':!(c.gates&&c.gates['0:3'])?'The two winches in the forge hall — turn them together with Brother Tubal.':!(c.doors&&c.doors['0:9,9'])?'The great key, then the great door at the head of the forge hall.':`Up the stair to the nave — ${td.boss} waits.` } };
+
+  const SOLID=new Set(['#','T','O','C','Q','l','t','k','R','X','v','B','A','Y','N','F','E','Z','J','w','W']);
+  const LAYOUT=2; const st=t=>{ const S=GAME.S; S.cata=S.cata||{}; if(S.cata[t]&&S.cata[t].v!==LAYOUT) S.cata[t]={}; const c=S.cata[t]||(S.cata[t]={}); c.v=LAYOUT; ['doors','chests','gates','cleared','blocks','map','levers','smashed'].forEach(k=>{ if(!c[k]||typeof c[k]!=='object') c[k]={}; }); c.keys=c.keys||0; return c; };
+  const MOUTH={}, OPTS={};
+  const cleansed=t=>{ const o=OPTS[t]||OPTS[0]||{}; return !!(o.cleansed&&o.cleansed(t)); };
+  function leaveTo(t){ const m=MOUTH[t]; if(m) ENGINE.go('world',{x:m.x,z:m.z,face:m.face,yaw:m.face}); else ENGINE.go('world'); }
+  /* V156: the crook from Hearthvale goes with you to every catacomb after (or Hearthvale cleansed before the catacombs were dug) */
+  const hasCrook=()=>{ const c=GAME.S.cata&&GAME.S.cata[0]; return !!(c&&c.staff)||cleansed(0); };
   const txt=s=>String(s).replace(/<br\s*\/?>/g,'\n').replace(/<[^>]+>/g,'').replace(/&amp;/g,'&');
   // ── a web in a corner, painted once ──
   let _glowM=null, _poolM=null;
@@ -9440,7 +9630,7 @@ const CATACOMB=(function(){
   // V150: a VISION of the general, not a ghost — the Lord lets you see him as He sees him: his own figure, in warm light
   function spirit(tint){ const p=person('general',{tint:tint||'#5a3a7a'}), mats=[]; p.traverse(m=>{ if(!m.isMesh) return; const mm=new THREE.MeshLambertMaterial({color:new THREE.Color(m.material.color||0xffffff).lerp(new THREE.Color(0xfff2d8),0.5),transparent:true,opacity:0.82,emissive:0x3a2a10}); m.material=mm; mats.push(mm); m.castShadow=false; });
     const g=new THREE.Group(); g.add(p); const halo=new THREE.Mesh(new THREE.SphereGeometry(0.62,14,10),new THREE.MeshBasicMaterial({color:0xffe6a8,transparent:true,opacity:0.14,depthWrite:false})); halo.position.y=0.8; g.add(halo); g.userData.mats=mats; return g; }
-  function build(t,n,D,td){ const rows=D.rows, H=rows.length, W=rows[0].length, at=(x,y)=>rows[y]&&rows[y][x], s=()=>st(t), id='cata'+t+':'+n, C=OPT.C||{}, clean=()=>cleansed(t);
+  function build(t,n,D,td){ const OPT=OPTS[t]||{}, CF=CFG[t]||CFG[0], rows=D.rows, H=rows.length, W=rows[0].length, at=(x,y)=>rows[y]&&rows[y][x], s=()=>st(t), id='cata'+t+':'+n, C=OPT.C||{}, clean=()=>cleansed(t);
     const T=CHAPEL_THEME(t), dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex(), CW=3.8;
     const inR=(r,x,y)=>x>=r[0]&&x<=r[2]&&y>=r[1]&&y<=r[3], DM=D.dome, inDome=(x,y)=>!!DM&&Math.hypot(x-DM.c[0],y-DM.c[1])<=DM.r+0.6;
     const regionAt=(x,y)=>(D.tall||[]).find(q=>inR(q.r,x,y));
@@ -9453,17 +9643,26 @@ const CATACOMB=(function(){
     const room=group(0,0,0,scene), an=lv.anim, dyn={doors:{},chests:{},lamps:[],blocks:[],plates:[],levers:{},crack:null};
     const wallC=(x,y)=>at(x,y)==='#'||at(x,y)===undefined, floorC=(x,y)=>{ const c=at(x,y); return c!==undefined&&c!=='#'&&c!=='X'; };
     const WI=wallInset((x,y)=>wallC(x,y),(x,y)=>floorC(x,y)||at(x,y)==='X',0.06);
-    const fl=[], wl=[], pit=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(c==='#'){ let face=false; for(let dy=-1;dy<=1&&!face;dy++) for(let dx=-1;dx<=1;dx++){ const q=at(x+dx,y+dy); if(q!==undefined&&q!=='#'){ face=true; break; } } if(face) wl.push([x,y]); } else if(c==='X'||c==='K') pit.push([x,y]); if(c!=='#'&&c!=='X'&&c!=='K'&&c!=='=') fl.push([x,y]); }
-    inst(fl,UNIT,detailify(new THREE.MeshLambertMaterial(),{mode:'stone'}),([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((x+y)%2?pal.fA:pal.fB).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
+    /* V156: LEDGES — raised floors (galleries, the high side of a cavern): you climb up by a ladder and step off the edge to drop */
+    const RZ=D.raised||[], hAt=(x,y)=>{ const q=RZ.find(r=>inR(r.r,x,y)); return q&&floorC(x,y)?q.h:0; };
+    let climb=null;
+    const fl=[], wl=[], pit=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(c==='#'){ let face=false; for(let dy=-1;dy<=1&&!face;dy++) for(let dx=-1;dx<=1;dx++){ const q=at(x+dx,y+dy); if(q!==undefined&&q!=='#'){ face=true; break; } } if(face) wl.push([x,y]); } else if(c==='X'||c==='K') pit.push([x,y]); if(c!=='#'&&c!=='X'&&c!=='K'&&c!=='='&&c!=='V') fl.push([x,y]); }
+    inst(fl,UNIT,detailify(new THREE.MeshLambertMaterial(),{mode:'stone'}),([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1+hAt(x,y),y+0.5); cc.setHex((x+y)%2?pal.fA:pal.fB).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
     inst(wl,UNIT,bmat(0xffffff,'brick'),([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx,WH(x,y),q.sz); m.setPosition(q.cx,0,q.cz); cc.setHex(pal.wall).offsetHSL(0,0,(hsh(x,y)-0.5)*0.07); },room);
     inst(wl,UNIT,null,([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx+0.05,0.28,q.sz+0.05); m.setPosition(q.cx,0,q.cz); cc.setHex(dk(pal.wall,0.62)); },room);   // the plinth course
+    // the ledges: solid rock under the raised floor, a stone kerb and a timber beam along each edge
+    { const rc=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(hAt(x,y)>0||(at(x,y)==='V'&&RZ.some(r=>inR(r.r,x,y)))) rc.push([x,y]);
+      if(rc.length){ const RH=(x,y)=>(RZ.find(r=>inR(r.r,x,y))||{h:0}).h;
+        inst(rc.filter(([x,y])=>at(x,y)!=='V'),UNIT,bmat(0xffffff,'brick'),([x,y],m,cc)=>{ m.makeScale(1,RH(x,y)-0.1,1); m.setPosition(x+0.5,0,y+0.5); cc.setHex(dk(pal.wall,0.85)).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
+        rc.forEach(([x,y])=>[[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const nc=at(x+a,y+b); if(nc===undefined||nc==='#'||hAt(x+a,y+b)>=RH(x,y)-0.1) return; const h=RH(x,y);
+          B(a?0.12:1.02,0.12,a?1.02:0.12,dk(pal.stone,0.8),x+0.5+a*0.46,h,y+0.5+b*0.46,room); B(a?0.16:1.04,0.2,a?1.04:0.16,0x4a3220,x+0.5+a*0.5,h-0.34,y+0.5+b*0.5,room); })); } }
     // the chasms (and under the thin floor, the drop): a long fall into the dark, its sides cut stone
     const pitAt=(x,y)=>at(x,y)==='X'||at(x,y)==='K';
     pit.forEach(([x,y])=>{ const deep=(regionAt(x,y)||{}).deep; B(1,0.2,1,0x020103,x+0.5,deep?-14.2:-6.2,y+0.5,room); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ if(pitAt(x+a,y+b)) return; B(a?0.08:1,1.2,a?1:0.08,dk(pal.wall,0.32),x+0.5+a*0.5,-1.2,y+0.5+b*0.5,room); B(a?0.08:1,4.9,a?1:0.08,0x0a0708,x+0.5+a*0.5,-6.1,y+0.5+b*0.5,room); if(at(x,y)==='X') B(a?0.14:1,0.06,a?1:0.14,pal.stone,x+0.5+a*0.47,-0.06,y+0.5+b*0.47,room); }); });
     // the thin floor: cracked flags over the drop, until it gives
     { const ks=pit.filter(([x,y])=>at(x,y)==='K'); if(ks.length){ const g=group(0,0,0,room); dyn.crack={g,tiles:[]}; ks.forEach(([x,y])=>{ const tg=group(x+0.5,0,y+0.5,g); B(0.98,0.1,0.98,(x+y)%2?pal.fA:pal.fB,0,-0.1,0,tg); for(let i=0;i<2;i++){ const c=B(0.45+hsh(x,y+i)*0.35,0.006,0.014,0x241a12,(hsh(x+i,y)-0.5)*0.3,0,(hsh(y,x+i)-0.5)*0.5,tg); c.rotation.y=hsh(i,x*y)*3; } dyn.crack.tiles.push({g:tg,vy:0}); }); } }
     // the burial niches (loculi) cut along the walls: a dark shelf, and on it the shrouded dead, two rows high
-    const faces=[]; wl.forEach(([x,y])=>[[0,1],[0,-1],[1,0],[-1,0]].forEach(([a,b])=>{ const c=at(x+a,y+b); if(c==='.'&&hsh(x*3+a,y*5+b)<0.42) faces.push([x,y,a,b]); }));
+    const faces=[]; wl.forEach(([x,y])=>[[0,1],[0,-1],[1,0],[-1,0]].forEach(([a,b])=>{ const c=at(x+a,y+b); if(c==='.'&&!hAt(x+a,y+b)&&hsh(x*3+a,y*5+b)<(CF.motif==='hammer'?0.12:0.42)) faces.push([x,y,a,b]); }));
     const QQ=new THREE.Quaternion(), V1=new THREE.Vector3(), V2=new THREE.Vector3();
     const nicheAt=([x,y,a,b],h)=>{ const q=WI.box(x,y); return [q.cx+a*(q.sx/2+0.001),h,q.cz+b*(q.sz/2+0.001)]; };
     inst(faces.flatMap(f=>[[f,0.62],[f,1.48]]),UNIT,null,([f,h],m,cc)=>{ const [px,,pz]=nicheAt(f,h); const [,,a,b]=f; m.makeScale(a?0.06:0.86,0.5,a?0.86:0.06); m.setPosition(px-a*0.02,h,pz-b*0.02); cc.setHex(0x0c0a0c); },room,false);
@@ -9484,16 +9683,20 @@ const CATACOMB=(function(){
         if((x+y)%2) B(a?0.1:0.1,0.55,a?0.1:0.1,dk(pal.stone,0.75),fx+a*0.78,gy+0.18,fz+b*0.78,room);
         B(a?0.06:0.86,0.5,a?0.86:0.06,0x0c0a0c,fx-a*0.02,gy+0.9,fz-b*0.02,room); const sh=Cy(0.13,0.13,0.72,8,pal.linen,fx+a*0.08,gy+1.04,fz+b*0.08,room); sh.rotation.set(a?0:Math.PI/2,0,a?Math.PI/2:0);
         if(hsh(x,y)<0.3){ const L2=group(fx+a*0.55,gy+0.18,fz+b*0.55,room); Cy(0.04,0.05,0.16,6,0xf0e8d0,0,0,0,L2); themeFlame(0,0.24,0,L2,an,1.0,T); } })); });
-    for(let y=1;y<H-1;y++){ if(y%3) continue; let x=0; while(x<W){ while(x<W&&!floorC(x,y)&&!pitAt(x,y)) x++; const x0=x; while(x<W&&(floorC(x,y)||pitAt(x,y))) x++; const len=x-x0; if(len>=5&&wallC(x0-1,y)&&wallC(x,y)&&!inDome(x0+(len>>1),y)){ let hh=CW; for(let i=x0;i<x;i++) hh=Math.max(hh,HC(i,y)); B(len+0.1,0.32,0.34,dk(pal.wall,0.85),x0+len/2,hh-0.32,y+0.5,room); B(0.22,hh-0.3,0.3,dk(pal.wall,0.82),x0+0.11,0,y+0.5,room); B(0.22,hh-0.3,0.3,dk(pal.wall,0.82),x-0.11,0,y+0.5,room); } } }
+    for(let y=1;y<H-1;y++){ if(y%3) continue; let x=0; while(x<W){ while(x<W&&!floorC(x,y)&&!pitAt(x,y)) x++; const x0=x; while(x<W&&(floorC(x,y)||pitAt(x,y))) x++; const len=x-x0; if(len>=5&&wallC(x0-1,y)&&wallC(x,y)&&!inDome(x0+(len>>1),y)){ let hh=CW; for(let i=x0;i<x;i++) hh=Math.max(hh,HC(i,y)); const rc=CF.motif==='hammer'?0x4a3220:dk(pal.wall,0.85), pc=CF.motif==='hammer'?0x553a24:dk(pal.wall,0.82); B(len+0.1,0.32,0.34,rc,x0+len/2,hh-0.32,y+0.5,room); B(0.22,hh-0.3,0.3,pc,x0+0.11,0,y+0.5,room); B(0.22,hh-0.3,0.3,pc,x-0.11,0,y+0.5,room); } } }
     // ledger stones in the floor, a carved cross on each
-    fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x+11,y*3)>0.07) return; B(0.78,0.025,0.92,dk(pal.stone,0.9),x+0.5,0,y+0.5,room); B(0.06,0.03,0.5,dk(pal.stone,0.55),x+0.5,0,y+0.45,room); B(0.32,0.03,0.06,dk(pal.stone,0.55),x+0.5,0,y+0.32,room); });
+    if(CF.motif==='hammer') fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x+11,y*3)>0.16) return; const hy=hAt(x,y); for(let i=0;i<4;i++) B(0.09+hsh(i,x)*0.1,0.06+hsh(x,i)*0.06,0.09+hsh(y,i)*0.1,i%2?0x1e1a18:0x6a3a22,x+0.2+hsh(i,y)*0.6,hy,y+0.2+hsh(y+i,x)*0.6,room); });   /* coal and ore spilled from the carts */
+    else fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x+11,y*3)>0.07) return; B(0.78,0.025,0.92,dk(pal.stone,0.9),x+0.5,0,y+0.5,room); B(0.06,0.03,0.5,dk(pal.stone,0.55),x+0.5,0,y+0.45,room); B(0.32,0.03,0.06,dk(pal.stone,0.55),x+0.5,0,y+0.32,room); });
     // webs in the high corners, roots hanging down through the vault
     { const wm=new THREE.MeshBasicMaterial({map:web(),transparent:true,depthWrite:false,side:THREE.DoubleSide,fog:true});
       fl.forEach(([x,y])=>{ const L=wallC(x-1,y), R=wallC(x+1,y), U=wallC(x,y-1), Dn=wallC(x,y+1); if(!((L||R)&&(U||Dn))||hsh(x*5,y*7)>0.5) return; const m=new THREE.Mesh(new THREE.PlaneGeometry(0.9,0.9),wm); m.rotation.x=Math.PI/2; m.rotation.z=(L?0:Math.PI/2)+(U?0:Math.PI/2)*(L?-1:1); m.position.set(x+(L?0.45:0.55),HC(x,y)-0.04,y+(U?0.45:0.55)); room.add(m); });
-      fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x*13,y*17)>0.05) return; for(let k=0;k<4;k++){ const l=0.4+hsh(x+k,y)*1.1; const r=Cy(0.012,0.02,l,4,0x3a2a1a,x+0.3+k*0.13,HC(x,y)-l,y+0.3+hsh(k,y)*0.4,room); r.rotation.z=(hsh(k,x)-0.5)*0.3; } }); }
+      if(CF.motif==='hammer') fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x*13,y*17)>0.04) return; const l=0.8+hsh(x,y)*1.4; for(let k=0;k<Math.round(l/0.11);k++){ const lk=new THREE.Mesh(new THREE.TorusGeometry(0.035,0.01,4,8),mt(0x3a3a40)); lk.position.set(x+0.5,HC(x,y)-0.06-k*0.11,y+0.5); lk.rotation.y=k%2?Math.PI/2:0; room.add(lk); } B(0.08,0.14,0.04,0x3a3a40,x+0.5,HC(x,y)-0.2-l,y+0.5,room); });   /* old chains hanging from the timbers */
+      else fl.forEach(([x,y])=>{ if(at(x,y)!=='.'||hsh(x*13,y*17)>0.05) return; for(let k=0;k<4;k++){ const l=0.4+hsh(x+k,y)*1.1; const r=Cy(0.012,0.02,l,4,0x3a2a1a,x+0.3+k*0.13,HC(x,y)-l,y+0.3+hsh(k,y)*0.4,room); r.rotation.z=(hsh(k,x)-0.5)*0.3; } }); }
+    if(CF.motif==='hammer'){ const ov=[]; wl.forEach(([x,y])=>[[0,1],[0,-1],[1,0],[-1,0]].forEach(([a,b])=>{ const c=at(x+a,y+b); if(c===undefined||c==='#'||hsh(x*7+a,y*3+b)>0.35) return; for(let i=0;i<3;i++) ov.push([x,y,a,b,i]); }));
+      inst(ov,UNIT,new THREE.MeshLambertMaterial({emissive:0x2a0e04}),([x,y,a,b,i],m,cc)=>{ const q=WI.box(x,y), fx=q.cx+a*(q.sx/2+0.004), fz=q.cz+b*(q.sz/2+0.004), u=hsh(x*3+i,y*5+a+b), h=0.3+hsh(x+i,y)*(WH(x,y)-0.8); m.makeScale(a?0.02:0.12+u*0.3,0.05+u*0.08,a?0.12+u*0.3:0.02); m.setPosition(fx+(a?0:(u-0.5)*0.7),h,fz+(b?0:(u-0.5)*0.7)); cc.setHex(i%3?0x8a4a22:0xb06a2a); },room); }   /* rust and iron ore in the rock */
     // torches in sconces along the walls, and three real lights that move to the ones nearest you
-    const SC=[]; wl.forEach(([x,y])=>{ if(hsh(x*7,y*11)>0.16) return; const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>at(x+a,y+b)==='.'); if(!o) return; const q=WI.box(x,y);
-      const px=q.cx+o[0]*q.sx/2, pz=q.cz+o[1]*q.sz/2, g=group(px+o[0]*0.08,0,pz+o[1]*0.08,room); B(0.08,0.32,0.08,0x2a2420,0,1.6,0,g); Cy(0.09,0.05,0.12,6,0x3a3028,0,1.92,0,g); const fg=group(0,0,0,g); themeFire(fg,an,0,2.02,0,0.55,T);
+    const SC=[]; wl.forEach(([x,y])=>{ if(hsh(x*7,y*11)>0.16) return; const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>at(x+a,y+b)==='.'&&!hAt(x+a,y+b)); if(!o) return; const q=WI.box(x,y);
+      const px=q.cx+o[0]*q.sx/2, pz=q.cz+o[1]*q.sz/2, g=group(px+o[0]*0.08,0,pz+o[1]*0.08,room); const fg=group(0,0,0,g); if(CF.motif==='hammer'){ B(0.05,0.05,0.34,0x2a2a30,o[0]*0.1,2.25,o[1]*0.1,g).rotation.y=Math.atan2(o[0],o[1]); B(0.2,0.04,0.2,0x2a2a30,o[0]*0.26,2.18,o[1]*0.26,g); [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([u,v])=>B(0.02,0.26,0.02,0x2a2a30,o[0]*0.26+u*0.08,1.92,o[1]*0.26+v*0.08,g)); B(0.2,0.04,0.2,0x2a2a30,o[0]*0.26,1.9,o[1]*0.26,g); themeFire(fg,an,o[0]*0.26,1.98,o[1]*0.26,0.32,T); } else { B(0.08,0.32,0.08,0x2a2420,0,1.6,0,g); Cy(0.09,0.05,0.12,6,0x3a3028,0,1.92,0,g); themeFire(fg,an,0,2.02,0,0.55,T); }
       const halo=new THREE.Sprite(glowMat()); halo.scale.setScalar(2.4); halo.position.set(o[0]*0.05,2.05,o[1]*0.05); g.add(halo);
       const pool=new THREE.Mesh(new THREE.CircleGeometry(1.5,20),poolMat()); pool.rotation.x=-Math.PI/2; pool.position.set(o[0]*0.9,0.012,o[1]*0.9); g.add(pool);
       SC.push({x:px+o[0]*0.4,z:pz+o[1]*0.4,k:x+','+y+','+o[0]+','+o[1],fg,halo,pool,lit:false}); });
@@ -9522,17 +9725,19 @@ const CATACOMB=(function(){
       return nn?Math.atan2(sx/nn-x0,sy/nn-y0):0; };
     const sarc=(x,y,c)=>{ const along=wallC(x-1,y)||wallC(x+1,y)?'z':'x', g=group(x+0.5,0,y+0.5,room); if(along==='x') g.rotation.y=Math.PI/2;
       B(0.82,0.6,1.7,c||pal.stone,0,0,0,g); B(0.92,0.12,1.8,pal.lid,0,0.6,0,g); B(0.06,0.02,1.1,dk(pal.trim,0.7),0,0.72,0,g); B(0.5,0.02,0.06,dk(pal.trim,0.7),0,0.72,-0.25,g);
+      if(CF.motif==='hammer'){ /* a hammer over an anvil at the head: the smiths' mark */ const hm=group(0,0.72,0.6,g); B(0.24,0.06,0.1,0x5a5a62,0,0.02,0,hm); B(0.04,0.03,0.3,0x7a5a3a,0,0.05,-0.12,hm); B(0.12,0.05,0.12,0x5a5a62,0,0.02,0.16,hm); return g; }
       /* a lamb carved at the head: the shepherds' mark */ const lb=group(0,0.72,0.62,g); Sp(0.09,0xe8e0d0,0,0.06,0,lb); Sp(0.05,0xe8e0d0,0,0.1,0.1,lb); return g; };
     const chestModel=(x,y,great)=>{ const g=group(x+0.5,0,y+0.5,room), k=great?1.3:1; g.rotation.y=wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2;
       B(0.74*k,0.44*k,0.5*k,great?0x3a2a4a:0x5e3c20,0,0,0,g); [-0.26,0.26].forEach(o=>B(0.06,0.46*k,0.52*k,great?0xe8c040:0xc8a040,o*k,0,0,g));
       const lid=group(0,0.44*k,-0.25*k,g); B(0.76*k,0.14*k,0.52*k,great?0x4a3a5a:0x6e4828,0,0,0.26*k,lid); [-0.26,0.26].forEach(o=>B(0.06,0.15*k,0.53*k,great?0xe8c040:0xc8a040,o*k,0,0.26*k,lid)); B(0.1,0.12,0.03,0xe8c766,0,0.3*k,0.26*k,g);
       if(great){ const gl=new THREE.PointLight(0xffd88a,0.5,3,2); gl.position.set(0,1.0,0.3); g.add(gl); } shade(g); return lid; };
-    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), cx=x+0.5, cz=y+0.5, k=x+','+y;
+    for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), cx=x+0.5, cz=y+0.5, k=x+','+y, n0=room.children.length, hy=hAt(x,y)||(at(x,y)==='V'?(RZ.find(r=>inR(r.r,x,y))||{h:0}).h:0); try{
       if(c==='T'){ const g=sarc(x,y); shade(g); const along=Math.abs(Math.sin(g.rotation.y))>0.5; RECT.push({x:cx,z:cz,hx:along?0.92:0.47,hz:along?0.47:0.92}); }   /* the whole tomb is solid, end to end */
       else if(c==='A'){ const g=group(cx,0,cz,room);   /* the general's own tomb: broad, raised on a step, his effigy on the lid with his crook */
         B(1.9,0.18,2.9,dk(pal.stone,0.8),0,0,0,g); B(1.2,0.75,2.3,0x9a9284,0,0.18,0,g); B(0.96,0.04,2.06,0x050405,0,0.93,0,g);   /* open: the hollow inside, dark */
         const lid=group(0.5,0.93,0.25,g); lid.rotation.y=0.32; lid.rotation.z=-0.08; B(1.34,0.14,2.44,0xb0a898,0,0,0,lid); const ef=group(0,0.14,0,lid); B(0.42,0.16,1.5,0xc8c0b0,0,0,0,ef); Sp(0.14,0xc8c0b0,0,0.12,-0.78,ef); B(0.5,0.12,0.18,0xc8c0b0,0,0.04,-0.45,ef);
-        const crook=group(-0.15,0.96,0.1,g); crook.rotation.y=0.15; B(0.05,0.05,1.7,0x8a6a3a,0,0,0.05,crook); const hk=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.028,6,12,Math.PI),mt(0x8a6a3a)); hk.position.set(0,0.1,-0.82); hk.rotation.y=Math.PI/2; crook.add(hk);   /* his crook, left in the empty tomb */
+        const crook=group(-0.15,0.96,0.1,g); crook.rotation.y=0.15; if(CF.tool.relic==='hammer'){ B(0.06,0.06,0.62,0x7a5a3a,0,0,0.1,crook); B(0.34,0.16,0.16,0x5a5a64,0,0,-0.24,crook); B(0.1,0.12,0.1,0x8a8a94,0.2,0.02,-0.24,crook); }   /* her hammer, left in the empty tomb */
+        else { B(0.05,0.05,1.7,0x8a6a3a,0,0,0.05,crook); const hk=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.028,6,12,Math.PI),mt(0x8a6a3a)); hk.position.set(0,0.1,-0.82); hk.rotation.y=Math.PI/2; crook.add(hk); }   /* his crook, left in the empty tomb */
         [-0.7,0.7].forEach(o=>{ Cy(0.05,0.06,0.2,6,0xf0e8d0,o*1.1,0.18,1.2,g); themeFlame(o*1.1,0.44,1.2,g,an,1.2,T); }); shade(g); RECT.push({x:cx,z:cz,hx:0.95,hz:1.45}); const fw=group(0,1.07,0,g); fw.position.set(0.5,1.07,0.25); for(let i=0;i<9;i++){ const f=Sp(0.05,[0xf4e8f0,0xe8c0d8,0xf8f0c0][i%3],(hsh(i,1)-0.5)*0.5,0.16,0.3+(hsh(i,2)-0.5)*0.5,fw); Sp(0.02,0xe8c040,f.position.x,0.2,f.position.z,fw); } dyn.tomb={g,x:cx,z:cz,fw,crook}; }   /* flowers on the lid, once he is at rest */
       else if(c==='O'){ const ph=HC(x,y); Cy(0.3,0.36,ph,10,dk(pal.stone,0.9),cx,0,cz,room); Cy(0.44,0.44,0.22,10,dk(pal.stone,0.8),cx,0,cz,room); Cy(0.44,0.3,0.26,10,dk(pal.stone,0.8),cx,ph-0.26,cz,room); }
       else if(c==='='){ const g=group(cx,0,cz,room); B(1.02,0.4,1.02,(x+y)%2?0x7a7062:0x6e665a,0,-0.4,0,g);   /* the bridge: a slab, a parapet where it meets the drop, and piers down into the dark */
@@ -9552,6 +9757,8 @@ const CATACOMB=(function(){
       else if(c==='N'){ const g=group(cx,0,cz,room); for(let i=0;i<6;i++) B(1,0.2*(i+1),0.2,0xb0a898,0,0,0.45-i*0.18,g); const sh=new THREE.Mesh(new THREE.PlaneGeometry(1.1,2.6),new THREE.MeshBasicMaterial({color:0xd8c8ff,transparent:true,opacity:0.18,depthWrite:false})); sh.position.set(0,1.7,-0.55); g.add(sh); [-0.62,0.62].forEach(o=>B(0.2,2.6,0.2,0xb0a898,o,0,0.45,g)); B(1.45,0.3,0.26,0xb0a898,0,2.6,0.45,g); }
       else if(c==='v'){ const g=group(cx,0,cz,room); const fz=wallC(x,y-1)||!floorC(x,y-1)?-1:1; g.rotation.y=fz>0?Math.PI:0; B(1,0.02,1,0x020203,0,0.0,0,g); for(let i=0;i<4;i++) B(0.9,0.12,0.22,dk(pal.stone,0.8-i*0.15),0,-0.18-i*0.24,0.36-i*0.24,g); B(0.1,0.3,1.1,pal.stone,-0.55,0,0,g); B(0.1,0.3,1.1,pal.stone,0.55,0,0,g); [-0.58,0.58].forEach(o=>B(0.2,2.2,0.2,dk(pal.stone,0.85),o,0,0.42,g)); B(1.4,0.3,0.26,dk(pal.stone,0.85),0,2.2,0.42,g); B(1.0,2.2,0.05,0x030203,0,0,-0.55,g); }   /* an archway down into the dark */
       else if(c==='P'){ const g=group(cx,0,cz,room); const pl=B(0.84,0.08,0.84,0x6a6458,0,0,0,g); B(0.5,0.09,0.06,0xd8b060,0,0,0,g); B(0.06,0.09,0.5,0xd8b060,0,0,0,g); dyn.plates.push({x,y,m:pl,g}); }
+      else if(c==='B'&&CF.motif==='hammer'){ const g=group(cx,0,cz,room); B(0.86,0.5,0.7,0x5a4a3a,0,0.16,0,g); B(0.92,0.08,0.76,0x3a3a42,0,0.66,0,g); for(let i=0;i<5;i++) Sp(0.13+hsh(i,x)*0.05,0x2a2622,(hsh(i,1)-0.5)*0.5,0.72,(hsh(i,2)-0.5)*0.4,g); [-0.3,0.3].forEach(o=>[-0.24,0.24].forEach(q=>{ const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,0.06,10),mt(0x2a2a30)); wh.rotation.x=Math.PI/2; wh.rotation.z=Math.PI/2; wh.position.set(o,0.13,q*1.45); g.add(wh); }));
+          shade(g); dyn.blocks.push({k,x0:x,y0:y,x,y,g,mv:null,pull:!!(D.pull&&D.pull[k])}); }   /* the ore cart, on its old rails */
       else if(c==='B'){ const g=group(cx,0,cz,room); B(0.92,0.06,0.92,0x4a4038,0,0,0,g); B(0.86,0.66,0.86,0xb0a48c,0,0.06,0,g); B(0.94,0.12,0.94,0xc2b69c,0,0.72,0,g);
           B(0.08,0.03,0.5,0x8a6a2a,0,0.84,0,g); B(0.32,0.03,0.08,0x8a6a2a,0,0.84,-0.1,g);   /* a gilt cross on the lid */
           [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const r=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.022,6,14),new THREE.MeshPhongMaterial({color:0x5a5a62,shininess:50})); r.position.set(a*0.44,0.45,b*0.44); r.rotation.y=a?Math.PI/2:0; g.add(r); });   /* iron rings on every side, to drag it by */
@@ -9564,7 +9771,20 @@ const CATACOMB=(function(){
           const lk=group(0,1.15,0,leaf); B(vert?0.28:0.36,great?0.5:0.36,vert?0.36:0.28,great?0xe8c040:0x8a6a2a,0,0,0,lk); Sp(0.06,0x1a1208,vert?0.15:0,0.2,vert?0:0.15,lk);
           if(great){ const em=group(0,1.75,0,leaf); [1,-1].forEach(sd=>{ const cr=group(0,0,0,em); B(vert?0.04:0.05,0.6,vert?0.05:0.04,0xe8c040,0,0,0,cr); cr.position[vert?'x':'z']=sd*0.1; }); } }   /* the great door: the crook and the cross in gold */
         else { const n2=Math.round(len*5); for(let i=0;i<=n2;i++){ const o=-len/2+i*len/n2; B(0.06,HT,0.06,pal.iron,vert?0:o,0,vert?o:0,leaf); } [0.4,1.4,2.4].forEach(h=>B(vert?0.08:len,0.08,vert?len:0.08,pal.iron,0,h,0,leaf)); }
-        dyn.doors[k]={ch:c,cells,leaf,u:0}; } }
+        dyn.doors[k]={ch:c,cells,leaf,u:0}; }
+      else if(c==='~'){ const g=group(cx,0.005,cz,room); const run=at(x-1,y)==='~'||at(x+1,y)==='~'||at(x-1,y)==='B'||at(x+1,y)==='B'; if(!run) g.rotation.y=Math.PI/2; [-0.22,0.22].forEach(o=>B(1.02,0.04,0.05,0x5a5a62,0,0,o,g)); [-0.3,0.2].forEach(o=>B(0.12,0.03,0.62,0x4a3220,o,-0.01,0,g)); }   /* the old ore rails */
+      else if(c==='E'){ const g=group(cx,0,cz,room); g.rotation.y=hsh(x,y)<0.5?0:Math.PI/2; B(0.34,0.42,0.3,0x5a3a22,0,0,0,g); B(0.62,0.2,0.3,0x4a4a52,0,0.42,0,g); const hn=new THREE.Mesh(new THREE.ConeGeometry(0.1,0.3,6),mt(0x4a4a52)); hn.rotation.z=Math.PI/2; hn.position.set(0.44,0.52,0); g.add(hn); shade(g); RECT.push({x:cx,z:cz,hx:0.36,hz:0.36}); }   /* an anvil */
+      else if(c==='Z'){ const g=group(cx,0,cz,room); B(0.96,1.3,0.96,0x4a3e36,0,0,0,g); B(1.02,0.16,1.02,0x5a4a40,0,1.3,0,g); Cy(0.2,0.28,0.9,8,0x3a302a,0,1.46,0,g); const mo=B(0.46,0.36,0.04,0x0a0504,0,0.3,0.48,g); const ember=new THREE.Mesh(new THREE.PlaneGeometry(0.4,0.26),new THREE.MeshBasicMaterial({color:clean()?0xff8a3a:0x6a2a12})); ember.position.set(0,0.46,0.5); g.add(ember); g.rotation.y=wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2; shade(g); dyn.furn=(dyn.furn||[]); dyn.furn.push(ember); }   /* a furnace, gone cold */
+      else if(c==='W'){ const g=group(cx,0,cz,room); const wv=B(0.98,WH(x,y),0.98,dk(pal.wall,0.95),0,0,0,g); for(let i=0;i<6;i++){ const cr=B(0.02,0.5+hsh(x+i,y)*0.8,0.02,0x120c08,(hsh(i,x)-0.5)*0.8,0.3+i*0.35,0,g); cr.rotation.z=(hsh(i,y)-0.5)*1.4; cr.position[wallC(x,y-1)||wallC(x,y+1)?'x':'z']+=0; cr.position[wallC(x-1,y)?'z':'x']=(hsh(i,x)-0.5)*0.8; }
+        const rub=group(0,0,0,g); for(let i=0;i<7;i++) B(0.2+hsh(i,x)*0.2,0.12+hsh(x,i)*0.14,0.2+hsh(y,i)*0.2,dk(pal.wall,0.8),(hsh(i,y+1)-0.5)*0.8,0,(hsh(i+2,x)-0.5)*0.8,rub); dyn.cwall=dyn.cwall||{}; dyn.cwall[k]={wv,g,rub}; }   /* cracked stone: the hammer breaks it */
+      else if(c==='J'){ const g=group(cx,0,cz,room); B(1.0,0.08,1.0,0x2a2a30,0,0,0,g); B(1.0,0.08,1.0,0x2a2a30,0,2.1,0,g); const bars=group(0,0,0,g); for(let i=0;i<5;i++) [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>B(0.05,2.1,0.05,pal.iron,a*0.48+(b?(i-2)*0.22:0),0,b*0.48+(a?(i-2)*0.22:0),bars));
+        const lk=group(-0.5,1.0,0,g); B(0.08,0.26,0.22,0x3a3a46,0,0,0,lk); const gl=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.12,0.06),new THREE.MeshBasicMaterial({color:0x8a3ad8})); gl.position.set(-0.03,0.02,0); lk.add(gl); shade(g); RECT.push({x:cx,z:cz,hx:0.5,hz:0.5}); dyn.cage={g,bars,lk,x:cx,z:cz}; }   /* the cage, and its shadow-forged lock */
+      else if(c==='w'){ const g=group(cx,0,cz,room); [-0.36,0.36].forEach(o=>B(0.14,1.1,0.14,pal.wood,o,0,0,g)); const drum=group(0,0.95,0,g); const dm=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.62,10),mt(0x5a3a22)); dm.rotation.z=Math.PI/2; drum.add(dm); for(let i=0;i<5;i++){ const cr=new THREE.Mesh(new THREE.TorusGeometry(0.21,0.025,4,10),mt(pal.iron)); cr.rotation.y=Math.PI/2; cr.position.x=-0.24+i*0.12; drum.add(cr); }
+        const crank=group(0.42,0,0,drum); B(0.05,0.36,0.05,pal.iron,0,0,0,crank); B(0.05,0.05,0.2,pal.iron,0,0.33,0.08,crank); shade(g); RECT.push({x:cx,z:cz,hx:0.45,hz:0.25}); (dyn.winch=dyn.winch||{})[k]={drum}; }   /* a portcullis winch */
+      else if(c==='H'){ const dirs=[[1,0],[-1,0],[0,1],[0,-1]], d0=dirs.find(([a,b])=>hAt(x+a,y+b)>0)||[0,-1], h=hAt(x+d0[0],y+d0[1])||2.4, g=group(cx+d0[0]*0.42,0,cz+d0[1]*0.42,room); g.rotation.y=Math.atan2(d0[0],d0[1]);
+        [-0.26,0.26].forEach(o=>B(0.07,h+0.9,0.07,0x6a4a2a,o,0,0,g)); for(let i=0;i<Math.floor((h+0.8)/0.3);i++) B(0.5,0.05,0.06,0x7a5a32,0,0.25+i*0.3,0,g); shade(g); (dyn.ladders=dyn.ladders||[]).push({x,y,a:d0[0],b:d0[1],h}); }   /* a ladder up the face of the ledge */
+      else if(c==='V'){ const g=group(cx,0,cz,room); B(0.96,0.02,0.96,0x010102,0,0.004,0,g); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>B(a?0.1:1.06,0.12,a?1.06:0.1,0x5a3e24,a*0.5,0,b*0.5,g)); const fr=group(0,0,0,g); [-0.5,0.5].forEach(o=>B(0.1,1.6,0.1,0x5a3e24,o,0,0,fr)); B(1.1,0.1,0.12,0x5a3e24,0,1.6,0,fr); const rope=Cy(0.012,0.012,1.4,4,0x8a7a5a,0,0.2,0,fr); }   /* an open shaft, its timber collar and old headframe */
+      } finally { if(hy) for(let i=n0;i<room.children.length;i++) room.children[i].position.y+=hy; } }
     readables.forEach(r=>{ const gl=new THREE.Sprite(glowMat()); gl.scale.setScalar(0.55); gl.position.set(0,1.75,0); r.g.add(gl); r.gl=gl; });
     an.push(t2=>{ const rd=s().read||{}; readables.forEach(r=>{ r.gl.visible=!rd[n+':'+r.k]; r.gl.position.y=1.7+Math.sin(t2*2.4)*0.08; r.gl.material.opacity=0.5; }); });
     const markRead=k=>{ const S0=s(); S0.read=S0.read||{}; S0.read[n+':'+k]=1; };
@@ -9573,20 +9793,21 @@ const CATACOMB=(function(){
     const isOpen=k=>{ const d=dyn.doors[k]; if(clean()) return true; return d.ch==='L'||d.ch==='G'?!!s().doors[n+':'+k]:!!s().gates[n+':'+d.ch]; };
     const blockAt=(x,y)=>dyn.blocks.find(b=>b.x===x&&b.y===y);
     const fell=()=>!!s().fell||clean();
-    const ok=(x,y)=>{ const c=at(x,y); if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='K') return !fell(); if(c==='L'||c==='G'||/[1-9]/.test(c)){ const k=doorKey(x,y); return isOpen(k)&&dyn.doors[k].u>0.85; } if(blockAt(x,y)) return false; return true; };
+    const smashed=k=>!!s().smashed[n+':'+k]||clean();
+    const ok=(x,y)=>{ const c=at(x,y); if(c==='W') return smashed(x+','+y); if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='K') return !fell(); if(c==='L'||c==='G'||/[1-9]/.test(c)){ const k=doorKey(x,y); return isOpen(k)&&dyn.doors[k].u>0.85; } if(blockAt(x,y)) return false; return true; };
     const okAt=(px,pz)=>{ const x=Math.floor(px), y=Math.floor(pz); return ok(x,y)||(wallC(x,y)&&WI.free(px,pz)&&(()=>{ const u=px-x, v=pz-y; return (u<WI.m&&ok(x-1,y))||(u>1-WI.m&&ok(x+1,y))||(v<WI.m&&ok(x,y-1))||(v>1-WI.m&&ok(x,y+1)); })()); };
     lv._dyn=dyn; lv._ok=(x,y)=>ok(x,y); lv._sc=SC;
-    lv.canMove=(fx,fz,tx,tz)=>{ for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]) if(!okAt(tx+ox,tz+oz)) return false; for(const b of BLK){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.24&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; }
+    lv.canMove=(fx,fz,tx,tz)=>{ if(climb) return false; const hf=hAt(Math.floor(fx),Math.floor(fz))+(ENGINE.airH||0); for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]){ if(!okAt(tx+ox,tz+oz)) return false; if(hAt(Math.floor(tx+ox),Math.floor(tz+oz))-hf>0.42) return false; }   /* no walking up a ledge: climb its ladder */ for(const b of BLK){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.24&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; }
       for(const r of RECT){ const inT=Math.abs(tx-r.x)<r.hx+0.26&&Math.abs(tz-r.z)<r.hz+0.26, inF=Math.abs(fx-r.x)<r.hx+0.26&&Math.abs(fz-r.z)<r.hz+0.26; if(inT&&!inF) return false; }
       for(const b of dyn.blocks){ const bx=b.g.position.x, bz=b.g.position.z; if(Math.abs(tx-bx)<0.73&&Math.abs(tz-bz)<0.73&&!(Math.abs(fx-bx)<0.73&&Math.abs(fz-bz)<0.73)) return false; } return true; };   /* nothing half-walks into a tomb */
-    lv.ground=()=>0;
+    lv.ground=(x,z)=>climb?climb.y:hAt(Math.floor(x),Math.floor(z));
     lv.camBlock=(fx,fz,y)=>{ const x=Math.floor(fx), z=Math.floor(fz); return (!inDome(x,z)&&y>HC(x,z)-0.15)||((wallC(x,z)&&!WI.free(fx,fz))&&y<WH(x,z)); };
     // the dungeon's one map and one compass: the map shows every hall of every level; the compass marks the chests left, and the great chest
     const marks=()=>{ if(!s().compass) return []; const out=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), k=x+','+y; if((c==='C'||c==='Q')&&!s().chests[n+':'+k]) out.push({x:x+0.5,y:y+0.5,col:c==='Q'?'#ff9a3a':'#ffd84a'}); } return out; };
     lv.dmap={W,H,wall:(x,y)=>wallC(x,y),solid:(x,y)=>!ok(x,y)&&!wallC(x,y),known:()=>!!(s().map&&s().map.all)||clean(),get marks(){ return marks(); }};
     const linkAt=Object.keys(D.links||{}); const firstIn=linkAt.find(k=>/[Su]/.test(at(...k.split(',').map(Number))));
     if(D.spawn) lv.spawn={x:D.spawn[0]+0.5,z:D.spawn[1]+0.5,face:Math.PI,yaw:0}; else { const [sx,sy]=(firstIn||'20,28').split(',').map(Number); lv.spawn={x:sx+0.5,z:sy+(wallC(sx,sy+1)?-0.5:1.5),face:wallC(sx,sy+1)?Math.PI:0,yaw:0}; }
-    lv.zone=()=>{ const S0=s(); return `${D.name} · B${n+1}${clean()?' · ✨ cleansed':''}${S0.keys?` · 🗝×${S0.keys}`:''}${S0.bosskey&&!clean()?' · 🔑':''}${S0.map&&S0.map.all?' · 🗺':''}${S0.compass?' · 🧭':''}`; };
+    lv.zone=()=>{ const S0=s(); return `${D.name} · B${n+1}${clean()?' · ✨ cleansed':''}${S0[CF.tool.flag]&&CF.tool.zone?CF.tool.zone:''}${S0.keys?` · 🗝×${S0.keys}`:''}${S0.bosskey&&!clean()?' · 🔑':''}${S0.map&&S0.map.all?' · 🗺':''}${S0.compass?' · 🧭':''}`; };
     lv.follow=p=>{ lamp.position.set(p.x,p.y+1.8,p.z); };
     // ── the rules that open the gates ──
     function openGate(ch,msg){ const S0=s(); if(S0.gates[n+':'+ch]) return; S0.gates[n+':'+ch]=true; GAME.save(); if(msg) UI.toast(msg,2600); if(typeof SFX!=='undefined') SFX.play('door',true); }
@@ -9608,12 +9829,12 @@ const CATACOMB=(function(){
       const lat=ax?Math.abs(P.z-(b.y+0.5)):Math.abs(P.x-(b.x+0.5)), gap=ax?Math.abs(P.x-(b.x+0.5)):Math.abs(P.z-(b.y+0.5)); if(lat>0.38||gap>1.05){ lean=0; return; }
       const dir=ax+','+az; if(dir!==leanDir){ leanDir=dir; lean=0; } lean+=dt; if(lean<0.45) return; lean=0; tryPush(b,ax,az,true); });
     function tryPush(b,ax,az,quiet){ if(b.mv||b.solved) return false; const nx=b.x+ax, ny=b.y+az, cc=at(nx,ny), P=ENGINE.P;
-      if(!(cc==='.'||cc==='P'||cc===','||cc==='B')||blockAt(nx,ny)||doorKey(nx,ny)||(Math.floor(P.x)===nx&&Math.floor(P.z)===ny)||RECT.some(r=>Math.abs(nx+0.5-r.x)<r.hx+0.4&&Math.abs(ny+0.5-r.z)<r.hz+0.4)){ if(!quiet) UI.toast('It won’t go any further that way.',1000); return false; }
+      if(!(cc==='.'||cc==='P'||cc===','||cc==='B'||cc==='~')||blockAt(nx,ny)||doorKey(nx,ny)||(Math.floor(P.x)===nx&&Math.floor(P.z)===ny)||RECT.some(r=>Math.abs(nx+0.5-r.x)<r.hx+0.4&&Math.abs(ny+0.5-r.z)<r.hz+0.4)){ if(!quiet) UI.toast('It won’t go any further that way.',1000); return false; }
       b.mv={fx:b.x,fz:b.y,u:0}; b.x=nx; b.y=ny; if(typeof AUDIO2D!=='undefined') AUDIO2D.noise(null,{dur:0.4,fc:300,fc1:120,q:0.6,gain:0.22,decay:0.8}); return true; }
     function onBlockMoved(b){ const pl=dyn.plates.find(p=>p.x===b.x&&p.y===b.y); if(!pl) return; b.solved=true; pl.m.position.y=-0.05; s().blocks[n+':'+b.k]=[b.x,b.y]; GAME.save(); if(typeof SFX!=='undefined') SFX.play('bossStrike');
       for(const ch in D.gates){ const g=D.gates[ch]; if(g.when!=='plates'||s().gates[n+':'+ch]) continue; if(g.cells.every(c=>dyn.blocks.some(q=>q.solved&&q.x+','+q.y===c))) openGate(ch,g.msg); else UI.toast('⛓ The plate sinks — but something else is still wanted.',1800); } }
     // ── the Shepherd's Staff: a crook on a long haft. What it can reach, it catches ──
-    const staff=()=>!!s().staff;
+    const staff=()=>t===0?!!s().staff:hasCrook(), tool=()=>!!s()[CF.tool.flag];
     let hooking=null;
     function hookLine(tx,ty,tz){ const P=ENGINE.P, from=new THREE.Vector3(P.x,1.1,P.z), to=new THREE.Vector3(tx,ty,tz), L=from.distanceTo(to), m=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,1,5),mt(0x8a6a3a));
       m.position.copy(from).add(to).multiplyScalar(0.5); m.scale.y=L; m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),to.clone().sub(from).normalize()); scene.add(m); if(typeof SFX!=='undefined') SFX.play('swing','light'); return m; }
@@ -9629,11 +9850,11 @@ const CATACOMB=(function(){
       if(far){ const line=hookLine(x+0.5,1.1,y+0.5); hooking={kind:'pull',u:0,dur:0.45,line}; }
       s().levers[n+':'+k]=true; L.arm.rotation.x=0.7; openGate(g,D.gates[g].msg); }
     // the Ⓐ prompts that ride along with the ossuaries: push it away from you; hook one marked for it, and draw it toward you
-    dyn.blocks.forEach(b=>{ b.spot={x:b.x+0.5,z:b.y+0.5,r:b.pull?5:1.25,label:'Push',who:'A stone ossuary',action:()=>{ if(b.solved){ UI.toast('It sits square on the plate.',900); return; } const P=ENGINE.P, dx=b.g.position.x-P.x, dz=b.g.position.z-P.z, d=Math.hypot(dx,dz), ax=Math.abs(dx)>Math.abs(dz)?Math.sign(dx):0, az=ax?0:Math.sign(dz);
+    dyn.blocks.forEach(b=>{ b.spot={x:b.x+0.5,z:b.y+0.5,r:b.pull?5:1.25,label:'Push',who:CF.motif==='hammer'?'The ore cart':'A stone ossuary',action:()=>{ if(b.solved){ UI.toast('It sits square on the plate.',900); return; } const P=ENGINE.P, dx=b.g.position.x-P.x, dz=b.g.position.z-P.z, d=Math.hypot(dx,dz), ax=Math.abs(dx)>Math.abs(dz)?Math.sign(dx):0, az=ax?0:Math.sign(dz);
         if(d<1.3){ tryPush(b,ax,az); return; } if(!b.pull) return; if(!staff()){ ENGINE.speak('A stone ossuary',['It sits in a slot cut into the wall, flush at the back — there is no getting behind it to push.','It has iron rings on its sides. Something hooked could drag it out.']); return; }
         const lat=ax?Math.abs(dz):Math.abs(dx); if(lat>0.45){ UI.toast('Stand square to it to hook it.',1000); return; } if(hooking) return; const line=hookLine(b.g.position.x,0.45,b.g.position.z); hooking={kind:'pull',u:0,dur:0.3,line}; tryPush(b,-ax,-az); }};
       lv.spots.push(b.spot); an.push(()=>{ b.spot.x=b.g.position.x; b.spot.z=b.g.position.z; const P=ENGINE.P, d=Math.hypot(P.x-b.spot.x,P.z-b.spot.z); b.spot.label=b.solved?'Look':d<1.3?'Push':staff()?'Hook':'Look'; b.spot.far=d>=1.3&&!b.solved; b.spot.r=b.solved?0.9:d<1.3?1.25:(b.pull?5:1.25); }); });
-    let hinted=false; an.push(()=>{ if(hinted||clean()) return; const P=ENGINE.P; dyn.blocks.forEach(b=>{ if(!hinted&&!b.solved&&!b.pull&&Math.hypot(P.x-b.x-0.5,P.z-b.y-0.5)<3.2){ hinted=true; if(!s().pushTip){ s().pushTip=true; UI.toast('🪨 A stone ossuary on iron runners — Ⓐ Push it (or lean into it) to slide it a pace. A plate with a gold cross wants a weight.',4200); } } }); });
+    let hinted=false; an.push(()=>{ if(hinted||clean()) return; const P=ENGINE.P; dyn.blocks.forEach(b=>{ if(!hinted&&!b.solved&&!b.pull&&Math.hypot(P.x-b.x-0.5,P.z-b.y-0.5)<3.2){ hinted=true; if(!s().pushTip){ s().pushTip=true; UI.toast(CF.motif==='hammer'?'🛒 An ore cart on the old rails — Ⓐ Push it (or lean into it) to roll it a pace. A plate with a gold cross wants a weight.':'🪨 A stone ossuary on iron runners — Ⓐ Push it (or lean into it) to slide it a pace. A plate with a gold cross wants a weight.',4200); } } }); });
     // ── the thin floor: step on it, and down you go ──
     let falling=false;
     an.push((t2,dt)=>{ if(!dyn.crack) return; dyn.crack.g.visible=!fell()||falling; if(falling){ dyn.crack.tiles.forEach((q,i)=>{ q.vy+=(dt||0.016)*9; q.g.position.y-=q.vy*(dt||0.016); q.g.rotation.x+=(dt||0.016)*(i%3-1); }); return; }
@@ -9647,7 +9868,7 @@ const CATACOMB=(function(){
       if(it.key) ENGINE.speak('A small key',['Iron, plain, and well used. It will open one locked door in the catacombs.']);
       else if(it.map) ENGINE.speak('The map',['A map of every level of the catacombs, drawn by the brothers who kept the tombs. Every hall is on it now (tap the little map to see it large).']);
       else if(it.compass) ENGINE.speak('The compass',['Its needle points at what is still hidden. Every chest you have not opened now shows on your map — the great chest in orange.']);
-      else if(it.bosskey) ENGINE.speak('The great key',['Heavy, gold, and warm to the touch. A crook and a cross are cut into its bow.','It opens the great door beyond the chasm on the first level — and the stair to the nave, where the guardian waits.']);
+      else if(it.bosskey) ENGINE.speak('The great key',CF.greatKey);
       else UI.toast('📦 '+parts.join(' · '),2400); };
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), k=x+','+y;
       if(c==='C'||c==='Q'){ const gk=[[1,0],[-1,0],[0,1],[0,-1]].map(([a2,b2])=>doorKey(x+a2,y+b2)).find(q=>q); lv.spots.push({x:x+0.5,z:y+0.5,r:1.1,label:'Open',who:c==='Q'?'The great chest':'Chest',hide:gk?()=>!isOpen(gk):undefined,action:()=>{ const S0=s(); if(S0.chests[n+':'+k]){ UI.toast('📭 Empty.',900); return; } S0.chests[n+':'+k]=true; dyn.chests[k].rotation.x=-1.9; give(k,(D.chests||{})[k]||{gold:20}); }}); }   /* a chest behind bars can't be opened through them */
@@ -9659,7 +9880,7 @@ const CATACOMB=(function(){
       else if(c==='R'&&D.rings&&D.rings[k]){ const R=D.rings[k]; lv.spots.push({x:x+0.5,z:y+0.5,r:6.2,far:true,label:'Hook',who:'An iron ring',action:()=>hookRing(k),hide:()=>{ const P=ENGINE.P; return !across(P.x,P.z,x+0.5,y+0.5); }}); }   /* only offered from the far side of the gap */
       else if(c==='Y'){ lv.spots.push({x:x+0.5,z:y+0.5,r:1.1,label:'Pull',who:'A lever',action:()=>hookLever(k),hide:()=>!!s().levers[n+':'+k]||clean()}); lv.spots.push({x:x+0.5,z:y+0.5,r:5.6,far:true,label:'Hook',who:'A lever',action:()=>hookLever(k),hide:()=>!staff()||!!s().levers[n+':'+k]||clean()}); }
       else if(D.links&&D.links[k]){ const L=D.links[k];
-        if(L.to==='world') spot(x+0.5,y+0.5,'Leave','The stair up',()=>{ leaveTo(); setTimeout(()=>UI.toast('🌿 Up into the daylight of the churchyard.',1600),450); },0.8,'any');
+        if(L.to==='world') spot(x+0.5,y+0.5,'Leave','The stair up',()=>{ leaveTo(t); setTimeout(()=>UI.toast('🌿 Up into the daylight of the churchyard.',1600),450); },0.8,'any');
         else if(L.to==='nave') spot(x+0.5,y+0.5,'Climb','The stair to the nave',()=>{ if(clean()){ ENGINE.go('sanct'+t); return; } ENGINE.speak('The stair up',['It climbs toward firelight — the brothers’ resting-room, under the chapel floor. Above it, the nave, and the thing that keeps it.'],null,()=>{ if(OPT.nave) OPT.nave(); }); },1.2);
         else spot(x+0.5,y+0.5,c==='v'?'Down':'Up',c==='v'?'The stair down':'The stair up',()=>ENGINE.go('cata'+t+':'+L.to,{x:L.at[0]+0.5,z:L.at[1]+0.5,face:L.face||0,yaw:(L.face||0)+Math.PI}),c==='v'?1.3:0.8,c==='u'?'any':undefined); } }
     if(D.fall){ const ks=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(at(x,y)==='K') ks.push([x,y]); const ax=ks.reduce((a,q)=>a+q[0],0)/ks.length, ay=Math.max(...ks.map(q=>q[1]));
@@ -9669,6 +9890,44 @@ const CATACOMB=(function(){
         if(d.ch==='G'){ if(!S0.bosskey){ ENGINE.speak('The great door',['Dark oak bound in gold, a crook and a cross worked into it. The lock is the size of your palm.','It wants the great key — and the great key is somewhere below.']); return; } S0.bosskey=false; }
         else { if(!(S0.keys>0)){ ENGINE.speak('A locked door',['Iron-bound oak, and a lock as big as your hand.','You need a small key. Somewhere in the catacombs there is one for it.']); return; } S0.keys--; }
         S0.doors[n+':'+k]=true; GAME.save(); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play('door',true); UI.toast(d.ch==='G'?'🔑 The great key turns. The great door grinds up — and beyond it, light on a stair.':'🗝 The key turns, and the door grinds up into the lintel.',2200); },1.0)); }
+    // ── V156: ladders — Ⓐ Climb at the foot, Ⓐ Climb down at the top; the knight goes up rung over rung ──
+    (dyn.ladders||[]).forEach(L=>{ const bx=L.x+0.5+L.a*0.2, bz=L.y+0.5+L.b*0.2, tx=L.x+0.5+L.a*1.0, tz=L.y+0.5+L.b*1.0, face=Math.atan2(L.a,L.b), dur=0.45+L.h*0.32;
+      const go=(up)=>{ if(climb||ENGINE.holding) return; const P=ENGINE.P; if(ENGINE.K.sheathe) ENGINE.K.sheathe(); P.x=bx; P.z=bz; P.face=face; climb={y:up?0:L.h,y0:up?0:L.h,y1:up?L.h:0,u:0,dur,up,tx,tz,bx:L.x+0.5-L.a*0.3,bz:L.y+0.5-L.b*0.3}; ENGINE.hold(dur+0.05,'climb'); if(typeof SFX!=='undefined') SFX.play('stairStep'); };
+      lv.spots.push({x:L.x+0.5,z:L.y+0.5,r:1.0,label:'Climb',who:'A ladder',action:()=>go(true),hide:()=>ENGINE.P.y>0.6||!!climb});
+      lv.spots.push({x:tx,z:tz,r:0.95,label:'Climb down',who:'The ladder',action:()=>go(false),hide:()=>ENGINE.P.y<L.h-0.6||!!climb}); });
+    an.push((t2,dt)=>{ if(!climb) return; dt=dt||0.016; climb.u=Math.min(1,climb.u+dt/climb.dur); const e=climb.u; climb.y=climb.y0+(climb.y1-climb.y0)*e; const P=ENGINE.P;
+      if(climb.u>=1){ const c0=climb; climb=null; if(c0.up){ P.x=c0.tx; P.z=c0.tz; } else { P.x=c0.bx; P.z=c0.bz; } P.y=c0.y1; } });
+    // ── V156: the open shafts: step in, and you drop to the level below ──
+    let dropping=false, shaftTold=false;
+    an.push(()=>{ if(!D.shafts||dropping||ENGINE.busy||climb) return; const P=ENGINE.P, x=Math.floor(P.x), y=Math.floor(P.z), k=x+','+y;
+      if(!shaftTold) for(const sk in D.shafts){ const [qx,qy]=sk.split(',').map(Number); if(Math.hypot(P.x-qx-0.5,P.z-qy-0.5)<2.0&&Math.abs(P.y-hAt(qx,qy)-(RZ.find(r=>inR(r.r,qx,qy))||{h:0}).h)<0.6){ shaftTold=true; if(!s().shaftTip){ s().shaftTip=true; UI.toast('🕳 An open shaft — the old way down into the workings. Step in to drop.',2600); } } }
+      const S1=D.shafts[k]; if(!S1||at(x,y)!=='V') return; dropping=true; ENGINE.hold(0.8); if(typeof SFX!=='undefined') SFX.play('swing','heavy'); UI.toast('🕳 You drop into the dark —',1200);
+      setTimeout(()=>{ ENGINE.go('cata'+t+':'+S1.to,{x:S1.at[0]+0.5,z:S1.at[1]+0.5,face:Math.PI,yaw:0}); setTimeout(()=>{ const S0=GAME.S; S0.hp=Math.max(1,S0.hp-Math.round(S0.maxHp*0.04)); ENGINE.hud(); if(typeof SFX!=='undefined') SFX.play('bossStrike'); dropping=false; UI.toast('…and land hard on the spoil heap, a level down.',2200); },450); },650); });
+    // ── V156: cracked stone, and the Smith's Hammer that breaks it ──
+    const smashFx=(x,z)=>{ if(typeof SFX!=='undefined'){ SFX.play('bossStrike'); SFX.play('hit',true); } for(let i=0;i<14;i++){ const m=B(0.12,0.12,0.12,dk(pal.wall,0.8),x+(Math.random()-0.5)*0.6,0.4+Math.random()*1.6,z+(Math.random()-0.5)*0.6,room); const v=new THREE.Vector3((Math.random()-0.5)*4,Math.random()*3,(Math.random()-0.5)*4); let life=1.2; an.push(function fx(t2,dt){ dt=dt||0.016; life-=dt; v.y-=9*dt; m.position.addScaledVector(v,dt); if(m.position.y<0.06){ m.position.y=0.06; v.multiplyScalar(0.4); } if(life<=0){ room.remove(m); an.splice(an.indexOf(fx),1); } }); } };
+    for(const k in (dyn.cwall||{})){ const [x,y]=k.split(',').map(Number), W0=dyn.cwall[k];
+      lv.spots.push({x:x+0.5,z:y+0.5,r:1.45,label:'Smash',who:'Cracked stone',hide:()=>smashed(k),action:()=>{ if(smashed(k)) return;
+        if(!tool()){ ENGINE.speak('Cracked stone',['The wall here is not the living rock — it is a fall of stone, mortared over, cracked right through.','Something heavy could break it. A smith’s hammer, swung hard.']); return; }
+        const P=ENGINE.P; P.face=Math.atan2(x+0.5-P.x,y+0.5-P.z); ENGINE.hold(0.5); if(ENGINE.K.act) ENGINE.K.act('atk3',0.5,{arms:true}); setTimeout(()=>{ s().smashed[n+':'+k]=true; GAME.save(); smashFx(x+0.5,y+0.5); W0.wv.visible=false; UI.toast('🔨 The stone splits and comes down in a heap.',1800); },320); }}); }
+    // ── V156: the caged miner: free him, and he goes up ahead of you to the far winch ──
+    if(dyn.cage){ const cg=dyn.cage; let tubal=null; try{ tubal=addPerson(lv,scene,'smith',cg.x,cg.z,0,'Brother Tubal',[],{rest:Math.PI/2}); tubal.still=true; tubal.mute=true; }catch(e){ tubal=null; }
+      lv.spots.push({x:cg.x-1.0,z:cg.z,r:1.3,label:'Smash the lock',who:'The cage',hide:()=>!!s().helper||clean(),action:()=>{ if(s().helper) return;
+        if(!tool()){ ENGINE.speak('Brother Tubal',['(A man in a smith’s leather apron, grey with dust, gets to his feet inside the cage.)','You’re real. You’re — a knight? Then listen: that lock is shadow-forged. No key made by hands will turn it. It wants breaking.']); return; }
+        const P=ENGINE.P; P.face=Math.atan2(cg.x-P.x,cg.z-P.z); ENGINE.hold(0.5); if(ENGINE.K.act) ENGINE.K.act('atk3',0.5,{arms:true});
+        setTimeout(()=>{ smashFx(cg.x-0.5,cg.z); cg.lk.visible=false; cg.bars.children.slice(0,5).forEach(b=>b.visible=false); s().helper=true; GAME.save();
+          ENGINE.speak('Brother Tubal',['Free. Free! Bless you — bless the hand that swung that.','I came down to keep the forge-lamps lit when the shadow took the town. It caught me and caged me here to watch them go out, one by one. Fifteen years of water from the rock, and whatever the Lord sent down the shaft.','You’ll be wanting the great key — I know where it is. The portcullis in the forge hall has two winches, and no one man can turn them both. The General tried, once. She would not wait for help.','I know the old ladderways. I’ll be at the far winch before you. Turn yours when you see me — and we’ll lift it together.'],null,()=>{ if(tubal&&tubal.g){ let a=1; an.push(function fade(t2,dt){ a-=(dt||0.016)/0.8; tubal.g.position.y+=0.01; tubal.g.traverse(m=>{ if(m.material){ m.material.transparent=true; m.material.opacity=Math.max(0,a); } }); if(a<=0){ scene.remove(tubal.g); an.splice(an.indexOf(fade),1); } }); } UI.toast('🤝 Brother Tubal hurries off up the old ladderways — to the far winch in the forge hall.',2800); }); },320); }});
+      lv._cageInit=()=>{ const fr=!!s().helper||clean(); cg.lk.visible=!fr; cg.bars.children.slice(0,5).forEach(b=>b.visible=!fr); if(tubal&&tubal.g){ tubal.g.visible=!fr; if(!fr) tubal.g.position.y=0; } }; }
+    // ── V156: the two winches: no one pair of hands turns them both ──
+    if(dyn.winch&&D.winches){ const g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='winch'); let helperP=null, turning=0, tried=false;
+      const [hx,hy]=D.winches[1].split(',').map(Number);
+      const placeHelper=()=>{ const want=!!s().helper&&!clean(); if(want&&!helperP){ try{ helperP=addPerson(lv,scene,'smith',hx+0.5,hy+1.1,0,'Brother Tubal',['Ready when you are, knight. On three — and turn it like you mean it.','“Two are better than one.” The General knew the verse. She just never thought it was about her.'],{rest:Math.PI}); }catch(e){} } if(helperP&&helperP.g) helperP.g.visible=want; };
+      D.winches.forEach((wk,i)=>{ const [x,y]=wk.split(',').map(Number);
+        lv.spots.push({x:x+0.5,z:y+0.5+1.0,r:1.3,label:'Turn',who:'A winch',hide:()=>clean()||!!s().gates[n+':'+g]||(i===1&&!!s().helper),action:()=>{ if(s().gates[n+':'+g]||turning) return;
+          if(!s().helper){ const dm=dyn.winch[wk].drum; let u=0; an.push(function nudge(t2,dt){ u+=(dt||0.016)/0.5; dm.rotation.x=Math.sin(Math.min(1,u)*Math.PI)*0.35; if(u>=1){ dm.rotation.x=0; an.splice(an.indexOf(nudge),1); } });
+            if(typeof SFX!=='undefined') SFX.play('block'); ENGINE.speak('A winch',tried?['It turns a hand’s breadth and locks again. The other winch must turn with it — and it stands across the gate, out of reach.']:['You set your shoulder to it. It turns a hand’s breadth, the chain shudders — and it locks.','The two drums are geared together through the wall: they will only turn as one. The other winch stands across the gate, too far for one pair of hands.','(Is there no one down here to help?)']); tried=true; return; }
+          turning=1.6; ENGINE.hold(1.6); const P=ENGINE.P; P.face=Math.PI; if(typeof SFX!=='undefined') SFX.play('door',true);
+          an.push(function wind(t2,dt){ turning-=(dt||0.016); Object.values(dyn.winch).forEach(o=>o.drum.rotation.x+=(dt||0.016)*5); if(turning<=0){ turning=0; an.splice(an.indexOf(wind),1); openGate(g,D.gates[g].msg); setTimeout(()=>ENGINE.speak('Brother Tubal',['Ha! There she goes.','The great chest is in the vault beyond. And the great door to the nave is at the head of the hall. Go on, knight — I’ll keep the winch.']),900); } }); }}); });
+      an.push(placeHelper); }
     // ── the general's tomb: his spirit, the spar, the question, the crook ──
     let spar=null, ghost=null;
     if(dyn.tomb){ ghost=spirit(OPT.tint); ghost.position.set(dyn.tomb.x,1.55,dyn.tomb.z); ghost.visible=false; ghost.userData.f=1; room.add(ghost);
@@ -9678,11 +9937,11 @@ const CATACOMB=(function(){
     if(dyn.tomb){
       spot(dyn.tomb.x,dyn.tomb.z+1.9,'Kneel',td.general+'’s tomb',()=>tombKneel(),1.4); }
     function tombKneel(){ const S0=s(); if(spar) return;
-      if(clean()){ ENGINE.speak(td.general+'’s tomb',['Still empty — and now it always will be. The brothers have laid flowers in it anyway, and left the lid where it lies.','“He is not here: for he is risen.” — Matthew 28:6 · The General walks the wall of Hearthvale again.']); return; }
+      if(clean()){ ENGINE.speak(td.general+'’s tomb',CF.tomb.clean); return; }
       { const P=ENGINE.P; P.face=Math.atan2(dyn.tomb.x-P.x,dyn.tomb.z-P.z); ENGINE.hold(1.8,'kneel'); }
-      if(S0.trial){ if(!ghost.visible) showGhost(); ENGINE.speak('A vision of '+td.general,['Go up, knight. The crook will carry you over the chasms the brothers cut.','The great key is in the crypts above — the ossuary set in the wall will give it up to the crook. Then the great door on the first level, the brothers’ fire, and the nave — where my body hangs.','Break the chains. And trust the One who raises the dead.']); return; }
+      if(S0.trial){ if(!ghost.visible) showGhost(); ENGINE.speak('A vision of '+td.general,CF.tomb.again); return; }
       { const P=ENGINE.P; P.face=Math.atan2(dyn.tomb.x-P.x,dyn.tomb.z-P.z); ENGINE.hold(2.6,'kneel'); }   /* he kneels at the tomb */
-      ENGINE.speak(td.general+'’s tomb',['The tomb lies open, the lid dragged aside — and it is empty. Only his crook lies in the dust where he was laid.','You kneel. And the dome fills with a light that does not come from the oculus.'],null,()=>{ showGhost(); if(typeof SFX!=='undefined') SFX.play('portal'); ENGINE.speak('A vision of '+td.general,['Do not be afraid. I am not a ghost, knight — I am dead, and my body is not here.','I fell fifteen years ago, when the shadow took Hearthvale. Within the month it took my body from this tomb and carried it up into the nave, and hung it there in chains, to mock the One I served. But the dead are not lost to God. He lets you see me now, as He sees me.','I knew every word of His book by heart, and never once trusted the One who spoke it. That is how the shadow took me.','Before you go up to break those chains, let me see you stand. A shepherd must turn the wolf aside before he can strike it. In this light my blows cannot kill you — but they will teach you.','Guard as my blow lands — not before, not after — and you will turn it whole. Turn two of them, or drive me back.'],null,startSpar); }); }
+      ENGINE.speak(td.general+'’s tomb',CF.tomb.open,null,()=>{ showGhost(); if(typeof SFX!=='undefined') SFX.play('portal'); ENGINE.speak('A vision of '+td.general,CF.tomb.vision,null,startSpar); }); }
     function startSpar(){ const P=ENGINE.P, tx=dyn.tomb.x, tz=dyn.tomb.z+2.6; ghost.visible=false; const g=spirit(OPT.tint);
       const f=COMBAT.foe(lv,{x:tx,z:tz,hx:tx,hz:tz,post:'spar',pdx:1,pdz:0,patrol:3,hp:70,level:td.lvl+1,xp:0,atk:6,form:1,style:'claw',model:g,spar:true}); if(!f) return; f.alert=true; f.lungeCd=40;
       spar={f,parries:0,wasStag:false}; UI.toast('⚔ The spar — watch for the red flash, and Guard as the blow lands.',2600); }
@@ -9692,26 +9951,26 @@ const CATACOMB=(function(){
       if(S0.hp<S0.maxHp*0.3){ endSpar(false); } });
     function endSpar(won){ const f=spar.f; spar=null; f.alive=false; f.dying=0; if(f.g&&f.g.parent) f.g.parent.remove(f.g); showGhost(); GAME.S.hp=GAME.S.maxHp; ENGINE.hud();
       if(!won){ ENGINE.speak('A vision of '+td.general,['Enough. Rise.','You took the blow on the guard after it had landed, or stood and let it land. Watch me, not my sword: I go red before I strike, and brightest just before. That is the moment.','Kneel again when you are ready.']); return; }
-      ENGINE.speak('A vision of '+td.general,['…Well stood. You can turn a blow.','But a sword was never what the wolf wanted from me. It asked a question, the same one it asked in the garden — yea, hath God said? — and I reached for the page and found I had only ever had the memory of it.','So I will ask you what I could not answer.'],null,()=>askTrial()); }
+      ENGINE.speak('A vision of '+td.general,CF.tomb.sparWin,null,()=>askTrial()); }
     function askTrial(){ const tr=C.trial||{q:'What is Scripture?',a:0,o:['God-breathed'],ex:''}, rw=SYS.EQUIP[C.reward]||{emoji:'🪝',name:'Shepherd’s Staff'};
       const ask=()=>UI.sheet({title:`${td.general}'s question`,wide:true,html:`<div class="gm-sec">${UI.esc(td.head)}</div><p class="gm-q">"Answer rightly what you know of the faith I died defending."</p><p class="gm-q"><b>${UI.esc(tr.q)}</b></p>`+
           tr.o.map((o,i)=>`<button class="gm-item" data-act="${i}"><span>${String.fromCharCode(65+i)}. ${UI.esc(o)}</span></button>`).join('')+'<p class="gm-hint">Tap an answer. (The brothers’ record on the lectern here holds what he kept.)</p>',
         act:a=>{ const okA=+a===tr.a; UI.sheet({title:`${td.general}'s question`,wide:true,html:`<div class="card${okA?'':' lost'}"><h3>${okA?'✓ Rightly answered.':'✗ Not quite.'}</h3></div><p class="gm-q">${UI.esc(tr.ex)}</p>`+
-            (okA?`<div class="gm-sec">He gives you</div><div class="gm-item worn"><span>${rw.emoji} ${UI.esc(rw.name)} · and his teaching, in your journal</span></div><button class="gm-btn" data-act="take">🙏 Take the crook</button>`:`<button class="gm-btn" data-act="again">↻ Try again</button>`),
+            (okA?`<div class="gm-sec">${/Miriam|Deborah|Lydia|Ruth/.test(td.general)?'She':'He'} gives you</div><div class="gm-item worn"><span>${t===0?rw.emoji+' '+UI.esc(rw.name):CF.tool.emoji+' '+UI.esc(CF.tool.name)+(SYS.EQUIP[C.reward]?' · '+SYS.EQUIP[C.reward].emoji+' '+UI.esc(SYS.EQUIP[C.reward].name):'')} · and ${/Miriam|Deborah|Lydia|Ruth/.test(td.general)?'her':'his'} teaching, in your journal</span></div><button class="gm-btn" data-act="take">${CF.tool.take}</button>`:`<button class="gm-btn" data-act="again">↻ Try again</button>`),
           act:b=>{ if(b==='again') ask(); else if(b==='take'){ UI.close(); takeStaff(rw); } } }); } });
       ask(); }
-    function takeStaff(rw){ const S0=s(), G=GAME.S; S0.trial=true; S0.staff=true; G.ownedGear=G.ownedGear||{}; if(C.reward) G.ownedGear[C.reward]=true; GAME.recalc&&GAME.recalc(); GAME.changed(); GAME.save(); if(typeof SFX!=='undefined') SFX.play('levelUp');
+    function takeStaff(rw){ const S0=s(), G=GAME.S; S0.trial=true; S0[CF.tool.flag]=true; G.ownedGear=G.ownedGear||{}; if(C.reward) G.ownedGear[C.reward]=true; GAME.recalc&&GAME.recalc(); GAME.changed(); GAME.save(); if(typeof SFX!=='undefined') SFX.play('levelUp');
       const doc=(C.books&&C.books[1])?C.books[1].lines.map(txt).filter(l=>!/will ask you|Learn it/.test(l)).join(' '):'';
-      if(typeof JOURNAL!=='undefined') JOURNAL.write(`Down in the catacombs under Hearthvale's chapel I found ${td.general}'s tomb empty — the shadow has his body chained in the nave. The Lord gave me a vision of him: he sparred with me and asked me what Scripture is. ${td.head}: ${doc} He gave me his crook — the Shepherd's Staff.`,{});
-      if(typeof LIBRARY!=='undefined'&&LIBRARY.codexAdd) LIBRARY.codexAdd(td.head,'2 Timothy 3:16','All scripture is given by inspiration of God, and is profitable for doctrine, for reproof, for correction, for instruction in righteousness.');
-      ENGINE.speak('A vision of '+td.general,['Then take my crook — the shadow would not touch it. It kept my sheep; let it keep you.',`${rw.emoji} ${rw.name} — and Ⓐ Hook with it: catch the iron rings across a chasm and it swings you over; pull a lever out of reach; draw a stone ossuary out of its slot toward you.`,'The way on is east, across the chasm, and up. The great key lies in the crypts above. Then the great door on the first level, the brothers’ fire — and the nave, where my body hangs in its chains.','“Thy rod and thy staff they comfort me.” — Psalm 23:4'],null,()=>UI.toast('🪝 The Shepherd’s Staff is yours — and his teaching is in your journal.',2600)); }
+      if(typeof JOURNAL!=='undefined') JOURNAL.write(CF.tomb.journal.replace('{general}',td.general).replace('{head}',td.head).replace('{doc}',doc),{});
+      if(typeof LIBRARY!=='undefined'&&LIBRARY.codexAdd) LIBRARY.codexAdd(td.head,CF.tomb.codex[0],CF.tomb.codex[1]);
+      ENGINE.speak('A vision of '+td.general,CF.tomb.give.map(l=>l.replace('{tool}',t===0?`${rw.emoji} ${rw.name}`:`${CF.tool.emoji} ${CF.tool.name}`)),null,()=>UI.toast(CF.tomb.toast,2600)); }
     // ── the fight ──
     const STY={p:0,c:1,b:2,s:3,m:2};
-    COMBAT.arena(lv,{mode:'dungeon',tier:t,townLvl:td.lvl,W,H,walk:(x,y)=>ok(x,y),los:(x,y)=>!wallC(x,y),fly:(x,y)=>!wallC(x,y),
-      onKill:d=>{ if(d.spar) return; s().cleared[n+':'+d.post]=true; GAME.save(); checkClear(); if(d.warden) UI.toast('⚔ The Warden of the Tombs falls.',2000); },
+    COMBAT.arena(lv,{mode:'dungeon',tier:t,townLvl:td.lvl,W,H,walk:(x,y)=>ok(x,y)&&!hAt(x,y)&&at(x,y)!=='V',los:(x,y)=>!wallC(x,y),fly:(x,y)=>!wallC(x,y),
+      onKill:d=>{ if(d.spar) return; s().cleared[n+':'+d.post]=true; GAME.save(); checkClear(); if(d.warden) UI.toast('⚔ '+CF.warden.name+' falls.',2000); },
       onDeath:()=>{ spar=null; ENGINE.go(id,()=>lv.spawn); setTimeout(()=>{ GAME.S.hp=GAME.S.maxHp; ENGINE.hud(); UI.toast('💫 You fall… and wake at the foot of the stair, mended.',2400); },450); } });
     let wardenSaid=false;
-    an.push(()=>{ if(wardenSaid||!lv.combat) return; const w=lv.combat.foes.find(d=>d.warden&&d.alive); if(!w) return; const P=ENGINE.P; if(Math.hypot(w.x-P.x,w.z-P.z)<7){ wardenSaid=true; UI.toast('👹 The Warden of the Tombs — a brute: its fists come down after a long heave. Roll clear, or parry, and strike while it reels.',4000); } });
+    an.push(()=>{ if(wardenSaid||!lv.combat) return; const w=lv.combat.foes.find(d=>d.warden&&d.alive); if(!w) return; const P=ENGINE.P; if(Math.hypot(w.x-P.x,w.z-P.z)<7){ wardenSaid=true; UI.toast(CF.warden.tip,4000); } });
     lv.onEnter=()=>{ COMBAT.clear(lv); const S0=s(); spar=null; falling=false; hooking=null;
       for(const k in dyn.doors){ const d=dyn.doors[k]; d.u=isOpen(k)?1:0; d.leaf.position.y=d.u*2.75; d.leaf.visible=d.u<0.99; }
       for(const k in dyn.chests) dyn.chests[k].rotation.x=S0.chests[n+':'+k]?-1.9:0;
@@ -9720,19 +9979,20 @@ const CATACOMB=(function(){
       dyn.plates.forEach(p=>p.m.position.y=dyn.blocks.some(b=>b.solved&&b.x===p.x&&b.y===p.y)?-0.05:0);
       dyn.lamps.forEach(L=>L.lit=0); SC.forEach(c=>setLit(c,false));
       if(dyn.crack) dyn.crack.tiles.forEach(q=>{ q.vy=0; q.g.position.y=0; q.g.rotation.x=0; });
-      if(ghost) ghost.visible=!!S0.trial&&!clean(); if(dyn.tomb){ dyn.tomb.fw.visible=clean(); dyn.tomb.crook.visible=!S0.staff; }
+      climb=null; dropping=false; for(const k in (dyn.cwall||{})) dyn.cwall[k].wv.visible=!smashed(k); if(lv._cageInit) lv._cageInit(); (dyn.furn||[]).forEach(m=>m.material.color.setHex(clean()?0xff8a3a:0x6a2a12));
+      if(ghost) ghost.visible=!!S0.trial&&!clean(); if(dyn.tomb){ dyn.tomb.fw.visible=clean(); dyn.tomb.crook.visible=!S0[CF.tool.flag]; }
       if(!clean()) for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(!(c in STY)) continue; const post=x+','+y; if(S0.cleared[n+':'+post]) continue; const brute=c==='b', ward=c==='m', dirs=[[1,0],[-1,0],[0,1],[0,-1]][(x+y)%4];
         const f=COMBAT.foe(lv,{x:x+0.5,z:y+0.5,hx:x+0.5,hz:y+0.5,post,pdx:dirs[0],pdz:dirs[1],patrol:ward?3:brute?2:4,hp:ward?240:brute?80:35,level:td.lvl+(ward?2:brute?1:0),xp:ward?70:brute?22:9,atk:ward?11:brute?9:7,form:STY[c],style:['pounce','claw','brute','spit'][STY[c]],warden:ward});
-        if(f&&ward){ f.g.scale.multiplyScalar(1.55); f.name='The Warden of the Tombs'; } }
+        if(f&&ward){ f.g.scale.multiplyScalar(1.55); f.name=CF.warden.name; } }
       if(clean()) folkIn();
-      if(n===0&&!S0.seen&&!clean()){ S0.seen=true; GAME.save(); setTimeout(()=>ENGINE.speak(td.name+' Catacombs',['Cool air, and the smell of old stone and candle-wax. The shepherds of Hearthvale are buried here, shelf above shelf.','The chapel overhead is bound by the dark. The way to it is through the tombs below.','Doors here stay open once opened, and halls stay cleared. Look for small keys, and the map.']),600); }
+      if(n===0&&!S0.seen&&!clean()){ S0.seen=true; GAME.save(); setTimeout(()=>ENGINE.speak(td.name+' Catacombs',CF.intro),600); }
       if(clean()&&!S0.cleanSeen){ S0.cleanSeen=true; GAME.save(); setTimeout(()=>UI.toast('✨ The catacombs are quiet now — every lamp lit, the brothers back at their work.',2600),600); } };
     // cleansed: the brothers are back, tending the tombs
     let folked=false; function folkIn(){ if(folked||typeof addPerson!=='function') return; folked=true; const sp=lv.spawn;
-      try{ addPerson(lv,scene,'monk',sp.x+1.6,sp.z-1.2,0,'Brother Hollis',[n===0?'We came back down the day the chapel was cleansed. Four hundred years of lamps — we will not let them go out again.':'Every name on every shelf, read aloud once a year. It takes the whole of Lent.','“I am the resurrection, and the life: he that believeth in me, though he were dead, yet shall he live.” — John 11:25'],{rest:Math.PI}); }catch(e){} }
+      try{ addPerson(lv,scene,'monk',sp.x+1.6,sp.z-1.2,0,CF.folk.name,[n===0?CF.folk.first:CF.folk.rest,'“I am the resurrection, and the life: he that believeth in me, though he were dead, yet shall he live.” — John 11:25'],{rest:Math.PI}); }catch(e){} }
     return lv; }
   // ── the churchyard: a mausoleum beside the chapel, its gate standing open on a stair going down ──
-  function attach(world,o){ OPT=o||{}; const t=o.town, td=o.td; if(!LV[t]) return null; const b=o.door; if(!b) return null;
+  function attach(world,o){ o=o||{}; const t=o.town, td=o.td; if(!LV[t]) return null; OPTS[t]=o; const b=o.door; if(!b) return null; const CF=CFG[t]||CFG[0];
     LV[t].forEach((D,n)=>ENGINE.add({id:'cata'+t+':'+n,lazy:()=>build(t,n,D,td)}));
     const ds=world.doorStep(b.id), fx=Math.sin(ds.face), fz=Math.cos(ds.face);   // the way the chapel faces
     const bx=b.x+b.w/2, by=b.y+b.h/2, open=(x,y)=>{ for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=x+dx, yy=y+dy; if(!world.walkTile(xx,yy)) return false; if(xx>=b.x-1&&xx<=b.x+b.w&&yy>=b.y-1&&yy<=b.y+b.h) return false; } return true; };
@@ -9740,17 +10000,29 @@ const CATACOMB=(function(){
       const sc=d+(front>0.6?6:0)+(front<-0.5?3:0)+Math.abs(Math.hypot(x+0.5-ds.x,y+0.5-ds.z)-4.5)*0.4; if(sc<bs){ bs=sc; best=[x,y]; } }
     if(!best) return null; const mx=best[0]+0.5, mz=best[1]+0.5, gy=world.ground(mx,mz), face=ds.face;   // it opens the same way as the chapel
     const g=group(mx,gy,mz,world.scene); g.rotation.y=face; const st0=0x9a9284, st1=0x7a7468, rf=0x5a5450;
+    if(CF.entrance==='adit'){   /* V156: Ironhold's way down: an old mine adit cut into a knoll of rock, timbered, its rails running in under a lantern */
+      B(2.6,1.9,2.4,0x6a625a,0,-0.1,-0.4,g); const kn=new THREE.Mesh(new THREE.SphereGeometry(1.6,10,6,0,Math.PI*2,0,Math.PI/2),mt(0x5e5850)); kn.scale.set(1.0,0.7,0.95); kn.position.set(0,1.7,-0.4); g.add(kn);
+      B(1.2,1.55,0.1,0x080606,0,0.05,0.82,g); [-0.62,0.62].forEach(o2=>B(0.18,1.7,0.18,0x5a3e24,o2,0,0.84,g)); B(1.5,0.2,0.24,0x5a3e24,0,1.7,0.84,g); B(0.16,0.16,0.6,0x5a3e24,0,1.86,0.66,g);
+      [-0.22,0.22].forEach(o2=>B(0.05,0.04,2.4,0x5a5a62,o2,0.01,1.6,g)); for(let i=0;i<6;i++) B(0.64,0.03,0.12,0x4a3220,0,0,0.7+i*0.4,g);
+      const cart=group(0.0,0,2.3,g); B(0.62,0.38,0.5,0x5a4a3a,0,0.1,0,cart); for(let i=0;i<4;i++) Sp(0.1,0x2a2622,(i%2-0.5)*0.24,0.5,(i>1?0.1:-0.1),cart);
+      const lt=group(0.5,1.55,1.0,g); B(0.12,0.18,0.12,0x2a2a30,0,0,0,lt); themeFlame(0,0.08,0,lt,world.anim,0.8,CHAPEL_THEME(t));
+      shade(g); MOUTH[t]={x:mx+fx*1.7,z:mz+fz*1.7,face};
+      world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:'The old mine adit',action:()=>{ ENGINE.go('cata'+t+':0'); }});
+      { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.3&&d<Math.hypot(fx2-mx,fz2-mz)) return false; return base(fx2,fz2,tx,tz); }; }
+      return {x:mx,z:mz,mouth:MOUTH[t]}; }
     B(1.9,0.18,2.1,st1,0,-0.05,0,g); B(1.7,1.9,1.7,st0,0,0.1,-0.1,g); const roof=prism(2.0,0.7,2.0,rf); roof.position.set(0,2.0,-0.1); g.add(roof); B(0.12,0.5,0.12,0xd8c890,0,2.6,-0.1,g); B(0.34,0.1,0.12,0xd8c890,0,2.86,-0.1,g);
     B(0.9,1.4,0.06,0x0a0808,0,0.18,0.76,g); [-0.52,0.52].forEach(o2=>B(0.18,1.7,0.18,st1,o2,0.1,0.78,g)); B(1.2,0.22,0.22,st1,0,1.72,0.78,g);
     for(let i=0;i<5;i++){ const bar=B(0.04,1.3,0.04,0x2a2a30,0,0.2,0,g); bar.position.x=-0.9-i*0.02; bar.position.z=0.84+i*0.12; }   // the gate, standing open (drawn back to one side)
     [-0.75,0.75].forEach(o2=>{ Cy(0.05,0.06,0.18,6,0xf0e8d0,o2,0.1,1.05,g); themeFlame(o2,0.34,1.05,g,world.anim,1.2,CHAPEL_THEME(t)); });
     for(let i=0;i<7;i++){ const sd=i%2?1:-1, iv=Sp(0.16+hsh(i,3)*0.1,0x3e6a32,sd*(0.86+hsh(i,1)*0.06),0.2+hsh(i,2)*1.7,-0.1+(hsh(i,4)-0.5)*1.2,g); iv.scale.x=0.35; }   // ivy up the side walls
     shade(g);
-    mouth={x:mx+fx*1.7,z:mz+fz*1.7,face};
+    MOUTH[t]={x:mx+fx*1.7,z:mz+fz*1.7,face};
     world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:'The mausoleum',action:()=>{ ENGINE.go('cata'+t+':0'); }});
     { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.2&&d<Math.hypot(fx2-mx,fz2-mz)) return false; return base(fx2,fz2,tx,tz); }; }   // its walls are solid
-    return {x:mx,z:mz,mouth}; }
-  return { attach, get mouth(){ return mouth; }, LV, has:t=>!!LV[t] };
+    return {x:mx,z:mz,mouth:MOUTH[t]}; }
+  // where the nave's stair comes down: the cell in front of the first level's N
+  function naveAt(t){ const R=LV[t]&&LV[t][0].rows; if(!R) return null; for(let y=0;y<R.length;y++){ const x=R[y].indexOf('N'); if(x>=0) return {x:x+0.5,z:y+1.6}; } return null; }
+  return { attach, get mouth(){ return MOUTH[0]; }, mouthOf:t=>MOUTH[t], naveAt, cfg:t=>CFG[t]||CFG[0], LV, has:t=>!!LV[t] };
 })();
 
 // ── engine/guardians.js ──
@@ -12988,9 +13260,8 @@ function goalSystem(world,opt){
     if(s.tutorial&&!s.tutorial.done) return {text:'Speak with Tobias — he has more to teach you.',at:T('Hearthvale')};
     if((s.chapels|0)<10){ const td=SYS.TOWN_DATA[s.chapels|0], ch=s.chapels|0;
       /* V149: a chapel entered from its catacombs: the goal follows you down */
-      if(typeof CATACOMB!=='undefined'&&CATACOMB.has(ch)){ const c=(s.cata&&s.cata[ch])||{}, m=CATACOMB.mouth, at=m?[m.x,m.z]:T(td.name), inC=lv&&/^cata/.test(lv.id||'');
-        const tx=!c.seen?`${td.name}’s chapel is barred — go down through the mausoleum in its churchyard.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep in the catacombs.`:`Back down into ${td.name}’s catacombs — ${td.general}’s tomb lies deepest.`)
-          :!c.bosskey&&!(c.doors&&c.doors['0:3,16'])?'Climb with the crook: the great key lies in the crypts above the tomb.':!(c.doors&&c.doors['0:3,16'])?'The great door on the first level — across the chasm.':`Up the stair to the nave — ${td.boss} waits.`;
+      if(typeof CATACOMB!=='undefined'&&CATACOMB.has(ch)){ const c=(s.cata&&s.cata[ch])||{}, m=CATACOMB.mouthOf?CATACOMB.mouthOf(ch):CATACOMB.mouth, at=m?[m.x,m.z]:T(td.name), inC=lv&&/^cata/.test(lv.id||'');
+        const tx=CATACOMB.cfg(ch).goal(c,inC,td);
         return inC?{text:tx}:{text:tx,at}; }
       return {text:`Cleanse ${td.name}’s chapel — ${td.general} is bound within.`,at:T(td.name)}; }
     if(!s.abaddonWon) return {text:'Every chapel stands. Face Abaddon in the Hellgate keep.',at:T('Hellgate')};
@@ -15172,8 +15443,8 @@ const WEATHER=(function(){
   const CLIMATE={Hearthvale:'rain',Homestead:'rain',Ironhold:'rain',Thornwood:'rain',Saltmere:'rain',Stormgate:'storm',Dusthaven:'sand',Crystalpeak:'snow',Ashfield:'ash',Shadowmere:'mist',Hellgate:'snow'};
   // chance a watch has weather, the fog it brings (near, far, colour), how much it dims the sun
   const KIND={
-    rain:{p:0.38,near:10,far:60,col:0x8a96a4,dim:0.5,msg:'🌧 Rain sets in, soft and steady.'},
-    storm:{p:0.45,near:8,far:48,col:0x6a7482,dim:0.65,msg:'⛈ A storm comes in off the sea.'},
+    rain:{p:0.28,near:16,far:85,col:0x9aa4b0,dim:0.32,msg:'🌧 Rain sets in, soft and steady.'},
+    storm:{p:0.45,near:10,far:58,col:0x6a7482,dim:0.58,msg:'⛈ A storm comes in off the sea.'},
     snow:{p:0.6,near:8,far:52,col:0xd8e0ea,dim:0.3,msg:'❄ Snow begins to fall.'},
     sand:{p:0.45,near:3,far:32,col:0xc8a878,dim:0.35,msg:'🌪 The wind lifts the sand.'},
     ash:{p:0.7,near:10,far:58,col:0x8a7a70,dim:0.4,msg:'🌫 Ash drifts down from a grey sky.'},
@@ -15214,11 +15485,11 @@ const WEATHER=(function(){
       const C=ENGINE.cam.position, sc=Math.max(0.22,Math.min(1,Math.hypot(C.x-P.x,C.y-P.y,C.z-P.z)/7)), lite=(typeof HUD!=='undefined'&&HUD.quality>=2)?0.5:1;
       const isRain=cur==='rain'||cur==='storm', isPts=cur==='snow'||cur==='sand'||cur==='ash'||cur==='mist';
       rain.visible=isRain&&amt>0.02; pts.visible=isPts&&amt>0.02;
-      if(rain.visible){ const n=Math.floor(NR*lite*Math.min(1,amt*1.2)), sp=cur==='storm'?24:18, wx=cur==='storm'?5:1.5, L=cur==='storm'?1.3:1.0;
+      if(rain.visible){ const n=Math.floor(NR*lite*Math.min(1,amt*1.2)*(cur==='storm'?0.7:0.4)),   /* V156: a thinner rain */ sp=cur==='storm'?24:18, wx=cur==='storm'?5:1.5, L=cur==='storm'?1.3:1.0;
         for(let i=0;i<n;i++){ let y=seedR[i*3+1]-sp*dt; if(y<0) y+=HT; seedR[i*3+1]=y; seedR[i*3]=wrap(seedR[i*3]+wx*dt);
           const x=P.x+seedR[i*3]*sc, yy=P.y+(y-1)*sc, z=P.z+seedR[i*3+2]*sc, k=i*6;
           rainPos[k]=x; rainPos[k+1]=yy; rainPos[k+2]=z; rainPos[k+3]=x-wx*L/sp*sc; rainPos[k+4]=yy+L*sc; rainPos[k+5]=z; }
-        rainG.setDrawRange(0,n*2); rainG.attributes.position.needsUpdate=true; rainM.opacity=0.8*Math.min(1,amt*1.3); rainM.color.setHex(0xdce6f2).multiplyScalar(1-0.55*nightK()); }
+        rainG.setDrawRange(0,n*2); rainG.attributes.position.needsUpdate=true; rainM.opacity=(cur==='storm'?0.65:0.45)*Math.min(1,amt*1.3); rainM.color.setHex(0xdce6f2).multiplyScalar(1-0.55*nightK()); }
       if(pts.visible){ const n=Math.floor(NP*lite*Math.min(1,amt*1.2)*(cur==='mist'?0.35:1));
         const fall=cur==='snow'?1.4:cur==='ash'?0.6:cur==='mist'?-0.15:0.3, wx=cur==='sand'?11:cur==='snow'?0.8:cur==='ash'?0.5:0.3, low=cur==='sand'?0.3:cur==='mist'?0.4:0.7;
         for(let i=0;i<n;i++){ const k4=i*4; let y=seedP[k4+1]-fall*dt; if(y<0) y+=HT; if(y>HT) y-=HT; seedP[k4+1]=y;
@@ -17583,7 +17854,7 @@ const SFX=(function(){
   if(typeof WEATHER!=='undefined') world.weather=WEATHER.attach(world);
   if(typeof ROADLIFE!=='undefined') world.roadlife=ROADLIFE.attach(world);
   if(typeof SNEAK!=='undefined') world.sneak=SNEAK.attach(world);
-  if(typeof CATACOMB!=='undefined'&&CHAPELS[0]) world.cata=CATACOMB.attach(world,{town:0,door:chapelDoor(0),td:CHAPELS[0].td,C:CHAPELS[0],tint:WD.generalTints[0],cleansed:t=>cleansed(t),nave:()=>chapel(0).enterTop()});   /* V147: Hearthvale's churchyard mausoleum and the catacombs under it */   /* V144: the sleeping demon camps */   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
+  if(typeof CATACOMB!=='undefined') Object.keys(CATACOMB.LV).map(Number).forEach(t=>{ if(CHAPELS[t]){ const r=CATACOMB.attach(world,{town:t,door:chapelDoor(t),td:CHAPELS[t].td,C:CHAPELS[t],tint:WD.generalTints[t],cleansed:q=>cleansed(q),nave:()=>chapel(t).enterTop()}); if(t===0) world.cata=r; } });   /* V147: Hearthvale's churchyard mausoleum and the catacombs under it */   /* V144: the sleeping demon camps */   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
   if(typeof LANDMARKS!=='undefined') LANDMARKS.attach(world);   // V127: watchtowers to climb, camps, the mill, the drowned chapel, a shrine, a spring   // V121: the Pilgrim's Pass — the mountain trek from Shadowmere to Hellgate   // V115: the high roads: the long journeys between distant towns   // V114: the Scholar's Way, the old road north to Mario's tower school
   if(typeof GREEK!=='undefined'){ const gx=SX(46.5), gz=SY(20.5); GREEK.place(world,world.scene,world.anim,gx,gz,'john14_6',{y:world.ground?world.ground(gx,gz):0}); }   // a scrap of John by Hearthvale's chapel door
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
@@ -17627,10 +17898,10 @@ const SFX=(function(){
   const back=id=>({level:'world',spawn:world.doorStep(id)});
   const chapels={};
   function chapel(t){ const viaCata=typeof CATACOMB!=='undefined'&&CATACOMB.has(t); return chapels[t]||(chapels[t]=chapelLevels(CHAPELS[t],{id:'chapel'+t,town:t,tint:WD.generalTints[t],
-    down:viaCata?()=>ENGINE.go('cata'+t+':0',{x:8.5,z:5.6,face:0,yaw:Math.PI}):null, trialDone:viaCata?()=>!!(S().cata&&S().cata[t]&&S().cata[t].trial):null, raise:viaCata,exit:back(Object.keys(WD.chapelTown).find(k=>WD.chapelTown[k]===t)),
+    down:viaCata?()=>{ const na=CATACOMB.naveAt(t)||{x:8.5,z:5.6}; ENGINE.go('cata'+t+':0',{x:na.x,z:na.z,face:0,yaw:Math.PI}); }:null, raiseWhy:viaCata?CATACOMB.cfg(t).raiseWhy:null, trialDone:viaCata?()=>!!(S().cata&&S().cata[t]&&S().cata[t].trial):null, raise:viaCata,exit:back(Object.keys(WD.chapelTown).find(k=>WD.chapelTown[k]===t)),
     onCleanse:()=>{ spawnDemons(); }})); }
   function enterFor(b){ const id=b.interior||b.id, J=I[id]; if(!J) return null;
-    if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(typeof CATACOMB!=='undefined'&&CATACOMB.has(t)&&t<=S().chapels) ENGINE.speak(b.name,['The doors are barred from within. A cold shadow seeps out from under them.','The old way in is from below: in the churchyard a mausoleum stands open, its stair going down into the catacombs.']); else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
+    if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(typeof CATACOMB!=='undefined'&&CATACOMB.has(t)&&t<=S().chapels) ENGINE.speak(b.name,['The doors are barred from within. A cold shadow seeps out from under them.','The old way in is from below: '+CATACOMB.cfg(t).wayIn]); else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
       else ENGINE.speak(b.name,[t>S().chapels?'The doors will not open. Something waits beyond, for a knight who has cleansed the towns before it.':'The doors are barred.']); }; }
     if(id==='sg_keep') return ()=>ENGINE.go('keep');
     if(id==='home_barn') return ()=>SERVICES.openStables();
