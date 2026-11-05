@@ -4294,7 +4294,7 @@ const ENGINE=(function(){
       kS+=(best.k-kS)*Math.min(1,dt*(best.k<kS?14:1.8)); best.k=Math.min(best.k,kS);   // pull in at once, ease back out slowly: no pumping in and out at every corner
       tmp.set(P.x+(best.cx-P.x)*best.k,hy+(best.cy-hy)*best.k+(best.k<1?0.15:0)+(L.interior?Math.max(0,0.85-best.k)*1.1*AS:0),P.z+(best.cz-P.z)*best.k); 
       // V160: a hard stop — whatever the easing, the camera never ends inside stone: walk in along the line to the last clear point
-      { const HB=L.camHard||L.camBlock; if(HB(tmp.x,tmp.z,tmp.y)){ const dx=tmp.x-P.x, dy=tmp.y-hy, dz=tmp.z-P.z, D=Math.hypot(dx,dy,dz)||1; let f=0.2/D;
+      { const HB=L.camHard; if(HB&&HB(tmp.x,tmp.z,tmp.y)){   /* only where the level knows exactly what is stone (the catacombs, the chapels) */ const dx=tmp.x-P.x, dy=tmp.y-hy, dz=tmp.z-P.z, D=Math.hypot(dx,dy,dz)||1; let f=0.2/D;
         for(let i=1;i<=40;i++){ const u=i/40; if(u*D<0.2) continue; if(HB(P.x+dx*u,P.z+dz*u,hy+dy*u)){ f=Math.max(0.2/D,(i-1.5)/40); break; } f=u; }
         tmp.set(P.x+dx*f,hy+dy*f,P.z+dz*f); kS=Math.min(kS,f); } } }   // indoors, backed against a wall: up, and looking down over his shoulder
     if(!L.interior&&L.ground){ const gy=L.ground(tmp.x,tmp.z)+0.35; if(tmp.y<gy) tmp.y=gy; }
@@ -4302,7 +4302,7 @@ const ENGINE=(function(){
     K.visible=!CQ||cam.position.distanceTo(K.position)>(L.interior?0.7*AS:0.85);   // backed against a wall, the camera would sit inside him
     { const tg=typeof COMBAT!=='undefined'&&L.combat&&COMBAT.lockTarget(); const want=tg?Math.min(0.5,0.12+Math.hypot(tg.x-P.x,tg.z-P.z)*0.05):0; lockMix+=(want-lockMix)*Math.min(1,dt*4); if(tg){ lockPt.x=tg.x; lockPt.z=tg.z; }   // locked on: frame the foe as well as you
       if(lockMix>0.005){ tmp.x-=(lockPt.x-P.x)*lockMix*0.6; tmp.z-=(lockPt.z-P.z)*lockMix*0.6; tmp.y+=lockMix*0.8; } }
-    cam.position.lerp(tmp,Math.min(1,dt*8)); { const HB=L.camHard||L.camBlock; if(HB&&HB(cam.position.x,cam.position.z,cam.position.y)) cam.position.copy(tmp); }   // V160: gliding after the knight, never through the stone: if the glide is in a wall, go straight to the clear spot const upK=Math.max(0,0.14-PIT)*dist*1.15+airLook*0.55; cam.lookAt(P.x+(lockPt.x-P.x)*lockMix+(CQ?-Math.sin(yaw)*(L.interior?2.6*AS:1.2):0),P.y+(ps<1?0.9*ps+0.35:HY)+(L.cam.lookH||0)+upK,P.z+(lockPt.z-P.z)*lockMix+(CQ?-Math.cos(yaw)*(L.interior?2.6*AS:1.2):0));   // in close quarters, look past him down the way ahead
+    cam.position.lerp(tmp,Math.min(1,dt*8)); { const HB=L.camHard; if(HB&&HB(cam.position.x,cam.position.z,cam.position.y)&&!HB(tmp.x,tmp.z,tmp.y)) cam.position.copy(tmp); }   // V160: gliding after the knight, never through the stone: if the glide is in a wall, go straight to the clear spot const upK=Math.max(0,0.14-PIT)*dist*1.15+airLook*0.55; cam.lookAt(P.x+(lockPt.x-P.x)*lockMix+(CQ?-Math.sin(yaw)*(L.interior?2.6*AS:1.2):0),P.y+(ps<1?0.9*ps+0.35:HY)+(L.cam.lookH||0)+upK,P.z+(lockPt.z-P.z)*lockMix+(CQ?-Math.cos(yaw)*(L.interior?2.6*AS:1.2):0));   // in close quarters, look past him down the way ahead
     if(typeof COMBAT!=='undefined'&&COMBAT.shakeAmt>0.001&&!calm){ const a=COMBAT.shakeAmt*(ps<1?0.6:1); cam.position.x+=(Math.random()-0.5)*a; cam.position.y+=(Math.random()-0.5)*a; cam.position.z+=(Math.random()-0.5)*a; }   // the blow lands
     if(L.follow) L.follow(P);
     if(L.cine) L.cine(cam,dt);   /* V150: a level's own cutscene camera (it blends from the follow camera and back) */
@@ -9062,7 +9062,7 @@ function chapelLevels(C,spec){
     const ceil=new THREE.Mesh(new THREE.PlaneGeometry(W+4,H+4),new THREE.MeshBasicMaterial({color:0x07060c,side:THREE.DoubleSide})); ceil.rotation.x=Math.PI/2; ceil.position.set(W/2,CW+0.02,H/2); room.add(ceil);
     let VAULTS=[]; const roof=(fx,fz)=>{ for(const v of VAULTS) if(fx>v.x0+0.3&&fx<v.x1-0.3&&fz>v.z0+0.3&&fz<v.z1-0.3) return CW+v.top-0.6; return CW; };
     const camSolid=(fx,fz,y)=>{ const t=at(Math.floor(fx),Math.floor(fz)); return y>roof(fx,fz)-0.15||(((t===1&&!WI.free(fx,fz))||t===16||t===20||t===undefined)&&y<CW); };
-    lv.camBlock=(fx,fz,y)=>{ if(camSolid(fx,fz,y)) return true; for(const [ox,oz] of [[0.3,0],[-0.3,0],[0,0.3],[0,-0.3]]) if(camSolid(fx+ox,fz+oz,y)) return true; return false; }; lv.camHard=(fx,fz,y)=>{ for(const [ox,oz] of [[0,0],[0.1,0],[-0.1,0],[0,0.1],[0,-0.1]]) if(camSolid(fx+ox,fz+oz,y)) return true; return false; };   /* V160: a hand's breadth clear of the stone */
+    lv.camBlock=(fx,fz,y)=>{ if(camSolid(fx,fz,y)) return true; for(const [ox,oz] of [[0.14,0],[-0.14,0],[0,0.14],[0,-0.14]]) if(camSolid(fx+ox,fz+oz,y)) return true; return false; }; lv.camHard=(fx,fz,y)=>camSolid(fx,fz,y);   /* V160: a hand's breadth clear of the stone */
     // torches on the walls that face open floor (flames only: the light count stays fixed)
     wl.forEach(([x,y])=>{ if(hsh(x,y)>(OPEN?0.2:0.12)) return; const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>{ const t=at(x+a,y+b); return t===0||t===60; }); if(!o) return; const fy=at(x+o[0],y+o[1])===60?1.0:0;
       const g=group(x+0.5+o[0]*(0.52-WI.m),fy,y+0.5+o[1]*(0.52-WI.m),room); B(0.08,0.3,0.08,0x3a3030,0,1.35,0,g); themeFlame(0,1.7,0,g,an,1.6,T); });
@@ -10155,7 +10155,7 @@ const CATACOMB=(function(){
     const camSolid=(fx,fz,y)=>{ const x=Math.floor(fx), z=Math.floor(fz), c=at(x,z); if(c===undefined) return true;
       if(wallC(x,z)&&!WI.free(fx,fz)&&y<WH(x,z)) return true; if(!inDome(x,z)&&y>HC(x,z)-0.15) return true;
       if(y<hAt(x,z)+0.05) return true; if(c==='W'&&!smashed(x+','+z)&&y<WH(x,z)) return true; if(c==='Z'&&y<1.5) return true; return false; };
-    lv.camBlock=(fx,fz,y)=>{ if(camSolid(fx,fz,y)) return true; for(const [ox,oz] of [[0.3,0],[-0.3,0],[0,0.3],[0,-0.3]]) if(camSolid(fx+ox,fz+oz,y)) return true; return false; }; lv.camHard=(fx,fz,y)=>{ for(const [ox,oz] of [[0,0],[0.1,0],[-0.1,0],[0,0.1],[0,-0.1]]) if(camSolid(fx+ox,fz+oz,y)) return true; return false; };
+    lv.camBlock=(fx,fz,y)=>{ if(camSolid(fx,fz,y)) return true; for(const [ox,oz] of [[0.14,0],[-0.14,0],[0,0.14],[0,-0.14]]) if(camSolid(fx+ox,fz+oz,y)) return true; return false; }; lv.camHard=(fx,fz,y)=>camSolid(fx,fz,y);
     // the dungeon's one map and one compass: the map shows every hall of every level; the compass marks the chests left, and the great chest
     const marks=()=>{ if(!s().compass) return []; const out=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), k=x+','+y; if((c==='C'||c==='Q')&&!s().chests[n+':'+k]) out.push({x:x+0.5,y:y+0.5,col:c==='Q'?'#ff9a3a':'#ffd84a'}); } return out; };
     lv.dmap={W,H,wall:(x,y)=>wallC(x,y),solid:(x,y)=>!ok(x,y)&&!wallC(x,y),known:()=>!!(s().map&&s().map.all)||clean(),get marks(){ return marks(); }};
