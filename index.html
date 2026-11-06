@@ -8128,6 +8128,11 @@ const COMBAT=(function(){
     if(d.hp<=0){ d.alive=false; d.dying=18; deathBurst(d); SFX.play(d.boss?'bossRoar':'demonDie'); const g=Math.max(1,Math.round((2+d.level)*S().goldMult));
       const r=GAME.gainXp(d.xp||5); GAME.addGold(g); if(r.up) UI.toast(`Level ${S().level}! A skill point to spend.`,2400);
       if(c.cfg.onKill) c.cfg.onKill(d); } hud(); }
+  /* V169: a blow from someone else's hand (the realm's guards): it hurts and staggers, but the knight earns nothing by it */
+  function hitBy(d,dmg,fx,fz){ if(!d||!d.alive) return; dmg=Math.max(1,Math.round(dmg)); d.hp-=dmg; d.hurt=8; d.flash=5; d.squash=1; spark(d,false); const p=P(), near=Math.hypot(p.x-d.x,p.z-d.z)<16;
+    if(near){ SFX.play('hit',false); pop(d.x,ENGINE.level.ground(d.x,d.z)+1.6,d.z,String(dmg),'#c8d8ff'); }
+    const vx=d.x-fx, vz=d.z-fz, m=Math.hypot(vx,vz)||1; d.kdx=vx/m*3*PX; d.kdz=vz/m*3*PX; d.knock=4;
+    if(d.hp<=0){ d.alive=false; d.dying=18; d.byGuard=true; deathBurst(d); if(near) SFX.play('demonDie'); const c=A(); if(c&&c.cfg.onKill) c.cfg.onKill(d); } }
   // a foe struck down: a burst of light, a ring of dust, and its spirit rising away
   function deathBurst(d){ const c=A(); if(!c) return; spark(d,true); spark(d,false); dust(d.x,d.z); const gy=ENGINE.level.ground(d.x,d.z), ps=Math.max(0.5,VIEWMODE.ps(ENGINE.level));
     for(let i=0;i<(d.boss?16:7);i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.07+Math.random()*0.06,6,4),glow(i%3?0xe8d8ff:0xffffff)); m.position.set(d.x+(Math.random()-0.5)*0.4,gy+0.6*ps,d.z+(Math.random()-0.5)*0.4); c.fx.add(m);
@@ -8263,6 +8268,7 @@ const COMBAT=(function(){
       const dx=p.x-d.x, dz=p.z-d.z, dist=Math.hypot(dx,dz)||1e-3;
       /* V144: asleep in its camp (sneak.js) — it stirs only if you come right up to it standing, brush past it crouched, or it's struck; and when one wakes, its camp wakes */
       if(d.asleep){ if(d.hurt>0||dist<(ENGINE.K.crouch?1.25:4.5)){ if(typeof SNEAK!=='undefined') SNEAK.wake(d.camp); else d.asleep=false; } else return; }
+      if(d.held&&d.held(d,dist)) return;   /* V169: locked in a fight with the guards — until you come close */
       if(d.ai){ d.ai(d,dx,dz,dist,T); return; }   // a fight with its own rules (the finale)
       /* V140: creeping low (crouch) a demon that hasn't seen you only notices you close by; once it has, it keeps after you */
       const sneak=ENGINE.K.crouch&&!d.alert; if(dist>12) d.alert=false;
@@ -8479,7 +8485,7 @@ const COMBAT=(function(){
   function reset(){ pl.buf=0; pl.lungeT=0; lock=null; charge.on=false; charge.ready=false; if(charge.ring) charge.ring.visible=false; if(typeof letterbox==='function') letterbox(false); ENGINE.K.charge=0; ENGINE.K.spinT=-1; hitStop=0; shake=0; pl.leap=0; pl.jumpY=0; if(reticle) reticle.visible=false; meter(null); tintV.style.opacity=0; pl.iframes=0; pl.swing=0; pl.combo=0; pl.comboT=0; pl.blocking=false; pl.bDown=false; pl.dashing=0; later.length=0; ENGINE.K.visible=true; bossBar.hidden=true; guardB.hidden=true; potB.hidden=true; }
   // how fast you can walk just now: a swing roots you (you can still turn and edge), a guard or a charging blade slows you
   function moveMul(){ return pl.swing>0?(pl.swing>pl.swingDur*0.35?0.25:0.6):pl.blocking?0.6:charge.on&&charge.k>0?0.55:1; }
-  return { moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
+  return { moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hitBy:(d,dmg,fx,fz)=>hitBy(d,dmg,fx,fz), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
     if(pl.iframes>0) return; let inc=Math.max(1,Math.round((8+tl*0.5)-S().def*0.4)); if(pl.blocking) inc=Math.max(1,Math.ceil(inc*0.4)); pl.iframes=18; takeHit(inc); } };
 })();
 
@@ -16788,7 +16794,7 @@ const ROADLIFE=(function(){
     function drop(o){ (o.folk||[]).forEach(f=>{ const i=world.folk.indexOf(f); if(i>=0) world.folk.splice(i,1); if(f.g.parent) f.g.parent.remove(f.g); }); (o.props||[]).forEach(p=>{ if(p.g.parent) p.g.parent.remove(p.g); }); }
     let force=null; function spawn(P){ if(!routes.length) return; const nt=night(), w=wx(); if(w&&w.kind==='storm'&&w.amount>0.5&&rnd()<0.6) return;
       for(let tries=0;tries<(force?200:14);tries++){ const R=pick(routes), s=rnd()*R.len, dir=rnd()<0.5?1:-1, q=at(R,s,0.4*dir), d=Math.hypot(q.x-P.x,q.z-P.z); if(force?(d<4||d>14):(d<22||d>48)) continue;
-        const kind=force?force.kind:nt>0.55?'patrol':pick(['merchant','merchant','pilgrim','pilgrim','patrol','walker','walker']); const o={kind,R,s,dir,folk:[],props:[],sp:kind==='patrol'?1.35:kind==='merchant'?0.95:kind==='pilgrim'?0.8:1.1,pause:0};
+        const sg=stage(), kind=force?force.kind:nt>0.55?'patrol':pick(sg===0?['patrol','patrol','merchant','walker']:sg===1?['merchant','merchant','pilgrim','pilgrim','patrol','walker','walker']:['merchant','merchant','merchant','pilgrim','pilgrim','pilgrim','patrol','walker','walker','walker']);   /* V169: under the shadow, only the soldiers and the bold are out */ const o={kind,R,s,dir,folk:[],props:[],sp:kind==='patrol'?1.35:kind==='merchant'?0.95:kind==='pilgrim'?0.8:1.1,pause:0};
         const desert=!!(world.weather&&world.weather.climate&&world.weather.climate(q.x,q.z)==='sand');
         if(kind==='merchant'){ const f=folkAt(desert?'nomad':'merchantD',q.x,q.z,desert?'A caravan trader':'A travelling merchant',pick(LINES.merchant)); o.folk.push(f); o.lead=f;
           const mu=mule(); scene.add(mu); o.props.push({g:mu,back:1.1,kind:'mule'}); const c=cartModel(); scene.add(c); o.props.push({g:c,back:2.45,kind:'cart'});
@@ -16798,6 +16804,44 @@ const ROADLIFE=(function(){
         else if(kind==='patrol'){ const look=(o.R.a==='Stormgate'||o.R.b==='Stormgate')?'royalguard':'soldier'; for(let i=0;i<3;i++){ const f=folkAt(look,q.x,q.z,i===0?'Patrol sergeant':'A soldier of the patrol',pick(LINES.patrol)); f.back=i*1.05; o.folk.push(f); } }
         else { const f=folkAt(pick(['peasant','peasantF','farmer','hunter','woodcutter']),q.x,q.z,'A traveller',pick(LINES.walker)); o.folk.push(f); }
         live.push(o); place(o,ENGINE.P,0); return; } }
+    // ── V169: how many are out on the roads: few under the shadow, more once Abaddon has fallen, crowds once the hunt is done —
+    //  and fewer where demons still prowl close by (clear them and the road fills again) ──
+    const stage=()=>{ const s=S(); return s.hunt&&s.hunt.done?2:s.abaddonWon?1:0; };
+    const prowl=P=>{ const c=world.combat; if(!c) return 0; let n=0; for(const d of c.foes) if(d.alive&&!d.boss&&!d.rogue&&Math.hypot(d.x-P.x,d.z-P.z)<32) n++; return n; };
+    function cap(P){ const sg=stage(), base=night()>0.55?[1,2,2][sg]:[2,4,8][sg]; return Math.max(1,base-Math.floor(prowl(P)/2)); }
+    // ── V169: THE GUARDS FIGHT — a patrol that meets a demon stops and fights it. They are not strong enough to make short work of
+    //  it: come and help as you pass. While you keep your distance the demon fights them; come close and it turns on you ──
+    const FOES=()=>(world.combat&&world.combat.foes)||[];
+    const freeFoe=(x,z,r)=>{ let best=null, bd=r; for(const d of FOES()){ if(!d.alive||d.boss||d.rogue||d.asleep||d.held&&d.heldBy) continue; const dd=Math.hypot(d.x-x,d.z-z); if(dd<bd){ bd=dd; best=d; } } return best; };
+    function holdFoe(d,party){ d.heldBy=party; d.held=(d2,dist)=>{ if(d2.heldBy!==party||!party.fighters.some(f=>f.g.parent)) { d2.held=null; d2.heldBy=null; return false; } if(dist<5.5) return false;   /* you're close: it's yours */
+        let tg=null, td=1e9; for(const f of party.fighters){ const dd=Math.hypot(f.x-d2.x,f.z-d2.z); if(dd<td){ td=dd; tg=f; } } if(!tg) return false;
+        d2.face=Math.atan2(tg.x-d2.x,tg.z-d2.z); d2.walking=td>1.25; if(td>1.25){ const sp=0.035, nx=d2.x+(tg.x-d2.x)/td*sp, nz=d2.z+(tg.z-d2.z)/td*sp; if(world.walkTile(Math.floor(nx),Math.floor(nz))){ d2.x=nx; d2.z=nz; } }
+        else if((d2._gcd=(d2._gcd||0)-1)<=0){ d2._gcd=70+Math.floor(rnd()*40); d2.squash=1; tg._flinch=0.35; if(Math.hypot(ENGINE.P.x-d2.x,ENGINE.P.z-d2.z)<18&&typeof SFX!=='undefined') SFX.play('block'); }
+        return true; }; }
+    function fightStep(party,d,P,dt){ const n=party.fighters.length; party.fighters.forEach((f,i)=>{ const a=Math.atan2(f.x-d.x,f.z-d.z)+(i-(n-1)/2)*0.5, tx=d.x+Math.sin(a)*1.15, tz=d.z+Math.cos(a)*1.15, dd=Math.hypot(tx-f.x,tz-f.z);
+        f.walking=dd>0.2; if(dd>0.05){ const sp=Math.min(dd,2.6*dt); f.x+=(tx-f.x)/dd*sp; f.z+=(tz-f.z)/dd*sp; } f.y=gAt(f.x,f.z)+0.02; f.g.position.set(f.x,f.y,f.z); f.rest=Math.atan2(d.x-f.x,d.z-f.z); f.g.rotation.y=f.rest; f.g.alert=true;
+        if(f._flinch>0){ f._flinch-=dt; f.g.position.x-=Math.sin(f.rest)*0.08; f.g.position.z-=Math.cos(f.rest)*0.08; }
+        f._cd=(f._cd===undefined?rnd()*1.2:f._cd)-dt; if(f._cd<=0&&Math.hypot(d.x-f.x,d.z-f.z)<1.7){ f._cd=1.5+rnd()*0.6; if(f.g.swing) f.g.swing(i%2?2:1,0.45); setTimeout(()=>{ if(d.alive) COMBAT.hitBy(d,Math.max(1,(d.maxHp||d.hp||10)/26),f.x,f.z); },230); } }); }
+    function endFight(party,d,P,who){ party.fighters.forEach(f=>{ f.g.alert=false; f.walking=false; }); if(Math.hypot(P.x-d.x,P.z-d.z)<14){ const said=d.byGuard?['Down it goes! My thanks, knight — that one had us pressed.','It’s done. The road’s the safer for your sword.']:['Well struck, knight! It was all we could do to hold it.','God be thanked for you, Sir Knight. Another mile made safe.'];
+        UI.toast(`⚔ ${who}: “${pick(said)}”`,2600); } }
+    function patrolFight(o,P,dt){ const lead=o.folk[0]; if(!lead) return false;
+      if(!o.fight){ if(o.cool>0){ o.cool-=dt; return false; } const d=freeFoe(lead.x,lead.z,8); if(!d) return false; o.fight=d; o.fighters=o.folk; holdFoe(d,o); if(Math.hypot(P.x-lead.x,P.z-lead.z)<30) UI.toast('⚔ A patrol has met a demon on the road — they are fighting it. Help them!',2600); }
+      const d=o.fight; if(!d.alive||Math.hypot(d.x-lead.x,d.z-lead.z)>16){ endFight(o,d,P,'The patrol sergeant'); o.fight=null; o.cool=4; o.ret=1.2; if(d.heldBy===o){ d.held=null; d.heldBy=null; } return false; }
+      fightStep(o,d,P,dt); return true; }
+    // ── V169: THE TOWN WATCH — once a town is cleansed, a demon that strays near it is met at the edge of the town by two of its
+    //  guards, who drive it off (and demons can no longer come within its bounds at all: world.guarded) ──
+    const watches=[]; let wT=0;
+    function watchTick(P,dt){ wT+=dt; if(wT>0.5){ wT=0; const towns=world.watched?world.watched():[], R=world.guardR||12;
+        for(const tw of towns){ if(Math.hypot(tw[1]-P.x,tw[2]-P.z)>60||watches.some(w=>w.tw===tw)) continue; let best=null, bd=R+8; for(const d of FOES()){ if(!d.alive||d.boss||d.rogue||d.asleep||d.heldBy) continue; const dd=Math.hypot(d.x-tw[1],d.z-tw[2]); if(dd<bd){ bd=dd; best=d; } } if(!best) continue;
+          const a=Math.atan2(best.x-tw[1],best.z-tw[2]), ex=tw[1]+Math.sin(a)*(R-2), ez=tw[2]+Math.cos(a)*(R-2), look=tw[0]==='Stormgate'?'royalguard':'soldier';
+          const w={tw,fighters:[0,1].map(i=>folkAt(look,ex+Math.cos(a)*(i?0.8:-0.8),ez-Math.sin(a)*(i?0.8:-0.8),i?'A guard of the watch':'The watch captain of '+tw[0],['The town is clean now, knight. We mean to keep it so.'])),d:best,t:0};
+          holdFoe(best,w); watches.push(w); if(Math.hypot(P.x-ex,P.z-ez)<30) UI.toast(`🛡 The watch of ${tw[0]} comes out to meet a demon at the edge of town.`,2600); } }
+      for(let i=watches.length-1;i>=0;i--){ const w=watches[i]; w.t+=dt; const d=w.d;
+        if(d&&(d.alive)&&Math.hypot(d.x-w.tw[1],d.z-w.tw[2])<(world.guardR||12)+14){ fightStep(w,d,P,dt); continue; }
+        if(d){ endFight(w,d,P,'The watch captain'); w.d=null; w.t=0; if(d.heldBy===w){ d.held=null; d.heldBy=null; } }
+        // back to their posts, and gone
+        w.fighters.forEach(f=>{ const dx=w.tw[1]-f.x, dz=w.tw[2]-f.z, dd=Math.hypot(dx,dz); f.walking=dd>1; if(dd>1){ f.x+=dx/dd*1.6*dt; f.z+=dz/dd*1.6*dt; f.rest=Math.atan2(dx,dz); f.g.rotation.y=f.rest; } f.y=gAt(f.x,f.z)+0.02; f.g.position.set(f.x,f.y,f.z); });
+        if(w.t>7||Math.hypot(w.fighters[0].x-P.x,w.fighters[0].z-P.z)>70){ drop({folk:w.fighters,props:[]}); watches.splice(i,1); } } }
     function helpWheel(o){ const f=o.lead; ENGINE.speak('A travelling merchant',['Oh — thank the LORD, a strong pair of arms! The wheel came off on that rut and I can’t lift the cart and fit it both.','(You lift the cart’s corner while he works the wheel back onto its axle and knocks the pin home.)','There! “Bear ye one another’s burdens” — Galatians 6:2. Here, for your trouble — and God speed you.'],f,()=>{
         if(o.loose){ o.loose.parent&&o.loose.parent.remove(o.loose); o.loose=null; } o.cart.userData.wheels[0].visible=true; o.stuck=false; f.action=null; f.label='Talk'; f.lines=['God speed you, knight. I’ll tell the next town who set my wheel.'];
         const s=S(); s.gold=(s.gold||0)+20; const x=GAME.gainXp?GAME.gainXp(35):null; st().wheels=(st().wheels||0)+1; GAME.changed(); ENGINE.hud&&ENGINE.hud();
@@ -16807,7 +16851,8 @@ const ROADLIFE=(function(){
       for(const f of o.folk){ if(Math.hypot(f.x-P.x,f.z-P.z)<3.2) stop=true; }
       if(!stop) o.s+=o.dir*o.sp*dt; if(o.pause>0) o.pause-=dt;
       const side=0.45*o.dir;
-      for(const f of o.folk){ const q=at(o.R,o.s-(f.back||0)*o.dir,side); f.x=q.x; f.z=q.z; f.y=gAt(q.x,q.z)+0.02; f.g.position.x=q.x; f.g.position.z=q.z; f.rest=o.dir>0?q.h:q.h+Math.PI; f.walking=!stop; }
+      if(o.ret>0) o.ret=Math.max(0,o.ret-dt);
+      for(const f of o.folk){ const q=at(o.R,o.s-(f.back||0)*o.dir,side); if(o.ret>0){ const k=Math.min(1,dt*3.5); q.x=f.x+(q.x-f.x)*k; q.z=f.z+(q.z-f.z)*k; } f.x=q.x; f.z=q.z; f.y=gAt(q.x,q.z)+0.02; f.g.position.x=q.x; f.g.position.z=q.z; f.rest=o.dir>0?q.h:q.h+Math.PI; f.walking=!stop; }
       for(const pr of o.props){ const q=at(o.R,o.s-pr.back*o.dir,side), hd=o.dir>0?q.h:q.h+Math.PI; pr.g.position.set(q.x,gAt(q.x,q.z),q.z); let d=hd-pr.g.rotation.y; d=Math.atan2(Math.sin(d),Math.cos(d)); pr.g.rotation.y+=d*Math.min(1,dt*4); pr.g.scale.setScalar(vsc);
         if(pr.kind==='mule'&&pr.g.userData.h.userData.gallop) pr.g.userData.h.userData.gallop(performance.now()/1000,stop?0:0.3,0,0);
         if(pr.kind==='cart'&&!stop) pr.g.userData.wheels.forEach(w=>{ w.rotation.x+=o.sp*dt/0.3; });
@@ -16872,14 +16917,15 @@ const ROADLIFE=(function(){
       if(!on){ return; }
       if(lastP){ const v=Math.hypot(P.x-lastP[0],P.z-lastP[1])/Math.max(dt,0.001); pv+=(v-pv)*Math.min(1,dt*3); } lastP=[P.x,P.z];
       rT+=dt; if(rT>0.4){ rT=0; nextRoute(); }
-      spT+=dt; if(spT>2.5){ spT=0; const cap=night()>0.55?2:MAXT; if(live.length<cap) spawn(P); }
+      spT+=dt; if(spT>2.5){ spT=0; if(live.length<cap(P)) spawn(P); }
+      watchTick(P,dt);
       bT+=dt; if(bT>3){ bT=0; if(beasts.length<MAXB&&night()<0.6) spawnBeast(P); }
-      for(let i=live.length-1;i>=0;i--){ const o=live[i]; const lead=o.folk[0]; const far=lead&&Math.hypot(lead.x-P.x,lead.z-P.z)>70; if(place(o,P,dt)||far){ drop(o); live.splice(i,1); } }
+      for(let i=live.length-1;i>=0;i--){ const o=live[i]; const lead=o.folk[0]; const far=lead&&Math.hypot(lead.x-P.x,lead.z-P.z)>70; if(o.kind==='patrol'&&patrolFight(o,P,dt)) continue; if(place(o,P,dt)||far){ drop(o); live.splice(i,1); } }
       for(const hd of herds){ const d=Math.hypot(hd.x-P.x,hd.z-P.z); if(d<45) wakeHerd(hd); else if(d>60&&!hd.carry) sleepHerd(hd); if(hd.f) tickHerd(hd,P,t,dt); }
       tickBeasts(P,t,dt); });
     GREEN.forEach(n=>{ const h=makeHerd(n); if(h) herds.push(h); });
     // leaving the realm lets them all go; they come back fresh next time
-    const pl=world.onLeave; world.onLeave=()=>{ live.forEach(drop); live.length=0; beasts.forEach(b=>b.g.parent&&b.g.parent.remove(b.g)); beasts.length=0; herds.forEach(h=>{ if(!h.carry) sleepHerd(h); }); if(pl) pl(); };
+    const pl=world.onLeave; world.onLeave=()=>{ live.forEach(drop); live.length=0; watches.forEach(w=>drop({folk:w.fighters,props:[]})); watches.length=0; beasts.forEach(b=>b.g.parent&&b.g.parent.remove(b.g)); beasts.length=0; herds.forEach(h=>{ if(!h.carry) sleepHerd(h); }); if(pl) pl(); };
     const buildAll=()=>{ const out=[]; while(todo.length){ const [a,b]=todo.shift(), A=town(a), Bt=town(b); const s0=gate(A,Bt), s1=gate(Bt,A); const t0=performance.now(); const p=s0&&s1&&astar(s0,s1); out.push([a,b,!!s0,!!s1,p?p.length:0,Math.round(performance.now()-t0)]); if(p&&p.length>12){ const R=line(p); R.a=a; R.b=b; routes.push(R); } } return out; };
     return {routes,live,herds,beasts,buildAll,_spawn:(kind,stuck)=>{ force={kind,stuck}; spawn(ENGINE.P); force=null; return live.length; }};
   }
@@ -19060,11 +19106,15 @@ const SFX=(function(){
   const HUNT=huntSystem(world,WD.zones);   // the Demon Hunt, once Abaddon has fallen
   const BOUNTY=(typeof PASTIME_DATA!=='undefined'&&PASTIME_DATA.bounty)?bountySystem(world,PASTIME_DATA.bounty,PASTIME_DATA,{respawn:()=>spawnDemons()}):null;   // the hooded strangers, the Homestead's decorations
   if(BOUNTY) BOUNTY_API.cur=BOUNTY;
-  COMBAT.arena(world,{ mode:'world', tier:0, W:WD.W, H:WD.H, walk:(x,y)=>world.walkTile(x,y), onKill:d=>{ HUNT.onKill(d); if(BOUNTY) BOUNTY.onKill(d); },
+  /* V169: a cleansed town keeps its own watch — no demon comes within its bounds */
+  const TOWN_T={Hearthvale:0,Ironhold:1,Saltmere:2,Thornwood:3,Dusthaven:4,Crystalpeak:5,Ashfield:6,Stormgate:7,Shadowmere:8,Hellgate:9}, GUARD_R=12;
+  world.watched=()=>(WD.towns||[]).filter(tw=>TOWN_T[tw[0]]!==undefined&&cleansed(TOWN_T[tw[0]]));
+  world.guarded=(x,y)=>{ for(const tw of world.watched()) if(Math.hypot(x+0.5-tw[1],y+0.5-tw[2])<GUARD_R) return true; return false; }; world.guardR=GUARD_R;
+  COMBAT.arena(world,{ mode:'world', tier:0, W:WD.W, H:WD.H, walk:(x,y)=>world.walkTile(x,y)&&!world.guarded(x,y), onKill:d=>{ HUNT.onKill(d); if(BOUNTY) BOUNTY.onKill(d); },
     onDeath:()=>{ ENGINE.go('world',HEARTH); setTimeout(()=>UI.toast('💫 You fall… and wake safe in Hearthvale.',2000),450); } });
   function spawnDemons(){ COMBAT.clear(world); const P=ENGINE.P;
     WD.zones.forEach((z,zi)=>{ const n=HUNT.count(zi), nb=HUNT.night(); for(let i=0;i<n;i++){ let x,y,tries=0;
-      do{ x=z.x0+Math.floor(Math.random()*(z.x1-z.x0)); y=z.y0+Math.floor(Math.random()*(z.y1-z.y0)); tries++; } while((!world.walkTile(x,y)||Math.hypot(x+0.5-P.x,y+0.5-P.z)<8)&&tries<40);
+      do{ x=z.x0+Math.floor(Math.random()*(z.x1-z.x0)); y=z.y0+Math.floor(Math.random()*(z.y1-z.y0)); tries++; } while((!world.walkTile(x,y)||world.guarded(x,y)||Math.hypot(x+0.5-P.x,y+0.5-P.z)<8)&&tries<40);
       if(tries<40){ const lvl=z.level+(nb?HUNT.BOOST:0), hp=5+lvl*2; COMBAT.foe(world,{x:x+0.5,z:y+0.5,hp,level:lvl,xp:4+lvl*3,atk:6,form:(Math.random()*4)|0,zi,nightBuff:nb}); } } });
     // the roads at peace — except where a bounty's cull has called the dark back (spawnCullDemons)
     if(BOUNTY&&S().hunt&&S().hunt.done) BOUNTY.culls().forEach(({zi,n})=>{ const z=WD.zones[zi]; if(!z) return; const nb=HUNT.night(); for(let i=0;i<n;i++){ let x,y,tries=0;
