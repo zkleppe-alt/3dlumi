@@ -2260,7 +2260,7 @@ function buildKnight(){
   const _mq=new THREE.Quaternion(), _mp=new THREE.Quaternion(), _mv=new THREE.Vector3(), _MD=new THREE.Vector3(0,-1,0);
   K.mot={v:0,acc:0,vy:0,a:0,rf:0,ph:0}; const _sp=new THREE.Vector3(), _hp=new THREE.Vector3(), _ax=new THREE.Vector3(), _pre=new THREE.Vector3(), _sq=new THREE.Quaternion(), _hq=new THREE.Quaternion(), _dq=new THREE.Quaternion(), _de=new THREE.Euler();
   K.animate=function(dt,mode,speed){
-    t+=dt; const moving=mode==='walk', sp=speed||1; dt=Math.min(dt,0.1);
+    dt=Math.max(0,dt||0); t+=dt; const moving=mode==='walk', sp=speed||1; dt=Math.min(dt,0.1);
     // how fast he really travels (world → his own scale)
     K.getWorldPosition(_wp); _ws.setFromMatrixScale(K.matrixWorld); const wsc=_ws.x||1;
     if(_lp&&dt>0){ const dv=Math.hypot(_wp.x-_lp.x,_wp.z-_lp.z)/dt/wsc; vRaw=dv<16?dv:vRaw; } _lp=(_lp||new THREE.Vector3()).copy(_wp);
@@ -2283,17 +2283,17 @@ function buildKnight(){
     const gL=GAIT.pose(ph,rw,lt,ls,mS), gR=GAIT.pose((ph+0.5)%1,rw,lt,ls,mS);   // each leg: hip, knee, its drop below the hip, the lift
     const lp=Math.cos(TAU*ph), stL=Math.cos(TAU*(ph-0.12-0.03*(1-rw)));
     // the pelvis: as high as the lower foot lets it be (so a foot on the ground is on the ground), lifted in a run's flight
-    const hyG=(1-rw)*Math.max(gL.d,gR.d)+rw*Math.max(gL.y,Math.max(gL.d,gR.d)-0.004), hyI=K.hipY-0.012-0.01*(0.5+0.5*breath)-0.012*Math.abs(shiftS);
+    const hyG=(1-rw)*Math.max(gL.d,gR.d)+rw*Math.max(gL.y,Math.max(gL.d,gR.d)-0.004), hyI=K.hipY+0.007-0.004*(0.5+0.5*breath)-0.005*Math.abs(shiftS);   /* V165: standing tall — knees all but straight, as a man stands at ease */
     const hy=a*hyG+ia*hyI;
     const vy=hyPrev===null||dt<=0?0:(hy-hyPrev)/dt; hyPrev=hy;
-    const sway=a*0.016*sc*stL*(1-0.6*rf)+ia*0.022*sc*shiftS, roll=a*0.028*stL*(1-0.5*rf)+ia*0.03*shiftS, pYaw=-0.08*a*lp*(1-0.3*rf);
+    const sway=a*0.016*sc*stL*(1-0.6*rf)+ia*0.012*sc*shiftS, roll=a*0.028*stL*(1-0.5*rf)+ia*0.016*shiftS, pYaw=-0.08*a*lp*(1-0.3*rf);
     hips.position.set(sway,hy,0); hips.rotation.set(0,pYaw,roll);
-    [[L,gL,1],[R,gR,-1]].forEach(([G,g,sd])=>{ const fI=(sd>0?0.035:-0.025)*sc, dn=hyI+sd*hx*Math.sin(roll);
+    [[L,gL,1],[R,gR,-1]].forEach(([G,g,sd])=>{ const fI=(sd>0?0.012:-0.006)*sc, dn=hyI+sd*hx*Math.sin(roll);
       legIK(G,fI,dn,lt,ls); const ih=G.hip.rotation.x, ik=G.knee.rotation.x;   // at rest: planted by IK
       G.hip.rotation.x=a*g.h+ia*ih; G.knee.rotation.x=a*g.k+ia*ik; G.hip.rotation.z=-roll-sway/Math.max(0.3,hy); });
     // the trunk: pitched into speed, rocked by acceleration, turned against the pelvis; the head kept level
     const lean2=spr(sLean,Math.max(-0.14,Math.min(0.2,acc*0.05*a)),70,9,dt);
-    torso.rotation.set(0.03+0.04*a+0.11*rf+lean2, -pYaw*1.8, lean-roll*1.05);
+    torso.rotation.set(0.005+0.065*a+0.11*rf+lean2, -pYaw*1.8, lean-roll*1.05);
     if(--gazeT<=0||!primed){ primed=true; gazeT=90+Math.random()*200; const r=Math.random(); gazeY=r<0.35?0:(Math.random()-0.5)*0.9; gazeX=(Math.random()-0.6)*0.18; }
     const gy=spr(sGy,ia*gazeY*smooth01((Math.sin(t*0.17+1)+0.6)),40,11,dt), gx=spr(sGx,ia*gazeX,40,11,dt);
     head.rotation.set(-(torso.rotation.x)*0.8+0.03*breath*ia+gx, -torso.rotation.y*0.7+gy, -(torso.rotation.z)*0.6);
@@ -2307,7 +2307,7 @@ function buildKnight(){
     //  and head take the bones' turn; thighs, shins, upper arms and forearms are pointed along the bones; the pelvis rides
     //  the hips' rise and sway. Eased in on foot, out for anything the clips don't cover (sitting, fishing, riding, the air,
     //  the dodge) — and the sword arm keeps its own carry (it's set below), as do the blows, the guard and the rest
-    { if(K._act){ K._act.t+=dt; if(K._act.t>=K._act.dur) K._act=null; } const want=K.mocap&&!K.mocapOff&&(mode==='walk'||mode==='idle'||K._act)&&mode!=='ride'&&mode!=='fish'&&mode!=='sit'&&mode!=='kneel'&&mode!=='climb'&&mode!=='lie'?1:0; K._mw=(K._mw||0)+(want-(K._mw||0))*Math.min(1,dt*6);
+    { if(K._act){ K._act.t+=dt; if(K._act.t>=K._act.dur+(K._act.hold||0)){ const nx=K._act.then; K._act=null; if(nx) K.act(nx.n,nx.dur,nx); } } const want=K.mocap&&!K.mocapOff&&(mode==='walk'||mode==='idle'||K._act)&&mode!=='ride'&&mode!=='fish'&&mode!=='sit'&&mode!=='kneel'&&mode!=='climb'&&mode!=='lie'&&mode!=='knock'?1:0; K._mw=(K._mw||0)+(want-(K._mw||0))*Math.min(1,dt*6);
       const w=K._mw; if(w>0.01&&K.mocap){ const RG=K.mocap;
         // the clips laid over the gaits: a blow (the body of Mixamo's sword-and-shield attacks, timed to the swing — the sword arm
         //  keeps its own cut), the guard (the block stance: knees bent, weight back behind the shield)
@@ -2318,8 +2318,9 @@ function buildKnight(){
         if(K.air>0.02) K._airT=(K._airT||0)+dt; else K._airT=0;
         if(K._st!==K._st0){ if(K._st==='drawn'&&K._st0==='sheathed'&&!K._act) K._act=K._carry==='back'?{n:'drawBack',t:0,dur:0.7,w:0.6,arms:false}:{n:'draw',t:0,dur:0.45,w:0.6,arms:false};   /* V144: from the hip, or over the shoulder for the big ones */ K._st0=K._st; }
         const A0=K._act;
-        if(A0) ov={n:A0.n,u:A0.t/A0.dur,w:A0.w,fade:10};
+        if(A0) ov={n:A0.n,u:(A0.u0||0)+((A0.u1===undefined?1:A0.u1)-(A0.u0||0))*Math.min(1,A0.t/A0.dur),w:A0.w,fade:A0.fade||10};
         else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.85}:{n:sk===0?'atk3':sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8,fade:16};   /* a quick cut takes less of the clip's lunge */
+        else if(K.falling>0&&!(K.raise>0)) ov={n:'fall',t:0.35+K.falling*1.15,w:Math.min(0.92,0.45+K.falling*3),fade:9};   /* V165: off a ledge, the falling clip from the first moment — arms up and out, legs reaching for the ground */
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
         else if(K._st==='sheathing') ov={n:K._carry==='back'?'sheath':'sheathHip',u:Math.min(1,K._shT||0),w:0.7};
         else if(K._bw>0.01) ov={n:'block',t:t,w:K._bw};
@@ -2336,7 +2337,7 @@ function buildKnight(){
         //  weight shifting from leg to leg, arms hanging loose): standing, most of the stance is the relaxed one; walking, the
         //  clip keeps the legs (the feet stay true to the ground) but much less of its hip roll, shoulder turn and arm swing
         K._rlx=(K._rlx||0)+(((calm&&!ov)?1:0)-(K._rlx||0))*Math.min(1,dt*3); const rx=K._rlx, wk=a*(1-K._rfM), sw=1-0.72*wk*rx;
-        const wI=w*(1-0.62*ia*rx), wHip=wI*sw, wTor=wI*(1-0.7*wk*rx), wLeg=wI*(1-0.4*wk*rx), wArm=wI*(1-0.7*wk*rx);
+        const wI=w*(1-0.8*ia*rx), wHip=wI*sw*(1-0.6*ia*rx), wTor=wI*(1-0.7*wk*rx), wLeg=wI*(1-0.4*wk*rx)*(1-0.75*ia*rx), wArm=wI*(1-0.7*wk*rx);   /* V165: at ease the clip's planted fighter's legs barely show */
         const hp=RG.p('Hips'), hb=RG.pb('Hips'), k=K.hipY/RG.hipH;
         hips.position.y+=((K.hipY*hp.y/hb.y)-hips.position.y)*wLeg; hips.position.x+=((hp.x-hb.x)*k*0.6*(1-0.6*wk*rx)-hips.position.x)*wHip;
         turn(hips,'Hips',wHip); turn(torso,'Spine2',wTor); turn(head,'Head',wTor);
@@ -2381,6 +2382,9 @@ function buildKnight(){
     if(flinch>0){ flinch=Math.max(0,flinch-dt*4); const f=Math.sin(flinch*Math.PI)*(flinch>0.5?1:flinch*2); torso.rotation.x-=0.32*f; head.rotation.x-=0.25*f; hips.position.z-=0.08*f; AR.sh.rotation.x+=0.4*f; hips.position.y-=0.02*f; }
     // the dodge: low and leaning into it
     if(K.dash>0&&!(K._act&&K._act.n==='roll')){ const d=K.dash; torso.rotation.x+=0.42*d; hips.position.y-=0.12*d; L.hip.rotation.x-=0.7*d; R.hip.rotation.x+=0.5*d; L.knee.rotation.x+=0.9*d; R.knee.rotation.x+=0.6*d; capeP.rotation.x+=0.4*d; }
+    // V165: landing — the knees take the weight and give, deeper the further he fell, then he straightens
+    if(K.landK>0&&K.landT!==undefined){ K.landT+=dt; const dur=0.28+0.3*K.landK, u=K.landT/dur; if(u>=1) K.landK=0; else { const d=K.landK*(u<0.28?Math.sin(u/0.28*Math.PI/2):Math.cos((u-0.28)/0.72*Math.PI/2));   /* down fast, up slow */
+      hips.position.y-=0.14*d; L.hip.rotation.x-=0.55*d; R.hip.rotation.x-=0.5*d; L.knee.rotation.x+=0.95*d; R.knee.rotation.x+=0.9*d; torso.rotation.x+=0.3*d; head.rotation.x-=0.15*d; capeP.rotation.x+=0.25*d; } }
     // in the air (the leap of the Ground Pound): legs tucked, knees up
     if(K.air>0.02&&!(K.mocap&&!K.mocapOff&&K._mw>0.5&&!(K.raise>0))){ const u=Math.min(1,K.air*1.6); L.hip.rotation.x=-1.0*u; R.hip.rotation.x=-0.55*u; L.knee.rotation.x=1.5*u; R.knee.rotation.x=1.1*u; torso.rotation.x+=0.12*u; capeP.rotation.x=0.6*u+0.1; AL.sh.rotation.x-=0.3*u*(1-gk); }
     if(mode==='sit'){ L.hip.rotation.x=R.hip.rotation.x=-1.45; L.knee.rotation.x=R.knee.rotation.x=1.45; hips.position.set(0,K.hipY-0.2,0); hips.rotation.set(0,0,0); L.hip.rotation.z=R.hip.rotation.z=0; torso.rotation.set(-0.08,0,0); head.rotation.set(0,0,0);   // seated: thighs level, shins down
@@ -2392,6 +2396,17 @@ function buildKnight(){
     if(mode==='lie'){ const br=Math.sin(t*1.3)*0.015; hips.position.set(0,0.22,-0.1); hips.rotation.set(-Math.PI/2+0.06,0,0);
       L.hip.rotation.set(0.02,0,0.05); L.knee.rotation.x=0.12; R.hip.rotation.set(0.06,0,-0.05); R.knee.rotation.x=0.2;
       torso.rotation.set(0.02+br,0,0); head.rotation.set(0.35,0.1,0); AL.sh.rotation.set(-0.55,0,0.62); AL.el.rotation.x=-1.35; AR.sh.rotation.set(-0.55,0,-0.62); AR.el.rotation.x=-1.35; capeP.rotation.x=0; }
+    // V165: KNOCKED DOWN (Dylan's shove): he staggers back, arms flung up, goes over onto his back, lies dazed a moment
+    //  (the head lolls, then shakes), sits up through his knees and is on his feet again — 2.6 s, eased all through
+    if(mode==='knock'){ K._kn=(K._kmode?K._kn:0)+dt; const u=K._kn, sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x);
+      const f=u<0.22?0:u<0.68?sm((u-0.22)/0.46):u<1.75?1:u<2.6?1-sm((u-1.75)/0.85):0, st=u<0.3?Math.sin(Math.min(1,u/0.3)*Math.PI):0, bump=Math.sin(Math.PI*f)*(u>1.75?1:0.5), L2=(a,b)=>a+(b-a)*f;
+      hips.position.set(hips.position.x*(1-f),L2(hips.position.y,0.2)-0.18*bump,L2(0,-0.28)); hips.rotation.set(L2(hips.rotation.x,-Math.PI/2+0.08)+0.35*bump*(u>1.75?1:0),hips.rotation.y*(1-f),hips.rotation.z*(1-f));
+      L.hip.rotation.set(L2(L.hip.rotation.x,-0.25)-1.1*bump,0,L2(L.hip.rotation.z,0.12)); R.hip.rotation.set(L2(R.hip.rotation.x,-0.05)-0.9*bump,0,L2(R.hip.rotation.z,-0.1)); L.knee.rotation.x=L2(L.knee.rotation.x,0.35)+1.3*bump; R.knee.rotation.x=L2(R.knee.rotation.x,0.15)+1.1*bump;
+      const daze=u>0.75&&u<1.75?Math.min(1,(u-0.75)*3)*(1-Math.max(0,(u-1.5)*4)):0;
+      torso.rotation.set(L2(torso.rotation.x,0.05)-0.38*st+0.5*bump*(u>1.75?1:0),0,0); head.rotation.set(L2(head.rotation.x,0.45)-0.25*st+0.25*daze,Math.sin(u*9)*0.35*daze,Math.sin(u*4)*0.12*daze);
+      const fl=Math.max(st,f*(u<1.75?1:0.5));
+      AL.sh.rotation.set(-0.3-1.2*st-0.2*f,0,0.25+1.0*fl); AL.el.rotation.x=-0.3-0.4*f; AR.sh.rotation.set(-0.3-1.2*st-0.2*f,0,-0.25-1.0*fl); AR.el.rotation.x=-0.3-0.4*f; capeP.rotation.x=0.4*st+0.05; }
+    K._kmode=mode==='knock';
     // V156: climbing a ladder — facing the rungs, hands up over the head reaching rung over rung, knees lifting in turn
     if(mode==='climb'){ const c=Math.sin(t*7), c2=Math.cos(t*7); hips.position.set(0,K.hipY-0.02,0.02); hips.rotation.set(0,0,0);
       L.hip.rotation.set(-0.55-0.55*Math.max(0,c),0,0.04); L.knee.rotation.x=0.7+0.8*Math.max(0,c); R.hip.rotation.set(-0.55-0.55*Math.max(0,-c),0,-0.04); R.knee.rotation.x=0.7+0.8*Math.max(0,-c);
@@ -2731,7 +2746,7 @@ function buildKnight(){
   K.rig={hips,torso,head,plume,L,R,AL,AR,capeP,sh,cape,sword,sheathP,backP,shM}; K.M=M;   // the joints, for a skinned body (engine/body.js)
   /* V139: play one of the motion-capture clips through once, over everything (falling in battle, kneeling to sow): its
      length squeezed or stretched to dur; arms:true lets the clip have the sword arm too */
-  K.act=(n,dur,o)=>{ const R=K.mocap; if(!R||K.mocapOff||!R.actions[n]) return false; K._act={n,t:0,dur:dur||R.dur[n],w:(o&&o.w)||1,arms:!!(o&&o.arms)}; K._mw=Math.max(K._mw||0,0.6); return true; };
+  K.act=(n,dur,o)=>{ const R=K.mocap; if(!R||K.mocapOff||!R.actions[n]) return false; K._act={n,t:0,dur:dur||R.dur[n],w:(o&&o.w)||1,arms:!!(o&&o.arms),u0:o&&o.u0,u1:o&&o.u1,hold:o&&o.hold,then:o&&o.then,fade:o&&o.fade};   /* V165: a part of a clip (u0–u1), held a while, then another */ K._mw=Math.max(K._mw||0,0.6); return true; };
   K.raise=0; K.guarding=false; K.dash=0; K.air=0; K.height=1.5; K.charge=0; K.spinT=-1; K.spinA=0;
   return K;
 }
@@ -4214,7 +4229,7 @@ const ENGINE=(function(){
   function resize(){ const w=innerWidth,h=innerHeight; R.setSize(w,h,false); cam.aspect=w/h; cam.updateProjectionMatrix(); if(window.KLK_POST) window.KLK_POST.resize(w,h); }
   addEventListener('resize',resize); resize();
   let last=performance.now(); const tmp=new THREE.Vector3();
-  function frame(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; const t=now/1000; DETAIL_TIME.value=t%1000;
+  function frame(now){ const dt=Math.max(0,Math.min(0.05,(now-last)/1000)); last=now; const t=now/1000; DETAIL_TIME.value=t%1000;
     GAME.tick();
     const paused=UI.open||(MENU&&MENU.open);
     if(!L.custom&&!paused){ const dz=(v,d)=>Math.abs(v)<d?0:(v-Math.sign(v)*d)/(1-d), tx=dz(lv2.x,0.1)+PAD.lx+(keys.turnr?1:0)-(keys.turnl?1:0), ty=dz(lv2.y,0.2)+PAD.ly;   // the look stick and the turn keys
@@ -4255,10 +4270,13 @@ const ENGINE=(function(){
         if(dd<ar&&push){ q._armed=false; q._t0=now; if(q.action) q.action(q); else if(q.lines) speak(q.who,q.lines); break; } } }
     const gy=L.ground(P.x,P.z); if(Math.hypot(P.x-J.lx,P.z-J.lz)>1.5){ J.on=false; J.h=0; J.v=0; P.y=gy; } J.lx=P.x; J.lz=P.z;   // set down somewhere new: no falling from where you were
     if(J.on&&J.fall&&J.fvx!==undefined){ const nx=P.x+J.fvx*dt, nz=P.z+J.fvz*dt; if(!L.canMove||L.canMove(P.x,P.z,nx,nz)){ P.x=nx; P.z=nz; J.lx=P.x; J.lz=P.z; } else { J.fvx*=0.3; J.fvz*=0.3; } J.fvx*=Math.max(0,1-dt*1.2); J.fvz*=Math.max(0,1-dt*1.2); }
-    if(J.on){ const top=P.y+J.h; J.peak=Math.max(J.peak||top,top); J.v-=17*dt; let nh=top+J.v*dt; if(J.v<0&&nh<=gy){ J.on=false; J.v=0; J.h=0; P.y=gy; J.fall=false; J.fvx=J.fvz=undefined; if(typeof COMBAT!=='undefined'&&COMBAT.landed) COMBAT.landed();
+    if(J.on){ const top=P.y+J.h; J.peak=Math.max(J.peak||top,top); J.v-=(J.fall?(J.v>0?11:13):17)*dt; if(J.fall) J.v=Math.max(J.v,-9.5); J.fallT=(J.fallT||0)+dt; let nh=top+J.v*dt;   /* V165: a drop off a ledge hangs a moment, then falls — softer than a hop's gravity, and never faster than a man falls in a few yards */ if(J.v<0&&nh<=gy){ J.on=false; J.v=0; J.h=0; P.y=gy; J.fall=false; J.fvx=J.fvz=undefined; if(typeof COMBAT!=='undefined'&&COMBAT.landed) COMBAT.landed();
         /* V143: a long drop lands hard — he takes it on bent knees and a hand, and needs a moment to rise */
-        const drop=(J.peak||gy)-gy; J.peak=0; if(typeof SFX!=='undefined'&&SFX.play) SFX.play(drop>2.4?'stairStep':'step'); if(drop>2.4&&!(L.mounted&&L.mounted())&&!(typeof COMBAT!=='undefined'&&COMBAT.pl.leap)&&K.act&&K.act('land',0.9,{arms:true})){ holdT=Math.max(holdT,0.42); holdMode=null; } } else { if(gy>P.y) P.y=gy; J.h=nh-P.y; if(J.h<0){ J.on=false; J.h=0; P.y=gy; } } }
-    else { if(gy<P.y-0.5){ J.on=true; J.v=2.8; J.h=0; J.fall=true; const sp=Math.min(1,Math.hypot(P.x-(J.px||P.x),P.z-(J.pz||P.z))/Math.max(dt,0.001)/4); J.fvx=Math.sin(P.face)*(1.9+1.8*sp); J.fvz=Math.cos(P.face)*(1.9+1.8*sp); } else P.y+=(gy-P.y)*Math.min(1,dt*(gy>P.y?16:10)); }   // stepping off a ledge: you fall, not float down — V159: a small hop out over the edge, your stride carried into the fall
+        const drop=(J.peak||gy)-gy; J.peak=0; if(typeof SFX!=='undefined'&&SFX.play) SFX.play(drop>1.6?'stairStep':'step'); const free=!(L.mounted&&L.mounted())&&!(typeof COMBAT!=='undefined'&&COMBAT.pl.leap); K.landK=free?Math.min(1,Math.max(0,(drop-0.4)/2.2)):0; K.landT=0;   /* V165: the knees take it — a dip for a hop, a deep crouch with a hand down for a long drop */
+        if(free&&drop>2.0&&K.act&&K.act('land',0.95,{arms:true,w:0.4,u0:0.08,u1:0.85})){ holdT=Math.max(holdT,0.45); holdMode=null; K.landK*=0.6; } J.fallT=0; }   /* the hard landing's clip carries most of a long drop; the knee dip the rest */ else if(J.fall){ P.y=nh; J.h=0; }   /* V165: falling, he and the camera go down together — before, the body hung at the ledge's height and then snapped to the floor */
+      else { if(gy>P.y) P.y=gy; J.h=nh-P.y; if(J.h<0){ if(gy<P.y-0.5){ J.fall=true; J.fallT=0.3; P.y=nh; J.h=0; } else { J.on=false; J.h=0; P.y=gy; } } } }   /* a hop off an edge carries on down as a fall */
+    else { if(gy<P.y-0.5){ J.on=true; J.v=2.6; J.h=0; J.fall=true; J.fallT=0; const sp=Math.min(1,Math.hypot(P.x-(J.px||P.x),P.z-(J.pz||P.z))/Math.max(dt,0.001)/4); J.fvx=Math.sin(P.face)*(1.6+1.6*sp); J.fvz=Math.cos(P.face)*(1.6+1.6*sp); } else P.y+=(gy-P.y)*Math.min(1,dt*(gy>P.y?16:10)); }   // stepping off a ledge: you fall, not float down — V159: a small hop out over the edge, your stride carried into the fall
+    if(J.kt>0){ J.kt-=dt; const sp=1.5*Math.max(0,J.kt/0.55), nx=P.x+J.kx*sp*dt, nz=P.z+J.kz*sp*dt; if(!L.canMove||L.canMove(P.x,P.z,nx,nz)){ P.x=nx; P.z=nz; J.lx=P.x; J.lz=P.z; } }   // the shove carries him back a step or two as he goes over
     J.px=P.x; J.pz=P.z;
     // close quarters (a dungeon, the deep wood): the camera rides low behind your shoulder, and when you walk it settles in behind
     //  you again by itself unless you've looked about in the last moment — so a corridor stays ahead of you, walls on either hand
@@ -4267,7 +4285,7 @@ const ENGINE=(function(){
     if(typeof COMBAT!=='undefined'&&L.combat){ const tg=COMBAT.lockTarget(); if(tg&&!(convo||busy||paused||hold)){   // locked on: face the foe, and the camera swings round behind you to frame it (the look stick still nudges it)
         const want=Math.atan2(tg.x-P.x,tg.z-P.z); if(!COMBAT.pl.dashing){ let d=want-P.face; d=Math.atan2(Math.sin(d),Math.cos(d)); P.face+=d*Math.min(1,dt*14); }
         if(!lookV.y){ let dy=(want+Math.PI)-yaw; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); yaw+=dy*Math.min(1,dt*5); } } }
-    K.animate(dt,hold&&holdMode?holdMode:l>0.08?'walk':'idle',Math.min(1,l)/ps); K.position.set(P.x,P.y+J.h+(typeof COMBAT!=='undefined'?COMBAT.pl.jumpY*ps:0),P.z); if(J.on) K.air=Math.max(K.air||0,J.fall?Math.min(1,0.45+Math.max(0,-J.h)*0.6):Math.min(1,J.h*1.4+0.25)); else if(!L.combat) K.air=0; K.rotation.y=P.face+(K.spinA||0);   // (small legs step faster to cover the same ground)
+    K.animate(dt,hold&&holdMode?holdMode:l>0.08?'walk':'idle',Math.min(1,l)/ps); K.position.set(P.x,P.y+J.h+(typeof COMBAT!=='undefined'?COMBAT.pl.jumpY*ps:0),P.z); K.falling=J.on&&J.fall?J.fallT:0; if(J.on) K.air=Math.max(K.air||0,J.fall?1:Math.min(1,J.h*1.4+0.25)); else if(!L.combat) K.air=0; K.rotation.y=P.face+(K.spinA||0);   // (small legs step faster to cover the same ground)
     if(typeof DIALOGUE!=='undefined'&&(++presT%20)===0) L.folk.forEach(f=>{ if(!f.key) return; const on=DIALOGUE.present(f.key);   // who the story has here now
       if(!on&&!f._phide){ f._phide=true; f.g.visible=false; f.mute=true; f.ghost=true; } else if(on&&f._phide){ f._phide=false; f.g.visible=true; f.mute=false; f.ghost=false; } });
     L.folk.forEach(f=>{ const u=f.g.userData, fs=ps*ACTOR_S(L); if(u.vs!==fs){ if(u.s0===undefined) u.s0=f.g.scale.x; f.g.scale.setScalar(u.s0*fs); u.vs=fs; } if(f.still) return; f.g.position.y=f.y+Math.abs(Math.sin(t*1.3+(f.ph||0)))*0.02;
@@ -4313,7 +4331,7 @@ const ENGINE=(function(){
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     { const PO=window.KLK_POST; if(PO&&PO.on) PO.render(L.scene,cam); else R.render(L.scene,cam); } requestAnimationFrame(frame); }   /* V135: High/Ultra draw through post.js */
 
-  return { pace:PACE, add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
+  return { pace:PACE, add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, knock(fx,fz){ if(J.on||(L&&L.mounted&&L.mounted())) return false; const dx=P.x-fx, dz=P.z-fz, d=Math.hypot(dx,dz)||1; P.face=Math.atan2(-dx,-dz); holdT=2.65; holdMode='knock'; K._kn=0; K._kmode=false; J.kx=dx/d; J.kz=dz/d; J.kt=0.55; if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('knock'); }catch(_){} return true; },   /* V165: shoved over (Dylan): he faces the shove and goes down backwards */ get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();
 
 // ── engine/pets.js ──
@@ -5191,6 +5209,74 @@ const PROPS3D=(function(){
     return Object.assign({wood:w.clone().lerp(C(0xa07850),0.35).getHex(), woodL:w.clone().lerp(C(0xc09060),0.5).getHex(), woodD:w.clone().multiplyScalar(0.85).getHex(),
       quilt:pal.cloth||0x9a3a4a, cushion:pal.cloth||0x9a3a4a, cushionL:C(pal.cloth||0x9a3a4a).lerp(C(0xffffff),0.18).getHex()},extra||{}); }
   return { make, palette, get ready(){ return !!D; } };
+})();
+
+// ── engine/chest3d.js ──
+// ════════════════════════════════════════════════════════════════
+//  CHEST3D (V165) — one treasure chest for every dungeon, cave and chapel.
+//   A real box you can see into: planked oak sides with iron corner straps and bands, a gilt lock plate and hasp, a
+//   rounded barrel lid hinged at the back, and inside a red-velvet lining with a heap of coin and a gem. Opening it
+//   swings the lid back (a little bounce on the hinge), lets out a warm light and a puff of gold motes, and plays the
+//   chest's own sound — the creak of the hinge, the latch, and a bright chime. Once looted it stays open and empty.
+//   CHEST3D.make(parent, x, z, {great, face}) → the handle (the lid's group: set .rotation.x as before, or use these)
+//   CHEST3D.open(handle)  — the animated opening (sound, light, motes)
+//   CHEST3D.set(handle, open) — at once, as a level is (re)entered: open and empty, or shut
+// ════════════════════════════════════════════════════════════════
+const CHEST3D=(function(){
+  const OPEN=-1.95, dk=(h,f)=>new THREE.Color(h).multiplyScalar(f).getHex();
+  const glowM=c=>new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:1,depthWrite:false,blending:THREE.AdditiveBlending});
+  function halfDrum(r,len,col,par,y,z,sy){ const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r,len,14,1,false,0,Math.PI),mt(col)); m.rotation.z=Math.PI/2; m.position.set(0,y,z); m.scale.set(1,1,sy); par.add(m); return m; }
+  function make(par,x,z,o){ o=o||{}; const great=!!o.great, k=great?1.25:1;
+    const W=0.78*k, H=0.4*k, D=0.52*k, T=0.045*k;
+    const wood=great?0x4a2e52:0x7a4a26, wood2=great?0x3e2646:0x6a3e1e, dark=great?0x24142a:0x3a2210, iron=great?0xd8b048:0x34343c, gold=0xe8c45a, velvet=great?0x3a1a5a:0x7a1a24;
+    const g=group(x,0,z,par); if(o.face!==undefined) g.rotation.y=o.face;
+    // the body: a plinth, then two courses of planks on every side (a dark seam between), hollow within
+    B(W+0.03,0.05*k,D+0.03,dark,0,0,0,g);
+    const sides=(w,d,cx,cz)=>{ B(w,H*0.5-0.008,d,wood,cx,0.05*k,cz,g); B(w,0.012,d*0.96,dark,cx,0.05*k+H*0.5-0.008,cz,g); B(w,H*0.5-0.05*k+0.004,d,wood2,cx,0.05*k+H*0.5+0.004,cz,g); };
+    sides(W,T,0,D/2-T/2); sides(W,T,0,-D/2+T/2); sides(T,D-2*T,W/2-T/2,0); sides(T,D-2*T,-W/2+T/2,0);
+    // the lining and the floor of it: red velvet, a shade darker in the corners
+    B(W-2*T,0.12*k,D-2*T,velvet,0,0.06*k,0,g);   /* the velvet bed, raised so the treasure sits up where you can see it */
+    const lin=dk(velvet,0.75); B(W-2*T,H-0.1*k,0.012,lin,0,0.08*k,D/2-T-0.006,g); B(W-2*T,H-0.1*k,0.012,lin,0,0.08*k,-D/2+T+0.006,g); B(0.012,H-0.1*k,D-2*T,lin,W/2-T-0.006,0.08*k,0,g); B(0.012,H-0.1*k,D-2*T,lin,-W/2+T+0.006,0.08*k,0,g);
+    // iron: a strap down each corner, two bands round the front and back, and a gilt lock plate with its keyhole
+    [[1,1],[1,-1],[-1,1],[-1,-1]].forEach(([sx,sz])=>{ B(0.06*k,H-0.02,0.016,iron,sx*(W/2-0.03*k),0.04*k,sz*(D/2+0.006),g); B(0.016,H-0.02,0.06*k,iron,sx*(W/2+0.006),0.04*k,sz*(D/2-0.03*k),g); });
+    [-0.24,0.24].forEach(bx=>{ B(0.05*k,H-0.04,0.014,iron,bx*k,0.05*k,D/2+0.007,g); B(0.05*k,H-0.04,0.014,iron,bx*k,0.05*k,-D/2-0.007,g); });
+    const studs=new THREE.SphereGeometry(0.012*k,6,4); [[-0.36,0.1],[-0.36,0.3],[0.36,0.1],[0.36,0.3],[-0.24,0.18],[0.24,0.18]].forEach(([sx,sy])=>{ const m=new THREE.Mesh(studs,mt(gold)); m.position.set(sx*k,sy*k,D/2+0.016); g.add(m); });
+    B(0.14*k,0.15*k,0.02,gold,0,H-0.19*k,D/2+0.01,g); B(0.022*k,0.05*k,0.024,0x141010,0,H-0.15*k,D/2+0.012,g); Sp(0.016*k,0x141010,0,H-0.085*k,D/2+0.022,g,6,4);
+    // the treasure inside: a heap of coin (and, in a great chest, a crown of it and a gem)
+    const loot=group(0,0.185*k,0,g); const coin=new THREE.CylinderGeometry(0.035*k,0.035*k,0.008,10), gm=flat(0xf2cc58,{shininess:60,specular:0x8a6a20,emissive:0x3a2a08});
+    const mound=new THREE.Mesh(new THREE.SphereGeometry(1,14,6,0,Math.PI*2,0,Math.PI/2),flat(0xd8a838,{shininess:40,specular:0x6a5018,emissive:0x2a1c04})); mound.scale.set(W/2-T-0.02,0.09*k,(D/2-T-0.02)); loot.add(mound);   /* the heap itself, under the loose coin */
+    const NC=great?64:44; for(let i=0;i<NC;i++){ const a=i*2.399, r=Math.sqrt(i/NC)*(W/2-T-0.05); const m=new THREE.Mesh(coin,gm); const h=0.09*k*Math.sqrt(Math.max(0,1-Math.pow(r/(W/2-T-0.02),2)));
+      m.position.set(Math.cos(a)*r,h+0.004,Math.sin(a)*r*0.62); m.rotation.set(((i*1.7)%1-0.5)*0.9,0,((i*2.3)%1-0.5)*0.9); loot.add(m); }
+    const gem=new THREE.Mesh(new THREE.OctahedronGeometry(0.04*k,0),flat(great?0x9a5aff:0x3ad08a,{shininess:90,specular:0xffffff,emissive:great?0x30106a:0x0a4a2a})); gem.position.set(0.08*k,0.11*k,-0.03); gem.scale.y=1.4; loot.add(gem);
+    if(great){ const cup=Cy(0.04*k,0.03*k,0.1*k,8,gm,-0.16*k,0.01,0.02,loot); }
+    // the lid: hinged along the back edge — a rim, the rounded top, its iron bands, the hasp and the dark underside
+    const lid=group(0,H,-D/2,g);
+    B(W+0.012,0.05*k,D+0.012,wood,0,0,D/2,lid); B(W-2*T,0.012,D-2*T,dk(velvet,0.6),0,-0.008,D/2,lid);
+    const rr=D/2+0.006, bandM=flat(iron,{side:THREE.DoubleSide}); halfDrum(rr,W,wood2,lid,0.05*k,D/2,0.5);
+    [-0.24,0.24,-0.37,0.37].forEach(bx=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(rr+0.008,rr+0.008,(Math.abs(bx)>0.3?0.04:0.05)*k,14,1,true,0,Math.PI),bandM); m.rotation.z=Math.PI/2; m.position.set(bx*k,0.05*k,D/2); m.scale.set(1,1,0.5); lid.add(m); });
+    B(0.1*k,0.1*k,0.02,gold,0,-0.05*k,D+0.012,lid); B(0.05*k,0.02,0.03,gold,0,0.04*k,D+0.006,lid);
+    // the light and the motes, for the opening
+    const light=new THREE.PointLight(0xffc870,0,2.2*k,2); light.position.set(0,H*0.9,0); g.add(light);
+    const motes=[]; for(let i=0;i<14;i++){ const m=new THREE.Mesh(new THREE.OctahedronGeometry(0.018*k,0),glowM(i%3?0xffe08a:0xfff6d0)); m.visible=false; g.add(m); motes.push({m,a:i*2.4,r:0.05+((i*0.37)%1)*0.22,v:0.5+((i*0.61)%1)*0.7,d:0.2+((i*0.13)%1)*0.5}); }
+    if(great){ const gl=new THREE.PointLight(0xffd88a,0.45,3,2); gl.position.set(0,1.0,0.35); g.add(gl); }
+    shade(g); light.castShadow=false;
+    const st={lid,loot,light,motes,great,t0:-1,g};
+    lid.userData.chest=st;
+    // the opening runs off the clock, ticked as the lid is drawn (no frame hook needed; out of view it simply finishes)
+    const tick=()=>{ if(st.t0<0) return; const u=(performance.now()-st.t0)/1000;
+      if(u<0.12) lid.rotation.x=-0.07*Math.sin(u/0.12*Math.PI);   /* the latch gives: the lid jumps a little */
+      else { const e=Math.min(1,(u-0.12)/0.58); lid.rotation.x=OPEN*(1+2.2*Math.pow(e-1,3)+1.2*Math.pow(e-1,2)); }   /* then swings back, a small bounce on the hinge */
+      light.intensity=u<0.3?u/0.3*1.6:Math.max(0,1.6-(u-0.3)*0.7);
+      motes.forEach(q=>{ const w=u-q.d*0.4-0.15; q.m.visible=w>0&&w<1.6; if(!q.m.visible) return; q.m.position.set(Math.cos(q.a+w*1.5)*q.r*(1+w*0.5),H*0.6+w*q.v,Math.sin(q.a+w*1.5)*q.r*0.6*(1+w*0.5)); q.m.rotation.y=w*5; q.m.material.opacity=Math.max(0,1-w/1.6); });
+      if(u>3.0&&!window.__chestKeep){ const f=Math.max(0,1-(u-3.0)/0.6); loot.scale.setScalar(Math.max(0.001,f)); if(f<=0){ loot.visible=false; } }
+      if(u>3.7&&!window.__chestKeep){ st.t0=-1; lid.rotation.x=OPEN; light.intensity=0; motes.forEach(q=>q.m.visible=false); loot.visible=false; } };
+    lid.children.forEach(m=>{ if(m.isMesh) m.onBeforeRender=tick; }); g.children.forEach(m=>{ if(m.isMesh) m.onBeforeRender=tick; });
+    return lid; }
+  function open(h){ const st=h&&h.userData&&h.userData.chest; if(!st){ if(h) h.rotation.x=OPEN; return; }
+    st.loot.visible=true; st.loot.scale.setScalar(1); st.t0=performance.now();
+    try{ if(typeof SFX!=='undefined'&&SFX.play) SFX.play('chestOpen',st.great); }catch(e){} }
+  function set(h,on){ if(!h) return; const st=h.userData&&h.userData.chest; h.rotation.x=on?OPEN:0; if(!st) return; st.t0=-1; st.light.intensity=0; st.motes.forEach(q=>q.m.visible=false); st.loot.visible=!on; st.loot.scale.setScalar(1); }
+  return {make,open,set,OPEN};
 })();
 
 // ── engine/rooms.js ──
@@ -9087,7 +9173,7 @@ function chapelLevels(C,spec){
       else if(t===23&&ftype!=='library'){ const g=group(cx,0,cz,room); g.rotation.y=-Math.PI/2; B(0.7,0.42,0.6,0x6a2a3a,0,0,0,g); B(0.7,0.6,0.15,0x6a2a3a,0,0.4,-0.22,g); B(0.12,0.28,0.6,0x6a2a3a,-0.3,0.42,0,g); B(0.12,0.28,0.6,0x6a2a3a,0.3,0.42,0,g); }
       else if(t===41){ const g=group(cx,0,cz,room); Cy(0.3,0.38,0.9,8,0x8a8494,0,0,0,g); const tb=B(0.5,0.05,0.4,0xc8b890,0,0.92,0,g); tb.rotation.x=0.3; }
       else if(t===42){ B(0.7,0.02,0.4,0xc8a84a,cx,0,cz,room); }
-      else if(t===5){ const g=group(cx,0,cz,room); B(0.72,0.42,0.48,0x6a4424,0,0,0,g); const lid=group(0,0.42,-0.24,g); B(0.74,0.12,0.5,0x7a5030,0,0,0.25,lid); B(0.08,0.12,0.02,0xe8c766,0,0.2,0.25,g); shade(g); dyn.chests[x+','+y]=lid; }
+      else if(t===5){ dyn.chests[x+','+y]=CHEST3D.make(room,cx,cz); }   /* V165: the new chest */
       else if(t===45&&f.podium&&f.podium.x===x&&f.podium.y===y){ const kc=CHAPEL_CHEST(T); kc.g.position.set(cx,0.3,cz); room.add(kc.g); kc.g.visible=false; dyn.podium=kc.g; dyn.kc=kc; an.push((t2,dt)=>kc.tick(dt||0.016)); }
       else if(t===46){ B(1,0.15,0.4,0x7a7488,cx,0,y+0.8,room); }
       else if(t===58){ Cy(0.34,0.4,CW,10,T.stair,cx,0,cz,room); Cy(0.46,0.46,0.18,10,T.trim,cx,CW-0.18,cz,room); Cy(0.48,0.48,0.2,10,T.top,cx,0,cz,room); }
@@ -9141,7 +9227,7 @@ function chapelLevels(C,spec){
     const spot=(x,y,label,who,action,r)=>lv.spots.push({x:x+0.5,z:y+0.5,r:r||1.0,label,who,action,auto:label==='Leave'||label==='Down'?'any':undefined,ar:0.5});   // step onto the door or the stair down to take it
     function chairSpot(fi){ const g=F[fi].grid; for(let y=0;y<g.length;y++) for(let x=0;x<g[0].length;x++) if(g[y][x]===23) return {x:x+0.5,z:y+1.5,face:Math.PI,yaw:0}; return arrival(fi,false); }
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=G[y][x];
-      if(t===5) spot(x,y,'Open','Chest',()=>{ const k=i+':'+x+','+y; if(R.chests[k]){ UI.toast('📭 Empty — already looted.',900); return; } R.chests[k]=true; dyn.chests[x+','+y].rotation.x=-1.9;
+      if(t===5) spot(x,y,'Open','Chest',()=>{ const k=i+':'+x+','+y; if(R.chests[k]){ UI.toast('📭 Empty — already looted.',900); return; } R.chests[k]=true; CHEST3D.open(dyn.chests[x+','+y]);
         const c=f.chests.find(q=>q.x===x&&q.y===y); UI.toast('📦 '+give(c?c.items:[['gold',20+td.lvl*6]]),2600); });
       else if(t===16) spot(x,y,'Stone','The stone',()=>{ if(R.opened[i]) return; if(!R.hasKey){ ENGINE.speak('The stone',['It will not shift.','There is a keyway cut in its face, and nothing to put in it.']); return; }
         R.hasKey=false; openSeal(); ENGINE.speak('The stone',['The key turns and crumbles.','The stone grinds along its channel.']); },1.1);
@@ -9189,7 +9275,7 @@ function chapelLevels(C,spec){
       const sm=u=>{ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); }; }
     lv.onEnter=sp=>{ if(lv._restIn) setTimeout(lv._restIn,600); COMBAT.clear(lv); onStair=true; g=G.map(r=>r.slice());
       dyn.seals.forEach(s=>{ s.visible=!R.opened[i]; s.position.y=0; }); showCandles(); if(dyn.podium){ dyn.podium.visible=!!R.risen[i]; dyn.kc.set(R.chests['podium:'+i]?'open':'up'); }
-      Object.entries(dyn.chests).forEach(([k,l])=>l.rotation.x=R.chests[i+':'+k]?-1.9:0); if(dyn.general){ dyn.general.fall=R.bossDead?1:0; }
+      Object.entries(dyn.chests).forEach(([k,l])=>CHEST3D.set(l,!!R.chests[i+':'+k])); if(dyn.general){ dyn.general.fall=R.bossDead?1:0; }
       f.demons.forEach(d=>{ const post=d.x+','+d.y; if(d.boss?R.bossDead:R.cleared[i+':'+post]) return; const dirs=[[1,0],[-1,0],[0,1],[0,-1]][Math.random()*4|0];
         COMBAT.foe(lv,Object.assign({x:d.x+0.5,z:d.y+0.5,hx:d.x+0.5,hz:d.y+0.5,post,pdx:dirs[0],pdz:dirs[1],form:(d.x+d.y)%4},d,d.boss?{pat:C.boss,look:C.town===8?'paladin':'demon',tint:C.boss.color,bossForm:C.town,x:d.x+0.5,z:d.y+0.5}:{x:d.x+0.5,z:d.y+0.5})); });
       if(M.onEnter) M.onEnter();
@@ -10065,10 +10151,7 @@ const CATACOMB=(function(){
       if(CF.motif==='net'){ /* an anchor at the head: the fisherfolk's mark */ const an2=group(0,0.73,0.55,g); B(0.04,0.02,0.36,0x5a6a72,0,0,0,an2); B(0.26,0.02,0.04,0x5a6a72,0,0,-0.12,an2); B(0.3,0.02,0.04,0x5a6a72,0,0,0.16,an2); return g; }
       if(CF.motif==='hammer'){ /* a hammer over an anvil at the head: the smiths' mark */ const hm=group(0,0.72,0.6,g); B(0.24,0.06,0.1,0x5a5a62,0,0.02,0,hm); B(0.04,0.03,0.3,0x7a5a3a,0,0.05,-0.12,hm); B(0.12,0.05,0.12,0x5a5a62,0,0.02,0.16,hm); return g; }
       /* a lamb carved at the head: the shepherds' mark */ const lb=group(0,0.72,0.62,g); Sp(0.09,0xe8e0d0,0,0.06,0,lb); Sp(0.05,0xe8e0d0,0,0.1,0.1,lb); return g; };
-    const chestModel=(x,y,great)=>{ const g=group(x+0.5,0,y+0.5,room), k=great?1.3:1; g.rotation.y=wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2;
-      B(0.74*k,0.44*k,0.5*k,great?0x3a2a4a:0x5e3c20,0,0,0,g); [-0.26,0.26].forEach(o=>B(0.06,0.46*k,0.52*k,great?0xe8c040:0xc8a040,o*k,0,0,g));
-      const lid=group(0,0.44*k,-0.25*k,g); B(0.76*k,0.14*k,0.52*k,great?0x4a3a5a:0x6e4828,0,0,0.26*k,lid); [-0.26,0.26].forEach(o=>B(0.06,0.15*k,0.53*k,great?0xe8c040:0xc8a040,o*k,0,0.26*k,lid)); B(0.1,0.12,0.03,0xe8c766,0,0.3*k,0.26*k,g);
-      if(great){ const gl=new THREE.PointLight(0xffd88a,0.5,3,2); gl.position.set(0,1.0,0.3); g.add(gl); } shade(g); return lid; };
+    const chestModel=(x,y,great)=>CHEST3D.make(room,x+0.5,y+0.5,{great,face:wallC(x,y-1)?0:wallC(x,y+1)?Math.PI:wallC(x-1,y)?Math.PI/2:-Math.PI/2});   /* V165: the new chest */
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), cx=x+0.5, cz=y+0.5, k=x+','+y, n0=room.children.length, hy=hAt(x,y)||(at(x,y)==='V'?(RZ.find(r=>inR(r.r,x,y))||{h:0}).h:0); try{
       if(c==='T'){ const g=sarc(x,y); shade(g); const along=Math.abs(Math.sin(g.rotation.y))>0.5; RECT.push({x:cx,z:cz,hx:along?0.92:0.47,hz:along?0.47:0.92}); }   /* the whole tomb is solid, end to end */
       else if(c==='A'){ const g=group(cx,0,cz,room);   /* the general's own tomb: broad, raised on a step, his effigy on the lid with his crook */
@@ -10229,7 +10312,7 @@ const CATACOMB=(function(){
       else if(it.bosskey) ENGINE.speak('The great key',CF.greatKey);
       else UI.toast('📦 '+parts.join(' · '),2400); };
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y), k=x+','+y;
-      if(c==='C'||c==='Q'){ const gk=[[1,0],[-1,0],[0,1],[0,-1]].map(([a2,b2])=>doorKey(x+a2,y+b2)).find(q=>q); lv.spots.push({x:x+0.5,z:y+0.5,r:1.1,label:'Open',who:c==='Q'?'The great chest':'Chest',hide:gk?()=>!isOpen(gk):undefined,action:()=>{ const S0=s(); if(S0.chests[n+':'+k]){ UI.toast('📭 Empty.',900); return; } S0.chests[n+':'+k]=true; dyn.chests[k].rotation.x=-1.9; give(k,(D.chests||{})[k]||{gold:20}); }}); }   /* a chest behind bars can't be opened through them */
+      if(c==='C'||c==='Q'){ const gk=[[1,0],[-1,0],[0,1],[0,-1]].map(([a2,b2])=>doorKey(x+a2,y+b2)).find(q=>q); lv.spots.push({x:x+0.5,z:y+0.5,r:1.1,label:'Open',who:c==='Q'?'The great chest':'Chest',hide:gk?()=>!isOpen(gk):undefined,action:()=>{ const S0=s(); if(S0.chests[n+':'+k]){ UI.toast('📭 Empty.',900); return; } S0.chests[n+':'+k]=true; CHEST3D.open(dyn.chests[k]); give(k,(D.chests||{})[k]||{gold:20}); }}); }   /* a chest behind bars can't be opened through them */
       else if(false) spot(x+0.5,y+0.5,'Open',c==='Q'?'The great chest':'Chest',()=>{ const S0=s(); if(S0.chests[n+':'+k]){ UI.toast('📭 Empty.',900); return; } S0.chests[n+':'+k]=true; dyn.chests[k].rotation.x=-1.9; give(k,(D.chests||{})[k]||{gold:20}); },1.1);
       else if(c==='l') spot(x+0.5,y+0.5,'Light','A lamp',()=>{ const L=dyn.lamps.find(q=>q.k===k), g=Object.keys(D.gates).find(ch=>D.gates[ch].when==='lamps'); if(!L||!g||clean()||s().gates[n+':'+g]||L.lit) return; L.lit=performance.now()/1000; if(typeof SFX!=='undefined') SFX.play('cast');
         const left=dyn.lamps.filter(q=>!q.lit).length; if(left) UI.toast(`🕯 It catches. ${left} still dark — quickly, before it gutters.`,1600); },1.0);
@@ -10374,7 +10457,7 @@ const CATACOMB=(function(){
     an.push(()=>{ if(wardenSaid||!lv.combat) return; const w=lv.combat.foes.find(d=>d.warden&&d.alive); if(!w) return; const P=ENGINE.P; if(Math.hypot(w.x-P.x,w.z-P.z)<7){ wardenSaid=true; UI.toast(CF.warden.tip,4000); } });
     lv.onEnter=()=>{ COMBAT.clear(lv); const S0=s(); spar=null; falling=false; hooking=null;
       for(const k in dyn.doors){ const d=dyn.doors[k]; d.u=isOpen(k)?1:0; d.leaf.position.y=d.u*2.75; d.leaf.visible=d.u<0.99; }
-      for(const k in dyn.chests) dyn.chests[k].rotation.x=S0.chests[n+':'+k]?-1.9:0;
+      for(const k in dyn.chests) CHEST3D.set(dyn.chests[k],!!S0.chests[n+':'+k]);
       for(const k in dyn.levers) dyn.levers[k].arm.rotation.x=S0.levers[n+':'+k]||clean()?0.7:-0.7;
       dyn.blocks.forEach(b=>{ const sv=S0.blocks[n+':'+b.k]; b.mv=null; if(sv){ b.x=sv[0]; b.y=sv[1]; b.solved=true; } else { b.x=b.x0; b.y=b.y0; b.solved=false; } b.g.position.set(b.x+0.5,0,b.y+0.5); });   /* an ossuary shoved wrong goes back to its place when you come back */
       dyn.plates.forEach(p=>p.m.position.y=dyn.blocks.some(b=>b.solved&&b.x===p.x&&b.y===p.y)?-0.05:0);
@@ -10711,14 +10794,14 @@ function forestLevels(D,spec){
     lv.follow=p=>lamp.position.set(p.x,p.y+1.8,p.z);
     lv.zone=()=>o.zone||'';
     const spot=(x,y,label,who,action,r)=>{ const s={x:x+0.5,z:y+0.5,r:r||1.0,label,who,action,auto:label==='Leave'?'any':undefined,ar:0.5}; lv.spots.push(s); return s; };
-    const chests={}; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(g0[y][x]===5){ const c=group(x+0.5,0,y+0.5,room); B(0.72,0.42,0.48,0x6a4424,0,0,0,c); const lid=group(0,0.42,-0.24,c); B(0.74,0.12,0.5,0x7a5030,0,0,0.25,lid); B(0.08,0.12,0.02,0xe8c766,0,0.2,0.25,c); shade(c); chests[x+','+y]=lid;
-      spot(x,y,'Open','Chest',()=>{ const k=o.id+':'+x+','+y; if(run.chests[k]){ UI.toast('📭 Empty — already looted.',900); return; } run.chests[k]=true; lid.rotation.x=-1.9; UI.toast(give(D.chest),2400); }); }
+    const chests={}; for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(g0[y][x]===5){ const lid=CHEST3D.make(room,x+0.5,y+0.5); chests[x+','+y]=lid;   /* V165 */
+      spot(x,y,'Open','Chest',()=>{ const k=o.id+':'+x+','+y; if(run.chests[k]){ UI.toast('📭 Empty — already looted.',900); return; } run.chests[k]=true; CHEST3D.open(lid); UI.toast(give(D.chest),2400); }); }
     if(o.fight){ COMBAT.arena(lv,{mode:'dungeon',tier:1,townLvl:D.demonLvl,W,H,walk:(x,y)=>ok(x,y),los:(x,y)=>{ const t=at(x,y); return t!==1&&t!==78; },
       onKill:d=>{ run.cleared[o.id+':'+d.post]=true; }, onDeath:()=>o.onDeath(), onSwing:o.onSwing||null }); }
     lv.onEnter=sp=>{ g=g0.map(r=>r.slice()); if(lv.combat){ COMBAT.clear(lv);
         for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(g0[y][x]===6){ g[y][x]=0; const post=x+','+y; if(run.cleared[o.id+':'+post]) continue; const lvl=D.demonLvl, hp=Math.round((16+lvl*3)*1.4), d=[[1,0],[-1,0],[0,1],[0,-1]][Math.random()*4|0];
           COMBAT.foe(lv,{x:x+0.5,z:y+0.5,hx:x+0.5,hz:y+0.5,post,pdx:d[0],pdz:d[1],hp,level:lvl,xp:lvl*3,atk:5+Math.round(lvl*0.7),patrol:D.patrol,form:(x+y)%4}); } }
-      Object.entries(chests).forEach(([k,l])=>l.rotation.x=run.chests[o.id+':'+k]?-1.9:0); if(o.onEnter) o.onEnter(sp); };
+      Object.entries(chests).forEach(([k,l])=>CHEST3D.set(l,!!run.chests[o.id+':'+k])); if(o.onEnter) o.onEnter(sp); };
     for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(g0[y][x]===6) g0[y][x]=6;   // posts stay in the template; the live grid frees them
     return {lv,room,an,at,spot,W,H,ok,hemi,scene}; }
   const arrival=(grid,want)=>{ for(let y=0;y<grid.length;y++) for(let x=0;x<grid[0].length;x++) if(grid[y][x]===want){
@@ -13576,8 +13659,7 @@ function deepSystem(world,D,riding){
         const cups=[[-0.36,1.56],[0,1.64],[0.36,1.56]].map(([a,b])=>{ Cy(0.07,0.04,0.08,8,ART.goldL,a,b,0,g); const f=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.16,6),glow(0xffd27a)); f.position.set(a,b+0.16,0); g.add(f); return f; });
         shade(g); dyn.lamps[x+','+y]=cups; spot(cx,cz,'Light','A lampstand',()=>lamp(x,y),1.4); }
       else if(t===T.INNERDOOR){ const d=B(1,3.4,0.25,ART.gold2,cx,0,cz,Rg); d.userData.x=x; dyn.doors.push(d); spot(cx,cz+0.8,'Look','The inner doors',()=>{ if(!U().opened) ENGINE.speak('The inner doors',['The olive-wood doors are shut fast, gold over carved cherubim, palms, and open flowers. No handle, no lock. Only the house itself can open them.']); },1.2); }
-      else if(t===T.CHEST){ const id=Object.keys(R.chests).find(k=>R.chests[k][0]===x&&R.chests[k][1]===y); if(!id) continue; const g=group(cx,0,cz,Rg); B(0.7,0.42,0.48,0x6a4428,0,0,0,g); B(0.72,0.05,0.5,0xc8a448,0,0.2,0,g);
-        const lid=group(0,0.42,-0.24,g); B(0.72,0.16,0.5,0x7a5232,0,0,0.25,lid); B(0.1,0.12,0.04,0xe8c050,0,-0.05,0.5,lid); shade(g); dyn.chests[id]=lid; spot(cx,cz,'Open','A chest',()=>chest(id)); }
+      else if(t===T.CHEST){ const id=Object.keys(R.chests).find(k=>R.chests[k][0]===x&&R.chests[k][1]===y); if(!id) continue; const lid=CHEST3D.make(Rg,cx,cz); dyn.chests[id]=lid;   /* V165 */ spot(cx,cz,'Open','A chest',()=>chest(id)); }
       else if(t===T.TABLET){ const id=Object.keys(R.tablets).find(k=>R.tablets[k][0]===x&&R.tablets[k][1]===y); if(!id) continue; const g=group(cx,0,cz,Rg);
         B(0.7,1.1,0.18,id.startsWith('rec')?0x9a9a7a:0x8a8a80,0,0,0,g); B(0.56,0.86,0.02,id.startsWith('rec')?0xc8d8a0:0xb0aca0,0,0.12,0.1,g); B(0.8,0.14,0.3,ART.stoneD,0,0,0,g); shade(g); dyn.tablets[id]=g; spot(cx,cz,'Read','A tablet',()=>tablet(id)); } }
     inst(rocks,rockG,null,([x,z],m,c)=>{ m.makeRotationY(hsh(x,z)*6); m.scale(new THREE.Vector3(1.1,0.75,1.1)); m.setPosition(x,0.25,z); c.setHex(0x5a6470).offsetHSL(0,0,(hsh(z,x)-0.5)*0.1); },Rg);
@@ -13631,7 +13713,7 @@ function deepSystem(world,D,riding){
     const doorOpen=[0];
     function showLamps(){ const u=U(); for(const k in dyn.lamps){ const [x,y]=k.split(',').map(Number), lit=u.opened||u.lamps.some(id=>{ const p=D.prayer[id]; return p[0]===x&&p[1]===y; }); dyn.lamps[k].forEach(f=>f.visible=lit); }
       if(holy) holy.intensity=u.opened?0.55:0.1*u.lamps.length; hemi.intensity=temple?(u.opened?0.85:0.55):0.8; }
-    function showState(){ const u=U(); showLamps(); for(const id in dyn.chests) dyn.chests[id].rotation.x=u.chests[id]?-1.9:0; for(const id in dyn.tablets) dyn.tablets[id].visible=!(/^rec/.test(id)&&u.tablets[id]); }
+    function showState(){ const u=U(); showLamps(); for(const id in dyn.chests) CHEST3D.set(dyn.chests[id],!!u.chests[id]); for(const id in dyn.tablets) dyn.tablets[id].visible=!(/^rec/.test(id)&&u.tablets[id]); }
     an.push((t,dt)=>{ dt=dt||0.016; const u=U(); doorOpen[0]+=((u.opened?1:0)-doorOpen[0])*Math.min(1,dt*1.5); dyn.doors.forEach(d=>{ const s=d.userData.x===D.innerDoor[0][0]?-1:1; d.position.x=d.userData.x+0.5+s*doorOpen[0]*0.9; d.scale.x=1-doorOpen[0]*0.8; }); });
     lv.onEnter=()=>{ showState(); const u=U(); u.at={room:name,x:P.x,z:P.z}; };
     let saveT=0; an.push((t,dt)=>{ if(ENGINE.level!==lv) return; saveT+=dt||0.016; if(saveT>1){ saveT=0; U().at={room:name,x:P.x,z:P.z}; } thresholds(); });
@@ -13650,7 +13732,7 @@ function deepSystem(world,D,riding){
       const id=Object.keys(D.entry).find(k=>D.entry[k][0]+0.5===cx&&D.entry[k][1]+0.5===cz);
       spot(cx,cz,'Surface','A rising current',()=>surface(id||U().from||'A'),1.0); }
     function chest(k){ const u=U(); if(u.chests[k]){ UI.toast('The chest hangs open. Nothing more here.',1100); return; } if(k==='humble'&&!u.opened){ return; }
-      const L=D.loot[k]; if(!L) return; u.chests[k]=true; showState();
+      const L=D.loot[k]; if(!L) return; u.chests[k]=true; if(dyn.chests[k]) CHEST3D.open(dyn.chests[k]); else showState();
       if(L.decor){ const s=S(), h=s.homesteadDecor||(s.homesteadDecor={inv:{},placed:[]}); h.inv=h.inv||{}; h.inv[L.decor]=(h.inv[L.decor]||0)+1; const it=(PASTIME_DATA.trade.decor||{})[L.decor]||{emoji:'📦',name:L.decor};
         if(k==='humble') ENGINE.speak('A humble chest',['A small chest of plain wood, tied with cord. Nothing on it is gold.','Inside, wrapped in linen: a cross of rough timber.','“But God forbid that I should glory, save in the cross of our Lord Jesus Christ” — Galatians 6:14','✝️ The Wooden Cross is yours, to raise at your Homestead (☰ Home).']);
         else UI.toast(`📦 ${it.emoji} ${it.name}! A Homestead decoration — place it from your ☰ Home tab.`,3000); }
@@ -13991,8 +14073,8 @@ function rogues(world,R,DD){
       if(f.stage==='sit'){ f.stage='wait'; ENGINE.speak('Dylan',[strip(R.dylan[Math.min(r.d,R.dylan.length-1)])],f); return; }
       if((S().inventory.bread||0)<=0){ ENGINE.speak('Dylan',['Still no bread? The market’s back that way. I’ll be right here. Not going anywhere. Definitely.'],f); return; }
       ENGINE.speak('Dylan',['Oh, you beauty. Warm and everything. You really are a good man, knight.','…Sorry about this.'],f,()=>{ const s=S(); s.inventory.bread=Math.max(0,(s.inventory.bread||0)-1);
-        const took=Math.min(50,Math.max(0,s.gold|0)); GAME.addGold(-took); r.stolen=(r.stolen|0)+took; f.stage='flee'; f.t=0; f.mute=true;
-        UI.toast(took>0?`💰 Dylan snatched ${took} gold and bolted with your bread!`:'🍞 Dylan grabbed the bread, felt for your purse, found it empty, and bolted anyway.',2600); GAME.save(); }); };
+        const took=Math.min(50,Math.max(0,s.gold|0)); GAME.addGold(-took); r.stolen=(r.stolen|0)+took; f.stage='flee'; f.t=0; f.mute=true; ENGINE.knock&&ENGINE.knock(f.x,f.z);   /* V165: he shoves you over as he goes */
+        UI.toast(took>0?`💰 Dylan shoved you flat, snatched ${took} gold and bolted with your bread!`:'🍞 Dylan shoved you flat, grabbed the bread, felt for your purse, found it empty, and bolted anyway.',2600); GAME.save(); }); };
     rg.dylan=f; return true; }
   // ── Ethan: a demon in all but name, with the game's own stick ──
   function spawnEthan(){ const s=pick(9,13); if(!s) return false;
@@ -15758,9 +15840,8 @@ const ROADS=(function(){
       lv.spots.push({x:CAMP.x,z:CAMP.z+1.3,r:1.3,label:'Rest',who:'The camp — '+D.camp,action:()=>rest(lv,D)});
       if(typeof JOURNAL!=='undefined') JOURNAL.spot(lv,CAMP.x-1.6,CAMP.z+0.3,Math.PI/2,D.name,'by the fire at '+D.camp); }
     // the chest, a little off the road
-    { const g=group(CHEST.x,CHEST.y,CHEST.z,scene); B(0.8,0.5,0.55,0x7a5432,0,0,0,g); [-0.3,0.3].forEach(x=>B(0.06,0.52,0.57,0x3a3a40,x,0,0,g)); const lid=group(0,0.5,-0.27,g); B(0.82,0.16,0.57,0x8a6440,0,0,0.27,lid); B(0.1,0.12,0.04,0xe8c050,0,-0.05,0.56,lid);
-      lv.anim.push(()=>{ lid.rotation.x=RS(D.id).chest?-1.8:0; });
-      lv.spots.push({x:CHEST.x,z:CHEST.z+0.9,r:1.1,label:'Open',who:'An old chest',action:()=>{ const st=RS(D.id); if(st.chest){ ENGINE.speak('An old chest',['Empty — you took what was in it.']); return; } st.chest=true; const g2=Math.round((60+D.lvl*12)*(S().goldMult||1)); GAME.addGold(g2); const inv=S().inventory; inv.potion=(inv.potion||0)+2; GAME.changed(); GAME.save(); UI.toast(`📦 Chest: ${g2} gold · 2 🧪 potions`,2400); }}); }
+    { const lid=CHEST3D.make(scene,CHEST.x,CHEST.z); lid.parent.position.y=CHEST.y||0; CHEST3D.set(lid,!!RS(D.id).chest);   /* V165 */
+      lv.spots.push({x:CHEST.x,z:CHEST.z+0.9,r:1.1,label:'Open',who:'An old chest',action:()=>{ const st=RS(D.id); if(st.chest){ ENGINE.speak('An old chest',['Empty — you took what was in it.']); return; } st.chest=true; CHEST3D.open(lid); const g2=Math.round((60+D.lvl*12)*(S().goldMult||1)); GAME.addGold(g2); const inv=S().inventory; inv.potion=(inv.potion||0)+2; GAME.changed(); GAME.save(); UI.toast(`📦 Chest: ${g2} gold · 2 🧪 potions`,2400); }}); }
     // the land's own feature
     { const F=FEAT, g=group(F.x,F.y,F.z,scene);
       if(D.feature==='mill'){ B(3,2.6,3,0xe8dcc0,0,0,0,g); _stoneFooting(g,3,3,0,0.3); const r=prism(3.6,1.6,3.6,0x8e4a36); r.position.y=2.6; g.add(r); const wh=group(1.65,1.3,0,g); wh.rotation.y=Math.PI/2; const rim=new THREE.Mesh(new THREE.TorusGeometry(1.2,0.08,6,18),new THREE.MeshLambertMaterial({color:0x6a4a2a})); wh.add(rim);
@@ -15947,9 +16028,9 @@ const LANDMARKS=(function(){
       world.spots.push({x:T.x,z:T.z,r:1.4,label:'Look',who:T.name,action:()=>{ if(P.y<T.y0+H-1.2){ ENGINE.speak(T.name,['An old watchtower, its stair winding up round the outside. The top has half fallen away. You could climb it.']); return; }
         ENGINE.speak(T.name,[T.view,'“Watchman, what of the night? The watchman said, The morning cometh.” — Isaiah 21:11–12'],null,()=>{
           first('tower:'+T.id,()=>{ const x=GAME.gainXp(80); GAME.addGold(40); UI.toast(`🗼 You climbed ${T.name} — +80 XP · +40g${x&&x.up?' · LEVEL UP!':''}`,2800); jw(`I climbed ${T.name}, round and round its broken stair to the top. ${T.view}`,{place:T.name}); }); }); }});
-      if(T.chest){ const a=T.a0+2.2, cx=T.x+Math.cos(a)*0.6, cz=T.z+Math.sin(a)*0.6, c=group(cx,T.y0+H,cz,scene); B(0.7,0.45,0.48,0x7a5432,0,0,0,c); [-0.26,0.26].forEach(x=>B(0.06,0.47,0.5,0x3a3a40,x,0,0,c)); const lid=group(0,0.45,-0.24,c); B(0.72,0.14,0.5,0x8a6440,0,0,0.24,lid);
-        world.anim.push(()=>{ lid.rotation.x=st().saw['chest:'+T.id]?-1.8:0; });
-        world.spots.push({x:cx,z:cz+0.6,r:0.9,label:'Open',who:'An old chest',action:()=>{ if(P.y<T.y0+H-1.2) return; if(!first('chest:'+T.id)){ ENGINE.speak('An old chest',['Empty now.']); return; }
+      if(T.chest){ const a=T.a0+2.2, cx=T.x+Math.cos(a)*0.6, cz=T.z+Math.sin(a)*0.6, lid=CHEST3D.make(scene,cx,cz); lid.parent.position.y=T.y0+H;   /* V165 */
+        CHEST3D.set(lid,!!st().saw['chest:'+T.id]);
+        world.spots.push({x:cx,z:cz+0.6,r:0.9,label:'Open',who:'An old chest',action:()=>{ if(P.y<T.y0+H-1.2) return; if(!first('chest:'+T.id)){ ENGINE.speak('An old chest',['Empty now.']); return; } CHEST3D.open(lid);
           const s=S(); s.inventory.greaterPotion=(s.inventory.greaterPotion||0)+2; GAME.addGold(150); GAME.changed(); ENGINE.speak('An old chest',['Left by the last watchman, with a note: “For whoever climbs up after me. Keep watch.” Inside: 150 gold and two greater healing potions.']); }}); }
     });
     // ── the High Roads' set pieces and the other places to find ──
@@ -18217,6 +18298,20 @@ const SFX=(function(){
   const lv=()=>ENGINE.level, id=()=>(lv()&&lv().id)||'', S=()=>GAME.S||{};
   /* V146: the parry — steel turned on steel, ringing high and clean */
   X.parry=()=>{ if(!au.sfxOn||!AU.A()) return; [2637,3951,5274].forEach((f,i)=>AU.tone(null,{type:i?'sine':'triangle',f0:f,f1:f*0.98,dur:0.45-i*0.12,gain:[0.26,0.12,0.06][i],attack:0.001})); AU.noise(null,{dur:0.06,fc:4200,q:0.8,gain:0.18,decay:2.5}); AU.tone(null,{type:'square',f0:180,f1:60,dur:0.1,gain:0.1,filter:'lowpass',fc:900}); };
+  /* V165: a chest opening — the latch gives, the hinge creaks, the lid thumps back on its stop, and a bright chime of
+     treasure (a fuller one, and a shimmer, for a great chest) */
+  X.chestOpen=(great)=>{ if(!au.sfxOn||!AU.A()) return; const tn=o=>AU.tone(null,o), nz=o=>AU.noise(null,o);
+    nz({dur:0.05,fc:2400,q:2.2,gain:0.26,decay:3}); tn({type:'triangle',f0:980,f1:520,dur:0.05,gain:0.1});
+    tn({type:'sawtooth',f0:190,f1:310,dur:0.42,gain:0.05,filter:'bandpass',fc:820,fc1:1500,q:7,delay:0.1,attack:0.06});
+    tn({type:'sawtooth',f0:300,f1:200,dur:0.26,gain:0.035,filter:'bandpass',fc:1300,fc1:900,q:8,delay:0.4,attack:0.04});
+    nz({dur:0.14,fc:320,fc1:160,q:1.2,gain:0.22,decay:2.2,delay:0.66}); tn({type:'sine',f0:120,f1:60,dur:0.16,gain:0.14,delay:0.66});
+    const notes=great?[784,1047,1319,1568,2093,2637]:[1047,1319,1568,2093];
+    notes.forEach((f,i)=>{ tn({type:'triangle',f0:f,dur:0.75,gain:0.075,delay:0.42+i*0.075,attack:0.005}); tn({type:'sine',f0:f*2,dur:0.4,gain:0.025,delay:0.42+i*0.075}); });
+    if(great) for(let i=0;i<8;i++) tn({type:'sine',f0:2600+((i*977)%1400),dur:0.18,gain:0.03,delay:0.9+i*0.06}); };
+  /* V165: knocked down — a scuffle of feet, the clank of armour hitting the ground, a grunt */
+  X.knock=()=>{ if(!au.sfxOn||!AU.A()) return; const tn=o=>AU.tone(null,o), nz=o=>AU.noise(null,o);
+    nz({dur:0.12,fc:1800,fc1:700,q:0.8,gain:0.12,decay:2}); nz({dur:0.25,fc:900,fc1:260,q:0.7,gain:0.3,decay:2.4,delay:0.6}); tn({type:'sine',f0:140,f1:55,dur:0.22,gain:0.22,delay:0.6});
+    [1900,2500,3300].forEach((f,i)=>tn({type:'triangle',f0:f,f1:f*0.97,dur:0.35,gain:0.05,delay:0.62+i*0.03})); tn({type:'sawtooth',f0:180,f1:120,dur:0.18,gain:0.04,filter:'lowpass',fc:700,delay:0.58}); };
   function play(n,...a){ try{ const f=X[n]; if(f) f(...a); }catch(e){} }
   // ── where am I: the music for this place ──
   function bossNear(){ const L=lv(), c=L&&L.combat; if(!c||!c.foes) return false; const P=ENGINE.P;
