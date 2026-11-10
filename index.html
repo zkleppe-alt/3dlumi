@@ -9403,6 +9403,7 @@ const DGEN=(function(){
 //   1 scales — overlapping cells, a ridge   5 stone/obsidian — cracked plates, rough between
 //   2 bark — deep grain run lengthwise      6 bone/horn — growth rings, fine pits
 //   3 metal — hammered plate, scratches     7 smoke/spirit — soft roiling, a little lit
+//   8 fur — short and soft (V181)          9 feathers — rows of rounded tips (V181)
 //  The relief bends the light (a bump from the pattern's own slopes) and darkens the creases; metal and scale catch a
 //  hard highlight. HIDE.apply(material, scale) — scale: how many pattern-units per model-unit (bosses ~1, demons ~1.8).
 // ════════════════════════════════════════════════════════════════
@@ -9416,7 +9417,7 @@ float skF(vec3 p){ return skN(p)*0.5+skN(p*2.03)*0.25+skN(p*4.01)*0.125+skN(p*8.
 vec2 skV(vec3 p){ vec3 i=floor(p), f=fract(p); float d1=8.0, d2=8.0;
   for(int z=-1;z<=1;z++) for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){ vec3 g=vec3(float(x),float(y),float(z)); vec3 o=vec3(skH(i+g),skH(i+g+11.3),skH(i+g+27.1)); float d=length(g+o-f); if(d<d1){ d2=d1; d1=d; } else if(d<d2) d2=d; }
   return vec2(d1,d2); }
-uniform float uSkinScale;
+uniform float uSkinScale, uSkinAmt;
 float skinHeight(float k, vec3 p){ p*=uSkinScale;
   if(k<0.5){ float w=1.0-abs(skN(p*vec3(3.0,8.0,3.0))*2.0-1.0); return w*0.6+skF(p*7.0)*0.32+skN(p*22.0)*0.08; }
   if(k<1.5){ vec2 v=skV(p*vec3(7.0,9.0,7.0)); return smoothstep(0.0,0.2,v.y-v.x)*0.75+(1.0-v.x)*0.25; }
@@ -9425,20 +9426,22 @@ float skinHeight(float k, vec3 p){ p*=uSkinScale;
   if(k<4.5){ float fold=1.0-abs(skN(vec3(p.x*5.0,p.y*0.7,p.z*5.0))*2.0-1.0); float a=sin((p.x+p.z)*110.0)*sin(p.y*110.0); return fold*0.8+skF(p*3.0)*0.2+a*0.0; }
   if(k<5.5){ vec2 v=skV(p*3.4); return smoothstep(0.0,0.09,v.y-v.x)*0.65+skF(p*8.0)*0.35; }
   if(k<6.5){ return (sin(p.y*34.0+skN(p*3.0)*5.0)*0.5+0.5)*0.6+skN(p*18.0)*0.4; }
-  return skF(p*5.0); }
+  if(k<7.5) return skF(p*5.0);
+  if(k<8.5){ return skN(vec3(p.x*30.0,p.y*6.0,p.z*30.0))*0.55+skF(p*6.0)*0.45; }   /* 8 fur: short, soft, lying downward */
+  { vec3 q=p*vec3(9.0,11.0,9.0); q.x+=floor(q.y)*0.5; vec2 f=fract(q.xy)-vec2(0.5,0.0); float d=length(f*vec2(1.0,0.9)); return smoothstep(0.62,0.3,d)*0.7+skN(p*20.0)*0.3; } }   /* 9 feathers: rows of rounded tips, each overlapping the next */
 `;
-  function apply(m,scale){ if(!m||m.userData.skin) return m; m.userData.skin=true; const U={uSkinScale:{value:scale||1}};
+  function apply(m,scale,amt){ if(!m||m.userData.skin) return m; m.userData.skin=true; const U={uSkinScale:{value:scale||1},uSkinAmt:{value:amt==null?1:amt}};   /* amt: how deep the relief reads (1 a boss; ~0.4 a gentle creature) */
     m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,U);
       sh.vertexShader='attribute float skin;\nvarying float vSkin; varying vec3 vOP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvSkin=skin; vOP=position;');
       sh.fragmentShader=GLSL+sh.fragmentShader
         .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
           float skK=floor(vSkin+0.5), skh=skinHeight(skK,vOP);
-          float skAmt = skK<0.5?0.9: skK<1.5?1.1: skK<2.5?1.4: skK<3.5?0.35: skK<4.5?0.7: skK<5.5?1.2: skK<6.5?0.55: 0.0;
+          float skAmt = (skK<0.5?0.9: skK<1.5?1.1: skK<2.5?1.4: skK<3.5?0.35: skK<4.5?0.7: skK<5.5?1.2: skK<6.5?0.55: skK<7.5?0.0: skK<8.5?0.3: 0.3)*uSkinAmt;
           { vec3 sp=-vViewPosition, sx=dFdx(sp), sy=dFdy(sp), R1=cross(sy,normal), R2=cross(normal,sx); float det=dot(sx,R1); vec2 dh=clamp(vec2(dFdx(skh),dFdy(skh)),-0.25,0.25)*skAmt*0.22;
             normal=normalize(abs(det)*normal-sign(det)*(dh.x*R1+dh.y*R2)); }`)
         .replace('#include <color_fragment>',`#include <color_fragment>
-          { float k=floor(vSkin+0.5), h=skinHeight(k,vOP); float cav = k<2.5? mix(0.7,1.12,h) : k<3.5? mix(0.88,1.08,h) : k<4.5? mix(0.8,1.08,h) : k<5.5? mix(0.62,1.1,h) : k<6.5? mix(0.86,1.08,h) : (0.8+0.4*h);
-            diffuseColor.rgb*=cav; }`)
+          { float k=floor(vSkin+0.5), h=skinHeight(k,vOP); float cav = k<2.5? mix(0.7,1.12,h) : k<3.5? mix(0.88,1.08,h) : k<4.5? mix(0.8,1.08,h) : k<5.5? mix(0.62,1.1,h) : k<6.5? mix(0.86,1.08,h) : k<7.5? (0.8+0.4*h) : k<8.5? mix(0.9,1.05,h) : mix(0.9,1.04,h);
+            diffuseColor.rgb*=mix(1.0,cav,uSkinAmt); }`)
         .replace('#include <lights_phong_fragment>',`#include <lights_phong_fragment>
           { float k=floor(vSkin+0.5); if(k>2.5&&k<3.5){ material.specularStrength*=1.8; material.specularShininess=max(material.specularShininess,60.0); } else if(k>0.5&&k<1.5) material.specularStrength*=1.3; else if(k>3.5&&k<4.5) material.specularStrength*=0.25; else if(k<0.5||(k>1.5&&k<2.5)) material.specularStrength*=0.55; }`);
     };
@@ -9613,19 +9616,24 @@ const DEMONS=(function(){
 const BOSSART=(function(){
   const bin=(b64,T)=>{ const s=atob(b64), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return new T(u.buffer); };
   const GEO={};
-  function geo(key,name,D){ const id=key+':'+name; if(GEO[id]) return GEO[id]; const g=new THREE.BufferGeometry(), P=bin(D.p,Int16Array), Q=bin(D.q,Int8Array), C=bin(D.c,Uint8Array), I=D.i32?bin(D.i,Uint32Array):bin(D.i,Uint16Array);
+  function geo(key,name,D){ const id=(D.p.length)+key+':'+name; if(GEO[id]) return GEO[id]; const g=new THREE.BufferGeometry(), P=bin(D.p,Int16Array), Q=bin(D.q,Int8Array), C=bin(D.c,Uint8Array), I=D.i32?bin(D.i,Uint32Array):bin(D.i,Uint16Array);
     const pos=new Float32Array(P.length), nor=new Float32Array(Q.length), col=new Float32Array(C.length); const QS=D.s||16000; for(let i=0;i<P.length;i++) pos[i]=P[i]/QS; for(let i=0;i<Q.length;i++) nor[i]=Q[i]/127; for(let i=0;i<C.length;i++) col[i]=C[i]/255;
     g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setIndex(new THREE.BufferAttribute(I,1)); if(typeof HIDE!=='undefined') HIDE.attr(g,D.k); g.computeBoundingSphere(); return GEO[id]=g; }
   const _H={}; function haloTex(){ if(_H.t) return _H.t; const cv=document.createElement('canvas'); cv.width=cv.height=64; const x=cv.getContext('2d'), gr=x.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.35,'rgba(255,255,255,0.5)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,64,64); return _H.t=new THREE.CanvasTexture(cv); }
   const sprite=(col,op)=>new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex(),color:col,transparent:true,opacity:op==null?0.6:op,depthWrite:false,blending:THREE.AdditiveBlending}));
   const gm=c=>new THREE.MeshBasicMaterial({color:c});
-  function make(key,o){ o=o||{}; const R=typeof BOSS_DATA!=='undefined'&&BOSS_DATA&&BOSS_DATA[key]; if(!R) return null;
-    const g=new THREE.Group(), PLATE=/^(b5|b7|b8|b9|ab|pk)$/.test(key), bodyM=new THREE.MeshPhongMaterial({vertexColors:true,shininess:PLATE?30:12,specular:PLATE?0x3a3640:0x1a1416}), bones={}, M=R.meta, anim=[]; if(typeof HIDE!=='undefined') HIDE.apply(bodyM,1);
+  function make(key,o){ o=o||{}; const SRC=o.data||(typeof BOSS_DATA!=='undefined'?BOSS_DATA:null), R=SRC&&SRC[key]; if(!R) return null;   /* V181: o.data — another sculpt set (the companions: PET_DATA) */
+    const g=new THREE.Group(), PLATE=!o.data&&/^(b5|b7|b8|b9|ab|pk)$/.test(key), bodyM=new THREE.MeshPhongMaterial({vertexColors:true,shininess:PLATE?30:12,specular:PLATE?0x3a3640:0x1a1416}), bones={}, M=R.meta, anim=[]; if(typeof HIDE!=='undefined') HIDE.apply(bodyM,o.skinScale||1,o.skinAmt);
     Object.keys(R.parts).forEach(name=>{ const pv=R.piv[name]||[0,0,0], b=new THREE.Group(); b.position.set(pv[0],pv[1],pv[2]); const m=new THREE.Mesh(geo(key,name,R.parts[name]),bodyM); m.position.set(-pv[0],-pv[1],-pv[2]); m.castShadow=true; b.add(m); g.add(b); bones[name]=b; });
     // which bone a point of light rides on: the nearest part's pivot it falls under (head things on the head, hand things on the arm)
     const boneOf=p=>{ const hd=R.piv.hd; if(hd&&p[1]>hd[1]-0.08&&Math.abs(p[0])<0.36) return bones.hd; for(const n of ['aL','aR']){ const pv=R.piv[n]; if(pv&&Math.sign(p[0])===Math.sign(pv[0])&&Math.abs(p[0])>Math.abs(pv[0])*0.9) return bones[n]; } return bones.body; };
     const put=(obj,p)=>{ const b=boneOf(p), pv=b===bones.body?[0,0,0]:R.piv[Object.keys(bones).find(k=>bones[k]===b)]; obj.position.set(p[0]-pv[0],p[1]-pv[1],p[2]-pv[2]); b.add(obj); return obj; };
-    (M.eyes||[]).forEach(([x,y,z,r,c])=>{ const so=new THREE.Mesh(new THREE.SphereGeometry(r*1.8,10,8),gm(0x050204)); so.scale.set(1,0.75,0.4); put(so,[x,y,z-r*0.2]); const e=new THREE.Mesh(new THREE.SphereGeometry(r*0.65,8,6),gm(c||0xffd84a)); put(e,[x,y,z+r*0.2]); const h=sprite(c||0xffd84a,0.6); h.scale.setScalar(r*9); put(h,[x,y,z+r*0.4]); });
+    /* V181: a kind creature's eyes (meta.kind): large, dark and glossy, a light in each — no socket, no glow */
+    if(M.kind) (M.eyes||[]).forEach(([x,y,z,r,c])=>{ const sx=x<0?-1:1, o=[sx*0.62,0.08,0.78];   // a living eye: a coloured iris, a dark pupil, a light in it
+      const e=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),new THREE.MeshPhongMaterial({color:c||0x1a120c,shininess:120,specular:0x9a9a9a})); put(e,[x,y,z]);
+      const pu=new THREE.Mesh(new THREE.SphereGeometry(r*0.62,10,8),new THREE.MeshPhongMaterial({color:0x0a0606,shininess:140,specular:0xaaaaaa})); put(pu,[x+o[0]*r*0.5,y+o[1]*r*0.5,z+o[2]*r*0.5]);
+      const gl=new THREE.Mesh(new THREE.SphereGeometry(r*0.2,6,5),gm(0xffffff)); put(gl,[x+o[0]*r*0.95+sx*-r*0.2,y+r*0.42,z+o[2]*r*0.95]); });
+    else (M.eyes||[]).forEach(([x,y,z,r,c])=>{ const so=new THREE.Mesh(new THREE.SphereGeometry(r*1.8,10,8),gm(0x050204)); so.scale.set(1,0.75,0.4); put(so,[x,y,z-r*0.2]); const e=new THREE.Mesh(new THREE.SphereGeometry(r*0.65,8,6),gm(c||0xffd84a)); put(e,[x,y,z+r*0.2]); const h=sprite(c||0xffd84a,0.6); h.scale.setScalar(r*9); put(h,[x,y,z+r*0.4]); });
     (M.glows||[]).forEach(([x,y,z,r,c])=>{ const e=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),gm(c)); put(e,[x,y,z]); const h=sprite(c,0.55); h.scale.setScalar(Math.min(r*7,0.55));   /* a core glows; it isn't a sun */ put(h,[x,y,z]); anim.push(t=>{ h.material.opacity=0.42+0.18*Math.sin(t*3+x*9); }); });
     const V=new THREE.Vector3(), UP=new THREE.Vector3(0,1,0);
     (M.veins||[]).forEach(([a,b,r,c])=>{ V.set(b[0]-a[0],b[1]-a[1],b[2]-a[2]); const L=V.length(); const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r*0.7,L,5),gm(c)); m.quaternion.setFromUnitVectors(UP,V.normalize()); put(m,[(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]); });
