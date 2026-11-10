@@ -225,6 +225,7 @@ body.mlook #stick,body.mlook #swing,body.mlook #guardBtn,body.mlook #jumpBtn{vis
 <script src="models/body_man.js"></script>
 <script src="models/body_woman.js"></script>
 <script src="models/demon_models.js"></script>
+<script src="models/boss_models.js"></script>
 <script src="models/props.js"></script>
 <script src="models/kit_man.js"></script>
 <script src="models/kit_woman.js"></script>
@@ -7947,7 +7948,63 @@ const BOSS3D=(function(){
     g.userData.motes={geo,seed,h,rad}; }
   function tickMotes(g,dt){ const m=g.userData.motes; if(!m) return; const p=m.geo.attributes.position; m.seed.forEach((s,i)=>{ s[2]+=dt*s[3]; if(s[2]>m.h) s[2]=0; s[0]+=dt*0.4; p.setXYZ(i,Math.cos(s[0])*s[1],s[2],Math.sin(s[0])*s[1]); }); p.needsUpdate=true; }
 
-  function make(town,level){ town=((town|0)%10+10)%10; if(town===8) return wrap(paladin(level),true);
+  // ── V177: the sculpted guardians (BOSSART, tools/sculpt_bosses.py) — a whole hide on each, posed bone by bone by what the
+  //    fight is doing: f.pose ('wind' | 'strike' | 'recover' | 'stagger' | 'roar' | 'burrow' | 'cast'), f.poseK (0..1 through it),
+  //    f.shape ('arc' | 'thrust' | 'slam' | 'spin' | 'claw'), f.side (±1, which arm leads). Old states ('telegraph', 'charge',
+  //    'stunned', the air) pose too, so the guardians still on the old moves move as well as the new.
+  const TALL=[3.1,4.0,3.9,4.2,3.9,4.0,3.9,4.3,4.1,4.3], FLOATS=[0,2], LEAN=[0.18,0.12,0.12,0.1,0.1,0.1,0.12,0.09,0.1,0.1];
+  function sculpted(town){ if(typeof BOSSART==='undefined'||!BOSSART.has('b'+town)||(typeof LOOK2!=='undefined'&&!LOOK2)) return null;
+    const art=BOSSART.make('b'+town); if(!art) return null; const B=art.userData.bones, g=new THREE.Group(), body=B.body;
+    // what isn't a bone (wings, the halo) rides the body, so it leans and turns with it
+    art.children.slice().forEach(ch=>{ if(ch!==body) body.attach(ch); });   // the head and arms too: they lean and turn with the trunk
+    ['w1','w-1','v1','v-1'].forEach(k=>{ if(art[k]) g[k]=art[k]; });
+    const bb=new THREE.Box3(); art.updateMatrixWorld(true); art.traverse(m=>{ if(m.isMesh&&!m.material.transparent&&!m.material.isMeshBasicMaterial) bb.expandByObject(m); });
+    const h0=Math.max(0.5,bb.max.y-bb.min.y), s=TALL[town]/h0; art.scale.setScalar(s); g.add(art);
+    const mark=new THREE.Color(...(()=>{ const c=new THREE.Color([0x8a4ad8,0x9ae0c0,0x40e0d0,0x9ad040,0xff7a20,0x9ae0ff,0xff4a10,0xa8c0ff,0xa070ff,0xc040ff][town]); return [c.r,c.g,c.b]; })()).getHex();
+    g.userData.mark=mark; g.userData.mats=art.userData.mats; g.userData.bones=B; g.userData.sculpt=true; g.userData.tall=TALL[town];
+    const float=FLOATS.includes(town); g.userData.float=float; ring(g,mark,town===0?1.1:1.45); motes(g,mark,1.0,TALL[town]*0.7);
+    const base={}; Object.keys(B).forEach(n=>{ base[n]={p:B[n].position.clone(),r:B[n].rotation.clone()}; });
+    const cur={}; ['bx','by','bz','ty','hx','hy','lx','lz','rx','rz','sink','spin'].forEach(k=>cur[k]=0);
+    let t=Math.random()*10, spinA=0;
+    g.animate=(dt,mode)=>{ dt=Math.min(dt||0.016,0.05); t+=dt; const f=g.userData.foe||{}, st=f.state, pose=f.pose, k=f.poseK||0, sh=f.shape||'arc', sd=f.side||1, walk=mode==='walk';
+      const L=LEAN[town]; const T={bx:0,by:0,bz:0,ty:0,hx:Math.sin(t*0.9)*0.05,hy:Math.sin(t*0.55)*0.18,lx:Math.sin(t*1.3)*0.08,lz:0.12,rx:-Math.sin(t*1.3)*0.08,rz:-0.12,sink:0,spin:0};
+      let rate=7;
+      if(float) T.by=0.22+Math.sin(t*1.7)*0.12; else T.by=Math.sin(t*1.9)*0.012;
+      if(walk&&!pose){ const w=Math.sin(t*(town===0?11:6.5)); T.lx=w*0.55; T.rx=-w*0.55; T.by+=Math.abs(w)*0.05; T.bx=L*0.5; }
+      // the arm that leads a blow; the other follows
+      const lead=sd>0?['rx','rz']:['lx','lz'], off=sd>0?['lx','lz']:['rx','rz'], zs=sd>0?-1:1;
+      const P=pose||(st==='telegraph'?'wind':st==='charge'?'charge':st==='stunned'?'stagger':st==='slam'?'strike':(st==='rise'||st==='hover'||st==='aim'||st==='dive'||st==='jump')?'air':null);
+      if(P==='wind'){ rate=4+k*6;
+        if(sh==='slam'){ T.lx=T.rx=-2.7*k; T.lz=0.25; T.rz=-0.25; T.bx=-L*1.3*k; T.hx=-0.3*k; }
+        else if(sh==='thrust'){ T[lead[0]]=0.7*k; T[lead[1]]=zs*0.2; T.ty=sd*0.55*k; T.bx=-L*0.4*k; T[off[0]]=-0.6*k; }
+        else if(sh==='spin'){ T.lz=1.25*k; T.rz=-1.25*k; T.lx=T.rx=-0.4; T.ty=-1.0*k; T.bx=L*0.3; }
+        else if(sh==='claw'){ T.lx=T.rx=-2.2*k; T.lz=0.7*k; T.rz=-0.7*k; T.bx=-L*0.8*k; T.hx=-0.25*k; }
+        else { T[lead[0]]=-2.4*k; T[lead[1]]=zs*-0.7*k; T.ty=sd*0.6*k; T.bx=-L*0.6*k; T[off[0]]=0.3*k; }
+        T.bz=Math.sin(t*28)*0.012*k; }
+      else if(P==='strike'){ rate=22;
+        if(sh==='slam'){ T.lx=T.rx=-0.7; T.bx=L*2.2; T.by-=0.08; T.hx=0.25; }
+        else if(sh==='thrust'){ T[lead[0]]=-1.65; T[lead[1]]=0; T.ty=-sd*0.35; T.bx=L*1.6; }
+        else if(sh==='spin'){ T.lz=1.35; T.rz=-1.35; T.lx=T.rx=-0.3; T.spin=1; }
+        else if(sh==='claw'){ T.lx=T.rx=-0.8; T.lz=-0.3; T.rz=0.3; T.bx=L*1.8; }
+        else { T[lead[0]]=-1.0; T[lead[1]]=zs*-0.4+(-zs)*1.2*k; T.ty=-sd*0.8; T.bx=L*1.5; } }
+      else if(P==='recover'){ rate=6; T.bx=L*1.7; T.hx=0.35; T.lx=T.rx=0.25; T.lz=0.05; T.rz=-0.05; T.by+=Math.sin(t*5)*0.02-0.04; }
+      else if(P==='stagger'){ rate=8; T.bx=-L*1.2+Math.sin(t*6)*0.04; T.bz=Math.sin(t*3.2)*0.12; T.hx=0.4+Math.sin(t*4)*0.1; T.lx=0.3; T.rx=0.2; T.lz=0.35; T.rz=-0.35; T.by-=0.1; }
+      else if(P==='roar'){ rate=9; T.bx=-L*1.6; T.hx=-0.55; T.lx=T.rx=-0.9; T.lz=1.0; T.rz=-1.0; T.bz=Math.sin(t*40)*0.02; }
+      else if(P==='cast'){ rate=6; T.lx=T.rx=-1.9*(0.6+0.4*k); T.lz=0.5; T.rz=-0.5; T.hx=-0.3; T.bx=-L*0.5; }
+      else if(P==='burrow'){ rate=5; T.sink=k; T.lx=T.rx=-2.8; T.bx=L; }
+      else if(P==='charge'){ rate=8; T.bx=L*2.0; T.lx=T.rx=0.8; T.lz=0.4; T.rz=-0.4; T.hx=-0.2; }
+      else if(P==='air'){ T.bx=st==='dive'?L*2.4:-L*0.5; T.lx=T.rx=st==='dive'?-2.6:-0.6; T.lz=0.6; T.rz=-0.6; }
+      const e=Math.min(1,dt*rate); Object.keys(T).forEach(n=>{ cur[n]+=(T[n]-cur[n])*e; });
+      if(T.spin) spinA+=dt*16; else spinA*=Math.max(0,1-dt*10);
+      body.rotation.set(base.body.r.x+cur.bx,base.body.r.y+cur.ty+spinA,base.body.r.z+cur.bz); body.position.y=base.body.p.y+cur.by-cur.sink*TALL[town]/s*1.05;
+      if(B.hd){ B.hd.rotation.set(base.hd.r.x+cur.hx,base.hd.r.y+cur.hy,base.hd.r.z); }
+      if(B.aL){ B.aL.rotation.set(base.aL.r.x+cur.lx,base.aL.r.y,base.aL.r.z+cur.lz); }
+      if(B.aR){ B.aR.rotation.set(base.aR.r.x+cur.rx,base.aR.r.y,base.aR.r.z+cur.rz); }
+      art.visible=cur.sink<0.96;
+      if(g.userData.ring){ g.userData.ring.rotation.z=t*0.5; g.userData.ring.material.opacity=P==='wind'?0.5+0.4*k:P==='recover'||P==='stagger'?0.15:0.4+Math.sin(t*2)*0.08; }
+      tickMotes(g,dt); art.userData.tickArt(dt); };
+    return wrap(g,false); }
+  function make(town,level){ town=((town|0)%10+10)%10; const sc=sculpted(town); if(sc) return sc; if(town===8) return wrap(paladin(level),true);
     const k=kit(), col=M[town](k), g=k.finish(); g.userData.mark=col;
     const float=town<=2; g.userData.float=float; ring(g,col,1.3); motes(g,col,0.9,2.4);
     // the wings, where it has them, are the fight's to flap
@@ -7965,6 +8022,288 @@ const BOSS3D=(function(){
   // the model sits at ground level; scale it to the fight (the fight multiplies by the view's scale itself)
   function wrap(g,isKnight){ if(isKnight){ const a=g.animate; g.animate=(dt,mode)=>{ a(dt,mode); tickMotes(g,dt); if(g.userData.ring) g.userData.ring.rotation.z+=dt*0.5; }; } g.traverse(m=>{ if(m.isMesh) m.castShadow=m.castShadow||!m.material.transparent; }); return g; }
   return {make};
+})();
+
+// ── engine/bossfight.js ──
+// ════════════════════════════════════════════════════════════════
+//  BOSSFIGHT (V177) — the guardians fight like guardians. A remastered boss no longer stands and trades:
+//   · its guard is up — a blow on it while it stalks or winds up only chips (×0.3, "Armoured")
+//   · it strikes in COMBOS you read: each blow paints the floor where it will land (amber: guard or parry it;
+//     red: it cannot be blocked — get out), the paint fills as the blow comes, and it locks its aim a beat before
+//   · it OPENS: after a combo it must recover; a heavy blow that whiffs leaves it overreached; a parried blow, or a
+//     roll straight through one (a perfect dodge), staggers it — and then your blade bites in full, half again more
+//   · three PHASES (at two-thirds and a third): it roars (no blade touches it), a shockwave rolls out (jump it), and the
+//     arena turns — chains sweep the hall, the shadows multiply, the floor floods, the roots wake
+//   · each has its SIGNATURE: the Imp's swoop, the Wraith's chain and its step through the dark, the Specter's
+//     whirlpool and tidal wall, the Fiend's burrow and its lines of root
+//  BOSSFIGHT.has(form) · BOSSFIGHT.step(d,dx,dz,dist,T,K) → true when it ran the boss this tick (K: combat's hands)
+//  BOSSFIGHT.gate(d,dmg,K) → the blow after its armour · BOSSFIGHT.open(d) → is it open
+//  The guardians' own rules (guardians.js) still run over it: lamps, the Wraith's solidity, the stones, the roots.
+// ════════════════════════════════════════════════════════════════
+const BOSSFIGHT=(function(){
+  const now=()=>performance.now(), PI=Math.PI;
+  const AMBER=0xffa040, RED=0xff2a2a;
+  // ── the guardians' fights ──
+  //  a step: tel (ticks of wind-up), shape (arc | thrust | slam | spin | claw), reach, arc (half-angle) or w (width), dmg,
+  //  un (unblockable), lunge (tiles it travels into the blow), side (±1: the arm that leads), heavy (a whiff overreaches)
+  const S_=(o)=>Object.assign({tel:30,shape:'arc',reach:2.2,arc:1.0,w:1.0,dmg:1,un:false,lunge:0.5,side:1,gap:6},o);
+  const FIGHTS={
+    // 0 — the Shadow Imp: a quick, flying ape of shadow. Flurries, a tail that sweeps, a pounce, the swoop down a line.
+    0:{range:1.9,speed:0.062,idle:[34,22,16],recover:44,
+      moves:[
+        [{c:'combo',name:'Claw flurry',w:3,steps:[S_({tel:26,shape:'claw',reach:1.8,arc:0.95,lunge:0.6,side:1}),S_({tel:13,shape:'claw',reach:1.8,arc:0.95,lunge:0.5,side:-1}),S_({tel:13,shape:'claw',reach:1.9,arc:0.95,lunge:0.6,side:1,dmg:1.2})]},
+         {c:'combo',name:'Tail sweep',w:2,steps:[S_({tel:32,shape:'spin',reach:2.3,dmg:1.2,lunge:0.2,heavy:true})]},
+         {c:'combo',name:'Pounce',w:2,far:true,steps:[S_({tel:34,shape:'slam',reach:1.5,lunge:2.6,dmg:1.4,heavy:true})]},
+         {c:'sig',sig:'swoop',w:2,far:true},
+         {c:'old',w:1,far:true,mv:{kind:'volley',count:3,telegraph:30,speed:3.4}}],
+        [{c:'combo',name:'Claw flurry',w:3,steps:[S_({tel:24,shape:'claw',reach:1.9,arc:0.95,lunge:0.6}),S_({tel:12,shape:'claw',reach:1.9,arc:0.95,side:-1}),S_({tel:12,shape:'claw',reach:1.9,arc:0.95}),S_({tel:20,shape:'spin',reach:2.3,un:true,dmg:1.2,heavy:true})]},
+         {c:'combo',name:'Pounce',w:2,far:true,steps:[S_({tel:30,shape:'slam',reach:1.6,lunge:2.8,dmg:1.4,heavy:true}),S_({tel:16,shape:'claw',reach:1.9,arc:1.0,lunge:0.6})]},
+         {c:'sig',sig:'swoop',w:3,far:true},
+         {c:'old',w:1,far:true,mv:{kind:'spread',count:10,telegraph:30,speed:3.2}}],
+        [{c:'combo',name:'Frenzy',w:3,steps:[S_({tel:22,shape:'claw',reach:1.9,arc:0.95,lunge:0.7}),S_({tel:11,shape:'claw',reach:1.9,arc:0.95,side:-1}),S_({tel:11,shape:'claw',reach:1.9,arc:0.95}),S_({tel:11,shape:'claw',reach:1.9,arc:0.95,side:-1}),S_({tel:20,shape:'slam',reach:1.7,lunge:1.2,un:true,dmg:1.5,heavy:true})]},
+         {c:'sig',sig:'swoop',w:3,far:true,twice:true},
+         {c:'combo',name:'Tail sweep',w:2,steps:[S_({tel:26,shape:'spin',reach:2.5,dmg:1.2,un:true,heavy:true})]}]],
+      phases:['The shadows multiply!','It is frenzied — the dark is everywhere!']},
+    // 1 — the Iron Wraith: heavy flail arcs and an iron slam you cannot block; its chain reaches; it steps through the dark.
+    1:{range:2.2,speed:0.04,idle:[40,30,22],recover:52,
+      moves:[
+        [{c:'combo',name:'Flail arcs',w:3,steps:[S_({tel:32,reach:2.5,arc:1.15,lunge:0.6,side:1}),S_({tel:20,reach:2.5,arc:1.15,lunge:0.5,side:-1}),S_({tel:38,shape:'slam',reach:2.0,lunge:1.0,un:true,dmg:1.6,heavy:true})]},
+         {c:'combo',name:'Chain lash',w:2,steps:[S_({tel:34,shape:'thrust',reach:4.4,w:1.0,lunge:0.3,dmg:1.1}),S_({tel:22,shape:'thrust',reach:4.4,w:1.0,lunge:0.3,dmg:1.1,side:-1})]},
+         {c:'sig',sig:'chainpull',w:2,far:true},
+         {c:'old',w:1,far:true,mv:{kind:'charge',telegraph:40,speed:7}}],
+        [{c:'combo',name:'Flail arcs',w:3,steps:[S_({tel:30,reach:2.6,arc:1.2,lunge:0.6}),S_({tel:18,reach:2.6,arc:1.2,lunge:0.5,side:-1}),S_({tel:18,reach:2.6,arc:1.2,lunge:0.5}),S_({tel:34,shape:'slam',reach:2.1,lunge:1.0,un:true,dmg:1.6,heavy:true})]},
+         {c:'sig',sig:'phasestep',w:2},
+         {c:'sig',sig:'chainpull',w:2,far:true},
+         {c:'old',w:1,mv:{kind:'slam',telegraph:40,ringSpeed:4.4,ringMax:130}}],
+        [{c:'combo',name:'Iron storm',w:3,steps:[S_({tel:28,reach:2.6,arc:1.2,lunge:0.6}),S_({tel:16,reach:2.6,arc:1.2,side:-1}),S_({tel:30,shape:'slam',reach:2.1,lunge:1.0,un:true,dmg:1.6,heavy:true}),S_({tel:22,shape:'spin',reach:2.6,un:true,dmg:1.3,heavy:true})]},
+         {c:'sig',sig:'phasestep',w:3,twice:true},
+         {c:'sig',sig:'chainpull',w:2,far:true}]],
+      phases:['The chains rise!','The iron howls — the chains fly faster!']},
+    // 2 — the Tide Specter: trident thrusts, a tentacle storm all round it, the whirlpool that drags, the tidal wall.
+    2:{range:2.6,speed:0.045,idle:[38,28,22],recover:46,
+      moves:[
+        [{c:'combo',name:'Trident',w:3,steps:[S_({tel:30,shape:'thrust',reach:3.2,w:0.9,lunge:0.5}),S_({tel:18,shape:'thrust',reach:3.2,w:0.9,lunge:0.5,side:-1}),S_({tel:34,shape:'spin',reach:2.5,un:true,dmg:1.4,heavy:true})]},
+         {c:'combo',name:'Undertow slash',w:2,steps:[S_({tel:30,reach:2.7,arc:1.5,lunge:0.4}),S_({tel:22,reach:2.7,arc:1.5,lunge:0.4,side:-1})]},
+         {c:'sig',sig:'whirlpool',w:2},
+         {c:'old',w:1,far:true,mv:{kind:'wave',telegraph:46,ringSpeed:3.2,ringMax:260}}],
+        [{c:'combo',name:'Trident',w:3,steps:[S_({tel:28,shape:'thrust',reach:3.4,w:0.9,lunge:0.6}),S_({tel:16,shape:'thrust',reach:3.4,w:0.9,lunge:0.6,side:-1}),S_({tel:16,shape:'thrust',reach:3.4,w:0.9,lunge:0.6}),S_({tel:30,shape:'spin',reach:2.6,un:true,dmg:1.4,heavy:true})]},
+         {c:'sig',sig:'tidalwave',w:2,far:true},
+         {c:'sig',sig:'whirlpool',w:2},
+         {c:'old',w:1,far:true,mv:{kind:'spread',count:10,telegraph:34,speed:3.0}}],
+        [{c:'combo',name:'Maelstrom',w:3,steps:[S_({tel:26,shape:'thrust',reach:3.4,w:1.0,lunge:0.6}),S_({tel:15,reach:2.8,arc:1.5,side:-1}),S_({tel:15,shape:'thrust',reach:3.4,w:1.0,lunge:0.6}),S_({tel:28,shape:'spin',reach:2.8,un:true,dmg:1.5,heavy:true})]},
+         {c:'sig',sig:'tidalwave',w:3,far:true,twice:true},
+         {c:'sig',sig:'whirlpool',w:2}]],
+      phases:['The sea comes in — waves from the deep!','The flood rises — the tide comes from both sides!']},
+    // 3 — the Root Fiend: fist swipes, a double-fisted pound, the burrow that hunts you, lines of root from the floor.
+    3:{range:2.2,speed:0.036,idle:[42,32,24],recover:56,
+      moves:[
+        [{c:'combo',name:'Fists',w:3,steps:[S_({tel:30,reach:2.5,arc:1.1,lunge:0.6}),S_({tel:20,reach:2.5,arc:1.1,lunge:0.5,side:-1}),S_({tel:40,shape:'slam',reach:2.3,lunge:1.0,un:true,dmg:1.7,heavy:true})]},
+         {c:'sig',sig:'burrow',w:2},
+         {c:'sig',sig:'spikes',w:1,far:true},
+         {c:'old',w:1,far:true,mv:{kind:'charge',telegraph:38,speed:7.5}}],
+        [{c:'combo',name:'Fists',w:3,steps:[S_({tel:28,reach:2.6,arc:1.15,lunge:0.6}),S_({tel:18,reach:2.6,arc:1.15,lunge:0.5,side:-1}),S_({tel:18,shape:'thrust',reach:3.0,w:1.2,lunge:0.6}),S_({tel:36,shape:'slam',reach:2.4,lunge:1.0,un:true,dmg:1.7,heavy:true})]},
+         {c:'sig',sig:'burrow',w:3},
+         {c:'sig',sig:'spikes',w:2,far:true},
+         {c:'old',w:1,mv:{kind:'summon',telegraph:36}}],
+        [{c:'combo',name:'Uproot',w:3,steps:[S_({tel:26,reach:2.6,arc:1.2,lunge:0.6}),S_({tel:16,reach:2.6,arc:1.2,side:-1}),S_({tel:32,shape:'slam',reach:2.5,lunge:1.0,un:true,dmg:1.7,heavy:true}),S_({tel:26,shape:'slam',reach:2.5,lunge:1.0,un:true,dmg:1.5,heavy:true})]},
+         {c:'sig',sig:'burrow',w:3,twice:true},
+         {c:'sig',sig:'spikes',w:2,far:true}]],
+      phases:['The roots wake!','The whole floor is roots — it will not stay down!']}};
+  const has=f=>FIGHTS[f]!=null;
+  const TELK=[1,0.92,0.84];
+
+  // ── paint on the floor: where a blow will land ──
+  const fxList=[];
+  function paint(K,shape,o){ const c=K.A(); if(!c) return null; const g=new THREE.Group(), col=o.un?RED:AMBER;
+    const mat=(op)=>new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
+    let geo; if(shape==='thrust'||shape==='line'){ geo=new THREE.PlaneGeometry(o.w,o.reach); geo.translate(0,o.reach/2,0); }
+    else if(shape==='slam'||shape==='spin'||shape==='circle') geo=new THREE.CircleGeometry(o.reach,40);
+    else geo=new THREE.CircleGeometry(o.reach,28,PI/2-o.arc,o.arc*2);
+    const out=new THREE.Mesh(geo,mat(0.22)), fill=new THREE.Mesh(geo,mat(0.3)); [out,fill].forEach(m=>{ m.rotation.x=-PI/2; g.add(m); }); fill.position.y=0.005;
+    let edge=null; if(shape==='slam'||shape==='spin'||shape==='circle'){ edge=new THREE.Mesh(new THREE.RingGeometry(o.reach*0.94,o.reach,40),mat(0.7)); edge.rotation.x=-PI/2; edge.position.y=0.01; g.add(edge); }
+    c.fx.add(g); const P={g,out,fill,edge,shape,k:0,life:-1,mats:[out.material,fill.material].concat(edge?[edge.material]:[])}; fxList.push(P); return P; }
+  function place(P,x,z,face){ if(!P) return; const lv=ENGINE.level; P.g.position.set(x,lv.ground(x,z)+0.06,z); P.g.rotation.y=face+PI; }
+  function fill(P,k){ if(!P) return; P.k=k; if(P.shape==='thrust'||P.shape==='line') P.fill.scale.set(1,Math.max(0.02,k),1); else P.fill.scale.set(Math.max(0.02,k),Math.max(0.02,k),1); P.fill.material.opacity=0.22+0.4*k; }
+  function fire(P){ if(!P) return; fill(P,1); P.life=14; P.mats.forEach(m=>m.opacity=0.85); }
+  function drop(P){ if(!P) return; P.life=Math.min(P.life<0?8:P.life,8); }
+  function tickFx(){ for(let i=fxList.length-1;i>=0;i--){ const P=fxList[i]; if(P.life<0) continue; P.life--; P.mats.forEach(m=>m.opacity*=0.82); if(P.life<=0){ if(P.g.parent) P.g.parent.remove(P.g); fxList.splice(i,1); } } }
+
+  // ── geometry of a blow ──
+  const angD=(a,b)=>{ let r=a-b; return Math.abs(Math.atan2(Math.sin(r),Math.cos(r))); };
+  function inside(px,pz,ox,oz,face,st,pad){ const dx=px-ox, dz=pz-oz, r=Math.hypot(dx,dz); pad=pad||0.35;
+    if(st.shape==='slam'||st.shape==='spin'||st.shape==='circle') return r<st.reach+pad;
+    if(st.shape==='thrust'||st.shape==='line'){ const fx=Math.sin(face), fz=Math.cos(face), al=dx*fx+dz*fz, pe=Math.abs(-dx*fz+dz*fx); return al>-pad&&al<st.reach+pad&&pe<st.w/2+pad; }
+    return r<st.reach+pad&&(r<0.6||angD(Math.atan2(dx,dz),face)<st.arc+0.12); }
+  const segD=(px,pz,ax,az,bx,bz)=>{ const vx=bx-ax, vz=bz-az, L=vx*vx+vz*vz||1; let t=((px-ax)*vx+(pz-az)*vz)/L; t=Math.max(0,Math.min(1,t)); return Math.hypot(px-ax-vx*t,pz-az-vz*t); };
+
+  // ── the blow arriving: dodged through (it reels), parried (it reels), guarded, guard broken, or taken ──
+  function land(d,st,K,X,dmgBase){ const pl=K.pl, p=K.P();
+    if(pl.dashing>0){ if(!d.bf.perfect){ d.bf.perfect=true; K.pop(p.x,ENGINE.level.ground(p.x,p.z)+2.1,p.z,'Perfect dodge!','#8affd8'); if(!d.bf.tipDodge){ d.bf.tipDodge=true; UI.toast('💨 Rolled right through it — it’s off balance. Strike now!',2000); } } return 'dodge'; }
+    if(pl.iframes>0) return 'safe';
+    if(!st.un&&K.parryNow()){ K.parry(d); return 'parry'; }
+    const dmg=dmgBase*(st.dmg||1);
+    if(st.un&&pl.blocking){ pl.guardBreak=56; pl.blocking=false; K.pop(p.x,ENGINE.level.ground(p.x,p.z)+2.0,p.z,'Guard broken!','#ff7a5a'); K.shake(0.35); if(!d.bf.tipRed){ d.bf.tipRed=true; UI.toast('🟥 Red ground cannot be guarded — roll out of it, or through it.',2200); } K.hurt(dmg*0.85); return 'hit'; }
+    K.hurt(dmg); return pl.blocking?'block':'hit'; }
+
+  // ── the arena's turns, per phase ──
+  function hazards(d,K,X){ const H=d.bf.hz||(d.bf.hz={}), F=d.bfForm, ph=d.bf.ph, c=K.A(), cfg=c.cfg, W=cfg.W||20, Hh=cfg.H||20, p=K.P(), pl=K.pl, lv=ENGINE.level, lvl=d.level||5;
+    // the Wraith: chains sweep the hall from its middle — jump them, or roll through
+    if(F===1&&ph>=1){ if(!H.beams){ H.beams=[]; const n=ph>=2?2:1; for(let i=0;i<2;i++){ const g=new THREE.Group(), L=Math.max(W,Hh)*0.75; const ch=new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,L,6),new THREE.MeshPhongMaterial({color:0x6a7078,emissive:0x1a3a30,shininess:60})); ch.rotation.z=PI/2; ch.position.x=L/2; g.add(ch);
+          const gl=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.16,L,6),new THREE.MeshBasicMaterial({color:0x9ae0c0,transparent:true,opacity:0.22,depthWrite:false,blending:THREE.AdditiveBlending})); gl.rotation.z=PI/2; gl.position.x=L/2; g.add(gl);
+          g.position.set(W/2,lv.ground(W/2,Hh/2)+0.32,Hh/2); g.visible=i<n; c.fx.add(g); H.beams.push({g,a:i*PI,L}); } }
+      const n=ph>=2?2:1, sp=(ph>=2?0.0105:0.0078)*(d.bf.dir||1); H.beams.forEach((b,i)=>{ b.g.visible=i<n; if(i>=n) return; b.a+=sp; b.g.rotation.y=-b.a;
+        const ax=W/2, az=Hh/2, bx=ax+Math.cos(b.a)*b.L, bz=az+Math.sin(b.a)*b.L; if(K.airH()<0.22&&pl.iframes<=0&&segD(p.x,p.z,ax,az,bx,bz)<0.42){ K.hurt(5+lvl*0.45); K.pop(p.x,lv.ground(p.x,p.z)+2,p.z,'Jump the chains!','#9ae0c0'); } }); }
+    // the Specter: walls of water across the hall (dash through, or stand on a stone)
+    if(F===2&&ph>=1){ H.waveT=(H.waveT==null?200:H.waveT)-1; if(H.waveT<=0&&d.bf.mode!=='roar'){ H.waveT=ph>=2?300:420; wall(d,K,X,ph>=2); } }
+    // the Fiend: lines of root burst up toward you
+    if(F===3&&ph>=1){ H.rootT=(H.rootT==null?160:H.rootT)-1; if(H.rootT<=0&&d.bf.mode!=='roar'){ H.rootT=ph>=2?190:290; const a=Math.random()*PI*2, sx=Math.max(1.5,Math.min(W-1.5,p.x+Math.cos(a)*6)), sz=Math.max(1.5,Math.min(Hh-1.5,p.z+Math.sin(a)*6)); spikeLine(d,K,sx,sz,Math.atan2(p.x-sx,p.z-sz),9,36); } }
+    // walls of water in flight
+    if(H.walls) H.walls=H.walls.filter(w=>{ w.t++; const k=w.t/w.T; w.pos=w.from+(w.to-w.from)*k; if(w.axis==='z') w.m.position.z=w.pos; else w.m.position.x=w.pos; w.m.material.opacity=0.5*Math.min(1,Math.min(k*6,(1-k)*6));
+      const pp=w.axis==='z'?p.z:p.x; if(!w.hit&&Math.abs(pp-w.pos)<0.55&&pl.iframes<=0&&!(cfg.ringSafe&&cfg.ringSafe())){ w.hit=true; K.hurt(6+lvl*0.6); K.knock(w.axis==='z'?0:Math.sign(w.to-w.from)*0.9,w.axis==='z'?Math.sign(w.to-w.from)*0.9:0); }
+      if(k>=1){ c.fx.remove(w.m); return false; } return true; });
+    // lines of root, rising and sinking
+    if(H.lines) H.lines=H.lines.filter(L=>{ L.t++; const k=Math.min(1,L.t/L.tel); if(L.t<=L.tel){ fill(L.P,k); return true; }
+      if(L.t===L.tel+1){ fire(L.P); L.g.visible=true; K.dust(L.x+Math.sin(L.face)*L.len*0.5,L.z+Math.cos(L.face)*L.len*0.5); if(inside(p.x,p.z,L.x,L.z,L.face,{shape:'line',reach:L.len,w:1.0},0.3)&&pl.iframes<=0) { K.hurt(6+lvl*0.6); K.pop(p.x,lv.ground(p.x,p.z)+2,p.z,'Roots!','#a0e050'); } }
+      const u=L.t-L.tel; L.g.scale.y=u<6?u/6:u>40?Math.max(0.01,1-(u-40)/12):1; if(u>52){ c.fx.remove(L.g); return false; } return true; }); }
+  function wall(d,K,X,both){ const c=K.A(), cfg=c.cfg, W=cfg.W||20, H=cfg.H||20, p=K.P(), lv=ENGINE.level, Hz=d.bf.hz;
+    const axis=Math.random()<0.5?'x':'z', mk=(from,to)=>{ const len=axis==='z'?W:H, m=new THREE.Mesh(new THREE.BoxGeometry(axis==='z'?len:0.7,1.6,axis==='z'?0.7:len),new THREE.MeshPhongMaterial({color:0x40c8d8,emissive:0x0a3a40,transparent:true,opacity:0.0,shininess:90,depthWrite:false}));
+      m.position.set(axis==='z'?W/2:from,lv.ground(W/2,H/2)+0.8,axis==='z'?from:H/2); c.fx.add(m); (Hz.walls=Hz.walls||[]).push({m,axis,from,to,t:0,T:150,pos:from,hit:false}); };
+    const M=axis==='z'?H:W; mk(0.8,M-0.8); if(both) mk(M-0.8,0.8); UI.toast(both?'🌊 The sea comes from both sides — roll through, or stand on a stone!':'🌊 A wall of water — roll through it, or stand on a stone!',1700); SFX.play('bossTelegraph'); }
+  function spikeLine(d,K,x,z,face,len,tel){ const c=K.A(), lv=ENGINE.level, Hz=d.bf.hz||(d.bf.hz={}), P=paint(K,'line',{w:1.0,reach:len,un:true}); place(P,x,z,face);
+    const g=new THREE.Group(), m=new THREE.MeshPhongMaterial({color:0x4a5a2a,emissive:0x1a2a08,flatShading:true}); for(let i=0;i<Math.round(len*1.6);i++){ const u=(i+0.5)/(len*1.6)*len, s=0.7+((i*37)%5)*0.12, cn=new THREE.Mesh(new THREE.ConeGeometry(0.16*s,0.9*s,5),m); cn.position.set(Math.sin(face)*u+(((i*13)%7)-3)*0.04,0.45*s,Math.cos(face)*u+(((i*7)%5)-2)*0.05); cn.rotation.z=(((i*11)%5)-2)*0.12; g.add(cn); }
+    g.position.set(x,lv.ground(x,z),z); g.visible=false; c.fx.add(g); (Hz.lines=Hz.lines||[]).push({x,z,face,len,tel,t:0,P,g}); }
+
+  // ── the signatures ──
+  const SIG={
+    // the Imp rises, picks a line through you, and rakes down it
+    swoop:{start(d,K,X){ const s=d.bf.s={t:0,n:X.mv.twice&&d.bf.ph>=2?2:1}; this.aim(d,K,X); },
+      aim(d,K,X){ const s=d.bf.s, p=K.P(); s.ph='rise'; s.t=0; s.face=Math.atan2(p.x-d.x,p.z-d.z); const c=K.A().cfg, len=Math.min(11,Math.hypot(p.x-d.x,p.z-d.z)+4.5); s.len=len; s.P=paint(K,'thrust',{w:1.5,reach:len}); d.pose='wind'; d.shape='claw'; SFX.play('bossTelegraph'); },
+      tick(d,K,X){ const s=d.bf.s, p=K.P(), tel=Math.round(44*TELK[d.bf.ph]); s.t++;
+        if(s.ph==='rise'){ d.alt+=((1.3)-d.alt)*0.1; const k=s.t/tel; d.poseK=k; if(k<0.72){ s.face=Math.atan2(p.x-d.x,p.z-d.z); s.len=Math.min(11,Math.hypot(p.x-d.x,p.z-d.z)+4.5); s.P.g.scale.set(1,1,s.len/s.P.out.geometry.parameters.height); }
+          place(s.P,d.x,d.z,s.face); fill(s.P,k); d.face=s.face; if(s.t>=tel){ s.ph='dash'; s.t=0; fire(s.P); s.x0=d.x; s.z0=d.z; s.hit=false; d.pose='strike'; SFX.play('bossStrike'); } return false; }
+        if(s.ph==='dash'){ const N=16, k=s.t/N, c=K.A().cfg, W=c.W||20, H=c.H||20; let nx=s.x0+Math.sin(s.face)*s.len*k, nz=s.z0+Math.cos(s.face)*s.len*k; nx=Math.max(1.3,Math.min(W-1.3,nx)); nz=Math.max(1.3,Math.min(H-1.3,nz)); d.x=nx; d.z=nz; d.alt=1.3*(1-k)+0.3;
+          if(!s.hit&&Math.hypot(p.x-d.x,p.z-d.z)<1.05){ s.hit=true; const r=land(d,{dmg:1.4},K,X,X.dmg); if(r==='parry') return true; if(r==='dodge') d.bf.perfect=true; }
+          if(s.t>=N){ K.dust(d.x,d.z); d.alt=0.3; if(--s.n>0&&!d.bf.perfect){ this.aim(d,K,X); return false; } d.bf.whiff=!s.hit; return true; } return false; } return true; }},
+    // the Wraith throws its chain down a line; caught, you are hauled in to a slam you cannot guard
+    chainpull:{start(d,K,X){ const p=K.P(), s=d.bf.s={t:0,ph:'wind',face:Math.atan2(p.x-d.x,p.z-d.z)}; s.st={shape:'thrust',reach:7.5,w:1.0}; s.P=paint(K,'thrust',{w:1.0,reach:7.5}); d.pose='cast'; SFX.play('bossTelegraph'); },
+      tick(d,K,X){ const s=d.bf.s, p=K.P(), pl=K.pl, tel=Math.round(40*TELK[d.bf.ph]); s.t++;
+        if(s.ph==='wind'){ const k=s.t/tel; d.poseK=k; if(k<0.7) s.face=Math.atan2(p.x-d.x,p.z-d.z); d.face=s.face; place(s.P,d.x,d.z,s.face); fill(s.P,k);
+          if(s.t>=tel){ fire(s.P); d.pose='strike'; d.shape='thrust'; SFX.play('bossStrike'); const inn=inside(p.x,p.z,d.x,d.z,s.face,s.st,0.3);
+            if(inn){ const r=land(d,{dmg:0.5},K,X,X.dmg); if(r==='parry') return true; if(r==='hit'||r==='block'){ s.ph='pull'; s.t=0; K.pop(p.x,ENGINE.level.ground(p.x,p.z)+2.1,p.z,'Caught!','#9ae0c0'); return false; } }
+            K.pop(d.x,ENGINE.level.ground(d.x,d.z)+3.2,d.z,'The chain falls short','#c8d0d8'); d.bf.whiff=true; return true; } return false; }
+        if(s.ph==='pull'){ const tx=d.x+Math.sin(s.face)*1.4, tz=d.z+Math.cos(s.face)*1.4, L0=ENGINE.level; const nx=p.x+(tx-p.x)*0.16, nz=p.z+(tz-p.z)*0.16; if(L0.canMove(p.x,p.z,nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)) p.z=nz;
+          if(s.t>=14){ s.ph='slam'; s.t=0; s.P2=paint(K,'slam',{reach:2.0,un:true}); d.pose='wind'; d.shape='slam'; } return false; }
+        if(s.ph==='slam'){ const T2=22; d.poseK=s.t/T2; place(s.P2,d.x+Math.sin(s.face)*1.0,d.z+Math.cos(s.face)*1.0,s.face); fill(s.P2,s.t/T2);
+          if(s.t>=T2){ fire(s.P2); d.pose='strike'; K.shake(0.5); K.dust(d.x+Math.sin(s.face),d.z+Math.cos(s.face)); SFX.play('bossStrike'); if(inside(p.x,p.z,d.x+Math.sin(s.face),d.z+Math.cos(s.face),s.face,{shape:'slam',reach:2.0})) land(d,{un:true,dmg:1.5},K,X,X.dmg); else d.bf.whiff=true; return true; } return false; } return true; }},
+    // the Wraith goes to smoke and comes out of it behind you, already swinging
+    phasestep:{start(d,K,X){ const s=d.bf.s={t:0,ph:'out',n:X.mv.twice&&d.bf.ph>=2?2:1}; K.dust(d.x,d.z); d.pose='cast'; d.poseK=1; },
+      tick(d,K,X){ const s=d.bf.s, p=K.P(); s.t++; const c=K.A().cfg, W=c.W||20, H=c.H||20;
+        if(s.ph==='out'){ d._fading=true; (d.g.userData.mats||[]).forEach(m=>{ m.transparent=true; m.opacity=Math.max(0.05,1-s.t/14); }); if(s.t>=16){ const bk=K.face()+PI, x=Math.max(1.5,Math.min(W-1.5,p.x+Math.sin(bk)*1.7)), z=Math.max(1.5,Math.min(H-1.5,p.z+Math.cos(bk)*1.7)); d.x=x; d.z=z; K.dust(x,z); s.ph='in'; s.t=0; s.face=Math.atan2(p.x-x,p.z-z); d.face=s.face; s.st=S_({tel:26,reach:2.4,arc:1.25,lunge:0.3,dmg:1.2}); s.P=paint(K,'arc',s.st); d.pose='wind'; d.shape='arc'; d.side=1; SFX.play('bossTelegraph'); } return false; }
+        if(s.ph==='in'){ (d.g.userData.mats||[]).forEach(m=>{ m.opacity=Math.min(1,s.t/8); if(s.t>=8){ m.transparent=false; d._fading=false; } }); const tel=Math.round(s.st.tel*TELK[d.bf.ph]), k=s.t/tel; d.poseK=k; if(k<0.6) s.face=Math.atan2(p.x-d.x,p.z-d.z); d.face=s.face; place(s.P,d.x,d.z,s.face); fill(s.P,k);
+          if(s.t>=tel){ fire(s.P); d.pose='strike'; SFX.play('bossStrike'); if(inside(p.x,p.z,d.x,d.z,s.face,s.st)){ const r=land(d,s.st,K,X,X.dmg); if(r==='parry') return true; } else d.bf.whiff=true; if(--s.n>0&&!d.bf.perfect){ s.ph='out'; s.t=0; return false; } return true; } return false; } return true; }},
+    // the Specter's whirlpool drags you in, and the tentacles spin at its heart
+    whirlpool:{start(d,K,X){ const c=K.A(), s=d.bf.s={t:0,ph:'pull'}; const m=new THREE.Mesh(new THREE.RingGeometry(0.6,5.6,48,3),new THREE.MeshBasicMaterial({color:0x40d8d0,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending})); m.rotation.x=-PI/2; m.position.set(d.x,ENGINE.level.ground(d.x,d.z)+0.07,d.z); c.fx.add(m); s.m=m; d.pose='cast'; UI.toast('🌀 The whirlpool drags at you — fight the current, get clear of its heart!',1700); SFX.play('bossTelegraph'); },
+      tick(d,K,X){ const s=d.bf.s, p=K.P(), pl=K.pl, c=K.A(); s.t++; const N=110;
+        if(s.ph==='pull'){ s.m.rotation.z+=0.06; s.m.material.opacity=Math.min(0.32,s.t/30); d.poseK=s.t/N; const dx=d.x-p.x, dz=d.z-p.z, r=Math.hypot(dx,dz)||1;
+          if(r<5.6&&r>0.9&&!(c.cfg.ringSafe&&c.cfg.ringSafe())&&pl.dashing<=0){ const k=0.026*(1-r/6.5), nx=p.x+dx/r*k*2.2-dz/r*k, nz=p.z+dz/r*k*2.2+dx/r*k, L0=ENGINE.level; if(L0.canMove(p.x,p.z,nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)) p.z=nz; }
+          if(s.t===N-34){ s.P=paint(K,'spin',{reach:2.6,un:true}); place(s.P,d.x,d.z,0); d.pose='wind'; d.shape='spin'; }
+          if(s.P){ fill(s.P,(s.t-(N-34))/34); d.poseK=(s.t-(N-34))/34; }
+          if(s.t>=N){ fire(s.P); d.pose='strike'; SFX.play('bossStrike'); K.shake(0.35); if(inside(p.x,p.z,d.x,d.z,0,{shape:'spin',reach:2.6})) land(d,{un:true,dmg:1.5},K,X,X.dmg); else d.bf.whiff=true; s.ph='end'; s.t=0; } return false; }
+        s.m.material.opacity*=0.85; if(s.t>12){ c.fx.remove(s.m); return true; } return false; }},
+    // the Specter calls the sea
+    tidalwave:{start(d,K,X){ d.bf.s={t:0}; d.pose='cast'; wall(d,K,X,!!(X.mv.twice&&d.bf.ph>=2)); }, tick(d,K,X){ const s=d.bf.s; s.t++; d.poseK=Math.min(1,s.t/40); return s.t>=70; }},
+    // the Fiend sinks into the floor and comes for you under it; it bursts up where the earth stops moving
+    burrow:{start(d,K,X){ d.bf.s={t:0,ph:'sink',n:X.mv.twice&&d.bf.ph>=2?2:1}; d.pose='burrow'; K.dust(d.x,d.z); SFX.play('bossTelegraph'); },
+      tick(d,K,X){ const s=d.bf.s, p=K.P(), c=K.A(), cfg=c.cfg, W=cfg.W||20, H=cfg.H||20; s.t++;
+        if(s.ph==='sink'){ d.poseK=Math.min(1,s.t/26); d.guardUntil=now()+300; if(s.t>=28){ s.ph='hunt'; s.t=0; if(!s.trail){ s.trail=new THREE.Mesh(new THREE.CircleGeometry(0.9,20),new THREE.MeshBasicMaterial({color:0x2a1a08,transparent:true,opacity:0.7,depthWrite:false})); s.trail.rotation.x=-PI/2; c.fx.add(s.trail); } s.trail.visible=true; } return false; }
+        if(s.ph==='hunt'){ d.guardUntil=now()+300; d.poseK=1; const N=Math.round(96*TELK[d.bf.ph]), dx=p.x-d.x, dz=p.z-d.z, r=Math.hypot(dx,dz)||1, sp=0.085; if(r>0.2){ d.x=Math.max(1.5,Math.min(W-1.5,d.x+dx/r*Math.min(sp,r))); d.z=Math.max(1.5,Math.min(H-1.5,d.z+dz/r*Math.min(sp,r))); }
+          s.trail.position.set(d.x,ENGINE.level.ground(d.x,d.z)+0.05,d.z); s.trail.scale.setScalar(0.8+Math.sin(s.t*0.5)*0.15); if(s.t%7===0) K.dust(d.x,d.z);
+          if(s.t>=N){ s.ph='erupt'; s.t=0; s.P=paint(K,'circle',{reach:1.9,un:true}); place(s.P,d.x,d.z,0); SFX.play('bossTelegraph'); } return false; }
+        if(s.ph==='erupt'){ d.guardUntil=now()+300; const tel=Math.round(30*TELK[d.bf.ph]); fill(s.P,s.t/tel); s.trail.scale.setScalar(1+s.t/tel); if(s.t>=tel){ fire(s.P); s.trail.visible=false; d.pose='strike'; d.shape='slam'; d.poseK=1; K.shake(0.6); K.dust(d.x,d.z); SFX.play('bossStrike');
+            if(inside(p.x,p.z,d.x,d.z,0,{shape:'circle',reach:1.9})) land(d,{un:true,dmg:1.7},K,X,X.dmg); else d.bf.whiff=true; d.guardUntil=0;
+            if(--s.n>0&&!d.bf.perfect){ s.ph='sink'; s.t=0; d.pose='burrow'; return false; } c.fx.remove(s.trail); return true; } return false; } return true; }},
+    // the Fiend sends roots through the floor at you, in a fan
+    spikes:{start(d,K,X){ const p=K.P(), f=Math.atan2(p.x-d.x,p.z-d.z), n=d.bf.ph>=1?5:3; for(let i=0;i<n;i++) spikeLine(d,K,d.x,d.z,f+(i-(n-1)/2)*0.38,9,Math.round(38*TELK[d.bf.ph])+i*4); d.bf.s={t:0}; d.pose='cast'; d.face=f; SFX.play('bossTelegraph'); },
+      tick(d,K,X){ const s=d.bf.s; s.t++; d.poseK=Math.min(1,s.t/30); if(s.t===40){ d.pose='strike'; d.shape='slam'; K.shake(0.3); } return s.t>=64; }}};
+
+  // ── choosing what to do next ──
+  function pick(d,dist){ const F=FIGHTS[d.bfForm], L=F.moves[d.bf.ph]; let tot=0; const w=L.map((m,i)=>{ let x=m.w||1; if(i===d.bf.last) x*=0.15; if(m.far&&dist<2.5) x*=0.4; if(!m.far&&m.c==='combo'&&dist>6) x*=0.5; tot+=x; return x; });
+    let r=Math.random()*tot; for(let i=0;i<L.length;i++){ r-=w[i]; if(r<=0){ d.bf.last=i; return L[i]; } } d.bf.last=0; return L[0]; }
+
+  // ── one tick of a guardian ──
+  function step(d,dx,dz,dist,T,K){ if(!has(d.bossForm)) return false; const c=K.A(), cfg=c.cfg, p=K.P(), F=FIGHTS[d.bossForm]; d.bfForm=d.bossForm;
+    const bf=d.bf||(d.bf={ph:0,mode:'stalk',t:50,last:-1,strafe:Math.random()<0.5?1:-1,dir:1}); tickFx();
+    const en=d.enraged?T.enrageDmg:1, X={F,dmg:(6+(d.level||5)*0.9)*en,mv:bf.move||{}}; const W=cfg.W||20, H=cfg.H||20, cl=(v,M)=>Math.max(1.4,Math.min(M-1.4,v));
+    const done=()=>{ if(cfg.moveDone) cfg.moveDone(d); };
+    hazards(d,K,X);
+    if(dist<0.9&&(d.alt||0)<0.8&&dist>0.01) K.knock(dx/dist*0.05,dz/dist*0.05);   // it is solid: you're shouldered off it, not stood inside it
+    // the old moves run on the old machinery; when it's done (idle again), it has to recover
+    if(bf.mode==='old'){ d.pose=null; if(d.state==='idle'){ bf.mode='recover'; bf.t=Math.round(F.recover*0.7); d.state='bf'; } else return false; }
+    d.bfOpen=bf.mode==='recover'||bf.mode==='stagger'||d.state==='stunned'; d.bfActing=bf.mode!=='stalk';
+    // a parried blow: the old 'stunned' (the reel) — it stands open until it steadies
+    if(d.state==='stunned'){ d.pose='stagger'; bf.mode='stunned'; return false; }
+    if(bf.mode==='stunned'){ bf.mode='stalk'; bf.t=F.idle[bf.ph]; }
+    d.state='bf'; d.walking=false;
+    // the turns of the fight: at two-thirds, and at a third
+    const TH=[0.66,0.33]; if(bf.ph<2&&d.hp<d.maxHp*TH[bf.ph]&&(bf.mode==='stalk'||bf.mode==='recover'||bf.mode==='stagger')){ bf.ph++; bf.mode='roar'; bf.t=84; bf.hz=bf.hz||{}; if(bf.hz.beams){ bf.hz.beams.forEach(b=>c.fx.remove(b.g)); bf.hz.beams=null; }
+      d.guardUntil=now()+1500; d.pose='roar'; d.poseK=0; K.shake(0.5); SFX.play('bossRoar'); K.pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.g.userData.tall||3.5)+0.6,d.z,'Phase '+(bf.ph+1),'#ff9a6a');
+      UI.toast('⚠ '+(d.name||'It')+' — '+F.phases[bf.ph-1]+' (jump the shockwave!)',2400); if(cfg.onPhase) cfg.onPhase(d,bf.ph); if(d.bossForm===0) clones(d,K,bf.ph); }
+    if(bf.mode==='roar'){ bf.t--; d.pose='roar'; d.poseK=1-bf.t/84; d.face=Math.atan2(dx,dz); d.guardUntil=Math.max(d.guardUntil||0,now()+200);
+      if(bf.t===52){ d.ring=1; d.ringR=0; d.ringJumped=false; d.anchorx=d.x; d.anchorz=d.z; d.wave=false; d.move={ringSpeed:5.2,ringMax:150}; K.dust(d.x,d.z); }
+      if(bf.t<=0){ bf.mode='stalk'; bf.t=24; d.pose=null; } ringTick(d,K,X); return true; }
+    ringTick(d,K,X);
+    if(bf.mode==='stagger'||bf.mode==='recover'){ bf.t--; d.pose=bf.mode==='stagger'?'stagger':'recover'; if(d.alt>0) d.alt=Math.max(0,d.alt-0.08); if(bf.t<=0){ bf.mode='stalk'; bf.t=F.idle[bf.ph]; d.pose=null; } return true; }
+    if(bf.mode==='stalk'){ d.pose=null; const flo=d.bossForm===0?0.35:0; if(d.alt!==flo) d.alt+=(flo-d.alt)*0.08;
+      // a lamp to put out, or some other errand the hall has for it, comes first
+      if(d._hold&&d.anchorx!=null){ const ax=d.anchorx-d.x, az=d.anchorz-d.z, r=Math.hypot(ax,az); if(r>0.15){ move(d,ax/r*F.speed*1.5,az/r*F.speed*1.5,K); d.walking=true; } d.face=Math.atan2(dx,dz); return true; }
+      const want=F.range; let mx=0, mz=0; const ux=dx/(dist||1), uz=dz/(dist||1);
+      if(dist>want+0.5){ mx=ux; mz=uz; } else if(dist<want-0.9){ mx=-ux*0.5; mz=-uz*0.5; } else { mx=-uz*bf.strafe*0.6; mz=ux*bf.strafe*0.6; if(Math.random()<0.006) bf.strafe*=-1; }
+      if(mx||mz){ move(d,mx*F.speed,mz*F.speed,K); d.walking=true; }
+      d.face=Math.atan2(dx,dz); bf.t--;
+      if(bf.t<=0){ const mv=pick(d,dist); bf.move=mv; bf.perfect=false; bf.whiff=false; X.mv=mv;
+        if(mv.c==='old'){ const o=mv.mv; d.move=o; d.kind=o.kind; d.state='telegraph'; d.telegraph=Math.round(o.telegraph*TELK[bf.ph]); d.telMax=d.telegraph; SFX.play('bossTelegraph'); bf.mode='old'; return false; }
+        if(mv.c==='sig'){ bf.mode='sig'; SIG[mv.sig].start(d,K,X); return true; }
+        bf.mode='close'; bf.t=70; }
+      return true; }
+    // a combo begins in reach: it closes in on you first
+    if(bf.mode==='close'){ const st0=bf.move.steps[0], reach=st0.reach+st0.lunge*0.8; bf.t--; d.face=Math.atan2(dx,dz);
+      if(dist>reach*0.85&&bf.t>0){ move(d,dx/dist*F.speed*1.7,dz/dist*F.speed*1.7,K); d.walking=true; return true; }
+      bf.mode='combo'; bf.si=0; bf.sub='wind'; bf.t=0; bf.face=Math.atan2(dx,dz); beginStep(d,K); return true; }
+    if(bf.mode==='combo'){ const st=bf.move.steps[bf.si], tel=Math.max(9,Math.round(st.tel*TELK[bf.ph])); bf.t++;
+      if(bf.sub==='wind'){ const k=Math.min(1,bf.t/tel); d.pose='wind'; d.poseK=k; d.shape=st.shape; d.side=st.side;
+        if(k<0.7&&st.shape!=='spin'&&st.shape!=='slam'||k<0.45) bf.face=Math.atan2(dx,dz); d.face=bf.face;
+        const ox=d.x+Math.sin(bf.face)*st.lunge, oz=d.z+Math.cos(bf.face)*st.lunge; place(bf.P,ox,oz,bf.face); fill(bf.P,k);
+        if(bf.t>=tel){ bf.sub='strike'; bf.t=0; fire(bf.P); bf.ox=ox; bf.oz=oz; bf.x0=d.x; bf.z0=d.z; d.pose='strike'; SFX.play('bossStrike'); if(st.shape==='slam'){ K.shake(0.45); K.dust(ox,oz); } } return true; }
+      if(bf.sub==='strike'){ const N=6, k=Math.min(1,bf.t/N); d.poseK=k; const nx=bf.x0+(bf.ox-bf.x0)*k, nz=bf.z0+(bf.oz-bf.z0)*k; if(K.walk(nx,nz)){ d.x=nx; d.z=nz; }
+        if(bf.t===2){ if(inside(p.x,p.z,d.x+(bf.ox-d.x),d.z+(bf.oz-d.z),bf.face,st)){ const r=land(d,st,K,X,X.dmg); if(r==='parry'){ bf.mode='stunned'; return false; } } else if(st.heavy&&bf.si===bf.move.steps.length-1) bf.whiff=true; }
+        if(bf.t>=N+st.gap){ bf.si++; if(bf.perfect||bf.si>=bf.move.steps.length){ return endMove(d,K,F); } bf.sub='wind'; bf.t=0; beginStep(d,K); } return true; } }
+    if(bf.mode==='sig'){ const r=SIG[bf.move.sig].tick(d,K,X); if(d.state==='stunned'){ bf.mode='stunned'; return false; } if(r) return endMove(d,K,F); return true; }
+    return true; }
+  function beginStep(d,K){ const bf=d.bf, st=bf.move.steps[bf.si]; bf.P=paint(K,st.shape,st); }
+  function endMove(d,K,F){ const bf=d.bf, p=K.P(); d.pose=null;
+    if(bf.perfect){ bf.mode='stagger'; bf.t=100; K.pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.g.userData.tall||3.5)*0.8,d.z,'Off balance!','#8affd8'); }
+    else if(bf.whiff){ bf.mode='stagger'; bf.t=Math.round(F.recover*1.5); K.pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.g.userData.tall||3.5)*0.8,d.z,'Overreached — strike!','#ffd84a'); }
+    else { bf.mode='recover'; bf.t=F.recover; }
+    if(!bf.tipOpen){ bf.tipOpen=true; setTimeout(()=>UI.toast('⚔ It’s open — now your blows bite in full. While its guard is up they barely scratch it.',2400),200); }
+    if(d.alt>0) d.alt=Math.max(0,d.alt); if(cfg()&&cfg().moveDone) cfg().moveDone(d); return true; }
+  const cfg=()=>{ const c=ENGINE.level&&ENGINE.level.combat; return c&&c.cfg; };
+  function move(d,vx,vz,K){ const c=K.A().cfg, W=c.W||20, H=c.H||20, nx=Math.max(1.4,Math.min(W-1.4,d.x+vx)), nz=Math.max(1.4,Math.min(H-1.4,d.z+vz)); if(K.walk(nx,d.z)) d.x=nx; if(K.walk(d.x,nz)) d.z=nz; }
+  function ringTick(d,K,X){ if(!d.ring) return; d.ringR+=(d.move&&d.move.ringSpeed||5)*K.PX; const p=K.P(), rd=Math.hypot(p.x-d.anchorx,p.z-d.anchorz); if(Math.abs(rd-d.ringR)<0.5) K.ringHit(d,X.dmg*0.7); if(d.ringR>(d.move&&d.move.ringMax||150)*K.PX) d.ring=0; }
+  // the Imp's shadows: copies of it, small and quick, that come for you
+  function clones(d,K,ph){ const c=K.A(); const n=ph>=2?3:2, have=c.adds.filter(a=>a.alive&&a.shade).length; for(let i=0;i<n-have;i++){ const a=i/n*PI*2+Math.random(), x=Math.max(1.5,Math.min(c.cfg.W-1.5,d.x+Math.cos(a)*2.4)), z=Math.max(1.5,Math.min(c.cfg.H-1.5,d.z+Math.sin(a)*2.4));
+      const m=(typeof BOSS3D!=='undefined'&&BOSS3D.make(0,d.level))||null; if(m){ m.scale.multiplyScalar(0.42); (m.userData.mats||[]).forEach(q=>{ q.transparent=true; q.opacity=0.72; q.emissive&&q.emissive.setHex(0x1a0830); }); }
+      const lv=Math.max(1,(d.level||4)-3); K.add({x,z,hp:5+lv,level:lv,speed:1.7*K.PX,shade:true,model:m||undefined}); K.dust(x,z); } }
+  // its armour: blows on its guard only chip it; open, it takes them in full and half again in a stagger
+  function gate(d,K){ if(!d.bf) return 1; const o=d.bfOpen||d.state==='stunned';
+    if(o) return d.bf.mode==='stagger'?1.35:1;
+    const t=now(); if(!d.bf.armPop||t-d.bf.armPop>900){ d.bf.armPop=t; K.pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.g.userData.tall||3.5)*0.7,d.z,'Armoured','#a8b0c8'); }
+    if(!d.bf.tipArm&&(d.bf.armN=(d.bf.armN||0)+1)>=3){ d.bf.tipArm=true; UI.toast('🛡 Its guard is up — your blows barely scratch it. Dodge its attacks and punish it when it opens.',2600); }
+    return 0.2; }
+  // the fight over (or the hall left): its chains, its water, its roots and its paint taken up
+  function end(d){ const bf=d&&d.bf; if(!bf) return; const rm=m=>{ if(m&&m.parent) m.parent.remove(m); }, H=bf.hz||{};
+    (H.beams||[]).forEach(b=>rm(b.g)); (H.walls||[]).forEach(w=>rm(w.m)); (H.lines||[]).forEach(L=>{ rm(L.g); rm(L.P&&L.P.g); }); bf.hz={}; if(bf.s){ rm(bf.s.m); rm(bf.s.trail); } reset(); }
+  function reset(){ fxList.slice().forEach(P=>{ if(P.g.parent) P.g.parent.remove(P.g); }); fxList.length=0; }
+  return {has,step,gate,reset,end,open:d=>!!(d&&(d.bfOpen||d.state==='stunned')),FIGHTS};
 })();
 
 // ── engine/combat.js ──
@@ -8088,7 +8427,7 @@ const COMBAT=(function(){
   // ── a fight on a level ──
   function arena(lv,cfg){ const fx=new THREE.Group(); lv.scene.add(fx);
     lv.combat={cfg,foes:[],shots:[],adds:[],arrows:[],fx,rings:[]}; return lv.combat; }
-  function clear(lv){ const c=lv.combat; c.foes.concat(c.adds).forEach(f=>f.g&&f.g.parent&&f.g.parent.remove(f.g)); c.shots.concat(c.arrows).forEach(s=>s.m&&c.fx.remove(s.m)); c.foes=[]; c.adds=[]; c.shots=[]; c.arrows=[]; }
+  function clear(lv){ const c=lv.combat; if(typeof BOSSFIGHT!=='undefined') c.foes.forEach(f=>f.bf&&BOSSFIGHT.end(f)); c.foes.concat(c.adds).forEach(f=>f.g&&f.g.parent&&f.g.parent.remove(f.g)); c.shots.concat(c.arrows).forEach(s=>s.m&&c.fx.remove(s.m)); c.foes=[]; c.adds=[]; c.shots=[]; c.arrows=[]; }
   function foe(lv,o){ const c=lv.combat, f=Object.assign({alive:true,hurt:0,knock:0,kdx:0,kdz:0,dying:0,t:Math.random()*60,maxHp:o.hp},o);
     f.g=o.model||(o.boss&&o.bossForm!=null&&typeof BOSS3D!=="undefined"?BOSS3D.make(o.bossForm,o.level||1):o.boss&&o.look==="paladin"?knightModel("dark"):demonModel(o.level||1,o.form||0,o.boss,o.boss?o.tint:null,null,o.style)); f.g.userData.foe=f;   /* each guardian its own (bosses3d.js) */ if(!o.model&&typeof inkify==="function") inkify(f.g,0.018,0x120a10); if(lv.close&&!o.boss) f.g.scale.multiplyScalar(0.72); { const vs=VIEWMODE.ps(lv); if(vs!==1) f.g.scale.multiplyScalar(o.boss?Math.sqrt(vs):vs); } f.bar=bar(f.g,(o.boss?2.4:1.55)*VIEWMODE.ps(lv)); lv.scene.add(f.g);
     if(f.boss){ f.state='idle'; f.timer=34; f.moveIdx=0; f.guardUntil=now()+1300; f.anchorx=f.x; f.anchorz=f.z; f.telegraph=0; f.ring=0; f.ringR=0;
@@ -8099,7 +8438,7 @@ const COMBAT=(function(){
       const mk=new THREE.Group(); const mr=new THREE.Mesh(new THREE.RingGeometry(0.9,1.15,36),new THREE.MeshBasicMaterial({color:0xff3a3a,transparent:true,opacity:0.85,side:THREE.DoubleSide,depthWrite:false})); mr.rotation.x=-Math.PI/2; mk.add(mr);
       const md=new THREE.Mesh(new THREE.CircleGeometry(0.9,36),new THREE.MeshBasicMaterial({color:0xff3a3a,transparent:true,opacity:0.18,side:THREE.DoubleSide,depthWrite:false})); md.rotation.x=-Math.PI/2; md.position.y=-0.005; mk.add(md); mk.visible=false; c.fx.add(mk); f.markM=mk;
       const shd=new THREE.Mesh(new THREE.CircleGeometry(0.85,24),new THREE.MeshBasicMaterial({color:0x000000,transparent:true,opacity:0.35,depthWrite:false})); shd.rotation.x=-Math.PI/2; shd.visible=false; c.fx.add(shd); f.shadowM=shd;
-      if(o.bossForm!=null&&f.pat&&f.pat.moves){ const fly=[0,2,6,9].includes(o.bossForm), ex=fly?{kind:'soar',telegraph:44}:{kind:'leap',telegraph:38}, mv=f.pat.moves.slice(); mv.splice(1,0,ex); if(mv.length>=5) mv.splice(4,0,ex); f.pat=Object.assign({},f.pat,{moves:mv}); f.flier=fly; } }
+      if(o.bossForm!=null&&f.pat&&f.pat.moves){ const fly=[0,2,6,9].includes(o.bossForm), ex=fly?{kind:'soar',telegraph:44}:{kind:'leap',telegraph:38}, mv=f.pat.moves.slice(); if(!(typeof BOSSFIGHT!=='undefined'&&BOSSFIGHT.has(o.bossForm))){ mv.splice(1,0,ex); if(mv.length>=5) mv.splice(4,0,ex); } f.pat=Object.assign({},f.pat,{moves:mv}); f.flier=fly; } }
     f.custom=!!o.model; c.foes.push(f);
     if(!f.custom&&!f.boss&&lv.id==='world'&&isNightNow()){ if(!f.nightBuff){ f.nightBuff=true; f.level=(f.level||1)+2; const r=f.hp/f.maxHp; f.maxHp=5+f.level*2; f.hp=Math.max(1,Math.round(f.maxHp*r)); f.xp=4+f.level*3; } nightify(f,true); }   // born after dark: bold
     return f; }
@@ -8119,10 +8458,10 @@ const COMBAT=(function(){
   function bossHitGate(d,dmg){ if(!d.boss) return dmg; const t=now(); const sh=swingH();
     if((d.alt||0)>1.9+sh*2.3){ if(!d.highPop||t-d.highPop>900){ d.highPop=t; pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.alt||0)+1.2,d.z,sh>0.2?'Too high!':'Too high — jump!','#8ae0ff'); } return -1; }   // V113: up in the air, out of reach — jump to meet it
     let bonus=1; if(d.state==='stunned') bonus*=1.5; if(sh>0.22){ bonus*=1.3; if(!d.airPop||t-d.airPop>600){ d.airPop=t; pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.alt||0)+2.4,d.z,'Aerial!','#ffe08a'); } } dmg=Math.round(dmg*bonus);
-    if(d.guardUntil&&t<d.guardUntil) return -1; const braced=d.state==='telegraph';
-    if(d.lastHitAt&&t-d.lastHitAt<BOSS_GATE) return -1; d.lastHitAt=t;
+    if(d.guardUntil&&t<d.guardUntil) return -1; const braced=d.state==='telegraph'&&!d.bf, arm=d.bf&&typeof BOSSFIGHT!=='undefined'?BOSSFIGHT.gate(d,BFK):1;
+    if(d.lastHitAt&&t-d.lastHitAt<(d.bf&&!d.bfOpen&&d.state!=='stunned'?650:BOSS_GATE)) return -1; d.lastHitAt=t;   /* V177: on its guard, a remastered guardian lets a blow in only now and then */
     if(!d.noEnrage&&!d.enraged&&d.hp-dmg<d.maxHp*0.35){ d.enraged=true; d.timer=Math.min(d.timer||99,5); }
-    return Math.min(dmg,Math.ceil(d.maxHp*BOSS_CAP))*(braced?0.3:1); }
+    return Math.max(1,Math.round(Math.min(dmg,Math.ceil(d.maxHp*(d.bf?0.035:BOSS_CAP)))*(braced?0.3:1)*arm)); }
   function hitFoe(d,dmg,crit,vx,vz,dist,knock){ const c=A();
     if(c.cfg.onHit&&c.cfg.onHit(d)===false){ d.hurt=3; pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.boss?2.6:1.6),d.z,'—','#a8b0c8'); return; }
     dmg=Math.round(dmg); d.hp-=dmg; SFX.play('hit',crit); d.hurt=8; d.flash=5; d.squash=1; spark(d,crit); hitStop=Math.max(hitStop,(knock>=10?0.11:knock>=8?0.085:0.06)+(crit?0.03:0)); shake=Math.max(shake,(knock>=10?0.32:knock>=8?0.2:0.12)+(crit?0.08:0));
@@ -8130,7 +8469,7 @@ const COMBAT=(function(){
     if(!d.boss&&!d.custom&&!d.ai&&d.hp>0&&knock>=(styleOf(d)==='brute'?10:8)&&!(d.down>0)){ d.down=48; d.lunge=0; d.stag=0; pop(d.x,ENGINE.level.ground(d.x,d.z)+1.2,d.z,'Down!','#ffc89a'); }   /* V146: a heavy blow knocks it off its feet */
     pop(d.x,ENGINE.level.ground(d.x,d.z)+(d.boss?2.6:1.6),d.z,crit?dmg+'!':String(dmg),crit?'#ffd84a':'#fff');
     const m=dist||1; d.kdx=vx/m*knock*PX; d.kdz=vz/m*knock*PX; d.knock=8;
-    if(d.hp<=0){ d.alive=false; d.dying=18; deathBurst(d); SFX.play(d.boss?'bossRoar':'demonDie'); const g=Math.max(1,Math.round((2+d.level)*S().goldMult));
+    if(d.hp<=0){ d.alive=false; d.dying=18; deathBurst(d); SFX.play(d.boss?'bossRoar':'demonDie'); if(d.bf&&typeof BOSSFIGHT!=='undefined') BOSSFIGHT.end(d); const g=Math.max(1,Math.round((2+d.level)*S().goldMult));
       const r=GAME.gainXp(d.xp||5); GAME.addGold(g); if(r.up) UI.toast(`Level ${S().level}! A skill point to spend.`,2400);
       if(c.cfg.onKill) c.cfg.onKill(d); } hud(); }
   /* V169: a blow from someone else's hand (the realm's guards): it hurts and staggers, but the knight earns nothing by it */
@@ -8406,6 +8745,9 @@ const COMBAT=(function(){
   function stepDrops(){ const c=A(); if(!c||!c.drops) return; const p=P(), lv=ENGINE.level;
     c.drops=c.drops.filter(o=>{ o.t++; const k=o.t/o.T, gy=lv.ground(o.tx,o.tz); o.m.position.set(o.x0+(o.tx-o.x0)*k,gy+o.y0*(1-k)+Math.sin(k*Math.PI)*0.8,o.z0+(o.tz-o.z0)*k); o.mk.position.set(o.tx,gy+0.05,o.tz); o.mk.scale.setScalar(1.2-k*0.5); o.mk.material.opacity=0.35+k*0.5;
       if(o.t>=o.T){ c.fx.remove(o.m); c.fx.remove(o.mk); dust(o.tx,o.tz); if(Math.hypot(p.x-o.tx,p.z-o.tz)<0.8) hurtFromBoss(o.dmg); return false; } return true; }); }
+  // V177: what the remastered fights may do with the knight and the hall
+  const BFK={A:()=>A(),P:()=>P(),pl,PX,pop:(x,y,z,t,c)=>pop(x,y,z,t,c),hurt:dm=>hurtFromBoss(dm),parryNow:()=>parryNow(),parry:d=>parry(d,true),shake:v=>{ shake=Math.max(shake,v); },dust:(x,z)=>dust(x,z),walk:(x,z)=>walk(x,z),ringHit:(d,dm)=>ringHit(d,dm),airH:()=>airH(),face:()=>P().face,add:o=>add(o),
+    knock:(vx,vz)=>{ const p=P(), L0=ENGINE.level; for(let i=0;i<6;i++){ const nx=p.x+vx*0.25, nz=p.z+vz*0.25; if(L0.canMove(p.x,p.z,nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)) p.z=nz; } }};
   function bossAir(d,dx,dz,dist,T,en,done){ const c=A(), p=P(), cfg=c.cfg, W=cfg.W||20, H=cfg.H||20, cl=(v,M)=>Math.max(1.5,Math.min(M-1.5,v));
     const ringStep=()=>{ if(!d.ring) return; d.ringR+=(d.move&&d.move.ringSpeed||4.6)*PX; const rd=Math.hypot(p.x-d.anchorx,p.z-d.anchorz); if(Math.abs(rd-d.ringR)<0.5) ringHit(d,(5+d.level)*en); if(d.ringR>(d.move&&d.move.ringMax||120)*PX) d.ring=0; };
     if(d.state==='rise'){ d.timer--; d.alt=(d.alt||0)+(4.2-(d.alt||0))*0.06; if(d.timer<=0){ d.state='hover'; d.timer=d.enraged?240:300; d.dropT=30; } return true; }
@@ -8420,6 +8762,7 @@ const COMBAT=(function(){
     if(d.state==='stunned'){ d.timer--; d.walking=false; ringStep(); if(d.timer<=0){ d.state='idle'; d.timer=34; d.ring=0; done(); } return true; }
     if(d.alt>0.01&&d.state!=='rise') d.alt=Math.max(0,d.alt-0.15); return false; }
   function bossStep(d,dx,dz,dist,T){ const c=A(), p=P(), cfg=c.cfg, en=d.enraged?T.enrageDmg:1;
+    if(typeof BOSSFIGHT!=='undefined'&&BOSSFIGHT.has(d.bossForm)&&BOSSFIGHT.step(d,dx,dz,dist,T,BFK)) return;   /* V177: the remastered guardians fight their own way (bossfight.js) */
     const done=()=>{ if(cfg.moveDone) cfg.moveDone(d); };
     if(bossAir(d,dx,dz,dist,T,en,done)){ d.face=Math.atan2(dx,dz); return; }
     if(d.state==='idle'){ d.timer--; if(cfg.wide&&!cfg.bossIdle&&dist>4.5&&d.anchorx!==undefined){ const nx=d.anchorx+dx/dist*0.035, nz=d.anchorz+dz/dist*0.035; if(walk(nx,nz)){ d.anchorx=nx; d.anchorz=nz; } }   /* in the widened sanctum it stalks you across the hall rather than holding the middle */
@@ -8458,7 +8801,7 @@ const COMBAT=(function(){
     c.foes.forEach(d=>{ const g=d.g; if(!d.alive&&d.dying<=0){ if(g.parent){ g.parent.remove(g); } return; }
       const gy=lv.ground(d.x,d.z); g.position.set(d.x,gy+(d.boss?(d.alt||0)+(d.alt>0.5?Math.sin(t*3)*0.12:0):Math.abs(Math.sin(t*4+d.t))*0.06+0.05),d.z);
       if(d.face!==undefined){ let r=d.face-g.rotation.y; r=Math.atan2(Math.sin(r),Math.cos(r)); g.rotation.y+=r*Math.min(1,dt*8); }
-      const tell=d.lunge===1, late=tell&&d.lt<=6, mats=g.userData.mats||[]; mats.forEach(m=>m.emissive&&m.emissive.setHex(d.flash>0?0xffffff:d.hurt>0?0x884444:late?0xff2a10:tell?(Math.floor(t*14)%2?0xaa1010:0x440808):d.stag>0?(Math.floor(t*10)%2?0x6a5200:0x2a2000):(d.boss&&d.state==='telegraph'?0x441122:d.boss&&d.state==='stunned'?(Math.floor(t*8)%2?0x5a4a00:0):0)));   /* V146: the last beat of a wind-up burns bright — guard now; a reeling demon glints gold */
+      const tell=d.lunge===1, late=tell&&d.lt<=6, mats=g.userData.mats||[]; mats.forEach(m=>m.emissive&&m.emissive.setHex(d.flash>0?0xffffff:d.hurt>0?0x884444:late?0xff2a10:tell?(Math.floor(t*14)%2?0xaa1010:0x440808):d.stag>0?(Math.floor(t*10)%2?0x6a5200:0x2a2000):(d.boss&&(d.state==='telegraph'||d.pose==='wind')?0x441122:d.boss&&(d.state==='stunned'||d.bfOpen)?(Math.floor(t*8)%2?0x5a4a00:0x1a1400):0)));   /* V146: the last beat of a wind-up burns bright — guard now; a reeling demon glints gold */
       if(d.flash>0&&!paused&&hitStop<=0) d.flash--;
       { const s0=g.userData.s0b||(g.userData.s0b=g.scale.x); if(d.alive&&!d.boss){ d.squash=Math.max(0,(d.squash||0)-dt*6); const sty=styleOf(d), up=tell?1-d.lt/Math.max(1,d.lt0||18):0, sq=d.squash||0, cr=tell&&sty!=='brute'?0.12:0, gr=sty==='brute'?(tell?up*0.18:d.lunge===2?0.1:0):0; g.scale.set(s0*(1+sq*0.25+cr*0.5),s0*(1-sq*0.3-cr+gr),s0*(1+sq*0.25+cr*0.5));
           if(sty==='brute'&&tell) g.rotation.x=-0.5*up; else if(sty==='brute'&&d.lunge===2) g.rotation.x=0.55; else if(sty==='claw'&&tell) g.rotation.x=-0.3*up; else if(sty==='claw'&&d.lunge===2){ g.rotation.x=0.25; g.rotation.z=Math.sin(d.lt*0.7)*0.4; } else if(d.lunge===2) g.rotation.x=0.35; else if(d.stag>0) g.rotation.x=-0.3+Math.sin(t*9)*0.12; else g.rotation.x=d.knock>0?-0.42*(d.knock/8):0;
@@ -8604,6 +8947,59 @@ const DGEN=(function(){
   return {crypt,forest,rng};
 })();
 
+// ── engine/skin.js ──
+// ════════════════════════════════════════════════════════════════
+//  SKIN (V177) — a hide for every sculpted thing: each vertex knows what it is (attribute 'skin', baked by
+//  tools/sculpt_demons.py) and the shader grows that surface on it in 3D, no textures needed:
+//   0 hide — wrinkled, pored, leathery      4 cloth — a coarse weave, a little worn
+//   1 scales — overlapping cells, a ridge   5 stone/obsidian — cracked plates, rough between
+//   2 bark — deep grain run lengthwise      6 bone/horn — growth rings, fine pits
+//   3 metal — hammered plate, scratches     7 smoke/spirit — soft roiling, a little lit
+//  The relief bends the light (a bump from the pattern's own slopes) and darkens the creases; metal and scale catch a
+//  hard highlight. HIDE.apply(material, scale) — scale: how many pattern-units per model-unit (bosses ~1, demons ~1.8).
+// ════════════════════════════════════════════════════════════════
+const HIDE=(function(){
+  const GLSL=`
+varying float vSkin; varying vec3 vOP;
+float skH(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
+float skN(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+  return mix(mix(mix(skH(i),skH(i+vec3(1,0,0)),f.x),mix(skH(i+vec3(0,1,0)),skH(i+vec3(1,1,0)),f.x),f.y),mix(mix(skH(i+vec3(0,0,1)),skH(i+vec3(1,0,1)),f.x),mix(skH(i+vec3(0,1,1)),skH(i+vec3(1,1,1)),f.x),f.y),f.z); }
+float skF(vec3 p){ return skN(p)*0.5+skN(p*2.03)*0.25+skN(p*4.01)*0.125+skN(p*8.07)*0.0625; }
+vec2 skV(vec3 p){ vec3 i=floor(p), f=fract(p); float d1=8.0, d2=8.0;
+  for(int z=-1;z<=1;z++) for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){ vec3 g=vec3(float(x),float(y),float(z)); vec3 o=vec3(skH(i+g),skH(i+g+11.3),skH(i+g+27.1)); float d=length(g+o-f); if(d<d1){ d2=d1; d1=d; } else if(d<d2) d2=d; }
+  return vec2(d1,d2); }
+uniform float uSkinScale;
+float skinHeight(float k, vec3 p){ p*=uSkinScale;
+  if(k<0.5){ float w=1.0-abs(skN(p*vec3(3.0,8.0,3.0))*2.0-1.0); return w*0.6+skF(p*7.0)*0.32+skN(p*22.0)*0.08; }
+  if(k<1.5){ vec2 v=skV(p*vec3(7.0,9.0,7.0)); return smoothstep(0.0,0.2,v.y-v.x)*0.75+(1.0-v.x)*0.25; }
+  if(k<2.5){ float g=abs(skN(vec3(p.x*9.0,p.y*1.4,p.z*9.0))*2.0-1.0); return g*0.72+skF(p*9.0)*0.28; }
+  if(k<3.5){ return skN(p*7.0)*0.5+skF(p*2.5)*0.4+skN(vec3(p.x*36.0,p.y*3.0,p.z*36.0))*0.1; }
+  if(k<4.5){ float fold=1.0-abs(skN(vec3(p.x*5.0,p.y*0.7,p.z*5.0))*2.0-1.0); float a=sin((p.x+p.z)*110.0)*sin(p.y*110.0); return fold*0.8+skF(p*3.0)*0.2+a*0.0; }
+  if(k<5.5){ vec2 v=skV(p*3.4); return smoothstep(0.0,0.09,v.y-v.x)*0.65+skF(p*8.0)*0.35; }
+  if(k<6.5){ return (sin(p.y*34.0+skN(p*3.0)*5.0)*0.5+0.5)*0.6+skN(p*18.0)*0.4; }
+  return skF(p*5.0); }
+`;
+  function apply(m,scale){ if(!m||m.userData.skin) return m; m.userData.skin=true; const U={uSkinScale:{value:scale||1}};
+    m.onBeforeCompile=sh=>{ Object.assign(sh.uniforms,U);
+      sh.vertexShader='attribute float skin;\nvarying float vSkin; varying vec3 vOP;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvSkin=skin; vOP=position;');
+      sh.fragmentShader=GLSL+sh.fragmentShader
+        .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
+          float skK=floor(vSkin+0.5), skh=skinHeight(skK,vOP);
+          float skAmt = skK<0.5?0.9: skK<1.5?1.1: skK<2.5?1.4: skK<3.5?0.35: skK<4.5?0.7: skK<5.5?1.2: skK<6.5?0.55: 0.0;
+          { vec3 sp=-vViewPosition, sx=dFdx(sp), sy=dFdy(sp), R1=cross(sy,normal), R2=cross(normal,sx); float det=dot(sx,R1); vec2 dh=clamp(vec2(dFdx(skh),dFdy(skh)),-0.25,0.25)*skAmt*0.22;
+            normal=normalize(abs(det)*normal-sign(det)*(dh.x*R1+dh.y*R2)); }`)
+        .replace('#include <color_fragment>',`#include <color_fragment>
+          { float k=floor(vSkin+0.5), h=skinHeight(k,vOP); float cav = k<2.5? mix(0.7,1.12,h) : k<3.5? mix(0.88,1.08,h) : k<4.5? mix(0.8,1.08,h) : k<5.5? mix(0.62,1.1,h) : k<6.5? mix(0.86,1.08,h) : (0.8+0.4*h);
+            diffuseColor.rgb*=cav; }`)
+        .replace('#include <lights_phong_fragment>',`#include <lights_phong_fragment>
+          { float k=floor(vSkin+0.5); if(k>2.5&&k<3.5){ material.specularStrength*=1.8; material.specularShininess=max(material.specularShininess,60.0); } else if(k>0.5&&k<1.5) material.specularStrength*=1.3; else if(k>3.5&&k<4.5) material.specularStrength*=0.25; else if(k<0.5||(k>1.5&&k<2.5)) material.specularStrength*=0.55; }`);
+    };
+    m.customProgramCacheKey=()=>'skin'+(scale||1); m.needsUpdate=true; return m; }
+  // the 'skin' attribute from a sculpt's packed bytes
+  function attr(g,b64){ if(!b64) return; const s=atob(b64), a=new Float32Array(s.length); for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i); g.setAttribute('skin',new THREE.BufferAttribute(a,1)); }
+  return {apply,attr};
+})();
+
 // ── engine/demons.js ──
 // ════════════════════════════════════════════════════════════════
 //  DEMONS (V176) — every kind its own shape, so you can read a fight at a glance:
@@ -8625,8 +9021,8 @@ const DEMONS=(function(){
   const KINDS=['pounce','claw','brute','spit'];
   const bin=(b64,T)=>{ const s=atob(b64), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return new T(u.buffer); };
   function sculpt(D){ if(D._g) return D._g; const g=new THREE.BufferGeometry(), P=bin(D.p,Int16Array), Q=bin(D.q,Int8Array), C=bin(D.c,Uint8Array), I=D.i32?bin(D.i,Uint32Array):bin(D.i,Uint16Array);
-    const pos=new Float32Array(P.length), nor=new Float32Array(Q.length), col=new Float32Array(C.length); for(let i=0;i<P.length;i++) pos[i]=P[i]/16000; for(let i=0;i<Q.length;i++) nor[i]=Q[i]/127; for(let i=0;i<C.length;i++) col[i]=C[i]/255;
-    g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setIndex(new THREE.BufferAttribute(I,1)); g.computeBoundingSphere(); return D._g=g; }
+    const pos=new Float32Array(P.length), nor=new Float32Array(Q.length), col=new Float32Array(C.length); const QS=D.s||16000; for(let i=0;i<P.length;i++) pos[i]=P[i]/QS; for(let i=0;i<Q.length;i++) nor[i]=Q[i]/127; for(let i=0;i<C.length;i++) col[i]=C[i]/255;
+    g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setIndex(new THREE.BufferAttribute(I,1)); if(typeof HIDE!=='undefined') HIDE.attr(g,D.k); g.computeBoundingSphere(); return D._g=g; }
   const PAL={ pounce:{body:0x4a2a62,belly:0x8a6a8a,dark:0x1e1028,horn:0xd8c8a8,eye:0xffc83a},
               claw:  {body:0x6a1e2e,belly:0x9a5a5a,dark:0x220a12,horn:0xeee2cc,eye:0xff4a3a},
               brute: {body:0x3a3644,belly:0x5a5262,dark:0x18161e,horn:0xc8b898,eye:0xff7a2a,ember:0xff6a1a},
@@ -8653,7 +9049,7 @@ const DEMONS=(function(){
     let head=[0,1,0.2], eyeR=0.03, wings=null;
     const SD=(typeof DEMON_DATA!=='undefined'&&DEMON_DATA&&DEMON_DATA[kind])||null;   /* V176: the sculpted hide (tools/sculpt_demons.py), where it has loaded */
     if(SD){ head=SD.head.slice(); SD.eyes.forEach(e=>EYES.push(e.slice())); (SD.glows||[]).forEach(e=>glows.push(e.slice())); (SD.veins||[]).forEach(v=>VEINS.push(v)); wings=SD.wings?Object.assign({},SD.wings):null; eyeR=SD.eyes[0]?SD.eyes[0][3]:0.02;
-      const sm=new THREE.Mesh(sculpt(SD),bodyM); g.add(sm);
+      if(typeof HIDE!=='undefined') HIDE.apply(bodyM,1.8); const sm=new THREE.Mesh(sculpt(SD),bodyM); g.add(sm);
       if(NF>=0) bodyM.color.setHex(0xa880d0); else if(o.tint){ bodyM.color.set(o.tint).lerp(new THREE.Color(0xffffff),0.45); } }
     else if(kind==='pounce'){   // ── the Hound ──
       S(0.27,BODY,0,0.55,0.12,1,0.85,1.35,-0.12); S(0.22,BELLY,0,0.47,0.16,0.9,0.7,1.1); S(0.24,BODY,0,0.58,-0.22,1.05,0.95,1.05);   // chest, belly, haunches
@@ -8757,6 +9153,50 @@ const DEMONS=(function(){
       else { const p=0.5+0.5*Math.sin(t*3.6); sacs.forEach(m=>m.scale.setScalar(1+0.35*p)); inner.rotation.z=Math.sin(t*2.1)*0.05; inner.position.y=0.02*Math.sin(t*2.1); } };
     return g; }
   return {make,KINDS};
+})();
+
+// ── engine/bossart.js ──
+// ════════════════════════════════════════════════════════════════
+//  BOSSART (V177) — the sculpted bosses (tools/sculpt_bosses.py → BOSS_DATA) put together: each part on its own pivot
+//  (g.userData.bones: body, hd, aL, aR), eyes lit from deep sockets, glows and molten veins, crowns and manes of living
+//  fire, a turning anti-halo, wings (two or four, membrane or burning).
+//  BOSSART.make(key, opts) → THREE.Group, or null where the sculpt hasn't loaded. key: 'b0'..'b9', 'ab', 'pk'.
+// ════════════════════════════════════════════════════════════════
+const BOSSART=(function(){
+  const bin=(b64,T)=>{ const s=atob(b64), u=new Uint8Array(s.length); for(let i=0;i<s.length;i++) u[i]=s.charCodeAt(i); return new T(u.buffer); };
+  const GEO={};
+  function geo(key,name,D){ const id=key+':'+name; if(GEO[id]) return GEO[id]; const g=new THREE.BufferGeometry(), P=bin(D.p,Int16Array), Q=bin(D.q,Int8Array), C=bin(D.c,Uint8Array), I=D.i32?bin(D.i,Uint32Array):bin(D.i,Uint16Array);
+    const pos=new Float32Array(P.length), nor=new Float32Array(Q.length), col=new Float32Array(C.length); const QS=D.s||16000; for(let i=0;i<P.length;i++) pos[i]=P[i]/QS; for(let i=0;i<Q.length;i++) nor[i]=Q[i]/127; for(let i=0;i<C.length;i++) col[i]=C[i]/255;
+    g.setAttribute('position',new THREE.BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.BufferAttribute(nor,3)); g.setAttribute('color',new THREE.BufferAttribute(col,3)); g.setIndex(new THREE.BufferAttribute(I,1)); if(typeof HIDE!=='undefined') HIDE.attr(g,D.k); g.computeBoundingSphere(); return GEO[id]=g; }
+  const _H={}; function haloTex(){ if(_H.t) return _H.t; const cv=document.createElement('canvas'); cv.width=cv.height=64; const x=cv.getContext('2d'), gr=x.createRadialGradient(32,32,0,32,32,32); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.35,'rgba(255,255,255,0.5)'); gr.addColorStop(1,'rgba(255,255,255,0)'); x.fillStyle=gr; x.fillRect(0,0,64,64); return _H.t=new THREE.CanvasTexture(cv); }
+  const sprite=(col,op)=>new THREE.Sprite(new THREE.SpriteMaterial({map:haloTex(),color:col,transparent:true,opacity:op==null?0.6:op,depthWrite:false,blending:THREE.AdditiveBlending}));
+  const gm=c=>new THREE.MeshBasicMaterial({color:c});
+  function make(key,o){ o=o||{}; const R=typeof BOSS_DATA!=='undefined'&&BOSS_DATA&&BOSS_DATA[key]; if(!R) return null;
+    const g=new THREE.Group(), PLATE=/^(b5|b7|b8|b9|ab|pk)$/.test(key), bodyM=new THREE.MeshPhongMaterial({vertexColors:true,shininess:PLATE?30:12,specular:PLATE?0x3a3640:0x1a1416}), bones={}, M=R.meta, anim=[]; if(typeof HIDE!=='undefined') HIDE.apply(bodyM,1);
+    Object.keys(R.parts).forEach(name=>{ const pv=R.piv[name]||[0,0,0], b=new THREE.Group(); b.position.set(pv[0],pv[1],pv[2]); const m=new THREE.Mesh(geo(key,name,R.parts[name]),bodyM); m.position.set(-pv[0],-pv[1],-pv[2]); m.castShadow=true; b.add(m); g.add(b); bones[name]=b; });
+    // which bone a point of light rides on: the nearest part's pivot it falls under (head things on the head, hand things on the arm)
+    const boneOf=p=>{ const hd=R.piv.hd; if(hd&&p[1]>hd[1]-0.08&&Math.abs(p[0])<0.36) return bones.hd; for(const n of ['aL','aR']){ const pv=R.piv[n]; if(pv&&Math.sign(p[0])===Math.sign(pv[0])&&Math.abs(p[0])>Math.abs(pv[0])*0.9) return bones[n]; } return bones.body; };
+    const put=(obj,p)=>{ const b=boneOf(p), pv=b===bones.body?[0,0,0]:R.piv[Object.keys(bones).find(k=>bones[k]===b)]; obj.position.set(p[0]-pv[0],p[1]-pv[1],p[2]-pv[2]); b.add(obj); return obj; };
+    (M.eyes||[]).forEach(([x,y,z,r,c])=>{ const so=new THREE.Mesh(new THREE.SphereGeometry(r*1.8,10,8),gm(0x050204)); so.scale.set(1,0.75,0.4); put(so,[x,y,z-r*0.2]); const e=new THREE.Mesh(new THREE.SphereGeometry(r*0.65,8,6),gm(c||0xffd84a)); put(e,[x,y,z+r*0.2]); const h=sprite(c||0xffd84a,0.6); h.scale.setScalar(r*9); put(h,[x,y,z+r*0.4]); });
+    (M.glows||[]).forEach(([x,y,z,r,c])=>{ const e=new THREE.Mesh(new THREE.SphereGeometry(r,10,8),gm(c)); put(e,[x,y,z]); const h=sprite(c,0.55); h.scale.setScalar(r*7); put(h,[x,y,z]); anim.push(t=>{ h.material.opacity=0.42+0.18*Math.sin(t*3+x*9); }); });
+    const V=new THREE.Vector3(), UP=new THREE.Vector3(0,1,0);
+    (M.veins||[]).forEach(([a,b,r,c])=>{ V.set(b[0]-a[0],b[1]-a[1],b[2]-a[2]); const L=V.length(); const m=new THREE.Mesh(new THREE.CylinderGeometry(r,r*0.7,L,5),gm(c)); m.quaternion.setFromUnitVectors(UP,V.normalize()); put(m,[(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]); });
+    (M.flames||[]).forEach(F=>{ const grp=new THREE.Group(); put(grp,F.at); const fl=[]; for(let i=0;i<F.n;i++){ const s=sprite(i%3?F.col:0xffd8a0,0.85); grp.add(s); fl.push({s,a:i/F.n*Math.PI*2,p:i*0.37}); }
+      anim.push(t=>{ fl.forEach(f=>{ const u=(t*1.6+f.p)%1; f.s.position.set(Math.cos(f.a)*F.r*(1-u*0.6),u*F.r*2.2,Math.sin(f.a)*F.r*0.6*(1-u*0.6)); const sc=F.r*(1.4-u)*1.3; f.s.scale.set(sc,sc*1.4,1); f.s.material.opacity=0.85*(1-u); }); }); });
+    if(M.halo){ const H=M.halo, hg=new THREE.Group(); hg.position.set(H.at[0],H.at[1],H.at[2]); g.add(hg); for(let i=0;i<H.n;i++){ const a=i/H.n*Math.PI*2, sh=new THREE.Mesh(new THREE.ConeGeometry(0.05,0.34+((i*7)%3)*0.1,3),new THREE.MeshPhongMaterial({color:H.col,emissive:0x0a0610,specular:H.rim,shininess:90,flatShading:true})); sh.position.set(Math.cos(a)*H.r,Math.sin(a)*H.r,0); sh.rotation.z=a-Math.PI/2; hg.add(sh); }
+      const rim=new THREE.Mesh(new THREE.TorusGeometry(H.r*0.78,0.012,6,48),gm(H.rim)); hg.add(rim); anim.push(t=>{ hg.rotation.z=t*0.4; }); }
+    if(M.wings){ const W=M.wings, wm=new THREE.MeshPhongMaterial({color:W.col,side:THREE.DoubleSide,shininess:8,transparent:!!W.fire,opacity:W.fire?0.94:1});
+      const pairs=W.four?[[0,1],[0.42,0.7]]:[[0,1]];
+      pairs.forEach(([dy,sc],pi)=>[-1,1].forEach(sd=>{ const w=new THREE.Group(); w.position.set(sd*0.2,W.y-dy,W.z); g.add(w); if(pi===0) g['w'+sd]=w; else g['v'+sd]=w;
+        const sh=new THREE.Shape(); sh.moveTo(0,0); sh.lineTo(0.95,0.55); sh.lineTo(1.0,0.05); sh.quadraticCurveTo(0.84,-0.08,0.78,-0.36); sh.quadraticCurveTo(0.6,-0.3,0.52,-0.58); sh.quadraticCurveTo(0.34,-0.4,0.22,-0.64); sh.quadraticCurveTo(0.12,-0.36,0.0,-0.3); sh.lineTo(0,0);
+        const mem=new THREE.Mesh(new THREE.ShapeGeometry(sh,8),wm); mem.scale.set(sd*W.s*sc*0.5,W.s*sc*0.5,1); mem.rotation.y=-sd*0.3; w.add(mem);
+        [[0.95,0.55],[0.78,-0.36],[0.52,-0.58],[0.22,-0.64]].forEach(([x,y])=>{ const L=Math.hypot(x,y)*W.s*sc*0.5, bn=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.034,L,5),new THREE.MeshPhongMaterial({color:0x1a1014})); bn.position.set(sd*x*W.s*sc*0.25,y*W.s*sc*0.25,0.01); bn.rotation.z=-sd*(Math.PI/2-Math.atan2(y,x)); mem.parent.add(bn); bn.rotation.y=-sd*0.3; });
+        if(W.fire) for(let i=0;i<6;i++){ const s=sprite(W.fire,0.7); const x=0.2+i*0.14, y=-0.3-Math.sin(i)*0.2; s.position.set(sd*x*W.s*sc*0.5,y*W.s*sc*0.5,0.05); s.scale.setScalar(0.3*sc); w.add(s); anim.push(t=>{ s.material.opacity=0.45+0.3*Math.sin(t*7+i); }); }
+        if(W.rim){ const e=new THREE.Mesh(new THREE.ShapeGeometry(sh,8),new THREE.MeshBasicMaterial({color:W.rim,side:THREE.DoubleSide,transparent:true,opacity:0.25,blending:THREE.AdditiveBlending,depthWrite:false})); e.scale.set(sd*W.s*sc*0.52,W.s*sc*0.52,1); e.rotation.y=-sd*0.3; w.add(e); } })); }
+    g.userData.mats=[bodyM]; g.userData.bones=bones; g.userData.key=key;
+    let t0=Math.random()*10; g.userData.tickArt=dt=>{ t0+=dt||0.016; anim.forEach(f=>f(t0)); };
+    g.traverse(m=>{ if(m.isMesh) m.castShadow=true; }); return g; }
+  return {make,has:k=>typeof BOSS_DATA!=='undefined'&&!!(BOSS_DATA&&BOSS_DATA[k])};
 })();
 
 // ── engine/chapel_themes.js ──
@@ -12348,6 +12788,7 @@ const GUARDIANS=(function(){
           const sp=[[pick.x,pick.y+1],[pick.x,pick.y-1],[pick.x+1,pick.y],[pick.x-1,pick.y]].filter(([x,y])=>X.ok(x,y)), [sx,sy]=sp.length?sp[Math.random()*sp.length|0]:[pick.x,pick.y+1]; d.anchorx=sx+0.5; d.anchorz=sy+0.5; } return 0.055; },
         onHit:d=>{ if(d.boss&&snuff&&snuff.phase==='channel') snuff.hits++; } },
       tick(){ const b=X.boss(); if(!b){ snuff=null; return; } const t=now(); const s=snuff||(snuff={phase:'wait',at:t,hits:0,page:null});
+        b._hold=s.phase==='moving'||s.phase==='channel';   /* V177: its errand at a lamp comes before its fight with you */
         if(b.hp>b.maxHp*AFTER){ s.phase='wait'; s.at=t; s.page=null; return; }
         if(s.phase==='wait'){ if(t-s.at<EVERY) return; const lit=pages.filter(p=>p.lit); if(lit.length<=MIN) return;
           let pick=null, best=-1; lit.forEach(p=>{ const d=Math.hypot(p.x+0.5-P().x,p.y+0.5-P().z); if(d>best){ best=d; pick=p; } });
@@ -12361,7 +12802,7 @@ const GUARDIANS=(function(){
 
   // ── 1 · Ironhold: solid only while it acts ──
   G[1]=X=>{ (X.f.extra._stands||[]).forEach(s=>{ const g=group(s.x+0.5,0,s.y+0.5,X.room); Cy(0.05,0.05,1.2,6,0x4a3a2a,0,0,0,g); Cy(0.22,0.27,0.62,7,0xa8acb6,0,0.72,0,g); Cy(0.17,0.16,0.3,8,0xa8acb6,0,1.34,0,g); B(0.22,0.04,0.04,0x1a2030,0,1.46,0.15,g); Cy(0.28,0.28,0.06,8,0x4a3a2a,0,0,0,g); shade(g); });
-    const solid=d=>!d||d.state==='telegraph'||d.state==='charge'||d.state==='slam'||(d._solidT||0)>0; let addT=0;
+    const solid=d=>!d||d.state==='telegraph'||d.state==='charge'||d.state==='slam'||d.state==='stunned'||d.bfActing||(d._solidT||0)>0;   /* V177: solid while it fights its combos, and while it reels */ let addT=0;
     return {
       onEnter(){ addT=0; },
       cfg:{ moveDone:d=>{ d._solidT=46; d._ironIdle=true; },
@@ -12369,7 +12810,7 @@ const GUARDIANS=(function(){
         onHit:d=>{ if(d.boss&&!solid(d)){ d._patience=Math.min(240,(d._patience||0)+14); say('iron','🗡 Your blade passes through it. It only stands, and waits.',1600,2500); return false; } },
         frozenAdds:()=>solid(X.boss()) },
       tick(){ const d=X.boss(); if(!d) return; if(d._solidT>0) d._solidT--; const so=solid(d);
-        (d.g.userData.mats||[]).forEach(m=>{ m.transparent=true; m.opacity=so?1:0.32; });
+        if(!d._fading) (d.g.userData.mats||[]).forEach(m=>{ m.transparent=true; m.opacity=so?1:0.32; });
         if(so) return; if(--addT>0) return; addT=110; if(X.lv.combat.adds.filter(a=>a.alive).length>=3) return;
         const st=X.f.extra._stands||[]; if(!st.length) return; const s=st[Math.random()*st.length|0], sp=[[s.x,s.y+1],[s.x,s.y-1],[s.x+1,s.y],[s.x-1,s.y]].filter(([x,y])=>X.ok(x,y)); if(!sp.length) return;
         const [ax,ay]=sp[Math.random()*sp.length|0], lv=Math.max(1,(d.level||4)-4), m=COMBAT.demonModel(lv,3,false,'#8a8ea0'); m.scale.multiplyScalar(0.8);
@@ -12399,7 +12840,7 @@ const GUARDIANS=(function(){
       cfg:{ onHit:d=>{ if(d.boss&&d._regrowing) say('root','🌿 It knits itself back together. Something under the floor is still feeding it.',1900,3200); } },
       tick(){ const d=X.boss(); if(!d) return; const roots=X.lv.combat.adds.filter(a=>a.alive&&a.root);
         if(seen!==undefined&&roots.length<seen) rootT=Math.max(rootT,300); seen=roots.length;
-        if(roots.length&&d.hp>0){ d.hp=Math.min(d.maxHp,d.hp+0.12*roots.length); d._regrowing=true; } else d._regrowing=false;
+        if(roots.length&&d.hp>0){ d.hp=Math.min(d.maxHp,d.hp+(d.bf?0.05:0.12)*roots.length); d._regrowing=true;   /* V177: slower against the armoured fight */ } else d._regrowing=false;
         if(--rootT>0) return; rootT=300; if(roots.length>=3) return;
         let best=null, bd=-1; for(let y=2;y<X.H-2;y++) for(let x=2;x<X.W-2;x++){ if(!X.ok(x,y)||roots.some(a=>Math.floor(a.x)===x&&Math.floor(a.z)===y)) continue; const dd=Math.hypot(x+0.5-P().x,y+0.5-P().z); if(dd>bd){ bd=dd; best=[x,y]; } }
         if(!best) return; const lv=Math.max(1,(d.level||8)-3); COMBAT.add({x:best[0]+0.5,z:best[1]+0.5,hp:10+lv,level:lv,speed:0,root:true,model:rootModel()});
