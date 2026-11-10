@@ -226,6 +226,7 @@ body.mlook #stick,body.mlook #swing,body.mlook #guardBtn,body.mlook #jumpBtn{vis
 <script src="models/body_woman.js"></script>
 <script src="models/demon_models.js"></script>
 <script src="models/boss_models.js"></script>
+<script src="models/pet_models.js"></script>
 <script src="models/props.js"></script>
 <script src="models/kit_man.js"></script>
 <script src="models/kit_woman.js"></script>
@@ -4360,7 +4361,8 @@ function equine(body,c0,c1,mane,hoof){ const legs=[];
     const knee=group(0,-0.55,0,hip); Cy(0.05,0.065,0.46,8,c0,0,-0.46,0,knee); Sp(0.07,c0,0,-0.46,0.01,knee,8,6); B(0.14,0.1,0.16,hoof||0x2a2018,0,-0.54,0.02,knee); legs.push({hip,knee,front}); }
   const tail=group(0,1.22,-0.84,body); tail.rotation.x=-2.5; Cy(0.07,0.04,0.25,6,mane,0,0,0,tail); for(let i=0;i<3;i++){ const st=Cy(0.05,0.02,0.62,5,i===1?mane:new THREE.Color(mane).multiplyScalar(0.85).getHex(),(i-1)*0.04,0.15,0,tail); st.rotation.z=(i-1)*0.1; }
   return {legs,neck,head,tail}; }
-function petModel(kind,form,ribbon){ const g=new THREE.Group(), body=group(0,0,0,g), legs=[], flap=[]; let headY=0.5, headZ=0.3;
+function petModel(kind,form,ribbon){ if(typeof PETART!=='undefined'){ const a=PETART.pet(kind,form,ribbon); if(a) return a; }   /* V184: the sculpted companions (petart.js); these blocks stand in where they haven't loaded */
+  const g=new THREE.Group(), body=group(0,0,0,g), legs=[], flap=[]; let headY=0.5, headZ=0.3;
   const quad=(c,len,h,w,leg)=>{ B(w,h,len,c,0,leg,0,body); for(const [x,z] of [[-w/2+0.06,len/2-0.08],[w/2-0.06,len/2-0.08],[-w/2+0.06,-len/2+0.08],[w/2-0.06,-len/2+0.08]]){ const p=group(x,leg,z,body); B(0.08,leg,0.08,c,0,-leg,0,p); legs.push(p); } };
   if(kind==='faithful'||kind==='lion'||kind==='cat'||kind==='fox'){
     const s=kind==='cat'?0.7:kind==='fox'?0.85:[0.75,1.0,1.35][form||0], c=kind==='cat'?0x8a8a94:kind==='fox'?0xd8743a:0xd8a050, cl=new THREE.Color(c).lerp(new THREE.Color(0xfff4e0),0.45).getHex(), cd=new THREE.Color(c).multiplyScalar(0.7).getHex();
@@ -4416,7 +4418,7 @@ const PETS3D=(function(){ let m=null, key='', st={x:0,z:0,face:0}, lvId=null; co
     const moving=d>0.15; if(moving){ const k=Math.min(1,dt*(d>3?6:3)); st.x+=(tx-st.x)*k; st.z+=(tz-st.z)*k; st.face=Math.atan2(tx-st.x,tz-st.z)||st.face; } else { let a=P.face-st.face; a=Math.atan2(Math.sin(a),Math.cos(a)); st.face+=a*dt*2; }
     const y=lv.ground?lv.ground(st.x,st.z):0; m.position.set(st.x,y,st.z); m.rotation.y=st.face; m.userData.animate(t,moving); }
   function hide(on){ if(m) m.visible=!on; }
-  return { place, tick, hide };
+  return { place, tick, hide, at:()=>m?{x:st.x,z:st.z,face:st.face,scale:m.scale.x}:null, setAt(x,z,face){ st.x=x; st.z=z; if(face!==undefined) st.face=face; if(m){ m.position.x=x; m.position.z=z; m.rotation.y=st.face; } } };   /* V184: the mount and dismount hand the companion over where it stands */
 })();
 
 // ── engine/mounts.js ──
@@ -4460,7 +4462,8 @@ function gaitRig(o){ const legs=o.legs, body=o.body, head=o.head, neck=o.neck, t
     flick=Math.max(0,flick-dt); if(Math.random()<dt*0.12) flick=0.6;
     if(tail){ tail.rotation.x=t0+run*0.55*mv+Math.sin(cyc)*0.12*mv; tail.rotation.z=Math.sin(t*1.3)*0.18*(1-mv)+Math.sin(flick*10)*0.25*(flick>0?1:0); }
     return {run,mv,cyc}; }; }
-function horseModel(m,rider){ if((m.kind==='lion'||m.kind==='dove'||m.kind==='dragon')&&typeof steedModel==='function') return steedModel(m,rider);   // the companions' own shapes (steeds.js)
+function horseModel(m,rider){ if(typeof PETART!=='undefined'&&PETART.hasSteed(m.kind)){ const a=PETART.steed(m.kind,rider); if(a) return a; }   /* V184: the sculpted steeds */
+  if((m.kind==='lion'||m.kind==='dove'||m.kind==='dragon')&&typeof steedModel==='function') return steedModel(m,rider);   // the companions' own shapes (steeds.js)
   const c=m.coat.map(hexn), mane=hexn(m.mane||m.coat[0]), g=new THREE.Group(), body=group(0,0,0,g), legs=[];
   const E=equine(body,c[0],c[1],mane), neck=E.neck, head=E.head, tail=E.tail; E.legs.forEach(L=>legs.push(L));   // the rounded horse (pets.js)
   // saddle cloth in the silks
@@ -9654,6 +9657,73 @@ const BOSSART=(function(){
     let t0=Math.random()*10; g.userData.tickArt=dt=>{ t0+=dt||0.016; anim.forEach(f=>f(t0)); };
     g.traverse(m=>{ if(m.isMesh) m.castShadow=true; }); return g; }
   return {make,has:k=>typeof BOSS_DATA!=='undefined'&&!!(BOSS_DATA&&BOSS_DATA[k])};
+})();
+
+// ── engine/petart.js ──
+// ════════════════════════════════════════════════════════════════
+//  PETART (V184) — the companions as sculpts (tools/sculpt_pets.py → data/pets.json → models/pet_models.js, PET_DATA):
+//   faithful f0 cub · f1 young lion · f2 lion (ride)      grace g0 dove · g1 falcon · g2 great dove (fly)
+//   steadfast s0 sea turtle · s1 tortoise · s2 the shelled sea reptile (swim)      u the unicorn (fly)
+//  Each is cut at its joints ('body', 'hd', legs 'lf' 'rf' 'lb' 'rb', 'tl', a bird's folded wings 'wL' 'wR' and spread
+//  wings 'fL' 'fR'), and this file moves them: a walk and a bounding gallop for the cats and the unicorn, a waddle and
+//  a wingbeat for the birds, a plod for the tortoise, paddling flippers for the turtle and the sea reptile.
+//  PETART.pet(id, form, ribbon) → the companion at your heels (the same userData petModel gives: animate, body, head,
+//  neck, back, ls). PETART.steed(kind, rider) → the final form that carries you (the same as steedModel: gallop, seat,
+//  body, kind). Both return null where the sculpts haven't loaded or the classic look is on — the old models stand in.
+// ════════════════════════════════════════════════════════════════
+const PETART=(function(){
+  const LINE={faithful:'f',grace:'g',steadfast:'s'}, STEED={lion:'f2',dove:'g2',dragon:'s2',unicorn:'u'}, KIND={f:'lion',g:'dove',s:'dragon',u:'unicorn'};
+  // how big each stands in the world beside the knight (the sculpts are true size; the little ones are shown a little larger to read)
+  const SHOW={f0:1.05,f1:0.9,f2:1.12,g0:1.7,g1:1.45,g2:0.84,s0:0.95,s1:0.8,s2:1.0,u:0.72}, SZ={f0:0.4,f1:0.72,f2:1,u:1,g0:0.15,g1:0.22,g2:1,s0:0.45,s1:1,s2:1};
+  const ok=k=>!!k&&typeof PET_DATA!=='undefined'&&!!PET_DATA&&!!PET_DATA[k]&&typeof BOSSART!=='undefined'&&(typeof LOOK2==='undefined'||!!LOOK2);
+  const keyOf=(id,form)=>id==='unicorn'?'u':(LINE[id]?LINE[id]+Math.max(0,Math.min(2,form|0)):null);
+  const sm=(a,b,x)=>{ x=Math.max(0,Math.min(1,(x-a)/(b-a))); return x*x*(3-2*x); };
+  function make(k,rider){ if(!ok(k)) return null; const art=BOSSART.make(k,{data:PET_DATA,skinScale:1.5/SZ[k],skinAmt:k[0]==='g'?0.012:0.03,toon:true}); if(!art) return null; art.userData.mats[0].color.setHex(0xe9e4dc);   /* a touch under white: the open world's sun is bright */
+    const R=PET_DATA[k], M=R.meta, BN=art.userData.bones, g=new THREE.Group(), body=new THREE.Group(), S=SHOW[k]; body.scale.setScalar(S); g.add(body); body.add(art);
+    art.traverse(o=>{ if(o.isMesh){ o.userData.lk=1; o.castShadow=true; } });   // looks.js leaves the sculpt's own meshes alone (the coat is a tint: see petLookApply)
+    // where a crown, a collar and a saddle-cloth sit (model units, inside `body`): the top of the head, the neck's root, the back
+    const box=n=>{ const m=BN[n]&&BN[n].children[0]; if(!m) return null; m.geometry.computeBoundingBox(); return m.geometry.boundingBox; };
+    const hb=box('hd'), bb=box('body'), pv=R.piv.hd||[0,bb.max.y,bb.max.z];
+    const head=hb?[hb.max.y-(hb.max.y-hb.min.y)*0.06,(hb.max.z+hb.min.z)/2-(hb.max.z-hb.min.z)*0.12]:[bb.max.y,bb.max.z*0.8], ls=hb?Math.max(0.05,(hb.max.x-hb.min.x)*0.8):0.3;
+    const seat=M.seat?M.seat[1]:bb.max.y*0.92, back=[M.seat?seat-0.04:bb.max.y*0.96,M.seat?-0.3*(bb.max.z-bb.min.z)*0.5:-0.05];
+    Object.assign(g.userData,{body,head,neck:[pv[1]-(hb?(hb.max.y-hb.min.y)*0.18:0),pv[2]],back,ls,kind:KIND[k[0]],seat:seat*S,sculpt:true,mats:art.userData.mats,petKey:k,bones:BN});
+    if(rider){ const rg=new THREE.Group(); rg.position.set(0,seat,M.seat?M.seat[2]:0); rg.scale.setScalar(1/S); body.add(rg); rider.position.set(0,0,0); rg.add(rider); }
+    // ── the gaits ──
+    const gait=M.gait||'cat', bird=gait==='bird', L=['lf','rf','lb','rb'].map(n=>BN[n]||null), hd=BN.hd, tl=BN.tl, hd0=hd?hd.position.clone():null; let last=0;
+    const leg=(i,x,y,z)=>{ if(L[i]) L[i].rotation.set(x||0,y||0,z||0); };
+    if(bird){ BN.fL.visible=BN.fR.visible=false; }
+    g.userData.gallop=(t,s,air,bank)=>{ s=Math.max(0,Math.min(1,s||0)); const dt=Math.min(0.05,Math.max(0,t-last)); last=t; art.userData.tickArt(dt);
+      const mv=Math.min(1,s*2.6), up=air>0; let by=0, bx=0, bz=(bank||0)*0.4;
+      if(gait==='cat'||gait==='horse'){ const run=sm(0.5,0.75,s), ph=t*(5.5+7*s), a=0.5*mv*(1-run), b=0.8*run;
+        if(up){ const p=Math.sin(t*3)*0.12; leg(0,-0.75+p); leg(1,-0.75-p); leg(2,0.7-p); leg(3,0.7+p); by=Math.sin(t*2)*0.04/S; bx=-0.06; }   // aloft: the legs gathered, treading the air
+        else { // the walk: each foot in its turn (left hind, left fore, right hind, right fore); the gallop: the fore pair reach, then the hind pair drive
+          leg(0,Math.sin(ph+1.57)*a+Math.sin(ph*1.25)*b); leg(1,Math.sin(ph+4.71)*a+Math.sin(ph*1.25-0.45)*b);
+          leg(2,Math.sin(ph)*a+Math.sin(ph*1.25+2.5)*b);  leg(3,Math.sin(ph+3.14)*a+Math.sin(ph*1.25+2.05)*b);
+          by=(Math.abs(Math.sin(ph))*0.02*mv*(1-run)+(0.5+0.5*Math.sin(ph*1.25+1.2))*0.1*run)/S*0.6; bx=Math.sin(ph*1.25+0.4)*0.07*run; }
+        if(hd) hd.rotation.set(-bx*0.8+Math.sin(t*0.9)*0.03*(1-mv),Math.sin(t*0.6)*0.14*(1-mv),0);
+        if(tl) tl.rotation.set((gait==='horse'?0.05:-0.15)+0.25*run+Math.sin(t*1.7)*0.06,Math.sin(t*(gait==='horse'?2.2:1.4))*(0.3-0.15*run),0); }
+      else if(bird){ const fly=up; if(BN.fL.visible!==fly){ BN.fL.visible=BN.fR.visible=fly; BN.wL.visible=BN.wR.visible=!fly; }
+        const ph=t*(9+6*s);
+        if(fly){ const f=Math.sin(t*(k==='g2'?5.5:11)); BN.fL.rotation.set(0,0,-(0.12+f*0.62)); BN.fR.rotation.set(0,0,0.12+f*0.62); leg(0,1.15); leg(1,1.15); by=-f*0.05/S*(k==='g2'?1:0.5); bx=-0.1-0.12*s; }
+        else { leg(0,Math.sin(ph)*0.6*mv); leg(1,-Math.sin(ph)*0.6*mv); bz+=Math.sin(ph)*0.07*mv; by=Math.abs(Math.sin(ph))*0.012*mv/S; }
+        if(hd){ hd.position.copy(hd0); if(!fly) hd.position.z+=Math.sin(ph*2)*0.035*mv*(hd0.y||0.2); hd.rotation.set(fly?0.12:0,Math.sin(t*0.8)*0.2*(1-mv),0); } }
+      else if(gait==='turtle'&&k==='s1'){ const ph=t*(3+4*s), a=0.42*mv;   // the tortoise plods, corner by corner, the shell rocking
+        leg(0,Math.sin(ph)*a); leg(3,Math.sin(ph)*a); leg(1,-Math.sin(ph)*a); leg(2,-Math.sin(ph)*a); bz+=Math.sin(ph)*0.03*mv; by=Math.abs(Math.cos(ph))*0.012*mv/S;
+        if(hd) hd.rotation.set(Math.sin(t*0.7)*0.05,Math.sin(t*0.5)*0.2*(1-mv*0.6),0); if(tl) tl.rotation.y=Math.sin(ph)*0.3*mv; }
+      else { const ph=t*(2.4+3*s), w=0.25+0.75*mv, big=k==='s2';   // flippers: the fore pair sweep like wings, the hind pair steer
+        leg(0,Math.cos(ph)*0.22*w,-Math.sin(ph)*0.3*w,-Math.sin(ph)*0.38*w); leg(1,Math.cos(ph)*0.22*w,Math.sin(ph)*0.3*w,Math.sin(ph)*0.38*w);
+        leg(2,0,-Math.sin(ph+1.6)*0.25*w,-Math.sin(ph+1.6)*0.2*w); leg(3,0,Math.sin(ph+1.6)*0.25*w,Math.sin(ph+1.6)*0.2*w);
+        by=Math.sin(ph)*0.035*w*(big?1:0.25)/S; bx=Math.cos(ph)*0.035*w*(big?1:0.4); bz+=Math.sin(t*1.1)*0.025;
+        if(hd) hd.rotation.set(-bx+Math.sin(t*0.9)*0.05,Math.sin(t*0.6)*0.22*(1-mv*0.5),0); if(tl) tl.rotation.y=Math.sin(ph-1)*0.35*w; }
+      body.position.y=by*S; body.rotation.x=bx; body.rotation.z=bz; if(g.userData.fxTick) g.userData.fxTick(t); };
+    return g; }
+  // the companion at your heels: the little birds take wing when you move and settle when you stop
+  function pet(id,form,ribbon){ const k=keyOf(id,form), g=make(k); if(!g) return null; const U=g.userData, flies=k==='g0'||k==='g1'; let lift=0, lt=0;
+    U.animate=(t,moving)=>{ const dt=Math.min(0.05,Math.max(0,t-lt)); lt=t; if(flies){ lift+=((moving?1:0)-lift)*Math.min(1,dt*4); U.gallop(t,moving?0.5:0,lift>0.12?1:0,0); U.body.position.y+=lift*0.75; } else U.gallop(t,moving?0.38:0,0,0); };
+    if(ribbon&&typeof RIBBON_COL!=='undefined'&&RIBBON_COL[ribbon]){ const r=group(0,U.neck[0],U.neck[1]+U.ls*0.45,U.body); r.scale.setScalar(U.ls/0.3); const c=RIBBON_COL[ribbon]; B(0.12,0.08,0.03,c,-0.06,0,0,r).rotation.z=0.4; B(0.12,0.08,0.03,c,0.06,0,0,r).rotation.z=-0.4; Sp(0.035,c,0,0.04,0,r); r.traverse(o=>{ if(o.isMesh) o.userData.lk=1; }); }
+    return g; }
+  function steed(kind,rider){ return make(STEED[kind],rider); }
+  return { pet, steed, has:(id,form)=>ok(keyOf(id,form)), hasSteed:kind=>ok(STEED[kind]) };
 })();
 
 // ── engine/chapel_themes.js ──
@@ -16199,6 +16269,9 @@ const PET_FX={ sparkle:['✦','#fff6c0',1], glow:['•','#fff0a0',0], hearts:['�
 // the model offers userData.body (the moving group), .head [y,z], .neck [y,z], .back [y,z] and .ls (accessory scale)
 function petLookApply(m,look,skin,kind){ look=look||{}; const U=m.userData, body=U.body||m, ls=U.ls||0.3;
   const meshes=[]; m.traverse(o=>{ if(o.isMesh&&o.material&&o.material.color&&!o.userData.lk) meshes.push(o); });
+  if(U.sculpt&&U.mats&&U.mats[0]){ const M0=U.mats[0]; M0.color.setHex(0xe9e4dc); M0.transparent=false; M0.opacity=1;   /* V184: a sculpted companion wears its coat as a tint over its own painting */
+    if(look.coat){ const it=PETLOOKS.find('coat',look.coat); if(it) M0.color.copy(_lkRamp(it.ramp,0.75)).lerp(new THREE.Color(0xffffff),0.3); }
+    if(skin==='spectral'){ M0.color.lerp(new THREE.Color(0xc8ecff),0.65); M0.transparent=true; M0.opacity=0.8; } }
   // 1 · the coat: the most common hue (by surface) among the model's colours, mapped onto the ramp by lightness
   if(look.coat){ const it=PETLOOKS.find('coat',look.coat); if(it){ const bins={};
       meshes.forEach(o=>{ const h=_lkHsl(o.material.color); if(h.l<0.12) return; const g=h.s>0.12?'h'+Math.floor(((h.h*360+15)%360)/30):(h.l>0.5?'nl':'nd');
@@ -16243,7 +16316,7 @@ function petLookApply(m,look,skin,kind){ look=look||{}; const U=m.userData, body
       s.material.opacity=rise===2?(0.4+0.6*Math.abs(Math.sin(t*3+i))):Math.sin(ph*Math.PI); }); }; }
   // 5 · barding: spectral (every coat a cold blue-white, half seen through) or coral (the Sea Dragon's)
   if(skin==='spectral') meshes.forEach(o=>{ o.material=o.material.clone(); o.material.color.lerp(new THREE.Color(0xc8ecff),0.65); o.material.transparent=true; o.material.opacity=0.78; if(o.material.emissive) o.material.emissive.setHex(0x1a3a5a); });
-  if(skin==='uwcoral'&&kind==='dragon'){ const g=group(0,0,0,body); B(0.66,0.06,0.72,0xd8586a,0,1.27,0.05,g); B(0.67,0.28,0.7,0xd8586a,0,0.99,0.05,g); B(0.68,0.04,0.71,0xf5a0a8,0,1.26,0.05,g);
+  if(skin==='uwcoral'&&kind==='dragon'&&!U.sculpt){ const g=group(0,0,0,body); B(0.66,0.06,0.72,0xd8586a,0,1.27,0.05,g); B(0.67,0.28,0.7,0xd8586a,0,0.99,0.05,g); B(0.68,0.04,0.71,0xf5a0a8,0,1.26,0.05,g);
     for(let i=0;i<9;i++){ Sp(0.04,0xf4f0e8,-0.34,1.0,-0.28+i*0.08,g); Sp(0.04,0xf4f0e8,0.34,1.0,-0.28+i*0.08,g); } [[-0.2,0.5],[0.2,0.5],[0,0.62]].forEach(([x,z])=>Co(0.05,0.18,5,0xf08a96,x,1.32,z-0.6,g)); shade(g); }
   return m; }
 
@@ -16699,7 +16772,7 @@ const STEED_LOOK={ faithful:{kind:'lion',coat:['#a8702a','#d8a050','#f0c878'],ma
 function riding(world){
   const S=()=>GAME.S, P=ENGINE.P, K=ENGINE.K;
   const ability=()=>{ const p=S().pet; if(!p) return null; const f=SYS.PETS[p.id]&&SYS.PETS[p.id].forms[p.form]; return f&&f.ability||null; };
-  let mounted=false, model=null, modelKey='', air=0;
+  let mounted=false, model=null, modelKey='', air=0, tr=null;
   const btn=document.createElement('button'); btn.className='act'; btn.id='mountBtn'; btn.hidden=true;
   btn.style.cssText='position:fixed;left:calc(26px + env(safe-area-inset-left,0px));bottom:calc(200px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:50%;border:1px solid rgba(242,193,78,.8);background:rgba(22,32,46,.6);color:#f2e2b0;font:700 24px var(--f-body);cursor:pointer;touch-action:none;z-index:5';
   btn.setAttribute('aria-label','Mount or dismount your companion'); document.body.appendChild(btn);
@@ -16707,14 +16780,25 @@ function riding(world){
   function toggle(){ const ab=ability();
     if(!ab){ UI.toast('Your companion must reach its final form to carry you.',1800); return; }
     if(ENGINE.level!==world){ UI.toast('You can only mount in the open world.',1400); return; }
-    if(mounted){ const tx=Math.floor(P.x), ty=Math.floor(P.z); if(!world.WK(tx,ty)){ UI.toast('Find solid ground before dismounting!',1600); return; } mounted=false; P.y=world.ground(P.x,P.z); UI.toast('🚶 You dismount.',1000); }
-    else { if(busy()) return; mounted=true; if(typeof SFX!=='undefined') SFX.play('mount'); const f=SYS.PETS[S().pet.id].forms[S().pet.form];
+    if(tr) return;
+    if(mounted){ const tx=Math.floor(P.x), ty=Math.floor(P.z); if(!world.WK(tx,ty)){ UI.toast('Find solid ground before dismounting!',1600); return; }
+      // V184: THE DISMOUNT — the steed settles (a flyer comes down first), he swings a leg over and drops to the ground at its
+      //  left shoulder while it steps aside, and it is your companion at your heels again
+      const y0=model?model.position.y:P.y; mounted=false; P.y=baseGround(P.x,P.z); flyY=null;
+      if(model&&ENGINE.level===world&&!window.NO_MOUNT_ANIM){ const drop=Math.max(0,y0-P.y), land=Math.min(0.9,drop*0.22); tr={k:'off',t:0,land,dur:land+0.75,y0,face:P.face,x:P.x,z:P.z}; ENGINE.hold(tr.dur,'idle'); }
+      UI.toast('🚶 You dismount.',1000); }
+    else { if(busy()) return; if(typeof SFX!=='undefined') SFX.play('mount'); const f=SYS.PETS[S().pet.id].forms[S().pet.form]; build();
+      // V184: THE MOUNT — your companion trots up to your side, growing to its full size; you take a step, vault, swing a leg
+      //  over and settle in the saddle as it takes your weight
+      if(model&&!window.NO_MOUNT_ANIM){ const a=(typeof PETS3D!=='undefined'&&PETS3D.at&&PETS3D.at())||null, vs=VIEWMODE.ps(world);
+        tr={k:'on',t:0,dur:1.15,face:P.face,x:P.x,z:P.z,fx:a?a.x:P.x-Math.sin(P.face)*1.2*vs,fz:a?a.z:P.z-Math.cos(P.face)*1.2*vs,ff:a?a.face:P.face,fs:a?a.scale:0.5*vs}; ENGINE.hold(tr.dur,'idle'); }
+      else mounted=true;
       UI.toast(`${f.emoji} You mount your ${f.name}! ${ab==='ride'?'Gallop — double speed.':ab==='fly'?'Soar over trees, water, and cliffs.':'Swim across water.'} Tap ${f.emoji} again to dismount.`,2400); }
     sync(); }
   btn.addEventListener('pointerdown',e=>{ e.preventDefault(); toggle(); });
   addEventListener('keydown',e=>{ if(e.key.toLowerCase()==='r'&&!UI.open&&!e.repeat) toggle(); });
   function sync(){ const ab=ability(), here=ENGINE.level===world&&!busy(); btn.hidden=!(ab&&here); const p=S().pet;
-    btn.textContent=mounted?'🚶':(p?SYS.PETS[p.id].forms[p.form].emoji:'🐎'); if(model) model.visible=mounted&&here; }
+    btn.textContent=mounted?'🚶':(p?SYS.PETS[p.id].forms[p.form].emoji:'🐎'); if(model) model.visible=(mounted||!!tr)&&here; }
   // ── the rules of the road, mounted and as the beast ──
   const baseMove=world.canMove, baseGround=world.ground, baseSpeed=world.speedMult;
   const inB=(x,y)=>x>=0&&y>=0&&x<world.W&&y<world.H;
@@ -16725,7 +16809,7 @@ function riding(world){
     if(S().livery==='robby'&&!busy()&&inB(bx,by)&&(bx!==Math.floor(fx)||by!==Math.floor(fz))){ const t=world.T(bx,by);
       if((t===39||t===40||FLY_PASS.has(t))&&world.barrierAt(bx,by)<0){ const hf=world.E(Math.floor(fx),Math.floor(fz)), ht=world.E(bx,by); if(ht<=hf||t===33||t===32) return true; } }
     return baseMove(fx,fz,tx,tz); };
-  world.mounted=()=>mounted;   // (on foot, the grand view slows his pace to his size; mounted it doesn't)
+  world.mounted=()=>mounted; world.mountT=()=>tr?[tr.k,+tr.t.toFixed(2)]:null;   // (on foot, the grand view slows his pace to his size; mounted it doesn't)
   world.speedMult=()=>{ const b=baseSpeed?baseSpeed():1, ab=mounted&&ability(); return ab?b*(ab==='ride'?2:1.4):b; };
   // V142: FLIGHT ABOVE IT ALL — the height of whatever stands at a spot (the camera's own map of what's solid: roofs, towers,
   //  walls, trees, crags, the watchtowers), and the Dove keeps above the highest of it under her and a little ahead, with a
@@ -16742,7 +16826,7 @@ function riding(world){
   function build(){ const p=S().pet; if(!p) return; const key=p.id+':'+p.form+(typeof PETLOOKS!=='undefined'?PETLOOKS.key(S()):''); if(model&&modelKey===key) return; if(model) world.scene.remove(model);
     const L=STEED_LOOK[p.id]||STEED_LOOK.faithful; model=horseModel({kind:L.kind,coat:L.coat,mane:L.mane}); if(typeof petLookApply!=='undefined') petLookApply(model,PETLOOKS.shown(),S().mountSkin,L.kind); model.visible=false; world.scene.add(model); modelKey=key; }
   let lx=0, lz=0;
-  world.anim.push((t,dt)=>{ dt=dt||0.016; sync(); if(ENGINE.level!==world) return; if(mounted&&busy()) mounted=false; if(!mounted){ if(model) model.visible=false; return; }
+  world.anim.push((t,dt)=>{ dt=dt||0.016; sync(); if(ENGINE.level!==world) return; if(mounted&&busy()) mounted=false; if(tr){ if(busy()||!model){ tr=null; } else { transit(t,dt); return; } } if(!mounted){ if(model) model.visible=false; return; }
     build(); if(!model) return; const vs=VIEWMODE.ps(world), ab=ability(), raw=Math.min(1,Math.hypot(P.x-lx,P.z-lz)/Math.max(1e-3,dt)/8); lx=P.x; lz=P.z;
     // V99: a smoothed speed and the rate of turn (for the lean into a bend), and the rider coupled to the steed's own back
     spS+=(raw-spS)*Math.min(1,dt*5); let dy=P.face-lf; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); lf=P.face; yawR+=((dy/Math.max(dt,1e-3))-yawR)*Math.min(1,dt*6);
@@ -16755,14 +16839,38 @@ function riding(world){
     const run=Math.max(0,Math.min(1,(spS-0.28)/0.3)), wide=model.userData.kind==='dove'?0.62:model.userData.kind==='dragon'?0.6:0.55;
     K.ride={speed:spS,run,bob:(lagY-by)*0.6+run*0.035*(0.5+0.5*Math.sin(t*(11+4*spS))),bank:bz+bank*0.4,pitch:bp,wide};
     K.rotation.order='YXZ'; K.position.set(P.x,model.position.y+(seat+by)*sc,P.z); K.rotation.set(bp*0.7,P.face,bz*0.8); });
+  // ── V184: the mount and the dismount, played out ──
+  const ez=u=>{ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
+  function transit(t,dt){ tr.t+=dt; const vs=VIEWMODE.ps(world), full=0.85*vs, U=model.userData, seat=U.seat||1.12, g0=baseGround(tr.x,tr.z), ab=ability();
+    const rx=Math.cos(tr.face), rz=-Math.sin(tr.face), SIDE=0.62*vs;   // his right hand; he mounts from the steed's left
+    model.visible=true; K.rotation.order='YXZ'; P.face=tr.face;
+    if(tr.k==='on'){ const a=ez(tr.t/0.5), v=Math.max(0,Math.min(1,(tr.t-0.5)/0.6)), e=ez(v);
+      // the steed comes from where your companion stood to stand under where you'll sit, turning to face your way
+      let df=tr.face-tr.ff; df=Math.atan2(Math.sin(df),Math.cos(df)); const sc=tr.fs+(full-tr.fs)*a;
+      model.scale.setScalar(sc); model.position.set(tr.fx+(tr.x-tr.fx)*a,g0,tr.fz+(tr.z-tr.fz)*a); model.rotation.y=tr.ff+df*a; U.gallop(t,a<1?0.4:0,0,0);
+      const dip=v>0.72?Math.sin((v-0.72)/0.28*Math.PI)*0.07*sc:0; if(U.body) U.body.position.y-=dip;   // it takes his weight
+      // he steps aside to make room, then springs: up and over in an arc, leaning in, the far leg swinging across
+      const off=SIDE*(a*(1-e)), sy=g0+(seat*sc-dip)*e+Math.sin(v*Math.PI)*0.42*vs;
+      tr.pose=v>0.55?'ride':'idle'; K.ride={speed:0,run:0,bob:0,bank:0,pitch:0,wide:(U.kind==='dove'?0.62:U.kind==='dragon'?0.6:0.55)+0.5*(1-ez((v-0.55)/0.45))};
+      K.position.set(tr.x-rx*off,v>0?sy:g0,tr.z-rz*off); K.rotation.set(-Math.sin(v*Math.PI)*0.25,tr.face+(a-e)*0.5,-Math.sin(v*Math.PI)*0.45);
+      if(tr.t>=tr.dur){ tr=null; mounted=true; spS=0; lf=P.face; lagY=0; lx=P.x; lz=P.z; sync(); } }
+    else { const d=tr.land>0?ez(tr.t/tr.land):1, v=Math.max(0,Math.min(1,(tr.t-tr.land)/0.5)), e=ez(v), w=ez((tr.t-tr.land-0.4)/0.35);
+      // a flyer settles to the ground with its wings still beating; then the steed steps away to his right as he swings down
+      const my=tr.y0+(g0-tr.y0)*d, sc=full+(((typeof PETS3D!=='undefined'&&PETS3D.at&&PETS3D.at())||{scale:full*0.68}).scale-full)*w, sx=tr.x+rx*SIDE*1.5*e-Math.sin(tr.face)*0.5*vs*w, sz=tr.z+rz*SIDE*1.5*e-Math.cos(tr.face)*0.5*vs*w;
+      model.scale.setScalar(sc); model.position.set(sx,my,sz); model.rotation.y=tr.face; U.gallop(t,v>0&&v<1?0.3:0,d<1&&ab==='fly'?1:0,0);
+      const rise=v<0.3?Math.sin(v/0.3*Math.PI)*0.06*full:0; if(U.body) U.body.position.y+=rise;
+      tr.pose=v<0.4?'ride':'idle'; K.ride={speed:0,run:0,bob:0,bank:0,pitch:0,wide:0.55+0.5*ez(v/0.4)};
+      const ky=my+seat*full*(1-e)+Math.sin(v*Math.PI)*0.22*vs; K.position.set(tr.x,Math.max(g0,ky),tr.z); K.rotation.set(Math.sin(v*Math.PI)*0.18,tr.face-Math.sin(v*Math.PI)*0.35,Math.sin(v*Math.PI)*0.4);
+      if(v>=1&&!tr.thud){ tr.thud=1; if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('step'); }catch(_){} }
+      if(tr.t>=tr.dur){ if(typeof PETS3D!=='undefined'&&PETS3D.setAt) PETS3D.setAt(sx,sz,tr.face); tr=null; K.rotation.set(0,P.face,0); model.visible=false; sync(); } } }
   let spS=0, lf=0, yawR=0, lagY=0;
-  const kAnim=K.animate; K.animate=function(dt,mode,sp){ const on=mounted&&ENGINE.level===world; if(!on&&K.rotation.x){ K.rotation.x=0; K.rotation.z=0; }
+  const kAnim=K.animate; K.animate=function(dt,mode,sp){ const on=(mounted||(tr&&tr.pose==='ride'))&&ENGINE.level===world; if(!on&&!tr&&K.rotation.x){ K.rotation.x=0; K.rotation.z=0; }
     return kAnim.call(K,dt,on&&(mode==='walk'||mode==='idle')?'ride':mode,sp); };
-  const prevLeave=world.onLeave; world.onLeave=()=>{ mounted=false; btn.hidden=true; if(model) model.visible=false; prevLeave&&prevLeave(); };
+  const prevLeave=world.onLeave; world.onLeave=()=>{ mounted=false; tr=null; btn.hidden=true; if(model) model.visible=false; prevLeave&&prevLeave(); };
   // the pet follower steps aside while it carries you
-  if(typeof PETS3D!=='undefined'){ const tick=PETS3D.tick; PETS3D.tick=function(dt,t,P0,lv){ if(mounted&&lv===world){ PETS3D.hide&&PETS3D.hide(true); return; } PETS3D.hide&&PETS3D.hide(false); return tick.apply(this,arguments); }; }
-  function mount(v){ mounted=!!v&&!!ability()&&ENGINE.level===world&&!busy(); sync(); }
-  return { get mounted(){ return mounted; }, toggle, mount };
+  if(typeof PETS3D!=='undefined'){ const tick=PETS3D.tick; PETS3D.tick=function(dt,t,P0,lv){ if((mounted||tr)&&lv===world){ PETS3D.hide&&PETS3D.hide(true); return; } PETS3D.hide&&PETS3D.hide(false); return tick.apply(this,arguments); }; }
+  function mount(v){ tr=null; mounted=!!v&&!!ability()&&ENGINE.level===world&&!busy(); sync(); }
+  return { get mounted(){ return mounted; }, get moving(){ return !!tr; }, toggle, mount };
 }
 
 // ── engine/rogues.js ──
