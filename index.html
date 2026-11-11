@@ -4658,7 +4658,7 @@ function steedModel(m,rider){ const c=m.coat.map(hexn), mane=hexn(m.mane||m.coat
 //  ANIM3 (V190) — the realm's animals on real skeletons. The corral horses and the mule, the merchants' donkeys, the
 //  shepherds' sheep, the hens by the coop, the deer of the wilds and of the Forest of Disillusionment were boxes and
 //  spheres swung about by code; now each wears an artist-made, rigged and hand-animated model (models/look3/*.gltf:
-//  Quaternius's animated animals, CC0), cel-shaded to match.
+//  Quaternius's animated and farm animals, CC0 — models/look3/LICENSES.md), cel-shaded to match.
 //   ANIM3.dress(g, kind, {tint, mane, h, face})  → g keeps its old model until the new one has loaded, then the old one is
 //     hidden and the rigged one stands in its place at its true size beside the knight (WH, world units), or h (g's units). kinds: horse, donkey, deer, stag, cow,
 //     sheep, chicken, chick, pig.
@@ -4669,8 +4669,8 @@ function steedModel(m,rider){ const c=m.coat.map(hexn), mane=hexn(m.mane||m.coat
 // ════════════════════════════════════════════════════════════════
 const ANIM3=(function(){
   const on=()=>!(typeof LOOK2!=='undefined'&&!LOOK2)&&!/[?&]noanim3/.test(location.search)&&!window.NO_ANIM3;
-  const BASE='models/look3/', FILE={horse:'Horse.gltf',horseW:'Horse_White.gltf',donkey:'Donkey.gltf',deer:'Deer.gltf',stag:'Stag.gltf',cow:'Cow.gltf',sheep:'Sheep.gltf',chicken:'Chicken.gltf',chick:'Chick.gltf',pig:'Pig.gltf'};
-  const CLIP={walk:['Walk','Run'],run:['Gallop','Run'],idle:['Idle','Idle_2'],graze:['Eating','Idle_Eating','Idle_Peck','Idle_Headlow','Idle']};
+  const BASE='models/look3/', FILE={horse:'Horse.gltf',horseW:'Horse_White.gltf',donkey:'Donkey.gltf',deer:'Deer.gltf',stag:'Stag.gltf',cow:'Cow.gltf',sheep:'sheep.glb',chicken:'chicken.glb',chick:'chicken.glb',pig:'pig.glb'};
+  const CLIP={walk:['Walk','Run'],run:['Gallop','Run'],idle:['Idle','Idle_2'],graze:['Eating','Idle_Eating','Idle_Peck','Idle_Headlow','Bite_Front','Idle']};
   const src={}, wait={}, live=[]; let libs=null;
   function loadLibs(){ if(libs) return libs; libs=new Promise((res,rej)=>{ const add=(f,next)=>{ const s=document.createElement('script'); s.src=BASE+f; s.onload=next; s.onerror=()=>rej(f); document.head.appendChild(s); };
       add('GLTFLoader.js',()=>add('SkeletonUtils.js',()=>res())); }); return libs; }
@@ -4694,7 +4694,7 @@ const ANIM3=(function(){
       root.updateMatrixWorld(true); const rb=new THREE.Box3().setFromObject(root), k=(h*(opt.k||1))/Math.max(0.01,rb.max.y-rb.min.y); root.scale.multiplyScalar(k); root.position.y=-rb.min.y*k;
       if(opt.face) root.rotation.y=opt.face;
       old.forEach(c=>{ c.visible=false; }); g.add(root);
-      const mx=new THREE.AnimationMixer(root), acts={}; src.animations.forEach(a=>{ acts[a.name]=mx.clipAction(a); });
+      const mx=new THREE.AnimationMixer(root), acts={}; src.animations.forEach(a=>{ acts[a.name.split('|').pop()]=mx.clipAction(a); });   // 'AnimalArmature|…|Walk' → 'Walk'
       Object.assign(H,{ready:true,root,mx,acts}); play(H,'idle',0); live.push(H); }).catch(()=>{});
     return H; }
   function play(H,want,fade){ const n=pick(H.acts,want); if(!n) return; const a=H.acts[n]; if(H.cur===a) return; a.reset(); a.timeScale=H.opt.speed||1; a.fadeIn(fade===undefined?0.3:fade).play(); if(H.cur) H.cur.fadeOut(fade===undefined?0.3:fade); H.cur=a; }
