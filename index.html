@@ -270,6 +270,7 @@ body.mlook #stick,body.mlook #swing,body.mlook #guardBtn,body.mlook #jumpBtn{vis
 </script>
 
 <script src="three.min.js"></script><script>window.THREE||document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<script src="models/anim_ual.js"></script>
 <script src="models/hero_knight.js"></script>
 <script src="models/body_hero.js"></script>
 <script src="models/body_man.js"></script>
@@ -2382,18 +2383,18 @@ function buildKnight(){
         /* V142: walk or run by how fast he truly goes (in hip heights a second), eased — not the hand-keyed gait's own blend */
         const vH=veff/K.hipY; K._rfM=(K._rfM||0)+(smooth01((vH-2.9)/0.6)-(K._rfM||0))*Math.min(1,dt*5);
         RG.step(dt,a,K._rfM,vH,ov,K.npc?{idle:'idleCalm',walk:'walk',run:'walk'}:K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
-        K._rArm=!!(A0&&A0.arms!==false);
+        K._rArm=!!(A0&&A0.arms!==false)||!!(RG.ual&&!K.npc&&K._st==='sheathed'&&swing<0&&!(K.raise>0)&&!(K.charge>0)&&!(K.spinT>=0)&&!K.guarding);   /* V192: sword away, the new clips swing both arms */
         const kq=(o,out)=>{ out.identity(); for(let q=o.parent;q&&q!==K;q=q.parent) out.premultiply(q.quaternion); return out; };
         const turn=(o,n,ww)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,ww); };
         const point=(o,a0,b0,ww)=>{ _mv.subVectors(RG.p(b0),RG.p(a0)).normalize(); kq(o,_mp); _mv.applyQuaternion(_mp.invert()); _mq.setFromUnitVectors(_MD,_mv); o.quaternion.slerp(_mq,ww); };
         // V155: EASIER ON HIS FEET. Out of a fight the clips are laid on more lightly, over the hand-keyed rest (breathing, the
         //  weight shifting from leg to leg, arms hanging loose): standing, most of the stance is the relaxed one; walking, the
         //  clip keeps the legs (the feet stay true to the ground) but much less of its hip roll, shoulder turn and arm swing
-        K._rlx=(K._rlx||0)+(((calm&&!ov)?1:0)-(K._rlx||0))*Math.min(1,dt*3); const rx=K._rlx, wk=a*(1-K._rfM), sw=1-0.72*wk*rx;
+        K._rlx=(K._rlx||0)+(((calm&&!ov)?1:0)-(K._rlx||0))*Math.min(1,dt*3); const rx=RG.ual?0:K._rlx, wk=a*(1-K._rfM)   /* V192: the new clips are the stance and the stride whole — nothing of the old hand-keyed rest laid under them */, sw=1-0.72*wk*rx;
         const wI=w*(1-0.8*ia*rx), wHip=wI*sw*(1-0.6*ia*rx), wTor=wI*(1-0.7*wk*rx), wLeg=wI*(1-0.4*wk*rx)*(1-0.75*ia*rx), wArm=wI*(1-0.7*wk*rx);   /* V165: at ease the clip's planted fighter's legs barely show */
         const hp=RG.p('Hips'), hb=RG.pb('Hips'), k=K.hipY/RG.hipH;
         hips.position.y+=((K.hipY*hp.y/hb.y)-hips.position.y)*wLeg; hips.position.x+=((hp.x-hb.x)*k*0.6*(1-0.6*wk*rx)-hips.position.x)*wHip;
-        turn(hips,'Hips',wHip); turn(torso,'Spine2',wTor); turn(head,'Head',wTor);
+        turn(hips,'Hips',wHip); turn(torso,RG.ual?'Spine1':'Spine2',wTor);   /* V192: his breastplate is one piece — it takes the middle of the new spine, not the bowed top of it */ turn(head,'Head',wTor);
         point(L.hip,'LeftUpLeg','LeftLeg',wLeg); point(L.knee,'LeftLeg','LeftFoot',wLeg); point(R.hip,'RightUpLeg','RightLeg',wLeg); point(R.knee,'RightLeg','RightFoot',wLeg);
         point(AL.sh,'LeftArm','LeftForeArm',wArm); point(AL.el,'LeftForeArm','LeftHand',wArm);
         if(K._rArm){ point(AR.sh,'RightArm','RightForeArm',w); point(AR.el,'RightForeArm','RightHand',w); }
@@ -2821,7 +2822,11 @@ const ANIM_BASE={"src":"Mixamo (Zak’s Sword & Shield and Action Adventure pack
 //  RIG.make() → rig · rig.step(dt, move, run, speedInHipHeights) · rig.q(name) model-space turn from bind · rig.p(name)
 // ════════════════════════════════════════════════════════════════
 const RIG=(function(){
-  const D=typeof ANIM_BASE!=='undefined'?ANIM_BASE:null;
+  // V192: the clips are now Quaternius' Universal Animation Library (CC0; models/anim_ual.js — baked onto these same bone
+  //  names, so nothing else changes): a hand-animated, game-made set — the walk, the jog, the sword stance and blows, the
+  //  shield guard, the roll, the jump. Where that file hasn't loaded (or with ?oldanim / the classic look) the old clips play.
+  const OLDA=(function(){ try{ return /[?&]oldanim/.test(location.search)||localStorage.getItem('klk3d_anim')==='old'; }catch(e){ return false; } })();
+  const D=(typeof ANIM_UAL!=='undefined'&&ANIM_UAL&&!OLDA)?ANIM_UAL:(typeof ANIM_BASE!=='undefined'?ANIM_BASE:null);
   const ok=!!(D&&THREE.AnimationMixer);
   function clipFrom(name,c){ const tr=[];
     c.q.forEach((v,i)=>tr.push(new THREE.QuaternionKeyframeTrack(D.bones[i][0]+'.quaternion',c.T,v)));
@@ -2857,7 +2862,7 @@ const RIG=(function(){
     // V142: every clip's weight eases toward where it's wanted (a crossfade, never a cut), and the weights always add up to
     //  one (short of one, the mixer would drift toward the T-pose); a clip fading out keeps the time it had
     const W={}, TT={};
-    const rig={ root, bones:B, actions:A, nat, hipH, dur,
+    const rig={ root, bones:B, actions:A, nat, hipH, dur, ual:!!(typeof ANIM_UAL!=='undefined'&&D===ANIM_UAL),
       addClip(name,clip){ addClip(name,clip); delete nat[name]; },
       // blend and pose: move 0..1 (standing → moving), run 0..1 (walk → run), v the ground speed in hip heights a second
       // ov: a clip laid over the gaits — {n:name, t:its time (seconds, or u 0..1 of it), w:how much, fade:per second} — a blow, the guard, a fall
@@ -2882,7 +2887,7 @@ const RIG=(function(){
       p(n){ return P[n]; }, pb(n){ return PB[n]; } };
     const _inv=new THREE.Quaternion();
     return rig; }
-  return { ok, make };
+  return { ok, make, ual:!!(D&&typeof ANIM_UAL!=='undefined'&&D===ANIM_UAL) };
 })();
 
 // ── engine/people.js ──

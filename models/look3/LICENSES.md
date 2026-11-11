@@ -7,3 +7,4 @@
 | AnimationLibrary_Godot_Standard.gltf/.bin | Quaternius — Universal Animation Library (free standard edition) | CC0 — quaternius.com pack page; mirror J-Ponzo/gltf-universal-animation-library |
 | Knight.glb | Kay Lousberg — KayKit Adventurers | CC0 — the pack's own LICENSE.txt |
 | GLTFLoader.js, SkeletonUtils.js | three.js r128 | MIT |
+| ../anim_ual.js (the knight's and the townsfolk's motion: walk, jog, sword stance and blows, shield guard, roll, jump, fall, landing, death, sowing, nodding) | Quaternius — Universal Animation Library 1 and 2, Standard (the zips from quaternius.com), baked onto the game's bone names by tools/anim/bake_ual.html | CC0 — the packs' own License.txt (LICENSE-universal-animation-library.txt) |
