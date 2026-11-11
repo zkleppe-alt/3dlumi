@@ -8953,7 +8953,7 @@ const COMBAT=(function(){
         if(s.nova){ if(s.burst===c._novaHit) return; c._novaHit=s.burst; hurtFromBoss(12+tl*2.4,true); } else hurtFromBoss(4+tl*0.9); } });
     c.shots=c.shots.filter(s=>{ if(s.life>0) return true; c.fx.remove(s.m); return false; });
     c.adds.forEach(a=>{ if(!a.alive) return;
-      if(a.flock){ a.wander+=(Math.random()-0.5)*0.35; const nx=a.x+Math.cos(a.wander)*a.speed, nz=a.z+Math.sin(a.wander)*a.speed; if(walk(nx,nz)){ a.x=nx; a.z=nz; a.moving=true; } else a.wander+=2.2; return; }
+      if(a.flock){ a.wander+=(Math.random()-0.5)*0.35; const nx=a.x+Math.cos(a.wander)*a.speed, nz=a.z+Math.sin(a.wander)*a.speed; if(walk(nx,nz)){ a.x=nx; a.z=nz; a.moving=a.speed>0; } else a.wander+=2.2; return; }
       if(a.husk&&cfg.frozenAdds&&cfg.frozenAdds()){ a.frozen=true; return; } a.frozen=false;
       if(a.mirror){ if(cfg.mirrorStep) cfg.mirrorStep(a); }
       else { const dx=p.x-a.x, dz=p.z-a.z, m=Math.hypot(dx,dz)||1; a.x+=dx/m*a.speed; a.z+=dz/m*a.speed; } if(a.hurt>0) a.hurt--;
@@ -10551,7 +10551,7 @@ function chapelLevels(C,spec){
     // ── the fight ──
     const alive=()=>lv.combat.foes.some(d=>d.alive);
     const X={lv,room,an,scene,hemi,lamp,bg,f,i,W,H,R:()=>R,td,C,tl:td.lvl,at,setT:(x,y,t)=>{ if(g[y]) g[y][x]=t; },ok:(x,y)=>ok(x,y),boss:()=>lv.combat.foes.find(d=>d.boss&&d.alive)};
-    const M=(top&&typeof GUARDIANS!=='undefined'&&GUARDIANS[C.town])?GUARDIANS[C.town](X):{};
+    const M=(top&&typeof GUARDIANS!=='undefined'&&GUARDIANS[C.town])?GUARDIANS[C.town](X):{}; lv.guardian=M;   /* for tests: the guardian's own state() */
     if(M.speedMult) lv.speedMult=M.speedMult; lv.mech=M;
     const arena=COMBAT.arena(lv,Object.assign({mode:'dungeon',tier:C.town,townLvl:td.lvl,W,H,wide:!!f.wide,walk:(x,y)=>ok(x,y),los:(x,y)=>at(x,y)!==1},M.cfg||{},{
       onKill:d=>{ if(d.boss){ R.bossDead=true; lv.combat.adds.forEach(a=>a.alive=false); if(M.onBossDead) M.onBossDead(d);
@@ -13629,27 +13629,49 @@ const GUARDIANS=(function(){
         for(let i=pyres.length-1;i>=0;i--) if(pyres[i].t<=0&&pyres[i].lit<=0) pyres.splice(i,1); show(); } }; };
 
   // ── 7 · Stormgate: Ruth's people ──
-  const G7=X=>{ const looks=['peasant','peasantF','child','peasant','peasantF']; let bolt=null, boltT=0, lost=0, charge=0, chargeT=0;
-    const bm=new THREE.Mesh(new THREE.RingGeometry(0.9,1.05,32),new THREE.MeshBasicMaterial({color:0xffd65a,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false})); bm.rotation.x=-Math.PI/2; X.room.add(bm);
-    const beam=new THREE.Mesh(new THREE.CylinderGeometry(0.08,0.08,12,6),new THREE.MeshBasicMaterial({color:0xfff6d6,transparent:true,opacity:0})); X.room.add(beam);
+  /* V187: SHELTER, THEN FIGHT. Ruth's people no longer wander the hall with a bolt picking one out every few seconds while
+     the Thunder Lord swings at you. They huddle in one place, under a ring on the floor. Every so often he stops fighting
+     (his hammer still, `quiet`), raises it and CALLS THE STORM DOWN on them — a long, plain warning: a bar, a closing ring,
+     a pillar of light. Get into the ring and raise your shield: the bolt breaks on it, runs back up into him and he REELS,
+     wide open — and your blade is charged for a while after (it goes through his guard). In the ring without your shield
+     up you take it for them: it hurts, they live, he staggers a little. Not there: one of them is lost.
+     Your sword works on him at all times now, like any guardian; the charge is the reward, not the key. */
+  const G7=X=>{ const looks=['peasant','peasantF','child','peasant','peasantF']; let bolt=null, boltT=0, lost=0, charge=0, chargeT=0, hub=null, calls=0;
+    const WARN=210, RAD=1.9, CHG=9000;
+    const mk=(geo,col,op)=>{ const m=new THREE.Mesh(geo,new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op,side:THREE.DoubleSide,depthWrite:false})); X.room.add(m); return m; };
+    const home=mk(new THREE.RingGeometry(RAD-0.09,RAD,48),0xe8dcbb,0), bm=mk(new THREE.RingGeometry(0.9,1.05,40),0xffd65a,0), fill=mk(new THREE.CircleGeometry(RAD,40),0x9ad8ff,0); [home,bm,fill].forEach(m=>{ m.rotation.x=-Math.PI/2; });
+    const beam=mk(new THREE.CylinderGeometry(0.5,0.5,14,10,1,true),0xfff6d6,0);
     const charged=()=>{ if(charge>0&&now()>chargeT){ charge=0; } return charge>0; };
     const flock=()=>X.lv.combat.adds.filter(a=>a.alive&&a.flock);
-    const show=()=>{ const l=flock().length, m=[{label:'Ruth’s people',pips:l,of:5,col:'#e8dcbb'}]; if(charged()) m.push({label:`⚡ CHARGED ×${charge}`,f:(chargeT-now())/6200,col:'#7fd0ff'}); COMBAT.meter(m); };
+    const show=()=>{ const l=flock().length, m=[{label:'Ruth’s people',pips:l,of:5,col:'#e8dcbb'}]; if(bolt) m.push({label:'⚡ THE STORM IS FALLING — shield them!',f:bolt.t/WARN,col:'#ffd65a'}); else if(charged()) m.push({label:'⚡ CHARGED — your blade goes through his guard',f:(chargeT-now())/CHG,col:'#7fd0ff'}); COMBAT.meter(m); };
+    // where they shelter: the middle of the hall's far end from him, on open floor
+    function place(){ const b=X.boss(), bz=b?b.z:2, cx=X.W/2, far=bz<X.H/2?X.H*0.74:X.H*0.26; let best=null;
+      for(let r=0;r<6&&!best;r++) for(let dx=-r;dx<=r&&!best;dx++) for(let dz=-r;dz<=r;dz++){ const x=Math.floor(cx)+dx, z=Math.floor(far)+dz; if([[0,0],[1,0],[-1,0],[0,1],[0,-1]].every(([a,c])=>X.ok(x+a,z+c))){ best={x:x+0.5,z:z+0.5}; break; } }
+      return best||{x:cx,z:far}; }
+    const stun=(n,toast)=>{ const b=X.boss(); if(!b||!b.alive) return; b.state='stunned'; b.timer=n; b.walking=false; b.ring=0; b.mark=false; COMBAT.pop(b.x,(b.g.userData.tall||3.5)*0.85,b.z,'It reels — strike!','#ffd84a'); };
     return {
-      state:()=>({bolt,charge:charged()?charge:0,lost}),
-      onEnter(){ bolt=null; boltT=0; lost=0; charge=0; [[4,5],[10,5],[6,6],[9,7],[5,7]].forEach(([x,y],k)=>COMBAT.add({x:x+0.5,z:y+0.5,hp:1,level:1,speed:0.35*PX,flock:true,wander:Math.random()*6.28,model:person(looks[k])})); show(); },
-      onBossDead(){ bolt=null; bm.material.opacity=0; beam.material.opacity=0; if(lost===0&&flock().length>=5&&!S().stormward){ S().stormward=true; setTimeout(()=>UI.toast('🛡 The Stormward Plate — every one of them walked out of Ruth’s hall.',4200),2600); } COMBAT.meter(null); },
-      cfg:{ pierce:()=>charged(),   /* V177: charged, your blade goes through its guard */
-        onHit:d=>{ if(!d.boss) return; if(!charged()){ say('dull','⚔ Your blade will not bite. Nothing here answers to steel alone. Take a bolt for one of them.',2000,2600); return false; }
-        if(--charge===0){ chargeT=0; UI.toast('⚡ The charge is spent.',1200); } } },
-      tick(){ charged(); const fl=flock(), every=Math.round(280-(280-170)*(lost/5));
-        if(!bolt){ bm.material.opacity=0; beam.material.opacity=Math.max(0,beam.material.opacity-0.08); if(++boltT<every){ show(); return; } boltT=0; if(!fl.length) return;
-          bolt={target:fl[Math.random()*fl.length|0],t:150}; UI.toast('⚡ It picks one of them out. Get over them.',1500); return; }
-        const m=bolt.target, k=1-bolt.t/150; bm.position.set(m.x,0.05,m.z); bm.scale.setScalar(1.5-0.9*k); bm.material.opacity=0.4+0.5*k; beam.position.set(m.x,6,m.z); beam.material.opacity=k>0.8?0.25+0.6*(k-0.8)/0.2:0;
-        if(--bolt.t>0) return; bolt=null; beam.material.opacity=0.95; if(!m.alive) return;
-        if(Math.hypot(P().x-m.x,P().z-m.z)<=1.2){ let inc=Math.max(1,Math.round((7+X.tl*0.5)-S().def*0.4)); if(COMBAT.pl.blocking) inc=Math.max(1,Math.ceil(inc*0.25)); COMBAT.pl.iframes=0; COMBAT.hurtRaw(inc,20);
-          charge=3; chargeT=now()+6200; UI.toast('⚡ You take it instead — and it runs down your arm. Your blade will bite for a moment.',2200); }
-        else { m.alive=false; lost++; const left=flock().length; UI.toast(left===0?'⚡ The finest walls in the realm — and nobody left inside them.':`⚡ One of them is gone. ${left} still here.`,2200); }
+      state:()=>({bolt,charge:charged()?charge:0,lost,hub,calls}),
+      onEnter(){ bolt=null; boltT=0; lost=0; charge=0; calls=0; hub=place(); home.position.set(hub.x,0.04,hub.z); home.material.opacity=0.55; fill.position.set(hub.x,0.035,hub.z); bm.position.set(hub.x,0.05,hub.z); beam.position.set(hub.x,7,hub.z);
+        looks.forEach((lk,k)=>{ const a=k/5*6.283; COMBAT.add({x:hub.x+Math.cos(a)*0.75,z:hub.z+Math.sin(a)*0.75,hp:1,level:1,speed:0,flock:true,wander:0,model:person(lk)}); }); show();
+        setTimeout(()=>UI.toast('🛡 Ruth’s people shelter in the ring. When he calls the storm down on them, get in beside them and raise your shield.',4600),1200); },
+      onBossDead(){ bolt=null; [home,bm,fill,beam].forEach(m=>{ m.material.opacity=0; }); if(lost===0&&flock().length>=5&&!S().stormward){ S().stormward=true; setTimeout(()=>UI.toast('🛡 The Stormward Plate — every one of them walked out of Ruth’s hall.',4200),2600); } COMBAT.meter(null); },
+      cfg:{ pierce:()=>charged(),   /* charged, your blade goes through its guard */
+        quiet:()=>!!bolt,           /* while he calls the storm his hammer is still: this moment is about them, not about dodging him */
+        onHit:d=>{ if(d.boss&&charged()&&--charge===0){ chargeT=0; UI.toast('⚡ The charge is spent.',1200); } } },
+      tick(){ charged(); const fl=flock(), b=X.boss(), p=P(); home.material.opacity=fl.length?0.4+0.15*Math.sin(now()/400):0;
+        if(!bolt){ bm.material.opacity=0; fill.material.opacity=Math.max(0,fill.material.opacity-0.03); beam.material.opacity=Math.max(0,beam.material.opacity-0.06); show();
+          if(!fl.length||!b||!b.alive) return; const every=calls===0?300:500-((b.bf&&b.bf.ph)||0)*40;   // the first comes early, to teach it; then one every eight seconds or so, a little sooner as he weakens
+          if(++boltT<every) return; if(b.state==='stunned'||(b.bf&&(b.bf.mode==='sig'||b.bf.mode==='roar'))){ return; }   // never in the middle of his own great moves
+          boltT=0; calls++; bolt={t:WARN}; if(b) b.pose='cast'; if(typeof SFX!=='undefined') SFX.play('bossRoar');
+          UI.toast('⚡ He raises the hammer — the storm is coming down on Ruth’s people! Get in the ring and raise your shield.',2600); return; }
+        const k=1-bolt.t/WARN, inside=Math.hypot(p.x-hub.x,p.z-hub.z)<=RAD; if(b&&b.alive) b.pose='cast';
+        bm.scale.setScalar((RAD/1.0)*(1.9-0.9*k)); bm.material.opacity=0.45+0.5*k; bm.material.color.setHex(inside?0x8af0a8:0xffd65a); fill.material.opacity=0.08+0.16*k; beam.material.opacity=k>0.75?0.1+0.3*(k-0.75)/0.25:0; show();
+        if(--bolt.t>0) return; bolt=null; if(b) b.pose=null; beam.material.opacity=0.95; fill.material.opacity=0.7; if(typeof SFX!=='undefined') SFX.play('bossStrike'); if(COMBAT.tint){ COMBAT.tint('#cfeaff',0.5); setTimeout(()=>COMBAT.tint('#cfeaff',0),260); }
+        if(!fl.length) return;
+        if(inside){ const guard=!!COMBAT.pl.blocking; let inc=Math.max(1,Math.round((7+X.tl*0.5)-S().def*0.4)); if(guard) inc=Math.max(1,Math.ceil(inc*0.2)); COMBAT.pl.iframes=0; COMBAT.hurtRaw(inc,30);
+          if(guard){ charge=6; chargeT=now()+CHG; stun(170); if(typeof SFX!=='undefined') SFX.play('parry'); UI.toast('🛡 It breaks on your shield — and runs back up into him. He reels! Strike — your blade is charged.',2600); }
+          else { charge=3; chargeT=now()+CHG*0.6; stun(70); UI.toast('⚡ You take it for them. They live — next time, raise your shield and it will turn on him.',2600); } }
+        else { const m=fl[Math.random()*fl.length|0]; m.alive=false; lost++; const left=flock().length; UI.toast(left===0?'⚡ The finest walls in the realm — and nobody left inside them.':`⚡ One of them is gone. ${left} still here. Be in the ring when it falls.`,2400); }
         show(); } }; };
 
   /* V172: STORMGATE IS TWO FIGHTS. First the king: King Karl, the Thunder Lord inside him, storm-light crawling over him. Your
@@ -13669,7 +13691,8 @@ const GUARDIANS=(function(){
     return {
       state:()=>Object.assign({phase,parries,need},base.state?base.state():{}),
       onEnter(){ parries=0; need=4; wasStag=false; struck=0; if(lying&&lying.parent) lying.parent.remove(lying); lying=null; king=null;
-        if(X.R().bossDead){ phase=2; return; } phase=1; hideLord(true);
+        if(X.R().bossDead){ phase=2; return; } if(window.SKIP_KING){ phase=2; if(base.onEnter) base.onEnter(); return; }   /* tests: straight to the Thunder Lord */
+        phase=1; hideLord(true);
         const b=X.boss(), kx=b?b.x:X.W/2, kz=b?b.z+1.5:X.H/2; king=COMBAT.foe(X.lv,{x:kx,z:kz,hx:kx,hz:kz,post:'king',pdx:1,pdz:0,patrol:2,hp:999,level:X.tl,xp:0,atk:Math.round(5+X.tl*0.3),form:1,style:'claw',model:kingModel(),king:true,name:'👑 King Karl'}); if(king) king.alert=true;
         meter(); setTimeout(()=>ENGINE.speak('King Karl',['You came. Of course you came. Ruth always said you would.','(His voice is his own, and not his own. Storm-light crawls over his hands and his crown, and behind his eyes something else is looking out.)','Turn back, knight. Or draw your sword on your king.'],null,()=>UI.toast('🛡 Do not strike the king — it is the storm in him you must break. Turn his blows: Guard just as they land.',4200)),900); },
       onBossDead(d){ if(base.onBossDead) base.onBossDead(d); COMBAT.meter(null); S().karlFreed=true;
