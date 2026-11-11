@@ -173,6 +173,56 @@ textarea{width:100%;box-sizing:border-box;margin-top:8px;background:#0a0910;colo
 @media (prefers-reduced-motion:reduce){#fade,#hpBar,#call{transition:none}}
 #err{position:fixed;inset:auto 16px 50% 16px;text-align:center}
 @media (max-width:420px){ #gmRail{width:84px} .gm-rt{padding:9px 7px;font-size:12px} }
+/* ── V186: THE MENU, FINISHED — a full-screen veil over the game, one card: the knight's banner (name, level, the
+   bar of experience, health, gold, points), a row of tabs, the page. The Skills page is a constellation (menu.js). ── */
+#gm{inset:0;max-width:none;margin:0;border:0;border-radius:0;box-shadow:none;background:radial-gradient(120% 90% at 50% 0%,rgba(30,26,52,.72),rgba(6,5,12,.9));-webkit-backdrop-filter:blur(7px) saturate(.8);backdrop-filter:blur(7px) saturate(.8);display:flex;flex-direction:row;align-items:stretch;justify-content:center;padding:calc(10px + env(safe-area-inset-top,0px)) calc(10px + env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) calc(10px + env(safe-area-inset-left,0px));animation:gmVeil .22s ease-out}
+#gm[hidden]{display:none}
+.gm-card{display:flex;flex-direction:column;width:100%;max-width:1080px;min-height:0;background:linear-gradient(180deg,rgba(24,21,38,.97),rgba(13,11,22,.98));border:1px solid rgba(242,193,78,.28);border-radius:14px;box-shadow:0 24px 80px rgba(0,0,0,.7),inset 0 1px 0 rgba(255,255,255,.06);overflow:hidden;animation:gmRise .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes gmVeil{from{opacity:0}to{opacity:1}} @keyframes gmRise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}} @keyframes gmPage{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+#gm .gm-top{padding:12px 14px 10px;border-bottom:1px solid rgba(242,193,78,.16);background:linear-gradient(180deg,rgba(242,193,78,.07),transparent);align-items:center}
+#gmHead{display:flex;align-items:center;gap:12px;min-width:0;flex:1;flex-wrap:wrap}
+.gh-lv{flex:none;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;font:700 16px var(--f-mono);color:#1a1408;background:radial-gradient(circle at 35% 30%,#ffe9a8,#e0a93a 70%);box-shadow:0 0 0 2px #1a1626,0 0 0 3px rgba(242,193,78,.6),0 4px 14px rgba(242,193,78,.25)}
+.gh-id{min-width:120px;flex:1 1 160px} .gh-name{font:400 20px var(--f-display);color:#f6e7bd;letter-spacing:.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:none}
+.gh-xp{height:5px;border-radius:3px;background:rgba(255,255,255,.09);margin-top:6px;overflow:hidden;max-width:260px} .gh-xp i{display:block;height:100%;background:linear-gradient(90deg,#c9983a,#ffe08a);border-radius:3px;transition:width .4s}
+.gh-xpt{font:500 10px var(--f-mono);color:#8f866e;margin-top:3px;letter-spacing:.06em}
+.gh-chips{display:flex;gap:6px;flex-wrap:wrap} .gh-chip{font:600 12px var(--f-mono);padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#d8cfb8;white-space:nowrap} .gh-chip.pts{color:#1a1408;background:linear-gradient(180deg,#ffe08a,#e0a93a);border-color:transparent;animation:skPulse 1.8s ease-in-out infinite}
+#gm .gm-top .x{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#e8dfc8;transition:background .15s,transform .15s} #gm .gm-top .x:hover{background:#6a2034;transform:rotate(90deg)}
+#gm .gm-wrap{flex-direction:column}
+#gm #gmRail{flex-direction:row;width:auto;border-right:0;border-bottom:1px solid rgba(255,255,255,.07);overflow-x:auto;overflow-y:hidden;padding:0 8px;gap:2px;scrollbar-width:none;justify-content:safe center} #gm #gmRail::-webkit-scrollbar{display:none}
+#gm .gm-rt{position:relative;display:flex;flex-direction:column;align-items:center;gap:2px;padding:9px 13px 10px;border-bottom:0;font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:#8f866e;white-space:nowrap;transition:color .15s,background .15s;border-radius:8px 8px 0 0}
+#gm .gm-rt b{font-size:18px;font-weight:400;filter:grayscale(.6) opacity(.7);transition:filter .15s,transform .15s} #gm .gm-rt:hover{color:#e8dfc8;background:rgba(255,255,255,.04)} #gm .gm-rt:hover b{filter:none}
+#gm .gm-rt.sel{background:linear-gradient(180deg,transparent,rgba(242,193,78,.09));color:#ffe9a8} #gm .gm-rt.sel b{filter:none;transform:translateY(-1px) scale(1.12)}
+#gm .gm-rt.sel::after{content:'';position:absolute;left:10px;right:10px;bottom:0;height:2px;border-radius:2px;background:var(--gold);box-shadow:0 0 10px var(--gold)}
+#gm .gm-rt .dot{position:absolute;top:6px;right:8px;width:7px;height:7px;border-radius:50%;background:var(--gold);box-shadow:0 0 8px var(--gold)}
+#gm #gmPane{padding:14px 18px 22px;scrollbar-width:thin;scrollbar-color:rgba(242,193,78,.35) transparent} #gm #gmPane.turn>*{animation:gmPage .22s ease-out both}
+#gm #gmPane>.gm-col{max-width:680px;margin:0 auto}
+#gm .gm-panehead{display:none}
+#gm .gm-sec{display:flex;align-items:center;gap:10px;margin:20px 0 8px;font-size:11px} #gm .gm-sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(242,193,78,.35),transparent)}
+#gm .gm-stat{padding:8px 10px;border-bottom:0;border-radius:6px} #gm .gm-stat:nth-of-type(odd){background:rgba(255,255,255,.03)}
+#gm .gm-item{padding:11px 13px;margin:6px 0;border-radius:9px;border-color:rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025));transition:transform .12s,border-color .12s,background .12s,box-shadow .12s;color:inherit;font:inherit}
+#gm .gm-item:not(.locked):hover{transform:translateY(-1px);border-color:rgba(242,193,78,.7);box-shadow:0 6px 18px rgba(0,0,0,.35)} #gm .gm-item:not(.locked):active{transform:translateY(0) scale(.995)}
+#gm .gm-item.worn{border-color:rgba(111,223,138,.6);background:linear-gradient(180deg,rgba(111,223,138,.1),rgba(111,223,138,.03))}
+#gm .gm-note{border-radius:8px;padding:9px 12px;animation:gmPage .25s ease-out} #gm .gm-btn{border-radius:8px;transition:filter .12s,transform .12s} #gm .gm-btn:hover{filter:brightness(1.2);transform:translateY(-1px)} #gm .gm-btn.locked{opacity:.4;pointer-events:none}
+/* the constellation */
+.sk-tabs{display:flex;gap:8px;justify-content:center;margin:2px 0 10px} .sk-tab{all:unset;cursor:pointer;padding:7px 16px;border-radius:999px;font:600 12px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:#9a9078;border:1px solid rgba(255,255,255,.12);transition:all .15s} .sk-tab.sel{color:#1a1408;background:linear-gradient(180deg,#ffe08a,#e0a93a);border-color:transparent} .sk-tab:not(.sel):hover{color:#fff;border-color:rgba(242,193,78,.6)}
+.sk-wrap{position:relative;border-radius:12px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:radial-gradient(60% 70% at 50% 100%,#1c1a3a,#0b0a16 70%)}
+.sk-wrap svg{display:block;width:100%;height:auto;max-height:max(300px,calc(100vh - 345px));touch-action:manipulation}
+.sk-n{cursor:pointer;outline:none} .sk-n .ring{fill:#12101e;stroke:#3a3650;stroke-width:2.5;transition:stroke .2s,fill .2s} .sk-n .gl{font-size:19px;text-anchor:middle;dominant-baseline:central;opacity:.4;pointer-events:none;transition:opacity .2s} .sk-n .cost{font:700 11px var(--f-mono);text-anchor:middle;fill:#8f866e;pointer-events:none}
+.sk-n.can .ring{stroke:var(--c);fill:#1a1830;animation:skPulse 1.6s ease-in-out infinite} .sk-n.can .gl{opacity:.9} .sk-n.can .cost{fill:#ffe08a}
+.sk-n.own .ring{fill:var(--c);stroke:#fff;stroke-width:2} .sk-n.own .gl{opacity:1} .sk-n .halo{fill:var(--c);opacity:0;transition:opacity .2s;transform-box:fill-box;transform-origin:center} .sk-n.own .halo{opacity:.28}
+.sk-n:hover .ring,.sk-n.sel .ring,.sk-n:focus-visible .ring{stroke:#fff} .sk-n.sel .selr{opacity:1} .sk-n .selr{fill:none;stroke:#ffe9a8;stroke-width:1.5;stroke-dasharray:4 5;opacity:0;transform-box:fill-box;transform-origin:center;animation:skSpin 9s linear infinite}
+.sk-n.just .halo{animation:skBurst .9s ease-out}
+.sk-line{fill:none;stroke:rgba(255,255,255,.1);stroke-width:3;stroke-linecap:round} .sk-line.on{stroke:var(--c);stroke-width:4;filter:drop-shadow(0 0 5px var(--c))}
+.sk-lab{font:700 13px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;text-anchor:middle} .sk-sub{font:500 11px var(--f-body);fill:#9a9078;text-anchor:middle}
+@keyframes skPulse{0%,100%{filter:drop-shadow(0 0 0 rgba(255,224,138,0))}50%{filter:drop-shadow(0 0 7px rgba(255,224,138,.75))}} @keyframes skSpin{to{transform:rotate(360deg)}} @keyframes skBurst{0%{opacity:.95;transform:scale(.6)}100%{opacity:.28;transform:scale(1)}}
+.sk-detail{display:flex;align-items:center;gap:14px;margin-top:10px;padding:12px 14px;border-radius:12px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02));border:1px solid rgba(255,255,255,.1);min-height:74px}
+.sk-detail .ic{flex:none;width:50px;height:50px;border-radius:50%;display:grid;place-items:center;font-size:24px;background:#12101e;border:2px solid var(--c);box-shadow:0 0 16px -4px var(--c)} .sk-detail .tx{flex:1;min-width:0} .sk-detail .nm{font:400 18px var(--f-display);color:#f6e7bd} .sk-detail .br{font:700 10px var(--f-mono);letter-spacing:.14em;text-transform:uppercase;color:var(--c)} .sk-detail .ds{display:block;color:#c8bfa8;font-size:14px;line-height:1.4;margin-top:2px}
+.sk-buy{all:unset;flex:none;cursor:pointer;padding:11px 18px;border-radius:10px;font:700 14px var(--f-mono);color:#1a1408;background:linear-gradient(180deg,#ffe08a,#e0a93a);box-shadow:0 6px 18px rgba(242,193,78,.3);transition:transform .12s,filter .12s;text-align:center} .sk-buy:hover{transform:translateY(-1px);filter:brightness(1.1)} .sk-buy:active{transform:scale(.97)}
+.sk-buy.off{background:rgba(255,255,255,.07);color:#8f866e;box-shadow:none;cursor:default;font-size:12px;font-weight:600;max-width:150px;white-space:normal} .sk-buy.got{background:rgba(111,223,138,.14);color:#8af0a8;box-shadow:none;cursor:default}
+.sk-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px;color:#9a9078;font-size:13px} .sk-foot .gm-btn{margin:0}
+@media (max-width:560px){ .gh-name{font-size:17px} .gh-lv{width:38px;height:38px;font-size:14px} #gm .gm-rt{padding:8px 10px 9px;font-size:10px} #gm #gmPane{padding:12px 12px 18px} .sk-detail{flex-wrap:wrap} .sk-buy{flex:1 1 100%} }
+@media (prefers-reduced-motion:reduce){ #gm,.gm-card,#gm #gmPane.turn>*,.sk-n.can .ring,.gh-chip.pts,.sk-n .selr{animation:none} }
+
 
 /* mouse and keyboard: a hint until you click in, and a small crosshair while the mouse steers the view; the on-screen
    stick and action buttons step aside on a computer once you're mouse-looking */
@@ -206,8 +256,8 @@ body.mlook #stick,body.mlook #swing,body.mlook #guardBtn,body.mlook #jumpBtn{vis
 <div id="say" hidden role="dialog" aria-live="polite"><div id="sayWho"></div><div id="sayText"></div><div id="sayMore">Tap to continue</div></div>
 <div id="toast" hidden></div>
 <div id="sheet" hidden role="dialog" aria-labelledby="sheetTitle"><div class="gm-top"><span id="sheetTitle"></span><button id="sheetClose" class="x" aria-label="Close">✕</button></div><div id="sheetBody"></div></div>
-<div id="gm" hidden role="dialog" aria-label="Menu"><div class="gm-top"><span id="gmHead"></span><button id="gmClose" class="x" aria-label="Close menu">✕</button></div>
-  <div class="gm-wrap"><nav id="gmRail" aria-label="Menu tabs"></nav><div id="gmPane"></div></div></div>
+<div id="gm" hidden role="dialog" aria-label="Menu"><div class="gm-card"><div class="gm-top"><div id="gmHead"></div><button id="gmClose" class="x" aria-label="Close menu">✕</button></div>
+  <div class="gm-wrap"><nav id="gmRail" aria-label="Menu tabs"></nav><div id="gmPane"></div></div></div></div>
 <div id="fade" aria-hidden="true"></div>
 <div id="err" hidden>3D graphics (WebGL) aren't available in this browser.</div>
 <script>
@@ -4645,10 +4695,7 @@ const MENU=(function(){
       h+=sec('Larder')+list(G0)+sec('The Catch')+list(F0)+(Object.keys(M0).some(k=>S.inventory[k]>0)?sec('Trade Goods')+list(M0):'')+(S.inventory.sacredScroll>0?sec('Carried')+row('📜 Sacred Scroll','for the forgotten one in the wood'):'');
       if(S.hasLamp) h+=sec('Carried')+row('🏮 Forester’s Lantern','lifts the fog of the deep wood');
       return h; },
-    Skills(S){ const sp=GAME.spent(), rc=GAME.respecCost(); const tn=S.treeNote?`<p class="gm-note">The skill trees were remade. Your ${S.treeNote} spent points are returned, and your first respec is free.</p>`:''; delete S.treeNote;
-      let h=tn+row('★ Skill Points to spend',S.skillPoints,'gold')+row('Spent',sp+' of 150')+'<p class="gm-intro">Three ways to be a knight. A whole journey earns about half of what is here — choose the way you fight. Each skill needs the one above it.</p>'; h+=tree(SYS.SKILL_TREE,S);
-      h+=`<button class="gm-item ${sp?'':'locked'}" data-act="respec"><span>↺ Respec <span class="ds">every spent point returned — knight and companion</span></span><i>${rc?rc+'g':'free'}</i></button>`;
-      return h+'<p class="gm-hint">One point each level, two a chapel, more from the realms beyond and the pastimes. Your companion’s tree is on the Pet tab.</p>'; },
+    Skills(S){ return skills(S); },
     Pet(S){ if(!S.pet){ let h='<p class="gm-intro">No companion walks with you yet. Choose one to raise — it grows as you level, and fights in the Grand Pet Tournament.</p>';
         SYS.STARTER_PETS.forEach(id=>{ const L=SYS.PETS[id], f=L.forms[0]; h+=`<button class="gm-item" data-act="adopt:${id}"><span>${f.emoji} ${E(L.name)} <span class="ds">${E(f.name)} · ${E(L.focus)} · ${E(L.desc||'')}</span></span><i>choose</i></button>`; }); return h; }
       const L=SYS.PETS[S.pet.id], f=L.forms[S.pet.form], b=f.bonus||{}, parts=[]; if(b.atk)parts.push(`+${b.atk} atk`); if(b.def)parts.push(`+${b.def} def`); if(b.maxHp)parts.push(`+${b.maxHp} hp`); if(b.crit)parts.push(`+${Math.round(b.crit*100)}% crit`); if(b.healMult)parts.push(`+${Math.round(b.healMult*100)}% heal`); if(b.dmgReduce)parts.push(`${Math.round(b.dmgReduce*100)}% reduce`);
@@ -4658,9 +4705,9 @@ const MENU=(function(){
       if(owned.length){ h+=sec('Companion Gear <span class="ds">(one collar · one charm)</span>'); owned.forEach(k=>{ const G=SYS.PET_GEAR[k], eq=S.pet.equip&&S.pet.equip[G.slot]===k;
         h+=`<button class="gm-item ${eq?'worn':''}" data-act="petgear:${k}"><span>${G.emoji} ${E(G.name)} <span class="ds">[${G.slot}] ${E(G.note)}</span></span>${eq?'<i>equipped</i>':''}</button>`; }); }
       if(typeof PETLOOKS!=='undefined') h+=PETLOOKS.bardingRows(S);
-      const C=SYS.PET_CMD&&SYS.PET_CMD[S.pet.id], T={}; if(SYS.PET_TREE[S.pet.id]) T[S.pet.id]=SYS.PET_TREE[S.pet.id];
+      const C=SYS.PET_CMD&&SYS.PET_CMD[S.pet.id];
       if(C) h+=sec('In a fight')+`<p class="gm-intro">${E(SYS.PET_TREE[S.pet.id].style||'')} <b>${C.emoji} ${E(C.name)}</b>: press <b>G</b> (or the 🐾 button) — ready every ${typeof PETFIGHT!=='undefined'?PETFIGHT.cdOf():C.cd} s.</p>`;
-      return h+row('★ Skill Points to spend',S.skillPoints,'gold')+tree(T,S); },
+      return h+`<button class="gm-item" data-act="goskills"><span>✦ ${E(SYS.PET_TREE[S.pet.id].name)} <span class="ds">your companion’s skills — on the Skills page</span></span><i>open ▸</i></button>`; },
     Quests(S){ const lv=ENGINE.level; const here=lv&&!lv.custom&&lv.zone?(lv.zone(ENGINE.P)||lv.name):(lv?lv.name:''), nx=SYS.TOWN_DATA[S.chapels];
       let h=(typeof JOURNAL!=='undefined'?`<button class="gm-item" data-act="journal"><span>📖 The Knight’s Journal <span class="ds">${JOURNAL.count()} page${JOURNAL.count()===1?'':'s'} · the quiet moments</span></span></button>`:'')+quest('⚔ The Journey',`You are in: <b>${E(String(here).split(' · ')[0])}</b>`)+(S.abaddonWon?quest('✓ The Shadow Over the Realm','Abaddon is fallen. The realm draws breath again.'):quest('⚔ The Shadow Over the Realm','Defeat Abaddon in Hellgate Citadel.'))
         +(()=>{ const hu=S.hunt; if(!S.abaddonWon) return ''; const n=hu?hu.remaining.reduce((a,b)=>a+b,0):0;
@@ -4713,12 +4760,54 @@ const MENU=(function(){
   const fmt=ms=>{ const s=ms/1000; return Math.floor(s/60)+':'+(s%60).toFixed(1).padStart(4,'0'); };
   const quest=(t,d)=>`<div class="gm-q"><b>${t}</b><br>${d}</div>`;
   function winsLine(S){ const w=S.wins, p=[]; ['joust','duel','waves','ladder'].forEach(k=>{ if(w[k]) p.push(`${k==='ladder'?'Grand Tournament':k==='waves'?'Grand Melee':k[0].toUpperCase()+k.slice(1)} ×${w[k]}`); }); return p.length?'<br>Won: '+p.join(' · '):''; }
+  // ── V186: THE SKILLS PAGE, a constellation. The knight's three ways fan out from his crest (wide screens) or climb in
+  //  three columns (narrow ones); the companion's one branch winds out from its own emblem on a second leaf. A node is
+  //  dim (locked), ringed and pulsing (you can learn it now), or lit (learned); the line to it lights with it. Hover or
+  //  tap a node to read it below; the gold button learns it.
+  const GLYPH={atk:'⚔',crit:'✦',openDmg:'⚡',staggerK:'💫',punish:'🎯',heavyK:'🌀',critMult:'✝',def:'🛡',maxHp:'♥',dmgReduce:'🛡',parryMs:'⏱',counter:'↩',blockK:'🧱',redBlock:'🟥',healMult:'✚',goldMult:'🪙',cmdCd:'🐾',mend:'🌿',burst:'☀',regen:'💧',revive:'🕊',petDmg:'🦷',petHeal:'💗',petGuard:'🐢',roar:'📣',gbreak:'💥',dive:'🪽',cleanse:'✨',wallT:'⏳',wallShots:'🏹',wallHeal:'💚',wallK:'🧱',cmdPow:'⬆'};
+  const PLAINK={atk:1,def:1,maxHp:1,crit:1,healMult:1,goldMult:1,dmgReduce:1};
+  const glyph=n=>{ const ks=Object.keys(n.bonus||{}), k=ks.find(q=>!PLAINK[q])||ks[0]; return GLYPH[k]||'✦'; };
+  let skSub='knight', skSel=null, skJust=null;
+  const brOf=id=>{ for(const T of [SYS.SKILL_TREE,SYS.PET_TREE]) for(const b in T){ const i=T[b].nodes.findIndex(n=>n.id===id); if(i>=0) return {br:T[b],key:b,i,n:T[b].nodes[i],pet:T===SYS.PET_TREE}; } return null; };
+  function detail(S,id){ const q=id&&brOf(id); if(!q) return `<div class="sk-detail"><div class="tx"><span class="ds">Choose a skill to read it.</span></div></div>`;
+    const {br,i,n}=q, own=!!S.skills[n.id], can=GAME.canBuy(n.id), prev=i>0?br.nodes[i-1]:null; let btn;
+    if(own) btn=`<span class="sk-buy got">✓ Learned</span>`; else if(can) btn=`<button class="sk-buy" data-act="skill:${n.id}">Learn · ${n.cost}★</button>`;
+    else btn=`<span class="sk-buy off">${prev&&!S.skills[prev.id]?'Needs '+E(prev.name):`Needs ${n.cost}★ — you have ${S.skillPoints}`}</span>`;
+    return `<div class="sk-detail" style="--c:${br.color}"><div class="ic">${glyph(n)}</div><div class="tx"><div class="br">${E(br.name)} · ${i+1} of ${br.nodes.length}${i===br.nodes.length-1?' · ultimate':''}</div><div class="nm">${E(n.name)}</div><span class="ds">${E(n.desc.replace(/^ULT: /,''))}</span></div>${btn}</div>`; }
+  function constellation(S,T,wide,emblem){ const keys=Object.keys(T), one=keys.length===1; let W, H, cx, cy, pos;
+    if(one){ if(wide){ W=1200; H=420; cx=120; cy=210; pos=(b,i,N)=>[270+i*(860/(N-1)),210+Math.sin(i*1.25+0.4)*105]; } else { W=620; H=900; cx=310; cy=830; pos=(b,i,N)=>[310+(i%2?78:-78)*(0.6+0.4*Math.sin(i)),720-i*(640/(N-1))]; } }
+    else if(wide){ W=1200; H=690; cx=600; cy=628; const ANG=[152,90,28], STEP=[56,50,56]; pos=(b,i)=>{ const a=ANG[b]*Math.PI/180, r=104+i*STEP[b], z=(i%2?1:-1)*(b===1?34:24); return [cx+Math.cos(a)*r-Math.sin(a)*z,cy-Math.sin(a)*r-Math.cos(a)*z]; }; }
+    else { W=620; H=1000; cx=310; cy=940; const X=[112,310,508]; pos=(b,i)=>[X[b]+(i%2?26:-26),842-i*82]; }
+    let h=`<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Skill tree">`;
+    for(let i=0;i<70;i++){ const r1=Math.abs(Math.sin(i*127.1+3.3)*43758.5)%1, r2=Math.abs(Math.sin(i*311.7+1.7)*24634.6)%1; h+=`<circle cx="${(r1*W).toFixed(0)}" cy="${(r2*H).toFixed(0)}" r="${(0.6+((i*7)%10)/9).toFixed(1)}" fill="#fff" opacity="${(0.12+((i*3)%7)/22).toFixed(2)}"/>`; }
+    keys.forEach((k,b)=>{ const br=T[k], N=br.nodes.length, pts=br.nodes.map((n,i)=>pos(b,i,N)), got=br.nodes.filter(n=>S.skills[n.id]).length, end=pts[N-1], mid=pts[Math.floor(N/2)];
+      h+=`<g style="--c:${br.color}"><circle cx="${mid[0].toFixed(0)}" cy="${mid[1].toFixed(0)}" r="${one?240:210}" fill="${br.color}" opacity=".07"/>`;
+      let px=cx, py=cy; pts.forEach(([x,y],i)=>{ h+=`<path class="sk-line ${S.skills[br.nodes[i].id]?'on':''}" d="M${px.toFixed(1)} ${py.toFixed(1)} L${x.toFixed(1)} ${y.toFixed(1)}"/>`; px=x; py=y; });
+      br.nodes.forEach((n,i)=>{ const [x,y]=pts[i], own=!!S.skills[n.id], can=GAME.canBuy(n.id), ult=i===N-1, r=ult?30:22;
+        h+=`<g class="sk-n ${own?'own':can?'can':'lock'} ${skSel===n.id?'sel':''} ${skJust===n.id?'just':''}" data-sk="${n.id}" data-act="sksel:${n.id}" tabindex="0" role="button" aria-label="${E(n.name)}: ${E(n.desc)}${own?' (learned)':''}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)})"><circle class="halo" r="${r+13}"/><circle class="selr" r="${r+8}"/>`
+          +(ult?`<rect class="ring" x="${-r*0.8}" y="${-r*0.8}" width="${r*1.6}" height="${r*1.6}" rx="6" transform="rotate(45)"/>`:`<circle class="ring" r="${r}"/>`)+`<text class="gl" y="1">${glyph(n)}</text>${own?'':`<text class="cost" y="${r+17}">${n.cost}★</text>`}</g>`; });
+      const nm=br.name.split(' · '), lx=Math.max(100,Math.min(W-100,one?(wide?W/2:cx):(wide?end[0]+(b===0?-6:b===2?6:0):[112,310,508][b]))), ly=one?34:(wide?Math.max(24,end[1]-(b===1?60:54)):36);
+      h+=`<text class="sk-lab" x="${lx.toFixed(0)}" y="${ly.toFixed(0)}" fill="${br.color}">${br.icon} ${E(one||wide?nm[0]:nm[0].split(' ')[0])} ${got}/${N}</text>${nm[1]&&wide&&!one?`<text class="sk-sub" x="${lx.toFixed(0)}" y="${(ly+17).toFixed(0)}">${E(nm[1])}</text>`:''}</g>`; });
+    h+=`<g transform="translate(${cx} ${cy})"><circle r="${one?46:40}" fill="#12101e" stroke="#f2c14e" stroke-width="2.5"/><circle r="${one?54:48}" fill="none" stroke="#f2c14e" stroke-opacity=".3"/><text y="2" text-anchor="middle" dominant-baseline="central" font-size="${one?40:30}">${emblem}</text></g></svg>`; return h; }
+  function skills(S){ const wide=(pane.clientWidth||innerWidth)>=720, sp=GAME.spent(), rc=GAME.respecCost(), hasPet=!!(S.pet&&SYS.PET_TREE[S.pet.id]); if(skSub==='pet'&&!hasPet) skSub='knight';
+    const T=skSub==='pet'?{[S.pet.id]:SYS.PET_TREE[S.pet.id]}:SYS.SKILL_TREE, ids=[].concat(...Object.keys(T).map(k=>T[k].nodes.map(n=>n.id)));
+    if(!ids.includes(skSel)) skSel=ids.find(id=>GAME.canBuy(id))||ids.find(id=>!S.skills[id])||ids[0];
+    const tn=S.treeNote?`<p class="gm-note">The skill trees were remade. Your ${S.treeNote} spent points are returned, and your first respec is free.</p>`:''; delete S.treeNote;
+    const pf=hasPet?SYS.PETS[S.pet.id].forms[S.pet.form]:null, C=hasPet&&SYS.PET_CMD&&SYS.PET_CMD[S.pet.id];
+    let h=`<div class="gm-col" style="max-width:${wide?1010:560}px">${tn}<div class="sk-tabs"><button class="sk-tab ${skSub==='knight'?'sel':''}" data-act="sksub:knight">⚔ Knight</button>${hasPet?`<button class="sk-tab ${skSub==='pet'?'sel':''}" data-act="sksub:pet">${pf.emoji} ${E(pf.name)}</button>`:''}</div>`;
+    h+=`<div class="sk-wrap">${constellation(S,T,wide,skSub==='pet'?pf.emoji:'⚜')}</div><div id="skDetail">${detail(S,skSel)}</div>`;
+    h+=`<div class="sk-foot"><span>${skSub==='pet'&&C?`<b>${C.emoji} ${E(C.name)}</b> · G or the 🐾 button · every ${typeof PETFIGHT!=='undefined'?PETFIGHT.cdOf():C.cd} s`:`★ <b style="color:var(--gold)">${S.skillPoints}</b> to spend · ${sp} spent · a whole journey earns about half the tree`}</span><button class="gm-btn ${sp?'':'locked'}" data-act="respec">↺ Respec · ${rc?rc+'g':'free'}</button></div></div>`;
+    skJust=null; return h; }
   function tree(T,S){ let h=''; for(const b in T){ const br=T[b], got=br.nodes.filter(n=>S.skills[n.id]).length; h+=`<div class="gm-sec" style="color:${br.color}">${br.icon} ${E(br.name)} <span class="ds">${got}/${br.nodes.length}${br.style&&T===SYS.SKILL_TREE?' · '+E(br.style):''}</span></div>`;
       br.nodes.forEach(n=>{ const own=S.skills[n.id], can=GAME.canBuy(n.id);
         h+=`<button class="gm-item ${own?'worn':can?'':'locked'}" data-act="${own?'':'skill:'+n.id}"><span>${E(n.name)} <span class="ds">${E(n.desc)}</span></span><i>${own?'✓':n.cost+'★'}</i></button>`; }); } return h; }
-  function render(keep){ const S=GAME.S; head.textContent=`${S.name.toUpperCase()} — Lv ${S.level} · ${S.gold}g`;
-    rail.innerHTML=TABS.map((t,i)=>`<button class="gm-rt ${i===tab?'sel':''}" data-tab="${i}">${t}</button>`).join('');
-    const top=pane.scrollTop; pane.innerHTML=`<div class="gm-panehead">${TABS[tab].toUpperCase()}</div>`+(note?`<p class="gm-note">${UI.esc(note)}</p>`:'')+R[TABS[tab]](S); if(keep) pane.scrollTop=top; else pane.scrollTop=0;
+  const ICON={Character:'⚜',Gear:'🛡',Items:'🎒',Skills:'✦',Pet:'🐾',Quests:'📜',Map:'🗺',Home:'🏠',System:'⚙'};
+  function render(keep){ const S=GAME.S;
+    head.innerHTML=`<div class="gh-lv" title="Level">${S.level}</div><div class="gh-id"><div class="gh-name">${E(S.name)}</div><div class="gh-xp"><i style="width:${Math.max(0,Math.min(100,S.xp/S.xpNext*100)).toFixed(1)}%"></i></div><div class="gh-xpt">LEVEL ${S.level} · ${S.xp} / ${S.xpNext} XP</div></div>`
+      +`<div class="gh-chips"><span class="gh-chip">♥ ${S.hp} / ${S.maxHp}</span><span class="gh-chip">🪙 ${S.gold}</span>${S.skillPoints>0?`<span class="gh-chip pts">★ ${S.skillPoints}</span>`:''}</div>`;
+    rail.innerHTML=TABS.map((t,i)=>`<button class="gm-rt ${i===tab?'sel':''}" data-tab="${i}"><b>${ICON[t]||''}</b>${t}${t==='Skills'&&S.skillPoints>0?'<span class="dot"></span>':''}</button>`).join('');
+    const top=pane.scrollTop, nt=note?`<p class="gm-note">${UI.esc(note)}</p>`:'', body=R[TABS[tab]](S), page=TABS[tab]==='Skills'?(nt?`<div class="gm-col">${nt}</div>`:'')+body:`<div class="gm-col">${nt}${body}</div>`;
+    pane.innerHTML=page; if(keep) pane.scrollTop=top; else { pane.scrollTop=0; pane.classList.remove('turn'); void pane.offsetWidth; pane.classList.add('turn'); const sb=rail.querySelector('.sel'); if(sb&&sb.scrollIntoView) sb.scrollIntoView({inline:'center',block:'nearest'}); }
     if(TABS[tab]==='Map') pins(); }
   function pins(){ const box=$('gmMapPins'), tip=$('gmMapTip'), W=SYS.MAP.W, H=SYS.MAP.H, S=GAME.S;
     box.innerHTML=SYS.MAP.towns.map(([n,x,y])=>{ const ti=SYS.TOWN_DATA.findIndex(t=>t.name===n), col=ti<0?'#ffe04a':ti<S.chapels?'#6fdf8a':'#ff6a7a';
@@ -4734,7 +4823,10 @@ const MENU=(function(){
     if(k==='wear') GAME.wear(v);
     else if(k==='drink'){ note=GAME.drink(v)||''; }
     else if(k==='eat'){ note=GAME.eat(v)||''; }
-    else if(k==='skill'){ const n=GAME.skillNode(v); if(GAME.buySkill(v)) note='Learned '+n.name+'.'; else note=S.skillPoints<n.cost?'Not enough skill points.':'Learn the skill above it first.'; }
+    else if(k==='sksel'){ skSel=v; render(true); return; }
+    else if(k==='sksub'){ skSub=v; skSel=null; render(true); return; }
+    else if(k==='goskills'){ tab=TABS.indexOf('Skills'); skSub='pet'; skSel=null; render(); return; }
+    else if(k==='skill'){ const n=GAME.skillNode(v); if(GAME.buySkill(v)){ skJust=v; skSel=v; if(typeof SFX!=='undefined') try{ SFX.play('parry'); }catch(_){} const q=brOf(v), nx=q&&q.br.nodes[q.i+1]; if(nx&&GAME.canBuy(nx.id)) skSel=nx.id; } else note=S.skillPoints<n.cost?'Not enough skill points.':'Learn the skill above it first.'; }
     else if(k==='respec'){ const r=GAME.respec(); note=r==='ok'?'Every point is yours to spend again.':r==='gold'?`A respec costs ${GAME.respecCost()} gold.`:'Nothing spent yet.'; if(r==='ok') GAME.save&&GAME.save(); }
     else if(k==='adopt'){ const L=SYS.PETS[v], E2=SYS.PET_EVOLVE_LV||[0,6,12]; let fm=0; E2.forEach((lv,i)=>{ if(S.level>=lv) fm=i; }); S.pet={id:v,form:fm,name:L.name,ribbon:'',equip:{}}; GAME.recalc(); const ev=GAME.gainXp(0); note=`${L.forms[0].emoji} ${L.name} bounds to your side!`; GAME.changed(); }
     else if(k==='petgear'){ const G=SYS.PET_GEAR[v]; S.pet.equip=S.pet.equip||{}; S.pet.equip[G.slot]=S.pet.equip[G.slot]===v?null:v; GAME.changed(); }
@@ -4763,6 +4855,11 @@ const MENU=(function(){
     render(true); }
   rail.addEventListener('click',e=>{ const b=e.target.closest('[data-tab]'); if(!b) return; tab=+b.dataset.tab; note=''; sub=null; render(); });
   pane.addEventListener('click',e=>{ const b=e.target.closest('[data-act]'); if(b&&b.dataset.act) act(b.dataset.act); });
+  // hover (or keyboard focus) reads a skill without a click; Enter learns the one in hand
+  pane.addEventListener('pointerover',e=>{ if(e.pointerType==='touch') return; const g=e.target.closest&&e.target.closest('.sk-n'); if(!g||g.dataset.sk===skSel) return; skSel=g.dataset.sk; pane.querySelectorAll('.sk-n.sel').forEach(x=>x.classList.remove('sel')); g.classList.add('sel'); const d=$('skDetail'); if(d) d.innerHTML=detail(GAME.S,skSel); });
+  pane.addEventListener('keydown',e=>{ const g=e.target.closest&&e.target.closest('.sk-n'); if(g&&(e.key==='Enter'||e.key===' ')){ e.preventDefault(); act(GAME.canBuy(g.dataset.sk)&&skSel===g.dataset.sk?'skill:'+g.dataset.sk:'sksel:'+g.dataset.sk); } });
+  addEventListener('resize',()=>{ if(open&&TABS[tab]==='Skills') render(true); });
+  el.addEventListener('pointerdown',e=>{ if(e.target===el) toggle(false); });
   $('gmClose').addEventListener('click',()=>toggle(false));
   function toggle(v){ open=v===undefined?!open:v; el.hidden=!open; if(open){ note=''; sub=null; render(); } else { GAME.save(); } }
   GAME.on(()=>{ if(open) render(true); });
