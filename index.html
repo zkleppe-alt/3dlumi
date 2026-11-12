@@ -7643,7 +7643,9 @@ function buildWorld(WD,opt){
     const make=c=>{ const TID={ironhold:'iron',saltmere:'salt',thornwood:'wood',dusthaven:'sand',crystalpeak:'frost',stormgate:'grand',ashfield:'ash',shadowmere:'mere'}; if(typeof LOOK2!=='undefined'&&LOOK2&&TID[key]) c=Object.assign({},c,{[TID[key]]:true},key==='stormgate'?{stone:0xb3b4b8,roof:0x2c4c9e,flag:0xf2c14e}:{}); if(typeof LOOK2!=='undefined'&&LOOK2&&(key==='hearthvale'||key==='homestead')&&(b.style==='house'||b.style==='cottage'||b.style==='shop'||!WSTYLE[b.style])) c=Object.assign({},c,{thatch:true}); const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark&&!(c.grand&&(b.style==='house'||b.style==='shop'||b.style==='inn'||b.style==='keep'))) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
       if(!(b.id==='home_barn'&&typeof LOOK2!=='undefined'&&LOOK2)) (hingeOf[b.id]=hingeOf[b.id]||[]).push(doorFace(g,dx,b.id==='sg_cathedral'?bm.h+0.5:b.style==='chapel'?bm.h+0.18:bm.h-0.2,b.style==='chapel'?1.4:b.id==='sg_keep'?1.5:1.0));
       g.rotation.y=!F?0:F.dir==='N'?Math.PI:F.dir==='E'?Math.PI/2:-Math.PI/2;
-      g.position.set(b.x+b.w/2,e*TIER*LIFT(b.door.x,b.door.y)+0.02,b.y+b.h/2); if(typeof LOOK2!=='undefined'&&LOOK2){ g.updateMatrixWorld(true); const v=new THREE.Vector3(); g.traverse(o=>{ if(o.userData.smoke){ o.getWorldPosition(v); SMOKES.push({x:v.x,y:v.y,z:v.z,dark:o.userData.smoke===2}); } }); soften(g); } par.add(mergeStatic(shade(g))); return g; };
+      g.position.set(b.x+b.w/2,e*TIER*LIFT(b.door.x,b.door.y)+0.02,b.y+b.h/2); if(typeof LOOK2!=='undefined'&&LOOK2){ g.updateMatrixWorld(true); const v=new THREE.Vector3(); g.traverse(o=>{ if(o.userData.smoke){ o.getWorldPosition(v); SMOKES.push({x:v.x,y:v.y,z:v.z,dark:o.userData.smoke===2}); } }); soften(g); } const M0=mergeStatic(shade(g)); par.add(M0);
+      if(typeof VILLAGE3!=='undefined') VILLAGE3.swap(M0,par,g,b,bm,c,key);   // V194: the village kit's house takes its place once the pieces have loaded
+      return g; };
     if(b.style!=='chapel'){ make(colours(b)); return; }
     // a chapel is drawn both ways — dark while its general is bound, bright once the town is cleansed
     const c=colours(b), lit=make(Object.assign({},c,{dark:false})), dark=make(Object.assign({},c,{dark:true}));
@@ -9697,7 +9699,7 @@ const DEMONS=(function(){
     const pl=Object.assign({},PAL[kind]); if(o.tint){ const t=new THREE.Color(o.tint).multiplyScalar(0.55); pl.body=t.getHex(); pl.belly=t.clone().lerp(new THREE.Color(0xc89a7a),0.25).getHex(); }
     if(NF>=0){ const n=new THREE.Color(pl.body).lerp(new THREE.Color(0x4a1258),0.7); pl.body=n.getHex(); pl.belly=n.clone().lerp(new THREE.Color(0x9a6aaa),0.3).getHex(); pl.dark=0x1e0628; pl.eye=0xffd05a; }
     const {body:BODY,belly:BELLY,dark:DARK,horn:HORN}=pl, CLAW=0xeee2cc, EYE=pl.eye;
-    const bodyM=new THREE.MeshPhongMaterial({vertexColors:true,shininess:12,specular:0x1a1016}), wingM=new THREE.MeshPhongMaterial({color:NF>=0?0x2a0838:new THREE.Color(DARK).lerp(new THREE.Color(BODY),0.35).getHex(),flatShading:true,side:THREE.DoubleSide,shininess:4});
+    const bodyM=((typeof LOOK2!=='undefined'&&!LOOK2)?new THREE.MeshPhongMaterial({vertexColors:true,shininess:12,specular:0x1a1016}):new THREE.MeshToonMaterial({vertexColors:true,gradientMap:(typeof BOSSART!=='undefined'&&BOSSART.toonMap)?BOSSART.toonMap():null})), wingM=new THREE.MeshPhongMaterial({color:NF>=0?0x2a0838:new THREE.Color(DARK).lerp(new THREE.Color(BODY),0.35).getHex(),flatShading:true,side:THREE.DoubleSide,shininess:4});
     const P=(geo,col,x,y,z,rx,ry,rz,sx,sy,sz)=>{ const m=new THREE.Mesh(geo); m.position.set(x,y,z); m.rotation.set(rx||0,ry||0,rz||0); if(sx) m.scale.set(sx,sy||sx,sz||sx); m.updateMatrix(); parts.push([(geo.index?geo.toNonIndexed():geo.clone()).applyMatrix4(m.matrix),col]); };
     const S=(r,col,x,y,z,sx,sy,sz,rx)=>P(new THREE.SphereGeometry(r,16,12),col,x,y,z,rx||0,0,0,sx||1,sy||1,sz||1);
     const L=(r0,r1,len,col,x,y,z,rx,ry,rz)=>P(new THREE.CylinderGeometry(r1,r0,len,10),col,x,y,z,rx,ry,rz);
@@ -9835,7 +9837,7 @@ const BOSSART=(function(){
   const gm=c=>new THREE.MeshBasicMaterial({color:c});
   let _TM=null; function toonMap(){ if(_TM) return _TM; const d=new Uint8Array([104,104,104,255,160,160,160,255,214,214,214,255,246,246,246,255]); _TM=new THREE.DataTexture(d,4,1,THREE.RGBAFormat); _TM.minFilter=_TM.magFilter=THREE.LinearFilter; _TM.needsUpdate=true; return _TM; }   /* V182: soft cel bands for the companions (o.toon) */
   function make(key,o){ o=o||{}; const SRC=o.data||(typeof BOSS_DATA!=='undefined'?BOSS_DATA:null), R=SRC&&SRC[key]; if(!R) return null;   /* V181: o.data — another sculpt set (the companions: PET_DATA) */
-    const g=new THREE.Group(), PLATE=!o.data&&/^(b5|b7|b8|b9|ab|pk)$/.test(key), bodyM=o.toon?new THREE.MeshToonMaterial({vertexColors:true,gradientMap:toonMap()}):new THREE.MeshPhongMaterial({vertexColors:true,shininess:PLATE?30:12,specular:PLATE?0x3a3640:0x1a1416}), bones={}, M=R.meta, anim=[]; if(typeof HIDE!=='undefined') HIDE.apply(bodyM,o.skinScale||1,o.skinAmt);
+    const g=new THREE.Group(), PLATE=!o.data&&/^(b5|b7|b8|b9|ab|pk)$/.test(key), bodyM=(o.toon||(!o.phong&&!(typeof LOOK2!=='undefined'&&!LOOK2)))?new THREE.MeshToonMaterial({vertexColors:true,gradientMap:toonMap()}):new THREE.MeshPhongMaterial({vertexColors:true,shininess:PLATE?30:12,specular:PLATE?0x3a3640:0x1a1416}), bones={}, M=R.meta, anim=[]; if(typeof HIDE!=='undefined') HIDE.apply(bodyM,o.skinScale||1,o.skinAmt);
     Object.keys(R.parts).forEach(name=>{ const pv=R.piv[name]||[0,0,0], b=new THREE.Group(); b.position.set(pv[0],pv[1],pv[2]); const m=new THREE.Mesh(geo(key,name,R.parts[name]),bodyM); m.position.set(-pv[0],-pv[1],-pv[2]); m.castShadow=true; b.add(m); g.add(b); bones[name]=b; });
     // which bone a point of light rides on: the nearest part's pivot it falls under (head things on the head, hand things on the arm)
     const boneOf=p=>{ const hd=R.piv.hd; if(hd&&p[1]>hd[1]-0.08&&Math.abs(p[0])<0.36) return bones.hd; for(const n of ['aL','aR']){ const pv=R.piv[n]; if(pv&&Math.sign(p[0])===Math.sign(pv[0])&&Math.abs(p[0])>Math.abs(pv[0])*0.9) return bones[n]; } return bones.body; };
@@ -9864,7 +9866,7 @@ const BOSSART=(function(){
     g.userData.mats=[bodyM]; g.userData.bones=bones; g.userData.key=key;
     let t0=Math.random()*10; g.userData.tickArt=dt=>{ t0+=dt||0.016; anim.forEach(f=>f(t0)); };
     g.traverse(m=>{ if(m.isMesh) m.castShadow=true; }); return g; }
-  return {make,has:k=>typeof BOSS_DATA!=='undefined'&&!!(BOSS_DATA&&BOSS_DATA[k])};
+  return {make,toonMap,has:k=>typeof BOSS_DATA!=="undefined"&&!!(BOSS_DATA&&BOSS_DATA[k])};
 })();
 
 // ── engine/petart.js ──
@@ -10174,7 +10176,14 @@ const CHAPEL_DRESS=(function(){
     X.wl.forEach(([x,y])=>{ const o=[[0,1],[0,-1],[1,0],[-1,0]].find(([a,b])=>isFloor(x+a,y+b)); if(!o) return; const ox=x+o[0], oy=y+o[1];
       const px=x+0.5+o[0]*(0.52-X.WI.m), pz=y+0.5+o[1]*(0.52-X.WI.m), r=rnd(x,y,3), face=Math.atan2(o[0],o[1]);
       if(r<0.1&&inRoom(ox,oy)){ const b=new THREE.Mesh(new THREE.PlaneGeometry(0.8,2.0),bannerMat(T)); const gg=group(px+o[0]*0.04,0,pz+o[1]*0.04,deco); gg.rotation.y=face; b.position.set(0,CW-1.25,0.02); b.userData.keep=true; gg.add(b);   /* kept whole: the merge drops uv */ B(0.96,0.05,0.06,T.trim,0,CW-0.24,0.04,gg); }
-      else if(r<0.1+(OPEN?0.24:0.1)){ const gg=group(px,0,pz,deco); gg.rotation.y=face; W[T.wallKind](gg,T,T.wallKind==='sconce'?an:CW); } });
+      else if(r<0.1+(OPEN?0.24:0.1)){ const gg=group(px,0,pz,deco); gg.rotation.y=face; W[T.wallKind](gg,T,T.wallKind==='sconce'?an:CW); }
+      // V194 — GOTHIC: tall pointed windows of stained glass along the halls, lit from without, in a moulded frame
+      else if(rnd(x,y,7)<(OPEN?0.2:0.12)&&inRoom(ox,oy)&&CW>2){ const gg=group(px+o[0]*0.03,0,pz+o[1]*0.03,deco); gg.rotation.y=face; const ww=0.5, hh=Math.min(2.0,CW-0.7), y0=0.55;
+        const sh=new THREE.Shape(); sh.moveTo(-ww/2,0); sh.lineTo(-ww/2,hh-ww*0.62); sh.quadraticCurveTo(-ww/2,hh-ww*0.12,0,hh); sh.quadraticCurveTo(ww/2,hh-ww*0.12,ww/2,hh-ww*0.62); sh.lineTo(ww/2,0); sh.lineTo(-ww/2,0);
+        const gl=new THREE.ShapeGeometry(sh,8), uv=gl.attributes.uv, pp=gl.attributes.position; for(let i=0;i<uv.count;i++) uv.setXY(i,(pp.getX(i)+ww/2)/ww,pp.getY(i)/hh);
+        const g2=new THREE.Mesh(gl,lancet(T)); g2.position.set(0,y0,0.01); g2.userData.keep=true; gg.add(g2);
+        const fr=new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(sh.getPoints(16).map(p=>new THREE.Vector3(p.x*1.08,p.y*1.03,0))),40,0.035,4,true),mt(T.trim)); fr.position.set(0,y0-0.02,0.03); gg.add(fr);
+        B(ww+0.2,0.08,0.14,dk(T.wall,1.2),0,y0-0.08,0.04,gg); } });
     // ── on the floor: the theme's clutter along the walls of the rooms ──
     const H=X.H, Wd=X.W; for(let y=1;y<H-1;y++) for(let x=1;x<Wd-1;x++){ if(!isFloor(x,y)||!inRoom(x,y)||nearDoor(x+0.5,y+0.5,3)) continue; const nb=[[0,1],[0,-1],[1,0],[-1,0]].filter(([a,b])=>at(x+a,y+b)===1); if(nb.length!==1) continue;
       if(rnd(x,y,5)>(OPEN?0.22:0.06)) continue; const [a,b]=nb[0], kind=T.scatter[Math.floor(rnd(x,y,6)*T.scatter.length)], gg=group(x+0.5+a*0.15,0,y+0.5+b*0.15,deco); gg.rotation.y=Math.atan2(-a,-b); gg.scale.setScalar(1.35); P[kind](gg,T,an); if(SOLIDR[kind]) block(gg.position.x,gg.position.z,SOLIDR[kind]*1.35); }
@@ -10354,13 +10363,21 @@ const CHAPEL_DRESS=(function(){
     // its windows, lit with the theme's sky, along both long sides
     const win=glow(dk(T.sky,0.75)); for(let z=z0+1.5;z<z1-1;z+=2.5){ [x0+0.02,x1-0.02].forEach(x=>{ B(0.04,VH*0.55,0.7,win,x,up+VH*0.18,z,deco); const a=Co(0.5,0.42,4,win,x,up+VH*0.73,z,deco); a.rotation.y=Math.PI/4; a.scale.set(0.06,1,1); }); }
     // the barrel
-    const bg=new THREE.CylinderGeometry(R,R,r.h,22,1,true,Math.PI/2,Math.PI); bg.rotateX(Math.PI/2); bg.scale(1,k,1); bg.translate(cx,up+VH,(z0+z1)/2);
+    // V194 — GOTHIC: the vault is pointed (two-centred), not a round barrel: steep at its springing, meeting in a ridge
+    const N=24, prof=[]; for(let i=0;i<=N;i++){ const u=-1+2*i/N; prof.push([cx+u*R, rise*Math.pow(1-Math.abs(u),0.58)]); }
+    const bg=new THREE.BufferGeometry(), vp=[], vi=[]; prof.forEach(([x,y])=>{ vp.push(x,up+VH+y,z0, x,up+VH+y,z1); }); for(let i=0;i<N;i++){ const a=i*2; vi.push(a,a+1,a+2, a+1,a+3,a+2); }
+    bg.setAttribute('position',new THREE.Float32BufferAttribute(vp,3)); bg.setIndex(vi); bg.computeVertexNormals();
+    const pShape=()=>{ const sh=new THREE.Shape(); sh.moveTo(prof[0][0]-cx,0); prof.forEach(([x,y])=>sh.lineTo(x-cx,y)); sh.lineTo(prof[0][0]-cx,0); return sh; };
+    const pCurve=(z,inset)=>new THREE.CatmullRomCurve3(prof.map(([x,y])=>new THREE.Vector3(cx+(x-cx)*(1-inset),up+VH+y*(1-inset*0.6),z)));
     const bm=new THREE.Mesh(bg,new THREE.MeshPhongMaterial({color:dk(T.top,0.78),flatShading:true,shininess:4,side:THREE.DoubleSide})); keep.add(bm);
     // ribs across it, and a spine along its crown
-    for(let z=z0+1;z<z1;z+=2){ const tg=new THREE.TorusGeometry(R-0.06,0.1,4,22,Math.PI); tg.scale(1,k,1); tg.translate(cx,up+VH,z); const m=new THREE.Mesh(tg,mt(T.trim)); deco.add(m); }
+    for(let z=z0+1;z<z1;z+=2){ const m=new THREE.Mesh(new THREE.TubeGeometry(pCurve(z,0.03),28,0.09,5,false),mt(T.trim)); deco.add(m);
+      // a clustered column under each rib's foot, three shafts and a capital, carrying it down the wall
+      [x0+0.16,x1-0.16].forEach(x=>{ [-0.09,0,0.09].forEach((o,i)=>{ const sh=new THREE.Mesh(new THREE.CylinderGeometry(i===1?0.08:0.055,i===1?0.09:0.06,up+VH,7),mt(dk(T.wall,1.18))); sh.position.set(x+(x<cx?0.02:-0.02),(up+VH)/2,z+o); deco.add(sh); });
+        const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.12,0.18,8),mt(T.trim)); cap.position.set(x,up+VH-0.09,z); deco.add(cap); }); }
     B(0.22,0.14,r.h,T.trim,cx,up+VH+rise-0.2,(z0+z1)/2,deco);
     // the lunettes: the half-ellipses closing either end — the far one a rose window
-    [z0,z1].forEach((z,e)=>{ const lg=new THREE.CircleGeometry(R,22,0,Math.PI); lg.scale(1,k,1); lg.translate(cx,up+VH,z+(e?-0.01:0.01)); const lm=new THREE.Mesh(lg,new THREE.MeshPhongMaterial({color:dk(T.wall,0.9),flatShading:true,side:THREE.DoubleSide})); keep.add(lm);
+    [z0,z1].forEach((z,e)=>{ const lg=new THREE.ShapeGeometry(pShape()); lg.translate(cx,up+VH,z+(e?-0.01:0.01)); const lm=new THREE.Mesh(lg,new THREE.MeshPhongMaterial({color:dk(T.wall,0.9),flatShading:true,side:THREE.DoubleSide})); keep.add(lm);
       if(!e){ const rw=new THREE.Mesh(new THREE.CircleGeometry(Math.min(1.5,rise*0.42),24),roseMat(T)); rw.position.set(cx,up+VH+rise*0.45,z+0.03); rw.userData.keep=true; keep.add(rw);
         const fr=new THREE.Mesh(new THREE.TorusGeometry(Math.min(1.5,rise*0.42),0.09,5,24),mt(T.trim)); fr.position.copy(rw.position); deco.add(fr); } });
     (X.vaults=X.vaults||[]).push({x0,x1,z0,z1,top:VH+rise});
@@ -21881,10 +21898,11 @@ const BODY3=(function(){
   //  tabard, boots…). Which of the rig's joints each shell covers says which of the new body's regions it dresses, so
   //  everyone keeps their own clothes and colours — and the rigid pieces (hats, crowns, belts, aprons, gowns' skirts that
   //  move as cloth, the things they carry) stay on their pivots as they were.
-  const FACE=new Set(['mouthD','teeth','eyeW','pupil','glint','lash','irisD','irisL','crease','blush','skin','iris','brow','lip','hair','beard','eye','white']);
+  const FACE=new Set(['mouthD','teeth','eyeW','pupil','glint','lash','irisD','irisL','crease','blush','skin','iris','brow','lip','hair','beard']);   /* V194: not 'white' — Sir Aldric's helm is white */
   // the named, where their written design asks for more than their colours say (heroes.js, people.js)
   const NAMED={ elijah:{hair:'Hair_Buzzed',hairCol:0xf0eee8,beard:0xf0eee8,old:true,pat:{shirt:0xfdfdf6},hide:['flower']},   /* …and the white flowers on his orange shirt */   // Old Man Elijah: white hair, a big white beard
-    king:{old:true}, sage:{old:true}, librarian:{old:true}, priest:{old:true} };
+    king:{old:true,hair:'Hair_Buns'},   /* King Karl's man-bun */
+    madison:{hair:'Hair_Long',hairCol:0xf0c860,gold:['chest']},   /* Princess Madison: long golden hair, the gold bodice */ sage:{old:true}, librarian:{old:true}, priest:{old:true} };
   const regionOfPivot=(r,o,y)=>o===r.torso?(y<0.98?'belly':'chest'):o===r.hips?'pelvis':(o===r.L.hip||o===r.R.hip)?'thigh':(o===r.L.knee||o===r.R.knee)?(y<0.1?'foot':y<0.3?'boot':'calf'):(o===r.AL.sh||o===r.AR.sh)?'upperarm':(o===r.AL.el||o===r.AR.el)?'forearm':(o===r.AL.hand||o===r.AR.hand)?'hand':o===r.head?'head':null;
   function coverage(mesh,r){ const g=mesh.geometry, ix=g.index, SI=g.attributes.skinIndex, SW=g.attributes.skinWeight, P=g.attributes.position, bones=mesh.skeleton.bones, cnt={}, seen=new Set();
     const n=ix?ix.count:P.count; for(let t=0;t<n;t++){ const j=ix?ix.getX(t):t; if(seen.has(j)) continue; seen.add(j); let bi=0,bw=-1; for(let q=0;q<4;q++){ const w=SW.getComponent?SW.getComponent(j,q):[SW.getX(j),SW.getY(j),SW.getZ(j),SW.getW(j)][q]; if(w>bw){ bw=w; bi=[SI.getX(j),SI.getY(j),SI.getZ(j),SI.getW(j)][q]; } }
@@ -21892,13 +21910,15 @@ const BODY3=(function(){
   const hex=c=>c&&c.isColor?c.getHex():c;
   function folkSpec(K){ const D=K.userData.castD, base=K.userData.castBase||{}, r=K.rig; if(!D||!K.body||!K.body.body) return null;
     const total=coverage(K.body.body,r), dress={}, kind={};
-    const best={}; (K.body.shells||[]).forEach((sh,i)=>{ const c=coverage(sh,r), nm=(D.shells&&D.shells[i]&&D.shells[i].mat)||''; for(const rg in c){ const f=c[rg]/Math.max(1,total[rg]||c[rg]); if(f>0.3&&f>=(best[rg]||0)-0.15){ best[rg]=Math.max(f,best[rg]||0); dress[rg]=hex(sh.material.color); kind[rg]=(base[nm]&&base[nm][0])||'cloth'; } } });   /* the garment that covers most of a region (a trim covers little); an outer one wins a near tie */
+    const best={}; (K.body.shells||[]).forEach((sh,i)=>{ const c=coverage(sh,r), nm=(D.shells&&D.shells[i]&&D.shells[i].mat)||''; for(const rg in c){ const f=c[rg]/Math.max(1,total[rg]||c[rg]); const kd=(base[nm]&&base[nm][0])||'cloth'; if(kd==='gold'&&dress[rg]!=null&&f<0.9) continue;   /* gold is trim: it doesn't take a region from the plate or cloth it edges */
+        if(f>0.3&&f>=(best[rg]||0)-0.15){ best[rg]=Math.max(f,best[rg]||0); dress[rg]=hex(sh.material.color); kind[rg]=(base[nm]&&base[nm][0])||'cloth'; } } });   /* the garment that covers most of a region (a trim covers little); an outer one wins a near tie */
+    const N0=NAMED[(K.cast||'').replace(/^folk:/,'')]; if(N0&&N0.gold) N0.gold.forEach(rg=>{ dress[rg]=0xe0b84a; kind[rg]='cloth'; });
     // a shirt or tunic hangs over the waist: where the trousers (or shorts) reach up to the belly, the top comes down over it
     if(dress.chest!=null&&dress.belly!=null&&dress.belly!==dress.chest&&dress.belly===dress.thigh){ dress.belly=dress.chest; kind.belly=kind.chest; }
     const hasHat=[]; r.head.traverse(o=>{ if(o.isMesh&&!o.isSkinnedMesh&&o.userData.mat&&!FACE.has(o.userData.mat)) hasHat.push(o); });
     const N=NAMED[(K.cast||'').replace(/^folk:/,'')]||{}, fem=D.body==='woman';
     const hairCol=N.hairCol!==undefined?N.hairCol:base.hair?base.hair[1]:0x4a3020, beard=N.beard!==undefined?N.beard:base.beard?base.beard[1]:null;
-    let hair=N.hair||(base.hair?(fem?'Hair_Long':'Hair_SimpleParted'):null); if(hasHat.length&&hair) hair=fem?'Hair_Buns':'Hair_Buzzed';
+    let hair=N.hair||(base.hair?(fem?'Hair_Long':'Hair_SimpleParted'):null); if(hasHat.length&&hair&&!N.hair) hair=fem?'Hair_Buns':'Hair_Buzzed';   /* the named keep their own hair under a tiara or circlet */
     const pat={}; if(N.pat) (K.body.shells||[]).forEach((sh,i)=>{ const nm=D.shells&&D.shells[i]&&D.shells[i].mat; if(N.pat[nm]!=null) pat[hex(sh.material.color)]=N.pat[nm]; });
     return {fem,skin:base.skin?base.skin[1]:0xe0b080,dress,kind,hair,hairCol,beard,hats:hasHat,old:!!N.old,pat,hide:N.hide||[]}; }
   const HAIR={}; function hairSrc(f){ if(HAIR[f]) return HAIR[f]; return HAIR[f]=loadLibs().then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(DIR+f+'.gltf',res,undefined,rej))); }
@@ -21957,6 +21977,89 @@ const BODY3=(function(){
   // the hero is dressed as soon as he stands in the world (and again if he is ever rebuilt)
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K; if(K.sculpted&&!K.bare&&!K.userData.b3) hero(K); },500);
   return { hero, folk, folkSpec, swapIn, specOf, get on(){ return on(); }, get, build, shell, paint, cut, unitOf, hook, mat, REG };
+})();
+
+// ── engine/village3.js ──
+// ════════════════════════════════════════════════════════════════
+//  VILLAGE3 (V194) — houses built from Quaternius's Medieval Village MegaKit (CC0; models/look3/village/, licence in
+//  models/look3/LICENSE-medieval-village-megakit.txt): real modelled walls, doors, windows with shutters, corner posts,
+//  round-tiled roofs with their gable ends, and chimneys — assembled to each house's own footprint and height in the
+//  world (so its walls, roof line, doors and collisions stay exactly where the game has them), cel-shaded like the cast.
+//  Each town keeps its colours: the kit's textures are taken to grey and tinted by the town's plaster, timber, stone and
+//  roof colours.
+//   VILLAGE3.house(g, {w, d, h, low, c})  g: the house's group (front at +z), w × d its walls' footprint, h the eave.
+//  The old house stays until the pieces have loaded, and wherever they can't be (the artifact, the classic look,
+//  ?novillage3).
+// ════════════════════════════════════════════════════════════════
+const VILLAGE3=(function(){
+  const on=()=>!(typeof LOOK2!=='undefined'&&!LOOK2)&&!/[?&]novillage3/.test(location.search)&&!window.NO_VILLAGE3;
+  const BASE='models/look3/', DIR=BASE+'village/';
+  let libs=null; const src={}, wait={};
+  function loadLibs(){ if(libs) return libs; if(THREE.GLTFLoader) return libs=Promise.resolve();
+    libs=new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=BASE+'GLTFLoader.js'; s.onload=()=>res(); s.onerror=()=>rej(); document.head.appendChild(s); }); return libs; }
+  function get(n){ if(src[n]) return Promise.resolve(src[n]); if(wait[n]) return wait[n];
+    return wait[n]=loadLibs().then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(DIR+n+'.gltf',g=>{ src[n]=g.scene; res(g.scene); },undefined,rej))); }
+  // ── cel shading over the kit's own painted textures, taken to grey so a town's colours can tint them ──
+  const RAMP=(()=>{ const d=new Uint8Array([120,120,120,255, 190,190,190,255, 245,245,245,255]), t=new THREE.DataTexture(d,3,1,THREE.RGBAFormat); t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true; return t; })();
+  const SRGB=()=>typeof ENGINE!=='undefined'&&ENGINE.renderer&&ENGINE.renderer.outputEncoding===THREE.sRGBEncoding;
+  const lin=c=>{ c=new THREE.Color(c); return SRGB()?c.convertSRGBToLinear():c; };
+  const GREY=new Map();
+  function grey(tex){ if(!tex||!tex.image) return tex; if(GREY.has(tex)) return GREY.get(tex); const im=tex.image, cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0);
+    const D=x.getImageData(0,0,cv.width,cv.height), a=D.data; let sum=0; for(let i=0;i<a.length;i+=4) sum+=0.3*a[i]+0.59*a[i+1]+0.11*a[i+2]; const mean=sum/(a.length/4)||128, k=200/mean;   // grey, normalised so the tint reads true
+    for(let i=0;i<a.length;i+=4){ const v=Math.min(255,(0.3*a[i]+0.59*a[i+1]+0.11*a[i+2])*k); a[i]=a[i+1]=a[i+2]=v; } x.putImageData(D,0,0);
+    const t=new THREE.CanvasTexture(cv); t.wrapS=tex.wrapS; t.wrapT=tex.wrapT; t.flipY=tex.flipY; t.encoding=tex.encoding; GREY.set(tex,t); return t; }
+  const MATS=new Map();
+  function toon(srcMat,col){ const key=(srcMat.name||'')+'|'+col; if(MATS.has(key)) return MATS.get(key);
+    const glass=/Glass/i.test(srcMat.name||''), m=new THREE.MeshToonMaterial({color:lin(glass?0x2a3448:col),gradientMap:RAMP,map:glass?null:grey(srcMat.map),side:srcMat.side});
+    m.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>','#include <dithering_fragment>\n { float r=pow(1.0-clamp(dot(normalize(vViewPosition),normalize(vNormal)),0.0,1.0),3.0); gl_FragColor.rgb+=vec3(1.0,0.94,0.8)*r*0.18; }'); };
+    m.customProgramCacheKey=()=>'v3toon'; MATS.set(key,m); return m; }
+  // the town's colours for each of the kit's materials
+  function palette(c){ c=c||{}; const wood=c.beam||0x6b4a2e;
+    return {MI_Plaster:c.wall||0xeee4cc, MI_WoodTrim:wood, MI_WoodTrim_Wear:wood, MI_RoundTiles:c.roof||0xb4553a, MI_UnevenBrick:c.wallD||0xa49c8e, MI_RockTrim:c.wallD||0xa49c8e, MI_Brick:c.wallD||0x9a8f80, MI_MetalOrnaments:0x3a3a40, MI_WindowGlass:0x2a3448}; }
+  function piece(n,P){ const s=src[n]; if(!s) return null; const o=s.clone(true); o.traverse(m=>{ if(m.isMesh){ const sm=m.material; m.material=Array.isArray(sm)?sm.map(x=>toon(x,P[x.name]!==undefined?P[x.name]:0xffffff)):toon(sm,P[sm.name]!==undefined?P[sm.name]:0xffffff); m.castShadow=true; m.receiveShadow=true; } }); return o; }
+  const ROOFS=[[4,4],[4,6],[4,8],[6,6],[6,8],[6,10],[8,8],[8,10]];
+  const NEED=['Wall_Plaster_Straight','Wall_Plaster_Window_Wide_Round','Wall_Plaster_Door_Round','Wall_UnevenBrick_Straight','Wall_UnevenBrick_Window_Wide_Round','Wall_UnevenBrick_Door_Round',
+    'Corner_Exterior_Wood','Corner_Exterior_Brick','Door_1_Round','Window_Wide_Round1','WindowShutters_Wide_Round_Open','Roof_Front_Brick4','Roof_Front_Brick6','Roof_Front_Brick8','Prop_Chimney','Wall_Plaster_WoodGrid','Prop_Crate',...ROOFS.map(([a,b])=>'Roof_RoundTiles_'+a+'x'+b)];
+  let all=null; const ready=()=>all||(all=Promise.all(NEED.map(get)));
+  // ── a house, in the kit's metres, then scaled to the game's footprint ──
+  function assemble(o){ const P=palette(o.c), stone=!!(o.c&&(o.c.stone||o.c.brick)), K='Wall_'+(stone?'UnevenBrick':'Plaster')+'_';
+    // the walls: as many 2 m panels as best fit each side; the ridge runs along the longer side, the gables on the shorter
+    const nw=Math.max(2,Math.min(4,Math.round(o.w/1.25))), nd=Math.max(2,Math.min(5,Math.round(o.d/1.25))), Wk=nw*2, Dk=nd*2, H=new THREE.Group();
+    const wall=(n,x,z,ry)=>{ const p=piece(n,P); if(!p) return; p.position.set(x,0,z); p.rotation.y=ry; H.add(p); return p; };
+    // front (+z): the door in the middle, windows either side; back: windows; the sides: a window in the middle
+    const NS=o.storeys||1;
+    for(let i=0;i<nw;i++){ const x=-Wk/2+1+2*i, mid=i===Math.floor((nw-1)/2);
+      wall(mid?K+'Door_Round':K+'Window_Wide_Round',x,Dk/2,0); if(mid){ const d=piece('Door_1_Round',P); if(d){ d.position.set(x-0.55,0,Dk/2-0.04); H.add(d); } } else { const w=piece('Window_Wide_Round1',P), s=piece('WindowShutters_Wide_Round_Open',P); [w,s].forEach(q=>{ if(q){ q.position.set(x,0,Dk/2); H.add(q); } }); }
+      wall(i%2?K+'Straight':K+'Window_Wide_Round',x,-Dk/2,Math.PI); }
+    for(let j=0;j<nd;j++){ const z=-Dk/2+1+2*j, win=j===Math.floor(nd/2); wall(win?K+'Window_Wide_Round':K+'Straight',Wk/2,z,Math.PI/2); wall(win&&nd>2?K+'Window_Wide_Round':K+'Straight',-Wk/2,z,-Math.PI/2); }
+    // an upper storey: timber-framed panels and windows all round
+    for(let s=1;s<NS;s++){ const y=3.12*s; for(let i=0;i<nw;i++){ const x=-Wk/2+1+2*i; [[x,Dk/2,0],[x,-Dk/2,Math.PI]].forEach(([px,pz,ry],k)=>{ const p=piece(i%2===k%2?'Wall_Plaster_Window_Wide_Round':'Wall_Plaster_WoodGrid',P)||piece('Wall_Plaster_Straight',P); if(p){ p.position.set(px,y,pz); p.rotation.y=ry; H.add(p); } }); }
+      for(let j=0;j<nd;j++){ const z=-Dk/2+1+2*j; [[Wk/2,Math.PI/2],[-Wk/2,-Math.PI/2]].forEach(([px,ry])=>{ const p=piece(j===Math.floor(nd/2)?'Wall_Plaster_Window_Wide_Round':'Wall_Plaster_WoodGrid',P)||piece('Wall_Plaster_Straight',P); if(p){ p.position.set(px,y,z); p.rotation.y=ry; H.add(p); } }); } }
+    for(let s=0;s<NS;s++) [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([a,b])=>{ const c=piece(stone&&s===0?'Corner_Exterior_Brick':'Corner_Exterior_Wood',P); if(c){ c.position.set(a*Wk/2,3.12*s,b*Dk/2); H.add(c); } });
+    // a shop: crates and a wagon by the door
+    if(o.shop){ [[-Wk/2+0.9,Dk/2+0.9],[-Wk/2+1.9,Dk/2+0.7]].forEach(([x,z])=>{ const cr=piece('Prop_Crate',P); if(cr){ cr.position.set(x,0,z); H.add(cr); } }); }
+    // the roof: the kit's size nearest the house, ridge along the longer side; the gable ends to match
+    const along=Dk>=Wk, short=along?Wk:Dk, long=along?Dk:Wk; let best=ROOFS[0], bs=1e9; ROOFS.forEach(r=>{ const s=Math.abs(r[0]-short)*2+Math.abs(r[1]-long); if(s<bs){ bs=s; best=r; } });
+    const roof=piece('Roof_RoundTiles_'+best[0]+'x'+best[1],P); const T=3.12*NS;
+    if(roof){ roof.scale.set(short/best[0],1,long/best[1]); if(!along) roof.rotation.y=Math.PI/2; roof.position.y=T; H.add(roof); }
+    const gk=Math.min(8,Math.max(4,Math.round(short/2)*2)), gab='Roof_Front_Brick'+gk;
+    [1,-1].forEach(sd=>{ const g=piece(gab,P); if(!g) return; g.scale.set(short/gk,1,1); g.position.y=T; if(along){ g.position.z=sd*Dk/2; g.rotation.y=sd>0?0:Math.PI; } else { g.position.x=sd*Wk/2; g.rotation.y=sd>0?Math.PI/2:-Math.PI/2; } H.add(g); });
+    const ch=piece('Prop_Chimney',P); if(ch){ ch.position.set(along?-Wk/4:-Wk/3,T+0.4,along?-Dk/4:0); ch.scale.setScalar(0.8); H.add(ch); }
+    // to the game's size: the footprint, and the eave at the house's own height
+    H.scale.set(o.w/Wk,(o.h||1.8)/T,o.d/Dk); return H; }
+  function house(g,o){ if(!on()||!g) return; const old=g.children.slice(); ready().then(()=>{ const H=assemble(o); old.forEach(c=>{ c.visible=false; }); g.add(H); g.userData.v3=H; }).catch(()=>{}); }
+  // ── the world's towns: every house, cottage, shop and inn, in its town's colours ──
+  const KINDS={house:1.8,cottage:1.5,shop:1.9,inn:2.5}, KEEP=new Set(['home_house','home_barn','sg_keep','sg_cathedral','ih_forge','sm_market']);
+  // what each town is made of: the kit tinted (plaster, timber, stone, roof); stone: the walls in rubble-stone panels
+  const TOWN={ ironhold:{wall:0x8a8680,wallD:0x5c5854,beam:0x2e2a28,roof:0x4a4e58,stone:1}, saltmere:{wall:0xf4f0e6,wallD:0xb8b0a0,beam:0x3e5a78,roof:0x3a6aa8},
+    thornwood:{wall:0xc49a6a,wallD:0x7a6248,beam:0x4a3220,roof:0x5a7a3a}, dusthaven:{wall:0xe6c48e,wallD:0xc09a66,beam:0x8a5a32,roof:0xc0683a},
+    crystalpeak:{wall:0xe8eef4,wallD:0xb8c4d0,beam:0x4a5a6a,roof:0xf0f4f8}, stormgate:{wall:0xd8d4cc,wallD:0xb3b4b8,beam:0x3a3430,roof:0x2c4c9e,stone:1},
+    ashfield:{wall:0x9a948c,wallD:0x6a645e,beam:0x3a2a22,roof:0x6a2a24,stone:1}, shadowmere:{wall:0x7a7486,wallD:0x4e4a58,beam:0x2a2630,roof:0x3e5a46},
+    hearthvale:{wall:0xf2e6c8,wallD:0xb0a48e,beam:0x6b4a2e,roof:0x9a7a42}, homestead:{wall:0xf0e2c4,wallD:0xa8987e,beam:0x5a3c24,roof:0x8a6a3a} };
+  function swap(M0,par,g,b,bm,c,key){ if(!on()||!M0||!par||KEEP.has(b.id)||!KINDS[b.style]) return; const h=KINDS[b.style], pal=Object.assign({},{wall:c.wall,wallD:c.wallD,beam:c.beam,roof:c.roof},TOWN[key]||{});
+    const pos=g.position.clone(), ry=g.rotation.y, o={w:bm.w-0.4,d:bm.h-0.3,h,c:pal,storeys:h>2.2?2:1,shop:b.style==='shop'};
+    ready().then(()=>{ const H=assemble(o), G=new THREE.Group(); G.add(H); G.position.copy(pos); G.rotation.y=ry; M0.visible=false; par.add(G); G.userData.v3=b.id; }).catch(e=>{ if(window.DEBUG_V3) console.error('VILLAGE3',e&&e.message||e); }); }
+  return { house, swap, get on(){ return on(); }, ready, assemble };
 })();
 
 // ── cities/luminar.js ──
