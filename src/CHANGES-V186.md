@@ -226,3 +226,7 @@ The realm roughly doubles, from 370×420 to 760×830 tiles, and ends in a real c
 - Checked: every V197-reachable door, sign, villager, quest spot, secret, trade post, plateau, shrine and tower is
   still reachable (one pond fishing spot on the south coast was lost to the sea); an old save lands the player,
   crops, boat, wagon, trade carts and Homestead pieces in the right places.
+
+## V198.1 — hotfix
+
+- V198 moved the side quests' spots (SIDEQUEST_DATA `at`) as if they were map positions; they are places inside the catacomb levels. Restored (tools/grow.py no longer touches them).

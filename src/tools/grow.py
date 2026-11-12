@@ -225,9 +225,7 @@ ST['x']=[s for s in ST['x'] if (s[2] if len(s)>2 else 1)<3]+[[to2d(p,ST['x']),n,
 ST['y']=[s for s in ST['y'] if (s[2] if len(s)>2 else 1)<3]+[[to2d(p,ST['y']),n,3,p] for p,n in SY3]
 ST['grow']={'W':W3,'H':H3,'x':SX3,'y':SY3}
 FD['mouths']={k:P(v) for k,v in FD['mouths'].items()}; P(FD['caveReturn'])
-for t in SQ['quests'].values():
-    for q in (t if isinstance(t,list) else t.values()):
-        if isinstance(q,dict) and isinstance(q.get('at'),list): q['at']=[mx(q['at'][0]),my(q['at'][1])]+q['at'][2:]
+# (SIDEQUEST_DATA's 'at' are places inside the catacomb levels, not on the map: they stay as they are)
 def dkey(k):
     if k.startswith('v:'): _,xy,o=k.split(':',2); return 'v:'+K(xy)+':'+o
     return k
@@ -271,9 +269,6 @@ for e in WD['barriers']:
     if e: keep[max(0,e[1]-e[3]-4):e[1]+e[3]+5,max(0,e[0]-e[2]-4):e[0]+e[2]+5]=True
 for x_,z_,h_ in tk['samples'][::3]: keep[max(0,int(z_)-6):int(z_)+7,max(0,int(x_)-6):int(x_)+7]=True
 for s in PT['secrets']+PT['reuben']['spots']+PT['deep']['spots']+PT['doodles']['at']: mark(s['x'],s['y'],5)
-for t in SQ['quests'].values():
-    for q in (t if isinstance(t,list) else t.values()):
-        if isinstance(q,dict) and isinstance(q.get('at'),list): mark(q['at'][0],q['at'][1],5)
 CODE_SPOTS=[(62,82,11),(88,65,11),(205,261,13),(198,129,12),(322,262,12),(24,81,5),(150,79,5),(164,235,5),(248,193,5),(216,300,5),(70,44,8),(235,74,8),(145,321,8)]   # the plateaus, shrines and watchtowers the code places (V197 tiles; wilds.js, landmarks.js)
 for x_,y_,r_ in CODE_SPOTS: mark(mx(x_),my(y_),r_)
 rd=np.isin(T2,[2,12,6,8,9,10,11,27]);

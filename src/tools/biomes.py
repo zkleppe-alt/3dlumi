@@ -74,7 +74,7 @@ def walk(o):
         for v in o: walk(v)
     elif isinstance(o,str) and re.fullmatch(r'\d+,\d+',o): mark(*map(int,o.split(',')))
 walk(json.load(open(os.path.join(ROOT,'data','pastimes.json'),encoding='utf-8')))   # V198: the pastimes' places too (doodles, Reuben, the trade posts …)
-for name in ('STRETCH','CHAPELS','SIDEQUEST_DATA','FOREST_DATA','DIALOGUE_DATA'):
+for name in ('STRETCH','CHAPELS','FOREST_DATA','DIALOGUE_DATA'):
     try: walk(const(name)[2])
     except ValueError: pass
 walk({k:v for k,v in WD.items() if k not in ('raw','interiors','siRooms','thall','themes')})
