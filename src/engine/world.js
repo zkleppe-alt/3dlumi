@@ -945,6 +945,9 @@ function buildWorld(WD,opt){
       if(m<=0||d<=0){ U[v]=old*(1-m); continue; }
       let ws=0.35, h=0.35*(LK?shape(LK[0],LK[1],x,y):shape('hill',5.5,x,y)), mw=0; for(const c of centres){ const R=c.R||((c.k==='mountain'||c.k==='crag')?58:44)*(W>500?1.5:1), w=Math.exp(-(((x-c.x)**2+(y-c.y)**2)/(R*R))); if(w<0.01) continue; ws+=w; h+=w*shape(c.k,c.A,x,y); if(c.k==='mountain'||c.k==='crag') mw+=w; }
       HILL[v]=h/ws*sm((d-0.5)/2.5); WR[v]=1-sm((dr-1)/4); U[v]=old*(1-m); MW[v]=Math.min(1,mw/ws*1.6); DD[v]=d; }
+    // V199: the hills a village is planned about (WORLD_DATA.hills: [x, y, radius, height]) — the sheep hill above Hearthvale
+    if(!opt.land) for(const [hx,hy,hr,ha] of (WD.hills||[])) for(let y=Math.max(0,hy-hr);y<=Math.min(H,hy+hr);y++) for(let x=Math.max(0,hx-hr);x<=Math.min(W,hx+hr);x++){
+      const d=Math.hypot(x-hx,y-hy)/hr; if(d>=1) continue; const v=y*R1+x; if(MM[v]<=0||DD[v]<=0) continue; HILL[v]+=ha*sm(1-d)*sm((DD[v]-0.5)/2.5); }
     // the roads ride the land but are eased over it: where one runs, the hill under it is a broad average of the hills about
     const blur=(A,rad)=>{ const B=new Float32Array(N), C=new Float32Array(N); for(let y=0;y<=H;y++){ let acc=0, n=0; for(let x=-rad;x<=W+rad;x++){ if(x+rad<=W){ acc+=A[y*R1+x+rad]; n++; } if(x-rad-1>=0){ acc-=A[y*R1+x-rad-1]; n--; } if(x>=0&&x<=W) B[y*R1+x]=acc/n; } }
       for(let x=0;x<=W;x++){ let acc=0, n=0; for(let y=-rad;y<=H+rad;y++){ if(y+rad<=H){ acc+=B[(y+rad)*R1+x]; n++; } if(y-rad-1>=0){ acc-=B[(y-rad-1)*R1+x]; n--; } if(y>=0&&y<=H) C[y*R1+x]=acc/n; } } return C; };

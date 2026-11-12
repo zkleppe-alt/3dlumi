@@ -141,7 +141,13 @@
   /* V169: a cleansed town keeps its own watch — no demon comes within its bounds */
   const TOWN_T={Hearthvale:0,Ironhold:1,Saltmere:2,Thornwood:3,Dusthaven:4,Crystalpeak:5,Ashfield:6,Stormgate:7,Shadowmere:8,Hellgate:9}, GUARD_R=12;
   world.watched=()=>(WD.towns||[]).filter(tw=>TOWN_T[tw[0]]!==undefined&&cleansed(TOWN_T[tw[0]]));
-  world.guarded=(x,y)=>{ for(const tw of world.watched()) if(Math.hypot(x+0.5-tw[1],y+0.5-tw[2])<GUARD_R) return true; return false; }; world.guardR=GUARD_R;
+  world.guarded=(x,y)=>{ for(const tw of world.watched()) if(Math.hypot(x+0.5-tw[1],y+0.5-tw[2])<((WD.townR&&WD.townR[tw[0]])||GUARD_R)) return true; return false; };   // V199: a re-planned village is guarded to its edges
+  /* V199: THE CLUES — a few villagers (WD.villagers[].clue = the town) have heard the sounds from the catacombs' way in. Hearing one marks the journal
+     and turns the quest goal toward it; once the way is found (or the chapel cleansed) they say what they say after. */
+  WD.villagers.forEach(v=>{ if(v.clue===undefined) return; const t=v.clue, f=world.folk.find(q=>q.key==='v:'+v.x+','+v.y+':'+v.outfit); if(!f) return; f.label='Talk';
+    f.action=()=>{ const s=S(), c=(s.cata&&s.cata[t])||{}, CS=WD.cata&&WD.cata[t]; if((c.seen||cleansed(t))&&v.after){ ENGINE.speak(f.who,v.after,f); return; }
+      ENGINE.speak(f.who,v.lines,f,()=>{ const h=s.cataHeard||(s.cataHeard={}); if(h[t]||!CS) return; h[t]=true; GAME.save();
+        if(typeof JOURNAL!=='undefined'&&CS.journal) try{ JOURNAL.write(CS.journal); }catch(e){} UI.toast('📜 The sounds come from '+CS.where+'.',2800); }); }; }); world.guardR=GUARD_R;
   COMBAT.arena(world,{ mode:'world', tier:0, W:WD.W, H:WD.H, walk:(x,y)=>world.walkTile(x,y)&&!world.guarded(x,y), onKill:d=>{ HUNT.onKill(d); if(BOUNTY) BOUNTY.onKill(d); },
     onDeath:()=>{ ENGINE.go('world',HEARTH); setTimeout(()=>UI.toast('💫 You fall… and wake safe in Hearthvale.',2000),450); } });
   function spawnDemons(){ COMBAT.clear(world); const P=ENGINE.P;
@@ -166,7 +172,7 @@
     down:viaCata?()=>{ const na=CATACOMB.naveAt(t)||{x:8.5,z:5.6}; ENGINE.go('cata'+t+':0',{x:na.x,z:na.z,face:0,yaw:Math.PI}); }:null, raiseWhy:viaCata?CATACOMB.cfg(t).raiseWhy:null, trialDone:viaCata?()=>!!(S().cata&&S().cata[t]&&S().cata[t].trial):null, raise:viaCata,exit:back(Object.keys(WD.chapelTown).find(k=>WD.chapelTown[k]===t)),
     onCleanse:()=>{ spawnDemons(); }})); }
   function enterFor(b){ const id=b.interior||b.id, J=I[id]; if(!J) return null;
-    if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(typeof CATACOMB!=='undefined'&&CATACOMB.has(t)&&t<=S().chapels) ENGINE.speak(b.name,['The doors are barred from within. A cold shadow seeps out from under them.','The old way in is from below: '+CATACOMB.cfg(t).wayIn]); else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
+    if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(typeof CATACOMB!=='undefined'&&CATACOMB.has(t)&&t<=S().chapels) { const CS=WD.cata&&WD.cata[t]; ENGINE.speak(b.name,CS?(S().cataHeard&&S().cataHeard[t]?CS.doorHeard:CS.door):['The doors are barred from within. A cold shadow seeps out from under them.','The old way in is from below: '+CATACOMB.cfg(t).wayIn]); } else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
       else ENGINE.speak(b.name,[t>S().chapels?'The doors will not open. Something waits beyond, for a knight who has cleansed the towns before it.':'The doors are barred.']); }; }
     if(id==='sg_keep') return ()=>ENGINE.go('keep');
     if(id==='home_barn') return ()=>SERVICES.openStables();

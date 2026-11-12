@@ -29,6 +29,8 @@ function goalSystem(world,opt){
     if((s.chapels|0)<10){ const td=SYS.TOWN_DATA[s.chapels|0], ch=s.chapels|0;
       /* V149: a chapel entered from its catacombs: the goal follows you down */
       if(typeof CATACOMB!=='undefined'&&CATACOMB.has(ch)){ const c=(s.cata&&s.cata[ch])||{}, m=CATACOMB.mouthOf?CATACOMB.mouthOf(ch):CATACOMB.mouth, at=m?[m.x,m.z]:T(td.name), inC=lv&&/^cata/.test(lv.id||'');
+        const CS=typeof WORLD_DATA!=='undefined'&&WORLD_DATA.cata&&WORLD_DATA.cata[ch], heard=!!(s.cataHeard&&s.cataHeard[ch]);   /* V199: the villagers' clues */
+        if(CS&&!c.seen&&!inC) return heard?{text:CS.goalHeard,at}:{text:CS.goal,at:T(td.name)};
         const tx=CATACOMB.cfg(ch).goal(c,inC,td);
         return inC?{text:tx}:{text:tx,at}; }
       return {text:`Cleanse ${td.name}’s chapel — ${td.general} is bound within.`,at:T(td.name)}; }

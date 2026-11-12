@@ -13,7 +13,7 @@ import json, base64, os, subprocess, sys, re
 from collections import deque
 import numpy as np
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__))); HEAD=os.path.join(ROOT,'data','built','head.js')
-subprocess.check_call([sys.executable,os.path.join(ROOT,'tools','grow.py')])   # V198: grow.py runs stormgate.py first
+subprocess.check_call([sys.executable,os.path.join(ROOT,'tools','villages.py')])   # V199: villages.py runs grow.py, which runs stormgate.py
 src=open(HEAD,encoding='utf-8').read()
 def const(name):
     i=src.index('const '+name+'='); j=src.index('\n',i); s=src[i+len(name)+7:j]; return i,j,json.loads(s[:-1] if s.endswith(';') else s),s.endswith(';')
@@ -79,6 +79,7 @@ for name in ('STRETCH','CHAPELS','FOREST_DATA','DIALOGUE_DATA'):
     except ValueError: pass
 walk({k:v for k,v in WD.items() if k not in ('raw','interiors','siRooms','thall','themes')})
 for n,x,y in WD['towns']: mark(x,y,24)
+for x0_,y0_,x1_,y1_ in WD.get('villageRects',[]): keep[y0_:y1_+1,x0_:x1_+1]=True   # V199: a planned village is dressed by hand
 CODE_SPOTS=[(62,82,11),(88,65,11),(205,261,13),(198,129,12),(322,262,12),(24,81,5),(150,79,5),(164,235,5),(248,193,5),(216,300,5),(70,44,8),(235,74,8),(145,321,8)]   # the plateaus, shrines and watchtowers the code places (V197 tiles; wilds.js, landmarks.js)
 for x_,y_,r_ in CODE_SPOTS: mark(gx(x_) if G else x_,gy(y_) if G else y_,r_)
 for b in WD['barriers']:

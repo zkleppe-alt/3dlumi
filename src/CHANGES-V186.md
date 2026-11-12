@@ -230,3 +230,26 @@ The realm roughly doubles, from 370×420 to 760×830 tiles, and ends in a real c
 ## V198.1 — hotfix
 
 - V198 moved the side quests' spots (SIDEQUEST_DATA `at`) as if they were map positions; they are places inside the catacomb levels. Restored (tools/grow.py no longer touches them).
+
+## V199 — Hearthvale re-planned (the villages, 1 of 10)
+
+`tools/villages.py` (run by biomes.py; it runs grow.py first) lays the villages out open and natural. Hearthvale first:
+- **No fence** round it. From the trade road a lane climbs to a **village green** (fountain, great oak, market stall),
+  and on up to the **chapel** in its fenced churchyard (tombstones, lanterns) at the head of the vale. Lanes wander west
+  to the **sheep hill** and east over a **millstream** (from the pond in the north-east, under two plank bridges, into the
+  river in the south) past the old watermill. Fields and a windmill to the south-west, an orchard in rows to the
+  north-east, beehives, a coop, a well.
+- 14 buildings (was 6): Tobias, Mira, Old Bram, the store and the inn keep their ids and interiors; eight new homes
+  (`hv_home1…8`: Amos the shepherd, the weaver, Widow Ruth, the miller, the beekeeper, the carpenter, the farmer,
+  Martha's bakehouse), each with its own resident. 11 villagers outdoors; the three who were here moved with their
+  stories (DIALOGUE_DATA keys re-keyed).
+- **The sheep hill**: a walled pasture with sheep, raised by `WORLD_DATA.hills` ([x,y,radius,height], world.js), and at
+  its top the old **shepherds' tomb** — the catacombs' way in (`WORLD_DATA.cata[0]`; catacomb.js builds the entrance
+  there instead of in the churchyard).
+- **The barred chapel and the clues**: the chapel door no longer tells you the way in. Villagers hint (SIDEQUEST hints,
+  Hearthvale 'out' stage) to ask Amos; three clue-givers (`villagers[].clue`) — Amos the Shepherd, Widow Ruth, Pip —
+  tell of the flock facing the tomb door, chanting at night, singing under the hill. Hearing one sets `S.cataHeard[0]`,
+  writes the journal, and turns the goal (goal.js) from "ask around the village" to "up to the shepherds' tomb", with the
+  compass pointing there; the door then says so too. After the way is found they say other things.
+- The demon zones that reached into the village start south of it; a cleansed village is guarded to its own radius
+  (`WORLD_DATA.townR`). Biomes leave a planned village (`villageRects`) as it was laid out.
