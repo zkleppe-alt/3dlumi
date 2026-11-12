@@ -1,0 +1,19 @@
+<script src="three.min.js"></script><script src="GLTFLoader.js"></script><script>
+const L=new THREE.GLTFLoader(), load=f=>new Promise((res,rej)=>L.load(f,res,undefined,rej));
+const MAP=[['Hips','pelvis',-1],['Spine','spine_01',0],['Spine1','spine_02',1],['Spine2','spine_03',2],['Neck','neck_01',3],['Head','Head',4],['LeftShoulder','clavicle_l',3],['LeftArm','upperarm_l',6],['LeftForeArm','lowerarm_l',7],['LeftHand','hand_l',8],['RightShoulder','clavicle_r',3],['RightArm','upperarm_r',10],['RightForeArm','lowerarm_r',11],['RightHand','hand_r',12],['LeftUpLeg','thigh_l',0],['LeftLeg','calf_l',14],['LeftFoot','foot_l',15],['LeftToeBase','ball_l',16],['RightUpLeg','thigh_r',0],['RightLeg','calf_r',18],['RightFoot','foot_r',19],['RightToeBase','ball_r',20]];
+const CL={idle:['Sword_Idle'],idleCalm:['Idle_Loop'],walk:['Walk_Loop'],sneak:['Crouch_Fwd_Loop'],sneakIdle:['Crouch_Idle_Loop'],run:['Jog_Fwd_Loop'],runCalm:['Jog_Fwd_Loop'],sprint:['Sprint_Loop'],block:['Idle_Shield_Loop'],blockHit:['Hit_Chest'],
+  atk1:['Sword_Regular_A','Sword_Regular_A_Rec'],atk2:['Sword_Regular_B','Sword_Regular_B_Rec'],atk3:['Sword_Regular_C'],atk4:['Sword_Attack'],death:['Death01'],land:['Jump_Land'],jump:['Jump_Loop'],fall:['Jump_Loop'],roll:['Roll'],plant:['Farm_PlantSeed'],agree:['Yes'],headShake:['Idle_No_Loop'],talk:['Idle_Talking_Loop'],knockback:['Hit_Knockback']};
+(async()=>{ const [bm,a,b]=await Promise.all(['Superhero_Male_FullBody.gltf','UAL1_Standard.glb','UAL2_Standard.glb'].map(load)); const clips={}; [...a.animations,...b.animations].forEach(c=>clips[c.name]=c);
+  const root=bm.scene; root.updateMatrixWorld(true); const B={}; root.traverse(o=>{ if(o.isBone) B[o.name]=o; });
+  const r4=v=>Math.round(v*1e4)/1e4, inv=new THREE.Matrix4(), m=new THREE.Matrix4(), p=new THREE.Vector3(), q=new THREE.Quaternion(), s=new THREE.Vector3();
+  const local=i=>{ const [,bn,pi]=MAP[i]; if(pi<0) m.copy(B[bn].matrixWorld); else m.copy(inv.copy(B[MAP[pi][1]].matrixWorld).invert()).multiply(B[bn].matrixWorld); m.decompose(p,q,s); return [p.clone(),q.clone()]; };
+  const bones=MAP.map(([n,bn,pi],i)=>{ const [P,Q]=local(i); return [n,pi,P.toArray().map(r4),Q.toArray().map(r4)]; });
+  const mixer=new THREE.AnimationMixer(root), out={};
+  for(const n in CL){ const T=[], Q=MAP.map(()=>[]), P=[]; let t0=0; const prev=MAP.map(()=>null);
+    CL[n].forEach((cn,ci)=>{ const c=clips[cn]; if(!c){ console.error('missing '+cn); return; } mixer.stopAllAction(); const ac=mixer.clipAction(c); ac.play(); const N=Math.max(2,Math.round(c.duration*30));
+      for(let f=(ci?1:0);f<=N;f++){ ac.time=Math.min(c.duration-1e-4,c.duration*f/N); mixer.update(0); root.updateMatrixWorld(true); T.push(r4(t0+c.duration*f/N));
+        MAP.forEach((_,i)=>{ const [lp,lq]=local(i); if(prev[i]&&prev[i].dot(lq)<0){ lq.x=-lq.x; lq.y=-lq.y; lq.z=-lq.z; lq.w=-lq.w; } prev[i]=lq; Q[i].push(r4(lq.x),r4(lq.y),r4(lq.z),r4(lq.w)); if(i===0) P.push(r4(lp.x),r4(lp.y),r4(lp.z)); }); }
+      t0+=c.duration; ac.stop(); });
+    out[n]={dur:r4(t0),T,q:Q,p:P}; }
+  window.__out=JSON.stringify({src:'Quaternius Universal Animation Library 1+2 (CC0), baked onto the game rig names by scratch bake.html',unit:1,bones,clips:out}); window.__ready=true; })();
+</script>

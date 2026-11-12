@@ -1,0 +1,197 @@
+# V186 — the menu, finished · the Skills constellation · the working tree rebuilt
+
+(README.md in the project docs runs to V185; this note continues it.)
+
+## The menu
+- `engine/shell.html` (CSS under "V186: THE MENU, FINISHED") and `engine/menu.js`: the ☰ menu is now a full-screen veil
+  (blurred game behind) holding one card — the knight's banner (level medallion, name, XP bar, health / gold / points
+  chips), a row of icon tabs with a gold underline (a dot on Skills when points are waiting), and the page, which fades
+  in on a tab change. Rows, buttons and section heads restyled; tap outside the card to close. Same tabs, same actions.
+- **Skills is a constellation** (`skills()`, `constellation()`, `detail()` in menu.js): the three knight branches fan
+  out from a crest on wide screens and climb in three columns on phones (SVG, two layouts, chosen by pane width).
+  Nodes: dim = locked, pulsing ring = can learn, lit = learned (the line lights with it), diamond = ultimate.
+  Hover or tap a node to read it in the panel beneath; the gold button learns it and steps to the next.
+- **The companion's tree is a second leaf of the same page** ("⚔ Knight | 🦁 Lion" pills). The Pet tab keeps the
+  companion's card, evolution, gear and a button that opens its skills. Respec sits in the Skills footer.
+
+## The working tree (read this before building)
+The cloud workspace was lost mid-session. `klk3d/` was rebuilt from the published V185 page (it rebuilds that page
+byte for byte): engine/*.js and cities/luminar.js split back out at the build's own markers; the realm's data kept
+already stretched and packed in `data/built/head.js`; `data/systems.json` and `data/pastimes.json` are the two tables
+still edited by hand (in shipped, stretched form); sculpted models are `data/models/*.js` as shipped.
+`tools/build.py` is now the short assembler for that layout, and `engine/shell.html` carries the meta tags, the local
+three.js tag (CDN fallback) and the model scripts — so `dist/luminar.html` is the site's `index.html` as is.
+The older pipeline (tools/stretch.py over unstretched data, the sculpt scripts) is still in the project docs; the
+unstretched `systems.json` / `pastimes.json` docs there are now behind the shipped ones (V185 trees, V183 hall).
+Test harness (scratch, rewritten): mk.py (test page, `window.__T`), smoke.py (every level, counts page errors), mn.py (menu shots).
+
+# V187 — the Thunder Lord: shelter, then fight
+`engine/guardians.js` G7 rewritten (phase 1, turning King Karl's blows, is unchanged). Ruth's five people no longer
+wander with a bolt picking one out every few seconds while he swings at you, and your sword is no longer useless
+without a bolt's charge. Now: they huddle in a ring at the far end of the hall. Every ~8 s (the first after ~5 s) he
+stills his hammer (`cfg.quiet`) and calls the storm down on them — 3.5 s of warning (meter bar, closing ring that
+turns green when you're inside, pillar of light). In the ring with your shield up: a scratch of damage, the bolt turns
+on him (stunned ~3 s, wide open) and your blade is charged for 9 s / 6 blows (pierces his guard). In the ring without
+the shield: you take the bolt, they live, a short stagger and a smaller charge. Not there: one of them is lost.
+Your sword works on him at all times. Stormward Plate still needs all five alive.
+Also: `combat.js` — a flock that stands still doesn't walk on the spot; `chapel.js` — `lv.guardian` (tests);
+`window.SKIP_KING` starts the sanctum at the Thunder Lord (tests).
+
+# V188 — LOOK3: a test of artist-made, rigged models (off unless the page is opened with `?look3`)
+`engine/look3.js` + `data/models/look3/` (copied to `dist/models/look3/` by build.py): three.js r128's GLTFLoader, the
+Quaternius animated Horse_White / Wolf / Stag (skinned, Walk / Gallop / Idle / Eating … clips) and the KayKit Adventurers
+Knight (CC0, 76 clips). With `?look3` they stand in a paddock in front of where you are when the world loads, shaded with a
+two-band toon ramp and a warm rim light. Nothing else is touched. Sources: KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0
+(LICENSE.txt: CC0); the Quaternius files came from a third-party GitHub mirror (benjaminpjones/catch-the-animal) — confirm the
+licence at quaternius.com before building on them.
+
+# V189 — LOOK3: the body type
+`?look3` now shows Quaternius's Universal Animation Library mannequin (free standard edition, CC0, from the mirror
+J-Ponzo/gltf-universal-animation-library) in place of the chibi KayKit knight: ordinary human proportions on a humanoid
+rig, 46 clips (Sword_Idle, Sword_Attack, Roll, Jump, Crouch, Walk / Jog / Sprint, Swim, Sit …). Quaternius's free
+"Modular Character Outfits – Fantasy" (quaternius.com, not on GitHub) are made for this same rig — the candidate hero body.
+
+# V190 — the realm's animals on real skeletons (ANIM3)
+`engine/animals3.js` (in the build before menu.js): `ANIM3.dress(g, kind, opt)` swaps a decoration's old box/sphere model
+for a rigged, hand-animated glTF from `models/look3/` once it has loaded (GLTFLoader + SkeletonUtils, r128), cel-shaded,
+at true size beside the knight (WH table, world units). It picks its own clip from how fast the thing moves (idle/graze,
+walk, run). Hooked in: decor.js horse (corral horses, tinted to their coat; the white one uses Horse_White), mule
+(donkey), mt_sheep, hsCoop (three hens and two chicks); roadlife.js the merchants' donkeys, the shepherds' sheep, wild
+deer (bucks → stag); forest.js the Forest of Disillusionment's deer. Off in the classic look, with ?noanim3, and where
+the files can't be fetched (the artifact) — the old models stay. Farm animals (Sheep, Chicken, Chick, Pig) from the
+mirror chongdashu/threejs-forest-census; big animals as V188. Rabbits and the lion/pets are unchanged.
+
+# V191 — every rigged model CC0, sources written down
+The sheep/chickens of V190 were Quaternius's blocky "Cube World" animals taken from a project with no licence file; they
+are replaced by his farm animals (chicken.glb, sheep.glb, pig.glb — CC0, LICENSE-farm-animals.txt, poly.pizza originals).
+Chicks are small hens. `models/look3/LICENSES.md` lists every file there, its maker and where its CC0 was confirmed.
+animals3.js strips Blender's 'Armature|…|' prefixes off clip names.
+
+# V192 — the knight moves on the new animations
+The hero keeps his own sculpted armour (the helm, plume, cowl, cape, surcoat and plate of knight.js / hero_knight.js —
+already the concept sheet) and his cloth springs; what changed is the motion under it. rig.js already retargeted a
+skeleton's clips onto his pivots (the Mixamo/Xbot clips of anim_base.js). `data/models/anim_ual.js` (ANIM_UAL) is the
+same data shape — 22 bones under the same names, the same clip names — baked from Quaternius' Universal Animation
+Library 1+2 (CC0) by `tools/anim/bake_ual.html` (run in a browser beside the pack's files; it writes window.__out):
+idle←Sword_Idle, idleCalm←Idle_Loop, walk←Walk_Loop, run/runCalm←Jog_Fwd_Loop, sneak←Crouch_Fwd_Loop,
+block←Idle_Shield_Loop, blockHit←Hit_Chest, atk1/2←Sword_Regular_A/B (+_Rec), atk3←Sword_Regular_C, atk4←Sword_Attack,
+death←Death01, land←Jump_Land, jump/fall←Jump_Loop, roll←Roll, plant←Farm_PlantSeed, agree←Yes, headShake←Idle_No_Loop,
+plus sprint, sneakIdle, talk, knockback (not used yet). Not in the library, so they fall back to the hand-keyed motion:
+walkInj, draw/drawBack, sheath/sheathHip, shoot, turnL/R.
+rig.js picks ANIM_UAL when it loaded (RIG.ual, rig.ual); `?oldanim` or localStorage klk3d_anim=old keeps the old clips;
+the menu's "Knight's movement" switch still turns clips off altogether. With the new clips knight.js: lays them on whole
+(no hand-keyed rest blended under: rx=0), turns the breastplate by the middle spine bone ('Spine1' — the library's top
+spine bone bows 30° on its own), and lets the clip swing the sword arm too while the blade is sheathed. The townsfolk's
+rigs (cast.js) get the same walk/idle/nod. The artifact can't load model files, so it plays the old clips.
+Mockups kept in the scratchpad only: the villagers/Elijah lineup and knight3.html (the sculpt seated straight on the
+Quaternius bones) — the route for moving NPCs onto those bodies next.
+
+# V193 — the knight and the townsfolk on real bodies, in the lineup's look
+`engine/body3.js` (BODY3). The knight and every townsperson are still knight-rigs moved by the same code as ever (clips,
+blows, guard, riding, sitting, fishing, climbing); each frame BODY3 sets a Quaternius Universal Base Character's skeleton
+(CC0, models/look3/body/) from the rig's pivots — each bone takes its pivot's turn from the rest pose (offsets recorded at
+bind time with the rig square and the arms and legs hanging straight). Everything is cel-shaded (MeshToonMaterial, a 3-step
+ramp, a warm rim; metal a 4-step ramp) in plain colours, as in the lineup mockup.
+THE TOWNSFOLK (`BODY3.folk`, dressed automatically within 40 m, two at a time): the body keeps its own build and the RIG is
+moved to fit it (hips, knees, shoulders, elbows, wrists, head pivots set on the body's joints; K.hipY to its hips). Their
+clothes are read off the old figure: each cast shell's skin weights say which joints it covers, so each region (chest,
+belly, pelvis, thigh, calf, foot, upper/fore arm) takes the colour of the garment covering most of it (an outer one wins a
+near tie); a shirt comes down over the waist where the trousers reach the belly. Clothes are shells of the new body's own
+triangles (smoothed hard — open edges pinned — and pushed out), one per colour. The rigid pieces (hats, crowns, belts,
+aprons, gowns' cloth skirts, what they carry) stay on their pivots, toon-twinned; hats are set on the new head. Hair from
+the pack (long or simple parted; buzzed or buns under a hat), beard where the figure had one. NAMED overrides: Old Man
+Elijah — white hair, big white beard, a stoop, white flowers on the orange shirt (his old flower pieces hidden).
+THE HERO (`BODY3.hero`): the body fitted to his rig (his sculpt's torso, pauldrons, helm and gauntlets are sized to it);
+plate shells on thighs, greaves, upper arms, forearms and feet, each edged in gold; knee and elbow cops; the sculpt's helm,
+plume, pauldrons, gauntlets, surcoat, cowl, belt, cape and shield stay, toon-twinned (cloth keeps its moving-cloth vertex
+shader), metal in the lineup's steel/gold (gear colours that are gold stay gold). knight.js tags each sculpt mesh with
+userData.seg/part and splits the greave's sabaton into its own mesh.
+Off: classic look, ?nobody3, window.NO_BODY3 (window.NO_FOLK3 for folk only), or where models can't load (the artifact).
+Not on the new bodies yet: figures not built by cast.js (some fishers, sailors, roadside folk), the bosses, the pets.
+Also: petfight.js — companions never attack King Karl in Stormgate (each bite raised the parries needed, so the king phase
+could seem endless and the Thunder Lord's shelter phase never came), nor hidden/held foes.
+V193 also: the folk keep the base body's own build (the rig moved to fit it — `build(K,g,{natural:true})`); arms drawn in
+toward the bone (slim: men 0.8/0.86, women 0.9/0.93) so they read less superhero; a 'boot' region (the lowest fifth of the
+shin) so boots end mid-shin under the trousers; the older-built folk (heroes.js heroPerson: g:/v: looks) record their
+colours in g.userData.b3spec and are swapped for a bare rig dressed on the new body as you come near (`BODY3.swapIn`:
+f.g is replaced in place; the old figure is kept as K.userData.oldG; nothing changes where the bodies can't load), with
+code-made hats, hoods and kettle helms.
+
+# V194 — the towns' houses from the Medieval Village MegaKit
+`engine/village3.js` (VILLAGE3). world.js buildHouse(): after a building is merged and added (par.add(M0)), VILLAGE3.swap()
+loads the kit pieces once and puts a kit-built house in its place (M0 hidden) — every house, cottage, shop and inn of the
+open world's towns except the special ones (home_house, home_barn, sg_keep, sg_cathedral, ih_forge, sm_market). The house
+is assembled in the kit's metres (2 m wall panels: a door panel mid-front with its door, window panels with glass and
+open shutters, plain and window panels round the sides and back; corner posts; a round-tile roof of the nearest kit size,
+ridge along the longer side, its gable ends; a chimney; inns two storeys with timber-grid panels; shops a few crates) and
+scaled to the game's footprint (b.w−0.4 × b.h−0.3) and eave (house 1.8, cottage 1.5, shop 1.9, inn 2.5), so collisions,
+doors and roof-walking don't change. Cel-shaded: each kit texture taken to grey (normalised) and tinted by the town
+(TOWN palettes: Ironhold dark stone/slate, Saltmere white/blue, Thornwood timber/moss, Dusthaven sand/terracotta,
+Crystalpeak frost/snow, Stormgate stone/royal blue, Ashfield ash/oxblood, Shadowmere dusk/moss, Hearthvale and Homestead
+warm plaster/straw-brown; stone towns get rubble-stone panels). Off: classic look, ?novillage3, window.NO_VILLAGE3, or
+where models can't load. The capital (city.js) and the chapels are not changed yet.
+V194 also: bosses and demons cel-shaded (bossart.js: MeshToonMaterial with the companions' soft bands unless o.phong or the
+classic look; demons.js the same; BOSSART.toonMap exported). Named folk (body3.js NAMED): Madison long golden hair and a
+gold bodice; King Karl's man-bun; the named keep their own hair under a tiara or circlet; 'white' no longer counts as a
+face colour (Sir Aldric's white helm was being hidden); gold trim no longer takes a region from the plate it edges (the
+Royal Guard's greaves). Chapels, gothic (chapel_themes.js): the vault over a plaza and the sanctum is pointed (a
+two-centred profile, y = rise·(1−|u|)^0.58), its ribs tubes along that profile, clustered three-shaft columns with
+capitals under each rib, the lunettes the same pointed shape; along the halls, tall lancet windows of the theme's stained
+glass in a moulded trim frame with a sill (where no banner or wall-growth stands).
+
+# V195 — gothic chapel exteriors; Cody's horse and Cody on the new models
+village3.js: VILLAGE3.swap now puts the kit building INSIDE the merged one (mergeStatic returns the house's own group; its
+old children are hidden), so whatever shows or hides it — a chapel's bound and cleansed forms, which world.js toggles — does
+the same to the new one. Chapels (style 'chapel', both forms) get `gothic(o)`: a tall nave (3.0) between lower aisles
+(1.8) with lean-to roofs; between the bays, buttresses with pinnacles and flying arches to the nave; a lancet of stained
+glass in each aisle bay and one in the clerestory above it; a seven-sided apse at the east end with its own conical roof and
+three lancets; the west front (+z, the door): a square tower with corner shafts and pinnacles, belfry lancets, an octagonal
+slate spire and a gold cross, a pointed portal with moulded arches, a rose window. Stone from the kit's rubble texture
+(taken to grey, tinted), slate roofs (P.slate; Stormgate's royal blue). Bound: dark stone 0x4e4a5a, dark slate, dim red
+glass; cleansed: pale stone, coloured glass, gold. The interiors are as V194.
+animals3.js: ANIM3.dress opt.rider — the rider is taken off the old horse, set in the new one's saddle and posed astride
+each frame (K.animate 'ride', K.ride from the horse's speed). rogues.js cody(): his grey stallion dressed by ANIM3 with
+Cody aboard, and Cody himself on the new body (BODY3.folk).
+The animals: checked — ANIM3 has its 26 animals live round the Homestead in the test build; the grey figures on the roads
+are the bounty demons, not sheep.
+
+
+## V196 — Stormgate, the fortress capital
+
+The capital is redrawn on the world map as a walled hill city in three tiers (generator: `tools/stormgate.py`, which
+rewrites `WORLD_DATA` in `data/built/head.js` from the untouched backup `data/built/head.orig.js`, so it can be re-run).
+
+- **Footprint**: outer curtain wall x 218–282, y 298–348 (was x 230–266, y 318–349). Harbour, quay and sea gate unchanged.
+- **Lower town** (elev 1, y 332–347): sea-gate avenue, market square and fountain, Market Hall, Gilded Gate Inn, two rows
+  of townhouses and cottages; a west gate and an east gate (x 218 / 282, y 333–334).
+- **Middle terrace** (elev 2, y 299–331): cathedral (8×10) on its square with a green, ten guild houses, eight manor
+  houses in walled gardens on the flanks; balustrade along y 331 with a broad stair (x 247–252) and two side stairs.
+- **Upper bailey** (elev 3, x 237–263, y 299–315): inner wall with a gate stair (x 248–251), barracks, and Stormgate Keep
+  (11×7) at the top. The keep still opens on the throne level.
+- 35 buildings (was 6); each new house `sg_home2…30` has its own interior and its own resident. 18 townsfolk outdoors.
+- **Roads**: the north road now turns west at y 284–285 and runs down outside the west wall (x 214–215) to the quay.
+- **Tilting yard** moved 25 rows north (y 286–292) with all its `ty_*` decor; entries on the west and north sides. The
+  lists level's exit follows it (`cities/luminar.js`).
+- `engine/world.js`: Stormgate's raised-terrace region `SGB` starts 10 rows further north. Barrier dome enlarged.
+
+## V197 — The biomes of Luminar
+
+The realm is divided into broad countries with soft, wandering borders (generator: `tools/biomes.py`, which runs
+`tools/stormgate.py` first and then works on `data/built/head.js`; re-runnable, seeded).
+
+- `WORLD_DATA.bio` — a half-resolution biome map (base64, `bioW` wide): 0 meadow, 1 forest, 2 desert, 3 ash, 4 alpine,
+  5 marsh, 6 coast, 7 highland, 8 scorched, 9 farmland. Grown from the towns plus wild anchors (`ANCH` in the tool),
+  with noise-warped borders. `WORLD_DATA.bioAnchors` — the wild anchors, which also shape the rolling hills.
+- `engine/world.js`: `bio(x,y)` / `lv.bio`; `desert()` and `ashland()` now read the biome map (the old rectangles remain
+  only for the classic look); ground colour per biome, blurred across borders, whitening with height in the Frostfells,
+  greying in the Iron Hills, paling on dune crests; trees by biome (cactus, palm by water, charred, snow pine, mere,
+  birch/oak/pine mixes); snow on crags in alpine country; the far view and the place-name banner follow the biome
+  (The Greenwood, The Dust Sea, The Ashlands, The Frostfells, The Fens, The Sea Meadows, The Iron Hills, The Burning
+  Marches, The Vale).
+- Tiles dressed to suit: 1,728 tree tiles cleared in desert/ash, 2,074 trees and 179 crags added in forest, highland,
+  alpine and marsh, 922 flower tiles in meadow/farmland/coast. Nothing is placed within reach of a road, building,
+  sign, villager or any coordinate named in the data, and a flood-fill check confirms no ground reachable before is
+  cut off (792 new trees were removed again to guarantee it).
+- The menu map and minimap (`data/systems.json` → `SYS.MAP.map`) are redrawn in biome colours, with the new Stormgate.
+- Next stages (not in this version): grow the map and reshape the coastline; resize and re-plan the villages; catacomb
+  entrances placed as town features with villager hints.
