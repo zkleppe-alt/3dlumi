@@ -226,7 +226,7 @@
         const after=s.abaddonWon?["Look at you. The realm's champion, sitting at my hearth like a boy again.","Go on home. They have waited long enough."]:st==='c10'?["Every chapel cleansed. Every one. I never thought I'd live to say it.","Hellgate, then. Keep that shield up."]:T.after[(s.tutorial.after=(s.tutorial.after|0)+1)%T.after.length];
         ENGINE.speak('Tobias',after||(d&&d.lines)||['…'],f); }; } return lv; }; } }
   // the keeps' tourney marshals, once the Demon Hunt is done (ensureMarshals): Ironhold's and Hellgate's (Stormgate keeps its own)
-  [['ih_keep',33,58],['ih_keep',37,58],['hg_keep',228,19],['hg_keep',232,19]].map(([k,x,y])=>[k,SX(x),SY(y)]).forEach(([keep,x,y],i)=>{ const p={x:x+0.5,z:y+0.5};
+  [['ih_keep',-1],['ih_keep',1],['hg_keep',-1],['hg_keep',1]].map(([k,sd])=>{ const ds=world.doorStep(k)||{x:0,z:0,face:0}, a=ds.face||0; return [k,ds.x+Math.cos(a)*2.0*sd+Math.sin(a)*1.2,ds.z-Math.sin(a)*2.0*sd+Math.cos(a)*1.2]; }).forEach(([keep,x,z],i)=>{ const p={x,z};   /* V199: either side of the keep's door, wherever the keep stands */
     const f=addPerson(world,world.scene,'soldier',p.x,p.z,world.ground(p.x,p.z),i%2?'Herald of the Melee':'Marshal of the Lists',['The champions await.'],{rest:0});
     f.label='Contest'; f.action=()=>typeof LISTS!=='undefined'&&LISTS.openMenu(keep);
     world.anim.push(()=>{ const on=!!(S().hunt&&S().hunt.done); if(f.g.visible!==on){ f.g.visible=on; f.mute=!on; f.ghost=!on; } }); });

@@ -253,3 +253,27 @@ The realm roughly doubles, from 370×420 to 760×830 tiles, and ends in a real c
   compass pointing there; the door then says so too. After the way is found they say other things.
 - The demon zones that reached into the village start south of it; a cleansed village is guarded to its own radius
   (`WORLD_DATA.townR`). Biomes leave a planned village (`villageRects`) as it was laid out.
+
+## V200 — Ironhold re-planned; Hearthvale's mill; woolly sheep (the villages, 2 of 10)
+
+- **Sheep** (animals3.js): Quaternius's cube sheep replaced by one built in code — a fleece of soft clumps, dark face,
+  drooping ears, woolly cap, slim legs, a tail — cel-shaded, with keyframed clips (Idle, Eating, Walk, Run) so ANIM3
+  drives it like the others. Every sheep in the realm uses it.
+- **Hearthvale's mill**: a building of its own (`hv_mill`, kit style, Mill-hand Toby inside) on the millstream with a
+  turning **waterwheel** in a stone race (new decor `waterwheel`). The old box mill (landmarks.js) is retired; "🌾 The
+  mill" now names Hearthvale's.
+- **Fixed**: landmarks.js placed its seven roadside places (the drovers' camp, the oasis, the drowned chapel, the
+  shepherd's hut, the waystone shrine, the spring) in V197's tiles; they now go through RX/RY.
+- **Ironhold**, open and natural: the keep in a walled bailey on a rise (raised by `hills`), the chapel among the smiths'
+  graves, a cobbled square round the anvil monument with braziers and a well, the Great Forge with slag heaps
+  (new decor `slagheap`), ore carts (`minecart`) on old rails running east to the **Deepcut**, miners' and smiths' houses,
+  the inn on the road south to the Forest of Disillusionment. 12 buildings (6 new: Collier Dov, Zillah and Enoch, the
+  bellows-man, the armourer, the miners' row, Widow Shua); the old town's raised walled square is gone.
+- **The Deepcut** (`WORLD_DATA.cata[1]`, `grate:true`): Ironhold's first mine, whose colliers broke through into the
+  galleries where the smiths are buried; the Elders grated and blessed it. The adit now wears that grate — bent outward,
+  from inside — torn boards, a cross, and a cold light far in. The knocking heard from it since the dark came is Brother
+  Tubal, caged below (the catacomb's own story), keeping count of his days; the clue-givers (Old Dov the Collier,
+  Keziah, Micah) say so afterwards. Ironhold's general hints point to Dov.
+- Ironhold's dark dome and its blocking ring are redrawn round the whole town (east of the west road); the demon zones
+  that sat inside it moved out. The keep contest marshals now stand either side of their keep's door (Ironhold and
+  Hellgate), wherever it is. A planned way in faces its own way (catacomb.js), so its Descend prompt is at its mouth.

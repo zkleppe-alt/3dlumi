@@ -75,7 +75,7 @@ const LANDMARKS=(function(){
           const s=S(); s.inventory.greaterPotion=(s.inventory.greaterPotion||0)+2; GAME.addGold(150); GAME.changed(); ENGINE.speak('An old chest',['Left by the last watchman, with a note: “For whoever climbs up after me. Keep watch.” Inside: 150 gold and two greater healing potions.']); }}); }
     });
     // ── the High Roads' set pieces and the other places to find ──
-    const at=(x,z)=>({x,z,y:base(x,z)});
+    const at=(x,z)=>{ x=RX(x); z=RY(z); return {x,z,y:base(x,z)}; };   // V199: written in V197's tiles (RX/RY: the island grew about them)
     const fire=(c)=>{ for(let i=0;i<10;i++){ const a=i/10*TAU, s=new THREE.Mesh(new THREE.IcosahedronGeometry(0.16,0),new THREE.MeshLambertMaterial({color:0x6a6a64})); s.position.set(Math.cos(a)*0.5,0.08,Math.sin(a)*0.5); c.add(s); }
       for(let i=0;i<4;i++){ const l=Cy(0.06,0.06,0.7,6,0x5a3c22,0,0.08,0,c); l.rotation.z=Math.PI/2; l.rotation.y=i*0.8; }
       const fl=[0,1,2].map(i=>Co(0.2-i*0.05,0.5-i*0.1,6,glow([0xff7a2a,0xffb03a,0xffe08a][i]),0,0.12,0,c)); const L=new THREE.PointLight(0xffa050,1.0,9,1.6); L.position.set(0,0.8,0); c.add(L);
@@ -89,16 +89,8 @@ const LANDMARKS=(function(){
       [[-1.5,0.5,0.4],[1.3,0.8,-0.5]].forEach(([a,b,r])=>{ const l=Cy(0.18,0.2,1.3,8,0x6a4a2a,a,0.18,b,c); l.rotation.set(0,r,Math.PI/2); }); B(0.9,0.7,0.6,0x8a6a40,-1.8,0,1.6,c); B(0.9,0.06,0.62,0x6a4a2a,-1.8,0.7,1.6,c);   // a hay-bale, a crate
       world.spots.push({x:p.x,z:p.z+1.3,r:1.3,label:'Rest',who:'The drovers’ camp',action:rest('The drovers’ camp','You sit by the drovers’ fire under the old oak. Somewhere a bell-wether clanks. An hour passes; you rise mended.','I rested at the drovers’ camp under the old oak on the Trade Road, with the cattle-bells going in the dark.')});
       PLACES.push({x:p.x,z:p.z,r:7,name:'⛺ The drovers’ camp'}); }
-    // the mill, its wheel turning in a millrace
-    { const p=at(113.5,90.5), g=group(p.x,p.y,p.z,scene); B(2.6,2.2,2.2,0xe8dcc4,0,0,0,g); const rf=prism(3.0,1.4,2.6,0x8a4a36); rf.position.y=2.2; g.add(rf); B(0.6,1.2,0.06,0x5a3a22,0,0,1.11,g);
-      const race=new THREE.Mesh(new THREE.BoxGeometry(1.0,0.12,3.6),new THREE.MeshPhongMaterial({color:0x4a8ab0,shininess:60})); race.position.set(1.9,0.06,0.2); g.add(race); B(0.12,0.3,3.6,0x7a7468,1.35,0,0.2,g); B(0.12,0.3,3.6,0x7a7468,2.45,0,0.2,g);
-      const wheel=group(1.9,1.0,0.2,g), wm=new THREE.MeshLambertMaterial({color:0x6a4a2a});   // the wheel turns on an axle across the race (x); paddles round its rim
-      for(const sx of [-0.22,0.22]){ const rim=new THREE.Mesh(new THREE.TorusGeometry(0.85,0.05,6,20),wm); rim.rotation.y=Math.PI/2; rim.position.x=sx; wheel.add(rim); }
-      for(let i=0;i<10;i++){ const a=i/10*TAU, pd=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.08,0.3),wm); pd.position.set(0,Math.cos(a)*0.85,Math.sin(a)*0.85); pd.rotation.x=a; wheel.add(pd); const sk=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,0.85),wm); sk.position.set(0,Math.cos(a)*0.42,Math.sin(a)*0.42); sk.rotation.x=a+Math.PI/2; wheel.add(sk); }
-      const ax=Cy(0.08,0.08,0.9,8,0x4a3422,0,0,0,wheel); ax.rotation.z=Math.PI/2; ax.position.set(0,0,0);
-      world.anim.push((t,dt)=>{ wheel.rotation.x+=(dt||0.016)*0.9; });
-      world.spots.push({x:p.x,z:p.z+1.7,r:1.2,label:'Look',who:'The mill',lines:['The mill on its race, the wheel turning slow. Sacks of flour stacked inside the door, and the smell of it.','“I am the bread of life.” — John 6:35']});
-      PLACES.push({x:p.x,z:p.z,r:6,name:'🌾 The mill'}); }
+    // V199: the mill is Hearthvale's now, on its millstream (tools/villages.py: hv_mill, with its waterwheel)
+    { const mb=(typeof WORLD_DATA!=='undefined'&&WORLD_DATA.buildings||[]).find(b=>b.id==='hv_mill'); if(mb) PLACES.push({x:mb.x+mb.w/2,z:mb.y+mb.h/2,r:7,name:'🌾 The mill'}); }
     // the oasis camp, under the palms on the way to Crystalpeak
     { const p=at(150.5,130.5), c=group(p.x,p.y,p.z,scene); fire(c); const pool=new THREE.Mesh(new THREE.CircleGeometry(1.6,20),new THREE.MeshPhongMaterial({color:0x3a9ab8,shininess:80})); pool.rotation.x=-Math.PI/2; pool.position.set(-2.6,0.04,1.2); c.add(pool);
       [[-4.0,0.2],[-1.2,2.9],[-3.6,2.8],[2.6,-2.2]].forEach(([x,z],i)=>tree('palm',x,z,1.1+i*0.1,c)); const tt=group(2.3,0,1.2,c); const tent=prism(1.8,1.2,2.0,0xd8c49a); tent.rotation.y=-0.4; tt.add(tent);

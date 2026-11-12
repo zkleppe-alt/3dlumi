@@ -2419,12 +2419,12 @@ const CATACOMB=(function(){
   // ── the churchyard: a mausoleum beside the chapel, its gate standing open on a stair going down ──
   function attach(world,o){ o=o||{}; const t=o.town, td=o.td; if(!LV[t]) return null; OPTS[t]=o; const b=o.door; if(!b) return null; const CF=CFG[t]||CFG[0];
     LV[t].forEach((D,n)=>ENGINE.add({id:'cata'+t+':'+n,lazy:()=>build(t,n,D,td)}));
-    const ds=world.doorStep(b.id), fx=Math.sin(ds.face), fz=Math.cos(ds.face);   // the way the chapel faces
+    const ds=world.doorStep(b.id); let fx=Math.sin(ds.face), fz=Math.cos(ds.face);   // the way the chapel faces
     const bx=b.x+b.w/2, by=b.y+b.h/2, open=(x,y)=>{ for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=x+dx, yy=y+dy; if(!world.walkTile(xx,yy)) return false; if(xx>=b.x-1&&xx<=b.x+b.w&&yy>=b.y-1&&yy<=b.y+b.h) return false; } return true; };
     let best=null, bs=1e9; const NB=o.near, nx0=NB?NB.x+NB.w/2:0, nz0=NB?NB.y+NB.h/2:0, BAR=CF.entrance==='barrow', R0=NB?Math.ceil(Math.hypot(nx0-bx,nz0-by))+4:BAR?17:7;   /* V166: a well in the market square — between the chapel and the bazaar */
     for(let y=Math.floor(by-R0);y<=by+R0;y++) for(let x=Math.floor(bx-R0);x<=bx+R0;x++){ if(!open(x,y)) continue; if(NB&&x>=NB.x-1&&x<=NB.x+NB.w&&y>=NB.y-1&&y<=NB.y+NB.h) continue; const vx=x+0.5-bx, vz=y+0.5-by, d=Math.hypot(vx,vz), front=(vx*fx+vz*fz)/(d||1);
       const kd=NB&&CF.entrance==='royalcrypt'?world.doorStep(NB.id):null; const sc=BAR?Math.abs(d-13)+(front>0.3?5:0)+(()=>{ let nb=0; for(let yy=y-3;yy<=y+3;yy++) for(let xx=x-3;xx<=x+3;xx++) if(!world.walkTile(xx,yy)) nb++; return nb*0.6; })():kd?Math.abs(Math.hypot(x+0.5-kd.x,y+0.5-kd.z)-4.2)+(Math.hypot(x+0.5-kd.x,y+0.5-kd.z)<3?6:0):NB?Math.hypot(x+0.5-(bx+nx0)/2,y+0.5-(by+nz0)/2)+(Math.hypot(x+0.5-ds.x,y+0.5-ds.z)<2.5?5:0):d+(front>0.6?6:0)+(front<-0.5?3:0)+Math.abs(Math.hypot(x+0.5-ds.x,y+0.5-ds.z)-4.5)*0.4; if(sc<bs){ bs=sc; best=[x,y]; } }
-    const CS=typeof WORLD_DATA!=='undefined'&&WORLD_DATA.cata&&WORLD_DATA.cata[t]; if(CS) best=[CS.x,CS.y];   /* V199: a village planned with its way in somewhere of its own */
+    const CS=typeof WORLD_DATA!=='undefined'&&WORLD_DATA.cata&&WORLD_DATA.cata[t]; if(CS){ best=[CS.x,CS.y]; if(CS.face!==undefined){ fx=Math.sin(CS.face); fz=Math.cos(CS.face); } }   /* V199: a village planned with its way in somewhere of its own */
     if(!best) return null; const mx=best[0]+0.5, mz=best[1]+0.5, gy=world.ground(mx,mz), face=CS&&CS.face!==undefined?CS.face:ds.face;   // it opens the same way as the chapel
     const g=group(mx,gy,mz,world.scene); g.rotation.y=face; const st0=0x9a9284, st1=0x7a7468, rf=0x5a5450;
     if(CF.entrance==='royalcrypt'){   /* V172: Stormgate's way down: a stair-house beside the king's keep, banners, and an uneasy guard */
@@ -2529,9 +2529,15 @@ const CATACOMB=(function(){
       B(1.2,1.55,0.1,0x080606,0,0.05,0.82,g); [-0.62,0.62].forEach(o2=>B(0.18,1.7,0.18,0x5a3e24,o2,0,0.84,g)); B(1.5,0.2,0.24,0x5a3e24,0,1.7,0.84,g); B(0.16,0.16,0.6,0x5a3e24,0,1.86,0.66,g);
       [-0.22,0.22].forEach(o2=>B(0.05,0.04,2.4,0x5a5a62,o2,0.01,1.6,g)); for(let i=0;i<6;i++) B(0.64,0.03,0.12,0x4a3220,0,0,0.7+i*0.4,g);
       const cart=group(0.0,0,2.3,g); B(0.62,0.38,0.5,0x5a4a3a,0,0.1,0,cart); for(let i=0;i<4;i++) Sp(0.1,0x2a2622,(i%2-0.5)*0.24,0.5,(i>1?0.1:-0.1),cart);
-      const lt=group(0.5,1.55,1.0,g); B(0.12,0.18,0.12,0x2a2a30,0,0,0,lt); themeFlame(0,0.08,0,lt,world.anim,0.8,CHAPEL_THEME(t));
+      if(CS&&CS.grate){   /* V199: the Deepcut — grated and blessed by the Elders long ago; the grate bent outward, from inside; a cold light far in */
+        const gr=group(0,0,0.92,g), im=0x3a3632; for(let i=-2;i<=2;i++){ const bar=B(0.05,1.5,0.05,im,i*0.24,0,0,gr); bar.rotation.x=Math.abs(i)<=1?-0.5+Math.abs(i)*0.22:0; bar.position.z=Math.abs(i)<=1?0.28-Math.abs(i)*0.12:0; }
+        B(1.15,0.06,0.06,im,0,1.45,0,gr); const lo=B(1.15,0.06,0.06,im,0,0.2,0.32,gr); lo.rotation.y=0.12;
+        const cr=group(0,1.95,0.98,g); B(0.08,0.6,0.06,0x4a3220,0,0,0,cr); B(0.36,0.08,0.06,0x4a3220,0,0.38,0,cr);
+        [[-0.75,0.3],[0.75,0.5]].forEach(([ox,oy])=>{ const bd=B(0.12,0.9,0.05,0x5a4228,ox,oy,0.95,g); bd.rotation.z=ox<0?0.5:-0.4; });   // the boards they nailed across it, torn and hanging
+        const lt=group(0,0.9,-0.6,g); themeFlame(0,0,0,lt,world.anim,0.55,CHAPEL_THEME(t)); }
+      else { const lt=group(0.5,1.55,1.0,g); B(0.12,0.18,0.12,0x2a2a30,0,0,0,lt); themeFlame(0,0.08,0,lt,world.anim,0.8,CHAPEL_THEME(t)); }
       shade(g); MOUTH[t]={x:mx+fx*1.7,z:mz+fz*1.7,face};
-      world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:'The old mine adit',action:()=>{ ENGINE.go('cata'+t+':0'); }});
+      world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:CS&&CS.name||'The old mine adit',action:()=>{ ENGINE.go('cata'+t+':0'); }});
       { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.3&&d<Math.hypot(fx2-mx,fz2-mz)) return false; return base(fx2,fz2,tx,tz); }; }
       return {x:mx,z:mz,mouth:MOUTH[t]}; }
     B(1.9,0.18,2.1,st1,0,-0.05,0,g); B(1.7,1.9,1.7,st0,0,0.1,-0.1,g); const roof=prism(2.0,0.7,2.0,rf); roof.position.set(0,2.0,-0.1); g.add(roof); B(0.12,0.5,0.12,0xd8c890,0,2.6,-0.1,g); B(0.34,0.1,0.12,0xd8c890,0,2.86,-0.1,g);

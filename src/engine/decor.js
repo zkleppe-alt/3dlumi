@@ -72,6 +72,20 @@ Object.assign(DECOR_KINDS,{
     const n=B(0.2,0.5,0.22,c,0,0.8,0.5,g); n.rotation.x=0.5; B(0.18,0.2,0.4,c,0,1.15,0.72,g); B(0.06,0.4,0.3,m,0,0.95,0.42,g); B(0.06,0.4,0.06,m,0,0.55,-0.5,g);
     if(typeof ANIM3!=='undefined'){ const cc=new THREE.Color(c); ANIM3.dress(g,d.donkey?'donkey':'horse',d.donkey?{}:{tint:['#'+cc.clone().multiplyScalar(0.7).getHexString(),'#'+cc.getHexString(),'#'+cc.clone().lerp(new THREE.Color(0xffffff),0.25).getHexString()],mane:'#'+new THREE.Color(m).getHexString()}); } },   /* V190: rigged here too (a corral built without an animation list) */
   mule(d,g,an){ DECOR_KINDS.horse({c:'#8a7a6a',m:'#3a3028',x:d.x,y:d.y,donkey:true},g,an); if(!(typeof LOOK2!=='undefined'&&LOOK2)) B(0.5,0.25,0.4,0x9a7a48,0,0.95,0,g); else { const pk=B(0.42,0.22,0.36,0x9a7a48,0,0.82,0,g); } },
+  slagheap(d,g){ const m=new THREE.Mesh(new THREE.ConeGeometry(0.9,0.75,9,1),new THREE.MeshLambertMaterial({color:0x2e2a28})); m.position.y=0.36; m.scale.set(1,1,0.8); m.rotation.y=hsh(d.x,d.y)*3; m.castShadow=true; g.add(m);   /* V199 */
+    for(let i=0;i<5;i++) Sp(0.07,i%2?0x6a3a28:0x1e1c1c,(hsh(i,d.x)-0.5)*1.0,0.08,(hsh(d.y,i)-0.5)*0.8,g,5,4); },
+  minecart(d,g){ const c=group(0,0,0,g); c.rotation.y=(d.r||0)+hsh(d.x,d.y)*0.4; B(0.66,0.42,0.48,0x5a4a3a,0,0.16,0,c); B(0.7,0.06,0.52,0x3a3632,0,0.56,0,c);   /* V199: an ore cart left on the rails */
+    for(let i=0;i<4;i++) Cy(0.11,0.11,0.06,10,0x2a2622,(i%2-0.5)*0.46,0.11,(i>1?0.2:-0.2),c).rotation.x=Math.PI/2;
+    if(!d.empty) for(let i=0;i<5;i++) Sp(0.09,0x4a4440,(hsh(i,d.y)-0.5)*0.4,0.62,(hsh(d.x,i)-0.5)*0.3,c,5,4);
+    if(d.tip) c.rotation.z=1.2; },
+  waterwheel(d,g,an){ const tim=0x6a4a2a, dk=0x4a3422;   /* V199: a mill's wheel in its stone race, turning with the stream */
+    B(0.16,0.34,2.4,0x6e6a62,0.2,-0.22,0,g); B(0.16,0.34,2.4,0x6e6a62,1.1,-0.22,0,g); B(0.14,0.95,0.14,0x5a4a3a,1.1,0,0,g);   // low race walls of dark stone, a timber post for the axle
+    const w=group(0.65,0.75,0,g), wm=new THREE.MeshLambertMaterial({color:tim});
+    for(const sx of [-0.2,0.2]){ const rim=new THREE.Mesh(new THREE.TorusGeometry(0.9,0.06,6,22),wm); rim.rotation.y=Math.PI/2; rim.position.x=sx; w.add(rim); }
+    for(let i=0;i<12;i++){ const a=i/12*Math.PI*2, pd=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.08,0.34),wm); pd.position.set(0,Math.cos(a)*0.9,Math.sin(a)*0.9); pd.rotation.x=a; w.add(pd);
+      const sp=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.06,0.9),wm); sp.position.set(0,Math.cos(a)*0.45,Math.sin(a)*0.45); sp.rotation.x=a+Math.PI/2; w.add(sp); }
+    const ax=Cy(0.09,0.09,1.4,8,dk,-0.25,0,0,w); ax.rotation.z=Math.PI/2; Cy(0.18,0.18,0.5,10,dk,0,0,0,w).rotation.z=Math.PI/2;
+    an.push((t)=>{ w.rotation.x=-t*0.8; }); },
   mt_sheep(d,g){ Sp(0.32,d.v==='black'?0x3a3a3a:0xf4f0e8,0,0.45,0,g,8,6).scale.set(1,0.85,1.3); Sp(0.13,0x2a2a2a,0,0.55,0.38,g,6,5); [[-0.12,-0.2],[0.12,-0.2],[-0.12,0.2],[0.12,0.2]].forEach(([x,z])=>B(0.06,0.3,0.06,0x2a2a2a,x,0,z,g)); if(typeof ANIM3!=='undefined') ANIM3.dress(g,'sheep',{face:hsh(d.x*3,d.y*5)*6.28}); },
   hsSkep(d,g){ for(let i=0;i<4;i++) Cy(0.3-i*0.06,0.32-i*0.06,0.16,10,0xd8b060,0,i*0.15,0,g); B(0.1,0.08,0.02,0x3a2a1a,0,0.08,0.31,g); Cy(0.4,0.4,0.1,6,WOOD,0,-0.02,0,g); },
   hsWell(d,g){ if(typeof LOOK2!=='undefined'&&LOOK2){   // V111: a proper well: a ring of fieldstones, a mossy rim, posts, a shingled hood, the windlass, rope and bucket

@@ -143,6 +143,8 @@ H=[('hv_home1',"Amos the Shepherd's Cottage",'cottage',70,62,4,3,('Old Ada','pea
    ('hv_home7',"The Farmer's Cottage",'cottage',76,99,4,3,('Farmer Eli','farmer','Rain on Tuesday, sun on Wednesday. The barley does not care which, so long as it gets both.')),
    ('hv_home8',"Martha's Bakehouse",'house',106,97,5,3,('Martha\'s boy','child','Mum says the oven is older than the chapel. I think it is older than God. — No, wait. Nothing is.'))]
 for id,nm,st,x,y,w,h,who in H: bld(id,nm,st,x,y,w,h,who=who)
+bld('hv_mill','The Mill','house',109,87,5,4,who=('Mill-hand Toby','peasant','Mind the stones — they’ll have your fingers. Hob says the wheel has turned since his grandfather’s day.','“I am the bread of life.” — John 6:35. Hob has it carved over the door.'))
+decor('waterwheel',114,88); decor('crate',108,90)
 for p in ((74,66),(86,98),(80,96),(128,78),(104,99),(111,99)): decor('planter',*p)
 decor('hsSkep',126,73); decor('hsSkep',128,75); decor('hsCoop',74,63); decor('logpile',91,99); decor('hsWell',83,90)
 # the fields and the windmill to the south-west, behind the farmer's cottage
@@ -174,7 +176,7 @@ folk(66,57,'farmer',['Up here with the flock since I could walk.'],name='Amos th
 WD['villagers'][-1]['lines']=['The flock won’t graze up by the old tomb after dusk. They stand in a ring facing the stone door, every one of them, and bleat — like there’s a lamb inside crying back.','I’ve kept sheep on this hill fifty years. That door has never once been open. Last week I found it ajar.']
 folk(104,85,'peasantF',['My Jonas used to say the shepherds’ tomb on the hill and the chapel were one house — one above the ground, and one below it.','When a shepherd died they carried him up the hill to the tomb, and the brothers took him down a stair, and he was laid under the chapel. Under the hill, under the village, all the way.','Lately, of a night, I hear chanting from up there. Low. Not like the brothers sang it.'],name='Widow Ruth',clue=0,after=['The chanting has stopped. I sleep the whole night through now — first time since Jonas.'])
 folk(84,91,'child',['Me and Tam heard singing coming out of the sheep hill! Real low singing, under the grass.','Tam says it’s ghosts. I think it’s people. Ghosts don’t need stairs.'],name='Pip',clue=0,after=['Did you go INTO the hill?! Was it ghosts? Was it people? Tam owes me a honeycake.'])
-folk(118,90,'peasant',['The wheel turns, the stones grind, the flour falls. There are worse ways to spend a life.'],name='Miller Hob')
+folk(118,91,'peasant',['The wheel turns, the stones grind, the flour falls. There are worse ways to spend a life.'],name='Miller Hob')
 folk(127,95,'woodcutter',['Good oak in the wood east of here. I take one tree and plant two. My father did the same.'],name='Woodcutter Abel')
 folk(80,103,'farmer',['Barley this side, oats that side, and the scarecrow keeps both. Mostly.'],name='Farmer Eli')
 folk(113,92,'peasantF',['The stream runs clean again this year. You can see the stones on the bottom.'],name='Dinah')
@@ -194,9 +196,102 @@ HV=['Have you heard it? Something under Hearthvale, of a night. Ask Amos the she
 if isinstance(SQ['hints'],list): SQ['hints'][0]['out']=HV
 else: SQ['hints']['0']['out']=HV
 
+
+# ════════════════════════════════════ IRONHOLD ════════════════════════════════════
+# A mining town under the Iron Hills: the keep in its bailey on a rise, the chapel and the smiths' graves, a cobbled square
+# about the anvil, the Great Forge and its slag, rails running east to the Deepcut — the town's first mine, whose colliers
+# broke through into the galleries where the smiths bury their dead. The Elders grated it and blessed it; no one goes near.
+# Since the dark came there has been knocking in it of a night (Brother Tubal, caged below, keeping count of his days).
+X0,Y0,X1,Y1=76,222,143,282
+ins=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
+olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins(v)}
+WD['decor']=[d for d in WD['decor'] if not ins(d)]; WD['villagers']=[v for v in WD['villagers'] if not ins(v)]
+for k in [k for k in WD['signs'] if ins(dict(zip('xy',map(int,k.split(',')))))]: WD['signs'].pop(k)
+for y in range(Y0,Y1+1):
+    for x in range(X0,X1+1):
+        t=T(x,y); core=78<=x<=122 and 226<=y<=280
+        if t in (3,20) and not (74<=x<=118 and 252<=y<=276): continue
+        if (t in (1,7) and not core) or (t==33 and x>=123): put(x,y,t,False,0); continue   # the Iron Hills stand behind the town
+        if t==2 and (y>=276 or x<=74): put(x,y,2,True,0); continue          # the road south to the forest
+        put(x,y,0,True,0)
+for y in range(250,278):                                                       # the old town's west wall, beside the road
+    for x in (74,75):
+        if T(x,y)!=2: put(x,y,0,True,0)
+# the lanes: in from the west road, about the square, up to the keep, east along the rails to the Deepcut, down to the forest road
+lane([(74,258),(80,259),(86,261),(94,261),(102,260),(108,259)])
+lane([(93,262),(93,268),(93,276)])
+lane([(92,245),(93,252),(94,258)])
+lane([(80,252),(83,256),(86,260)])
+lane([(108,259),(114,258),(120,257),(123,257)],t=12)                          # the old rails, sleepers and all
+lane([(100,262),(106,265),(112,268),(117,267)]); lane([(86,262),(84,268),(80,274)])
+for y in range(255,268):
+    for x in range(85,104):
+        if math.hypot((x-94)/9.0,(y-261)/5.6)<1 and T(x,y) in (0,2): put(x,y,6,True)
+decor('anvilMonument',93,260); decor('brazier',87,262); decor('brazier',101,262); decor('weaponRack',99,257); decor('barrel',89,258); decor('crate',98,265); decor('lantern',95,266); decor('lantern',91,256)
+# the keep, in its bailey on the rise
+WD['hills'].append([92,236,13,2.4])
+for x in range(85,100):
+    for y in (231,245):
+        if not (y==245 and 91<=x<=93): put(x,y,5,False)
+for y in range(231,246):
+    for x in (85,99): put(x,y,5,False)
+bld('ih_keep','Ironhold Keep','keep',89,235,7,5); bld('ih_home2',"Soldier's Quarters",'house',87,240,4,3); decor('weaponRack',96,242); decor('banner2',90,240); decor('banner2',94,240)
+# the chapel, and the smiths' graves about it
+bld('ih_chapel','Ironhold Chapel','chapel',78,245,6,6); fence(76,242,86,253,gaps={(79,253),(80,253),(81,253)})
+for gx,gy in ((77,244),(77,247),(77,250),(85,244),(85,247),(85,250)): decor('tombstone',gx,gy)
+# the forge, its slag, and the rails to the Deepcut
+bld('ih_forge','The Great Forge','shop',103,253,6,4); decor('slagheap',110,254); decor('slagheap',112,256); decor('logpile',102,255); decor('minecart',110,261,); 
+WD['decor'][-1].update({'empty':True})
+decor('minecart',118,259); WD['decor'][-1].update({'tip':True}); decor('minecart',115,261)
+bld('ih_inn','The Anvil Rest Inn','inn',96,268,5,4); bld('ih_home1',"Smith's Home",'house',85,267,4,3)
+IHH=[('ih_home3',"Collier Dov's Cottage",'cottage',115,263,4,3,('Dov\'s daughter','peasantF','Father won’t say the name of that mine indoors. Not even to curse it.')),
+     ('ih_home4',"Zillah and Enoch's House",'house',109,266,4,3,('Their lodger','smith','Enoch goes down after the old ore carts when Zillah isn’t looking. Stubborn as pig-iron.')),
+     ('ih_home5',"The Bellows-man's House",'house',81,261,4,3,('Bellows-man Joab','smith','Pump, pump, pump. Forty years. My arms are the strongest thing in Ironhold, and the dullest.')),
+     ('ih_home6',"The Armourer's House",'house',100,247,5,3,('Armourer Ira','smith','Every rivet by hand. A machine would be quicker. A machine would not love it.')),
+     ('ih_home7',"The Miners' Row",'house',104,272,5,3,('Miner Hosah','soldier','We work the new seams north of town now. Good iron. Nobody misses the Deepcut.')),
+     ('ih_home8',"Widow Shua's House",'cottage',78,271,4,3,('Widow Shua','peasantF','My husband was a collier. He went down the Deepcut the day they broke through, and came up white as flour. He never went down a mine again.'))]
+for id,nm,st,x,y,w,h,who in IHH: bld(id,nm,st,x,y,w,h,who=who)
+for p in ((84,264),(97,250),(113,269),(108,275),(77,268)): decor('barrel',*p)
+decor('logpile',120,265); decor('crate',119,254); decor('hsWell',89,265)
+# the Deepcut itself: at the foot of the Iron Hills, grated, blessed, avoided
+for y in range(252,262):
+    for x in range(119,127): 
+        if T(x,y) not in (12,): put(x,y,0,True,0)
+for y in range(250,264):
+    for x in (127,128): put(x,y,33,False,0)
+sign(121,254,'THE DEEPCUT\nSealed by order of the Elders.\nGod rest them that lie within.')
+WD['cata']['1']={'x':124,'y':257,'face':-math.pi/2,'grate':True,'name':'The Deepcut','where':'the Deepcut, the old sealed mine at the foot of the Iron Hills',
+    'door':['The doors are barred from within. Heat comes off the iron of them, like a forge banked for the night.','Someone in Ironhold may know another way down.'],
+    'doorHeard':['The doors are barred from within. Heat comes off the iron of them, like a forge banked for the night.','The knocking comes from the Deepcut. If the old galleries run under the chapel, that is the way down.'],
+    'goal':'Ironhold’s chapel is barred from within. Ask around the town — someone has heard something.',
+    'goalHeard':'To the Deepcut, the old sealed mine at the foot of the Iron Hills — the knocking comes from there.',
+    'journal':'Ironhold’s chapel is barred. Long ago the town’s colliers, digging the Deepcut, broke through into the galleries where the smiths are buried, and the Elders sealed the mine. Since the dark came there has been knocking in it at night — three knocks, then quiet. The grate is bent outward, from the inside. The way down is there.'}
+for (x,y,o),v in olds.items():
+    nx,ny={'smith':(96,263),'soldier':(92,247) if (x,y)==min(k[:2] for k in olds if k[2]=='soldier') else (79,259),'smithF':(104,259)}.get(o,(94,264)); folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
+folk(113,261,'smith',['The Deepcut was the first seam Ironhold ever worked. My grandfather’s crew drove a gallery east after a good vein — and broke clean through into a hall full of the dead.','The old smiths’ galleries, shelf on shelf of them, running in under the chapel. The Elders had the Deepcut grated and blessed, and no collier has set foot in it since.','These fifteen years there’s been knocking in it of a night. Three, then quiet, then three. Somebody is keeping time down there.'],
+     name='Old Dov the Collier',clue=1,after=['The knocking’s stopped. It was Brother Tubal all along — fifteen years in a cage, knocking so he’d not lose count of the days.','God forgive us. We thought he was a ghost, and we let him knock.'])
+folk(89,264,'smithF',['Don’t you go near the Deepcut. The grate’s bent — outward, mind. From the inside.','My husband says it’s the old smiths at their anvils down there. I say the dead don’t keep time.'],
+     name='Keziah',clue=1,after=['We had Brother Tubal to supper. He still taps three times on the table before he eats. Nobody minds.'])
+folk(107,262,'child',['I dared Asa to touch the grate on the Deepcut. He said it was warm!','And there’s a light in there, way back. Nobody lights it. Nobody goes in.'],
+     name='Micah',clue=1,after=['Brother Tubal showed me how he counted in the cage. Three knocks for a morning. I can do it too.'])
+folk(76,257,'soldier',['Ironhold. Mind the carts, and keep out of the Deepcut.'],name='Gate-warden Ezer')
+sign(77,256,'IRONHOLD\nThe Iron Hub — forge of the realm')
+HI=['Stay clear of the Deepcut, knight. Whatever’s knocking in there, let it knock.','The chapel’s been barred since the dark came. Old Dov the collier knows more than he says — ask him about the Deepcut.']
+if isinstance(SQ['hints'],list): SQ['hints'][1]['out']=HI
+else: SQ['hints']['1']['out']=HI
+WD['villageRects'].append([X0,Y0,X1,Y1]); WD['townR']['Ironhold']=34
+# the dark's dome over the sealed town, and the ring that bars the way in, drawn round the whole of it (east of the road)
+cx,cy,rx,ry=109,251,34,31; WD['barriers'][1]=[cx,cy,rx,ry]
+ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
+WD['barrierSets']['1']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
+for z in WD['zones']:
+    if z['x0']==67 and z['y0']==274: z.update({'x0':58,'y0':262,'x1':70,'y1':283})
+    elif z['x0']==97 and z['y0']==270: z.update({'x0':144,'y0':255,'x1':160,'y1':280})
+
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src
 for n in sorted(CON,key=lambda n:-CON[n][0]):
     i,j,o,semi=CON[n]; new=new[:i]+'const '+n+'='+json.dumps(o,separators=(',',':'),ensure_ascii=False)+(';' if semi else '')+new[j:]
 open(HEAD,'w',encoding='utf-8').write(new)
-print('villages: Hearthvale —',sum(1 for b in WD['buildings'] if inside(b)),'buildings,',sum(1 for v in WD['villagers'] if inside(v)),'villagers,',sum(1 for d in WD['decor'] if inside(d)),'decor')
+hv=lambda o: 58<=o['x']<=136 and 42<=o['y']<=113
+print('villages: Hearthvale —',sum(1 for b in WD['buildings'] if hv(b)),'buildings,',sum(1 for v in WD['villagers'] if hv(v)),'villagers | Ironhold —',sum(1 for b in WD['buildings'] if ins(b)),'buildings,',sum(1 for v in WD['villagers'] if ins(v)),'villagers')

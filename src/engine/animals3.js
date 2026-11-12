@@ -23,7 +23,32 @@ const ANIM3=(function(){
     if(!m.map){ const c=t.color; c.r=Math.pow(c.r,1/2.2); c.g=Math.pow(c.g,1/2.2); c.b=Math.pow(c.b,1/2.2); }   // r128 takes the file's linear colours as sRGB: put them back
     t.onBeforeCompile=sh=>{ sh.fragmentShader=sh.fragmentShader.replace('#include <dithering_fragment>','#include <dithering_fragment>\n  { float rim=pow(1.0-clamp(dot(normalize(vViewPosition),normalize(vNormal)),0.0,1.0),3.0); gl_FragColor.rgb+=vec3(1.0,0.93,0.78)*rim*0.32; }'); };
     return t; }
-  function get(kind){ if(src[kind]) return Promise.resolve(src[kind]); if(wait[kind]) return wait[kind]; const f=FILE[kind]; if(!f) return Promise.reject(kind);
+  /* V199: THE SHEEP — Quaternius's farm sheep is a cube; this one is built here instead, in the realm's own manner: a fleece of
+     soft clumps, a dark face with drooping ears and a woolly cap, slim dark legs, a puff of a tail — cel-shaded like the rest,
+     with clips of its own (Idle, Eating, Walk, Run) made from keyframes on its parts, so ANIM3 drives it like any other. */
+  function sheepSrc(){ const lin=h=>new THREE.Color(h).convertSRGBToLinear(), M=h=>cel(new THREE.MeshLambertMaterial({color:lin(h)}),false);
+    const wool=M(0xf1ebdf), woolD=M(0xe2d9c8), face=M(0x3b3431), leg=M(0x2e2a28), hoof=M(0x1e1b1a), ear=M(0x4a403b), eye=M(0x0e0c0c);
+    const scene=new THREE.Group(); scene.name='SheepRoot'; const nd=(n,p,x,y,z)=>{ const o=new THREE.Group(); o.name=n; o.position.set(x,y,z); p.add(o); return o; };
+    const blob=(p,r,x,y,z,m,sx,sy,sz)=>{ const s=new THREE.Mesh(new THREE.IcosahedronGeometry(r,1),m); s.position.set(x,y,z); s.scale.set(sx||1,sy||1,sz||1); s.castShadow=true; p.add(s); return s; };
+    const body=nd('body',scene,0,0.56,0);
+    [[0,0.02,0,0.27],[0,0.08,0.2,0.22],[0,0.06,-0.2,0.23],[0.13,0,0.08,0.19],[-0.13,0,0.08,0.19],[0.13,0.02,-0.12,0.19],[-0.13,0.02,-0.12,0.19],[0,0.18,0.02,0.19],[0.08,0.16,-0.14,0.15],[-0.08,0.16,0.14,0.15],[0,-0.08,0.02,0.2]]
+      .forEach(([x,y,z,r],i)=>blob(body,r,x,y,z,i%3===2?woolD:wool));
+    blob(body,0.08,0,0.08,-0.36,wool);                                            // the tail
+    const neck=nd('neck',body,0,0.1,0.3), head=nd('head',neck,0,0.06,0.12);
+    blob(head,0.1,0,0,0.04,face,1,1.08,1.45); blob(head,0.09,0,0.1,-0.01,wool,1.2,0.75,1.05);   // the face, and the woolly cap
+    [-1,1].forEach(sd=>{ const e=blob(head,0.05,sd*0.105,0.04,0,ear,1.5,0.5,0.8); e.rotation.z=sd*0.5; blob(head,0.018,sd*0.06,0.035,0.11,eye); });
+    [['legFL',0.11,0.17],['legFR',-0.11,0.17],['legBL',0.11,-0.17],['legBR',-0.11,-0.17]].forEach(([n,x,z])=>{ const l=nd(n,scene,x,0.44,z);
+      const c=new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.03,0.4,6),leg); c.position.y=-0.2; c.castShadow=true; l.add(c); const h=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.045,0.05,6),hoof); h.position.y=-0.415; l.add(h); });
+    const Q=(ax,a)=>new THREE.Quaternion().setFromAxisAngle(ax==='x'?new THREE.Vector3(1,0,0):ax==='y'?new THREE.Vector3(0,1,0):new THREE.Vector3(0,0,1),a).toArray();
+    const qt=(n,times,axs,angs)=>new THREE.QuaternionKeyframeTrack(n+'.quaternion',times,[].concat(...angs.map((a,i)=>Q(Array.isArray(axs)?axs[i]:axs,a))));
+    const pt=(n,times,ys,x,z)=>new THREE.VectorKeyframeTrack(n+'.position',times,[].concat(...ys.map(y=>[x||0,y,z||0])));
+    const gait=(name,dur,amp,bob)=>{ const t=[0,dur/4,dur/2,dur*3/4,dur], s=[0,amp,0,-amp,0], o=s.map(v=>-v);
+      return new THREE.AnimationClip(name,dur,[qt('legFL',t,'x',s),qt('legBR',t,'x',s),qt('legFR',t,'x',o),qt('legBL',t,'x',o),
+        pt('body',[0,dur/4,dur/2,dur*3/4,dur],[0.56,0.56+bob,0.56,0.56+bob,0.56]),qt('neck',t,'x',[0.05,-0.08,0.05,-0.08,0.05])]); };
+    const idle=new THREE.AnimationClip('Idle',4,[qt('neck',[0,1,2,3,4],['y','y','y','y','y'],[0,0.35,0.35,-0.2,0]),qt('head',[0,1.6,1.8,2,4],'z',[0,0,0.25,0,0])]);
+    const eat=new THREE.AnimationClip('Eating',3,[qt('neck',[0,0.5,2.5,3],'x',[0.95,1.05,1.05,0.95]),qt('head',[0,0.4,0.8,1.2,1.6,2,3],'x',[0,0.15,0,0.15,0,0.15,0])]);
+    return {scene,animations:[idle,eat,gait('Walk',0.9,0.45,0.025),gait('Run',0.5,0.75,0.06)]}; }
+  function get(kind){ if(src[kind]) return Promise.resolve(src[kind]); if(kind==='sheep') return loadLibs().then(()=>src.sheep=sheepSrc()); if(wait[kind]) return wait[kind]; const f=FILE[kind]; if(!f) return Promise.reject(kind);
     return wait[kind]=loadLibs().then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(BASE+f,g=>{ g.scene.traverse(o=>{ if(o.isMesh){ o.material=Array.isArray(o.material)?o.material.map(m=>cel(m,!!o.isSkinnedMesh)):cel(o.material,!!o.isSkinnedMesh); } }); src[kind]=g; res(g); },undefined,rej))); }
   const pick=(acts,want)=>{ for(const n of (CLIP[want]||[want])) if(acts[n]) return n; return null; };
   function dress(g,kind,opt){ if(!on()||!g||!FILE[kind]) return null; if(g.userData.a3) return g.userData.a3; opt=opt||{}; const H={ready:false,kind,g,opt,cur:null,state:'idle',t:Math.random()*8,last:null,sp:0};
