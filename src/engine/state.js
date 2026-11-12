@@ -79,13 +79,15 @@ const GAME=(function(){
     for(let v=from+1;v<=STRV;v++){
       // this version's seams, placed in the realm as the earlier versions left it
       const at=(L,a)=>a+L.filter(s=>(s[2]||1)<v&&a>=s[0]).reduce((t,s)=>t+s[1],0);
-      const sx=STR.x.filter(s=>(s[2]||1)===v).map(s=>[at(STR.x,s[0]),s[1]]), sy=STR.y.filter(s=>(s[2]||1)===v).map(s=>[at(STR.y,s[0]),s[1]]);
+      const sx=STR.x.filter(s=>(s[2]||1)===v).map(s=>[s.length>3?s[3]:at(STR.x,s[0]),s[1]]), sy=STR.y.filter(s=>(s[2]||1)===v).map(s=>[s.length>3?s[3]:at(STR.y,s[0]),s[1]]);   // V198: a seam may carry its place in the realm before it (s[3])
       if(!sx.length&&!sy.length) continue;
       const X=q=>{ let d=0; for(const [a,n] of sx) if(Math.floor(q)>=a) d+=n; return q+d; }, Y=q=>{ let d=0; for(const [a,n] of sy) if(Math.floor(q)>=a) d+=n; return q+d; };
       if(o.at&&typeof o.at.x==='number'){ o.at.x=X(o.at.x); o.at.z=Y(o.at.z); }
       if(o.crops){ const c={}; for(const k in o.crops){ const [a,b]=k.split(',').map(Number); c[X(a)+','+Y(b)]=o.crops[k]; } o.crops=c; }
       if(o.homesteadDecor&&o.homesteadDecor.placed) o.homesteadDecor.placed.forEach(q=>{ q.x=X(q.x); q.y=Y(q.y); });
-      [o.boat,o.wagon].forEach(q=>{ if(q&&typeof q.x==='number'){ q.x=X(q.x); q.y=Y(q.y); } }); }
+      [o.boat,o.wagon].forEach(q=>{ if(q&&typeof q.x==='number'){ q.x=X(q.x); q.y=Y(q.y); } });
+      if(o.empire&&o.empire.carts) for(const id in o.empire.carts){ const q=o.empire.carts[id]; if(q&&typeof q.x==='number'){ q.x=X(q.x); q.y=Y(q.y); } }   // V198: the trade carts where they stand
+    }
     return o; }
   const exportCode=()=>btoa(unescape(encodeURIComponent(JSON.stringify(S))));
   function importCode(code){ try{ const o=JSON.parse(decodeURIComponent(escape(atob(code.trim())))); if(!o||o.v!==1) return false; S=Object.assign(fresh(),restretch(o)); recalc(); changed(); return true; }catch(e){ return false; } }

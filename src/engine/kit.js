@@ -3,6 +3,11 @@
 const _STR=(typeof STRETCH!=='undefined'&&STRETCH)||{x:[],y:[]};
 const SX=x=>{ let o=x; for(const [x0,n] of _STR.x) if(x>=x0) o+=n; return o; }, SY=y=>{ let o=y; for(const [y0,n] of _STR.y) if(y>=y0) o+=n; return o; };
 const SP=o=>Object.assign({},o,{x:SX(o.x),z:SY(o.z)});
+// V198: the realm grew again, into an island (tools/grow.py; STRETCH.grow holds the new seams in V197 tiles). Places written in
+//  the code in V197's own tiles (after the first stretch) pass through RX/RY (or RP for a {x,z} spot) to land where they now are.
+const _GR=_STR.grow||{x:[],y:[]};
+const RX=x=>{ let o=x; for(const [p,n] of _GR.x) if(x>=p) o+=n; return o; }, RY=y=>{ let o=y; for(const [p,n] of _GR.y) if(y>=p) o+=n; return o; };
+const RP=o=>Object.assign({},o,{x:RX(o.x),z:RY(o.z)});
 // ════════════════════════════════════════════════════════════════
 //  KIT — shared materials and low-poly building blocks.
 //  Every other module builds with these, so the whole game reads as one set.

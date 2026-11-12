@@ -44,6 +44,7 @@ const WILDS=(function(){
       verse:['A tablet over the little altar','“Awake, O north wind; and come, thou south; blow upon my garden.” — Song of Solomon 4:16'],chest:{gold:190,pot:['potion',2]}},
     {id:'s_shield',x:216,y:300,tool:'shield',name:'the Shrine of the Storm',
       verse:['A tablet over the little altar','“The LORD is my strength and my shield; my heart trusted in him, and I am helped.” — Psalm 28:7'],chest:{gold:200,pot:['potion',3]}} ];
+  [...PLATS,...SHRINES].forEach(p=>{ p.x=RX(p.x); p.y=RY(p.y); });   // V198: written in V197's tiles; the island grew about them
   const rim=(p,a)=>p.r*(1+0.13*Math.sin(a*3+p.x*0.1)+0.07*Math.sin(a*5+p.y*0.07));
   const pathSeg=(p,L0)=>{ if(p.up!=='path') return null; const a=p.a0, rr=rim(p,a)-0.4, sx=p.x+Math.cos(a)*rr, sy=p.y+Math.sin(a)*rr, tx=-Math.sin(a)*p.sense, ty=Math.cos(a)*p.sense, L=L0||p._L||p.h/0.4+1.5;
     return {sx,sy,ex:sx+tx*L,ey:sy+ty*L,L,tx,ty}; };

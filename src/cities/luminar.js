@@ -59,7 +59,7 @@
   // V154: THE HOMESTEAD GATE. The homestead's basin has one way in, the old lane at its south end; the family barred it
   //  against the demons roaming the roads. It stays shut and chained until Abaddon falls; then Sir Aldric rides on ahead
   //  and opens it, and it stands open from then on. (You can always get out from the inside, so an old save inside is never stuck.)
-  { const HG={x0:11,x1:16,z:250.5}, open=()=>!!S().abaddonWon, sc=world.scene, gy=(x,z)=>world.ground?world.ground(x,z):0;
+  { const HG={x0:RX(11),x1:RX(16),z:RY(250)+0.5}, open=()=>!!S().abaddonWon, sc=world.scene, gy=(x,z)=>world.ground?world.ground(x,z):0;
     const gate=group((HG.x0+HG.x1)/2,gy((HG.x0+HG.x1)/2,HG.z),HG.z,sc), wood=0x6a4a2a, dark=0x3e2a18, iron=0x2a2a30;
     [HG.x0-0.15-(HG.x0+HG.x1)/2,HG.x1+0.15-(HG.x0+HG.x1)/2].forEach(x=>{ B(0.36,2.1,0.36,0x7a7468,x,0,0,gate); B(0.46,0.16,0.46,0x8a8478,x,2.1,0,gate); });
     const half=(HG.x1-HG.x0)/2, leaves=[-1,1].map(sd=>{ const hinge=group(sd*half,0,0,gate), lf=group(-sd*half/2,0,0,hinge);
@@ -231,7 +231,7 @@
   signTo(/PET STYLIST/,'Stylist',()=>SERVICES.openStylist());
   signTo(/PET TOURNAMENT/,'Enter',()=>typeof PETT!=='undefined'&&PETT.open());
   signTo(/KING.S TOURNEY/,'Ride',()=>ENGINE.go('race'));
-  [[166,196,'Marshal of the Lists'],[169,196,'Herald of the Melee']].map(([x,y,w])=>[SX(x),SY(y),w]).forEach(([x,y,who])=>{ const p=at(x,y);
+  [[227,287,'Marshal of the Lists'],[227,292,'Herald of the Melee']].forEach(([x,y,who])=>{ const p={x:RX(x)+0.5,z:RY(y)+0.5};   /* V198: at the tilting yard's west gate (V197 tiles); they were set down twice-shifted, off the map */
     const f=addPerson(world,world.scene,'royalguard',p.x,p.z,world.ground(p.x,p.z),who,['Stormgate’s champions await. Choose how you’ll prove your blade.'],{rest:0});
     f.label='Contest'; f.action=()=>typeof LISTS!=='undefined'&&LISTS.openMenu('sg_keep'); });
   const guards=(I.sg_keep.npcs||[]).filter(n=>n.royalguard).map(n=>n.lines[0]);
@@ -242,7 +242,7 @@
     f.label='Contest'; f.action=()=>ENGINE.speak('Dame Elspeth',f.lines,f,()=>typeof LISTS!=='undefined'&&LISTS.openMenu('sg_keep')); return keep; }});
   const raceSign=world.spots.find(q=>/KING.S TOURNEY/.test(q.who)), fromRace=raceSign?{x:raceSign.x,z:raceSign.z+1.2,face:0}:at(167,231);
   ENGINE.add({id:'race',lazy:()=>raceLevel({ id:'race', course:'stormgate', exit:{level:'world',spawn:fromRace} })});
-  if(typeof listsLevel==='function') ENGINE.add({id:'lists',lazy:()=>listsLevel({ id:'lists', keep:'sg_keep', exit:{level:'world',spawn:{x:247.5,z:294.5,face:Math.PI}} })});
+  if(typeof listsLevel==='function') ENGINE.add({id:'lists',lazy:()=>listsLevel({ id:'lists', keep:'sg_keep', exit:{level:'world',spawn:{x:RX(247)+0.5,z:RY(294)+0.5,face:Math.PI}} })});
   if(typeof petTourneyLevel==='function') ENGINE.add({id:'petring',lazy:()=>petTourneyLevel({ id:'petring', exit:{level:'world',spawn:Object.assign(at(155,223),{face:0})} })});
 
   // ── the finale: Abaddon in the Hellgate keep, then King Karl's grant in Stormgate's ──

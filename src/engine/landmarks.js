@@ -18,6 +18,7 @@ const LANDMARKS=(function(){
      view:'From the broken top you can see Hearthvale’s roofs and the long Trade Road running east over the river to Dusthaven, and far off north the pines of the Scholar’s Way.'},
     {id:'frostwatch', name:'Frostwatch', x:235.5, z:74.5, a0:Math.PI, view:'Crystalpeak’s snows stand close enough to touch. West the desert shimmers; east, past the dark crags, a smudge of smoke — Hellgate.'},
     {id:'southwatch', name:'Southwatch', x:145.5, z:321.5, a0:0, view:'The southern sea, all the way to the isles: Mistral’s downs, the white peak of Tabor, Sunfall’s atoll low on the water. Stormgate’s towers to the east.'} ];
+  TOWERS.forEach(t=>{ t.x=RX(t.x); t.z=RY(t.z); });   // V198: written in V197's tiles
   const H=7.0, RC=1.45, RS=2.65, TURNS=1.25;
   function attach(world){
     if(world.id!=='world') return null;

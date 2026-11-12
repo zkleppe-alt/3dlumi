@@ -943,7 +943,7 @@ function buildWorld(WD,opt){
       const env=sm((d-1.0)/6), n=0.6*Math.sin(x*0.14+Math.sin(y*0.09)*1.6)*Math.cos(y*0.12+0.7)+0.28*Math.sin((x-y)*0.23+1.1)+0.12*Math.sin(x*0.41+y*0.37);
       const old=env*1.6*(0.5+0.5*n);
       if(m<=0||d<=0){ U[v]=old*(1-m); continue; }
-      let ws=0.35, h=0.35*(LK?shape(LK[0],LK[1],x,y):shape('hill',5.5,x,y)), mw=0; for(const c of centres){ const R=c.R||((c.k==='mountain'||c.k==='crag')?58:44), w=Math.exp(-(((x-c.x)**2+(y-c.y)**2)/(R*R))); if(w<0.01) continue; ws+=w; h+=w*shape(c.k,c.A,x,y); if(c.k==='mountain'||c.k==='crag') mw+=w; }
+      let ws=0.35, h=0.35*(LK?shape(LK[0],LK[1],x,y):shape('hill',5.5,x,y)), mw=0; for(const c of centres){ const R=c.R||((c.k==='mountain'||c.k==='crag')?58:44)*(W>500?1.5:1), w=Math.exp(-(((x-c.x)**2+(y-c.y)**2)/(R*R))); if(w<0.01) continue; ws+=w; h+=w*shape(c.k,c.A,x,y); if(c.k==='mountain'||c.k==='crag') mw+=w; }
       HILL[v]=h/ws*sm((d-0.5)/2.5); WR[v]=1-sm((dr-1)/4); U[v]=old*(1-m); MW[v]=Math.min(1,mw/ws*1.6); DD[v]=d; }
     // the roads ride the land but are eased over it: where one runs, the hill under it is a broad average of the hills about
     const blur=(A,rad)=>{ const B=new Float32Array(N), C=new Float32Array(N); for(let y=0;y<=H;y++){ let acc=0, n=0; for(let x=-rad;x<=W+rad;x++){ if(x+rad<=W){ acc+=A[y*R1+x+rad]; n++; } if(x-rad-1>=0){ acc-=A[y*R1+x-rad-1]; n--; } if(x>=0&&x<=W) B[y*R1+x]=acc/n; } }
@@ -1073,10 +1073,11 @@ function buildWorld(WD,opt){
       const hm=(a[1]+b[1]+c[1])/3-RB(x,y)-(ROLL?roll(x+0.5,y+0.5):0), r=region(x,y), ash=ashland(x,y)||r==='hellgate'||r==='ashfield', sand=desert(x,y), cold=r==='crystalpeak'||r==='hellgate'||bio(x,y)===4||(!opt.land&&x>=SX(72)&&x<=SX(118)&&y>=SY(252)&&y<=SY(299)), jit=(hsh(x*7+Math.round(a[0]*3),y*3+Math.round(a[2]*3))-0.5)*0.06;
       const ya=(a[1]+b[1]+c[1])/3;
       let hex; if(kind===3&&L2&&inCP(x,y)) hex=ny>0.72?(ya>3.2?0xeef3f8:0xa8c890):ny>0.5?(ya>4.5?0xc8d0dc:0x8e8a84):(ya>6?0x8a8e9c:0x78726c);   // V113: Crystalpeak — snow on the ledges, grey rock on the cliffs
+      else if(kind===3&&BIO&&bio(x,y)!==4&&!(bio(x,y)===7&&ya>9)) hex=ny<0.55?0x7a7468:ya>5?(ny>0.75?0x8a8c78:0x7e786c):ya>2.5?(ny>0.7?0x8aa070:0x7a7468):(ny>0.6?0x5f9a50:0x766a58);   // V198: warm country's crags are bare rock, no snow
       else if(kind===3) hex=ny<0.55?(ya>7?0x9aa2ae:0x7a7468):ya>8?0xeef2f6:ya>5?(ny>0.75?0xdfe6ee:0x9aa2ae):ya>2.5?(ny>0.7?0x8aa070:0x7a7468):(ny>0.6?0x5f9a50:0x766a58);   // the mountainside: rock on the faces, meadow below, snow above   // the mountainside: meadow, then rock and scree, then snow
       else if(kind===2&&hm<(cold?3.2:5.6)) hex=ny>0.8?0x4f8a44:ny>0.6?0x5a6a3c:0x6c6258;                 // wooded slopes: turf, bare earth on the steeper faces, rock on the steepest
       else if(kind===2&&hm<(cold?4.2:7.4)) hex=ny>0.7?0x7a8a5a:0x7a7062;                                      // the tree line: thin alpine turf and scree
-      else if(!ash&&!sand&&hm>(cold?3.0:kind===2?9.2:5.4)&&ny>0.35) hex=0xeef2f6; else if(!ash&&!sand&&hm>(cold?2.2:kind===2?8.0:4.6)&&ny>0.8) hex=0xe2e8ee;   // snow on the tops and in the gentler hollows high up
+      else if(!ash&&!sand&&(!BIO||cold||bio(x,y)===7&&hm>8.5)&&hm>(cold?3.0:kind===2?9.2:5.4)&&ny>0.35) hex=0xeef2f6; else if(!ash&&!sand&&(!BIO||cold)&&hm>(cold?2.2:kind===2?8.0:4.6)&&ny>0.8) hex=0xe2e8ee;   // snow on the tops and in the gentler hollows high up
       else if(ash) hex=ny<0.6?0x3e3834:0x524a44; else if(sand) hex=ny<0.6?0x9a7450:0xb48a5c; else hex=ny<0.55?0x6c6258:hm<1.2&&ny>0.7?0x6a8a4a:0x857868;   // rock, grassed at the foot
       C.setHex(hex).offsetHSL(0,0,jit); pos.push(...a,...b,...c); for(let i=0;i<3;i++) col.push(C.r,C.g,C.b); };
     // V113 (LOOK2): CRYSTALPEAK as a real mountain — its rock between the trails is cut finer (a quarter-tile skin), roughened
@@ -1341,7 +1342,7 @@ function buildWorld(WD,opt){
         else box(cx,cz,h+0.1,0.5,wc,0.6,0.6,0,0.04);
         continue; }
       if(SD.has(k)&&!MS[k]){ stairBoxes(x,y,SD.get(k),ground,(a,b)=>inB(a,b)&&(T(a,b)===10||T(a,b)===11),q=>boxes.push(q)); continue; }
-      if(t===33){ const h=rockH(x,y), ash=ashland(x,y)||region(x,y)==='hellgate'||region(x,y)==='ashfield', snowy=!ash&&(region(x,y)==='crystalpeak'||bio(x,y)===4||T(x+1,y)===22||T(x,y+1)===22||h>4.2), rc=ash?0x625a54:snowy?0xa8a4a8:0x8a6a4a, rd=ash?0x4a4440:snowy?0x8c8890:0x765a40, r1=hsh(y,x), r2=hsh(x+7,y), r3=hsh(x*3,y*5);
+      if(t===33){ const h=rockH(x,y), ash=ashland(x,y)||region(x,y)==='hellgate'||region(x,y)==='ashfield', snowy=!ash&&(region(x,y)==='crystalpeak'||bio(x,y)===4||T(x+1,y)===22||T(x,y+1)===22||(BIO?bio(x,y)===7&&h>5.2:h>4.2)), rc=ash?0x625a54:snowy?0xa8a4a8:0x8a6a4a, rd=ash?0x4a4440:snowy?0x8c8890:0x765a40, r1=hsh(y,x), r2=hsh(x+7,y), r3=hsh(x*3,y*5);
         // a crag of real rock: a footing that keeps the range whole, then broken faceted masses leaning together, snow on the tall ones
         box(cx,cz,top-0.4,0.4+h*0.18,rd,1,1,0,jit*2); const b0=top+h*0.18;
         rocks.push({x:cx+(r1-0.5)*0.25,z:cz+(r2-0.5)*0.25,y:b0-0.15,h:h*0.72,sx:1.6+r3*0.35,sz:1.5+r1*0.35,ry:r1*6.28,c:rd,l:(r3-0.5)*0.06});
@@ -1500,9 +1501,9 @@ function buildWorld(WD,opt){
   // V119: THE FAR COUNTRY — the whole realm once more, coarse (a vertex every two tiles), coloured by what lies there, so the
   //  hills and ranges run on past the near chunks into the haze as the Northern Reach's do. It lies a little under the near
   //  ground and is cut away around the knight, where the chunks stand.
-  const FAR=(()=>{ if(!OW||opt.land) return null; const S2=2, NX=Math.floor(W/S2)+1, NZ=Math.floor(H/S2)+1, pos=new Float32Array(NX*NZ*3), col=new Float32Array(NX*NZ*3), C=new THREE.Color();
+  const FAR=(()=>{ if(!OW||opt.land) return null; const S2=W>500?3:2, NX=Math.floor(W/S2)+1, NZ=Math.floor(H/S2)+1, pos=new Float32Array(NX*NZ*3), col=new Float32Array(NX*NZ*3), C=new THREE.Color();
     for(let j=0;j<NZ;j++) for(let i=0;i<NX;i++){ const x=Math.min(W-1,i*S2), y=Math.min(H-1,j*S2), k=y*W+x, t=T(x,y), v=(j*NX+i)*3; let h, hex;
-      if(RK[k]){ h=reliefV(x*2+1,y*2+1); const hm=h-RB(x,y)-roll(x+0.5,y+0.5); hex=RK[k]===1?(hm>5?0xdfe6ee:0x7a7468):hm>7?0xdfe6ee:hm>4.5?0x6a7458:0x2f5a34; if(inCP(x,y)) hex=h>4?0xe8eef4:0x8e8a84; }
+      if(RK[k]){ h=reliefV(x*2+1,y*2+1); const hm=h-RB(x,y)-roll(x+0.5,y+0.5); const sn=!BIO||bio(x,y)===4||bio(x,y)===7&&hm>8; hex=RK[k]===1?(hm>5&&sn?0xdfe6ee:0x7a7468):hm>7&&sn?0xdfe6ee:hm>4.5?0x6a7458:0x2f5a34; if(inCP(x,y)) hex=h>4?0xe8eef4:0x8e8a84; }
       else if(t===3||t===21||t===29){ h=-0.32; hex=0x2f6f9c; } else if(t===20){ h=-0.08; hex=0x5fb0c8; }
       else { const r=roll(x+0.5,y+0.5); h=EH(x,y)+0.02+r; hex=bAt.has(k)?0x8a5a3a:t===19||desert(x,y)?0xc8aa78:t===2||t===12?0xb09060:t===5||t===6?0x9a958c:t===22?0xeef2f6:t===25||t===28?0x4a4440:BGR&&(t===0||t===4||t===1||t===15)?(t===1?new THREE.Color(grassOf(x,y)).multiplyScalar(0.8).getHex():grassOf(x,y)):r>6?0x7c8a5c:0x5e9a4a; }
       pos[v]=i*S2+0.5; pos[v+1]=h-0.45; pos[v+2]=j*S2+0.5; C.setHex(hex).offsetHSL(0,0,(hsh(i,j)-0.5)*0.05); col[v]=C.r; col[v+1]=C.g; col[v+2]=C.b; }

@@ -13,7 +13,7 @@ import json, base64, os, subprocess, sys, re
 from collections import deque
 import numpy as np
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__))); HEAD=os.path.join(ROOT,'data','built','head.js')
-subprocess.check_call([sys.executable,os.path.join(ROOT,'tools','stormgate.py')])
+subprocess.check_call([sys.executable,os.path.join(ROOT,'tools','grow.py')])   # V198: grow.py runs stormgate.py first
 src=open(HEAD,encoding='utf-8').read()
 def const(name):
     i=src.index('const '+name+'='); j=src.index('\n',i); s=src[i+len(name)+7:j]; return i,j,json.loads(s[:-1] if s.endswith(';') else s),s.endswith(';')
@@ -24,12 +24,20 @@ ANCH=[(FARM,33,22,54,1.0),(FARM,26,226,36,1.0),(HIGHLAND,31,103,50,1.0),(COAST,3
       (ALPINE,233,108,54,1.0),(ASH,238,230,50,1.0),(COAST,252,333,44,0.9),(MARSH,337,227,46,1.0),(SCORCHED,345,19,44,1.0),
       (DESERT,132,150,34,0.9),(DESERT,96,70,30,0.8),(ASH,238,196,30,0.85),(ALPINE,135,394,38,1.0),(ALPINE,335,120,58,1.0),(ALPINE,290,70,40,0.9),
       (FOREST,80,180,40,0.9),(FOREST,185,290,36,0.85),(FOREST,90,265,30,0.8),(HIGHLAND,75,60,36,0.8),(MARSH,300,275,30,0.8),(MEADOW,185,170,40,0.75),(MEADOW,80,300,34,0.7),(MEADOW,190,40,40,0.7)]
+# V198: the anchors are given in the V197 realm's tiles; on the grown island they move with the land and reach further
+G=const('STRETCH')[2].get('grow')
+if G:
+    gx=lambda x: x+sum(n for p,n in G['x'] if x>=p); gy=lambda y: y+sum(n for p,n in G['y'] if y>=p)
+    ANCH=[(k,gx(x),gy(y),R*1.75,s) for k,x,y,R,s in ANCH]
+    # and the new country between them gets countries of its own
+    ANCH+=[(FOREST,165,150,46,0.85),(MEADOW,175,370,50,0.8),(HIGHLAND,170,560,44,0.8),(FOREST,360,620,50,0.85),(MEADOW,360,360,56,0.75),(DESERT,350,150,44,0.85),
+           (MARSH,560,580,44,0.8),(HIGHLAND,560,360,46,0.85),(ALPINE,560,120,56,0.95),(FOREST,120,750,40,0.8),(COAST,600,700,44,0.8),(FARM,250,700,40,0.8),(SCORCHED,700,140,34,0.8)]
 rng=np.random.default_rng(197)
 def noise(w,h,cell):
     gw,gh=w//cell+3,h//cell+3; g=rng.random((gh,gw)); ys,xs=np.mgrid[0:h,0:w]; fx,fy=xs/cell,ys/cell; ix,iy=fx.astype(int),fy.astype(int); u,v=fx-ix,fy-iy; u=u*u*(3-2*u); v=v*v*(3-2*v)
     return (g[iy,ix]*(1-u)+g[iy,ix+1]*u)*(1-v)+(g[iy+1,ix]*(1-u)+g[iy+1,ix+1]*u)*v
 def fbm(w,h,cell): return noise(w,h,cell)*0.6+noise(w,h,max(2,cell//2))*0.28+noise(w,h,max(2,cell//4))*0.12
-ys,xs=np.mgrid[0:H,0:W].astype(float); wx=xs+(fbm(W,H,34)-0.5)*42; wy=ys+(fbm(W,H,34)-0.5)*42       # the borders wander
+ys,xs=np.mgrid[0:H,0:W].astype(float); wx=xs+(fbm(W,H,52)-0.5)*70; wy=ys+(fbm(W,H,52)-0.5)*70       # the borders wander
 score=np.full((10,H,W),-1.0); score[MEADOW]=0.24
 for k,ax,ay,R,s in ANCH: score[k]=np.maximum(score[k],s*np.exp(-((wx-ax)**2+(wy-ay)**2)/(R*R)))
 BIO=score.argmax(0).astype(np.uint8)
@@ -65,11 +73,14 @@ def walk(o):
         if 2<=len(o)<=5 and all(isinstance(q,(int,float)) for q in o[:2]): mark(o[0],o[1],4)
         for v in o: walk(v)
     elif isinstance(o,str) and re.fullmatch(r'\d+,\d+',o): mark(*map(int,o.split(',')))
-for name in ('STRETCH','CHAPELS','SIDEQUEST_DATA'):
+walk(json.load(open(os.path.join(ROOT,'data','pastimes.json'),encoding='utf-8')))   # V198: the pastimes' places too (doodles, Reuben, the trade posts …)
+for name in ('STRETCH','CHAPELS','SIDEQUEST_DATA','FOREST_DATA','DIALOGUE_DATA'):
     try: walk(const(name)[2])
     except ValueError: pass
 walk({k:v for k,v in WD.items() if k not in ('raw','interiors','siRooms','thall','themes')})
 for n,x,y in WD['towns']: mark(x,y,24)
+CODE_SPOTS=[(62,82,11),(88,65,11),(205,261,13),(198,129,12),(322,262,12),(24,81,5),(150,79,5),(164,235,5),(248,193,5),(216,300,5),(70,44,8),(235,74,8),(145,321,8)]   # the plateaus, shrines and watchtowers the code places (V197 tiles; wilds.js, landmarks.js)
+for x_,y_,r_ in CODE_SPOTS: mark(gx(x_) if G else x_,gy(y_) if G else y_,r_)
 for b in WD['barriers']:
     if b: keep[max(0,b[1]-b[3]-2):b[1]+b[3]+3,max(0,b[0]-b[2]-2):b[0]+b[2]+3]=True
 tk=const('STRETCH')[2].get('trek')
@@ -112,7 +123,7 @@ for it in range(40):
 now=reach(); lost=before&~now
 for x,y in addset: lost[y,x]=False
 WD['bio']=base64.b64encode(half.tobytes()).decode(); WD['bioW']=BW
-WD['bioAnchors']=[[k,x,y,R] for k,x,y,R,s in ANCH[11:]]
+WD['bioAnchors']=[[k,int(x),int(y),int(R)] for k,x,y,R,s in ANCH[11:]]
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 out=src[:i]+'const WORLD_DATA='+json.dumps(WD,separators=(',',':'),ensure_ascii=False)+(';' if semi else '')+src[j:]
 open(HEAD,'w',encoding='utf-8').write(out)

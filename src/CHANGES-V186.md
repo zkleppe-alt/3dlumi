@@ -195,3 +195,34 @@ The realm is divided into broad countries with soft, wandering borders (generato
 - The menu map and minimap (`data/systems.json` → `SYS.MAP.map`) are redrawn in biome colours, with the new Stormgate.
 - Next stages (not in this version): grow the map and reshape the coastline; resize and re-plan the villages; catacomb
   entrances placed as town features with villager hints.
+
+## V198 — The realm grown: one big island
+
+The realm roughly doubles, from 370×420 to 760×830 tiles, and ends in a real coast all round (`tools/grow.py`, run by
+`tools/biomes.py`; it runs `tools/stormgate.py` first, so `python3 tools/biomes.py` rebuilds the whole map from
+`data/built/head.orig.js`; `data/pastimes.v2.json` and `data/systems.v2.json` are the V197 backups it reads).
+
+- **New country** goes in along nine lines that cross no town, building, plateau or landmark: sea margins
+  (60 west/north/east, 50 south) and three bands each way between the town columns (90 wide) and rows (100 high).
+  Towns keep their streets; they stand further apart. The bands are grown as in V116 (meadow, woods, ridges, ponds,
+  open valleys); roads and rivers that cross a line wander across its band; lakes do not run on; where two bands cross
+  it is all new land.
+- **The coast**: the old two-tile tree wall round the realm is gone; bays bitten into the land and headlands pushed out
+  by large-scale noise measured from the open sea; beaches on low ground by the sea, a ring of shallows, islets
+  offshore. Nothing near a building, sign, villager, road, quest spot, secret, plateau, shrine, tower or the pass is
+  drowned, and any bay that would cut off something used is filled back in. Sea fishing spots are found anew along
+  the whole coast.
+- **Every coordinate moved**: WORLD_DATA, STRETCH (trek re-laid along its longer way, new control points where bands
+  opened), FOREST_DATA, SIDEQUEST_DATA, DIALOGUE_DATA keys, pastimes.json, systems.json MAP.
+- **Code**: STRETCH gains version-3 seams `[at (2D tiles), width, 3, at (V197 tiles)]`, so `SX/SY` move with them;
+  new `RX/RY/RP` (kit.js) map V197 tiles for places written in V197's own tiles — wilds.js plateaus and shrines,
+  landmarks.js towers, the Homestead gate, the tourney's exit. Saves migrate once on load (state.js `restretch`, now
+  also moving the trade carts).
+- **Fixed**: the Marshal of the Lists and Herald of the Melee were placed with the shift applied twice (off the map);
+  they now stand at the tilting yard's west gate.
+- Biomes regrown on the island (anchors moved and reaching 1.75× further, 13 new anchors for the new country);
+  town hills reach 1.5× further; the far terrain is drawn at every 3rd tile; snow only on rocks and heights in cold
+  country (bare rock elsewhere).
+- Checked: every V197-reachable door, sign, villager, quest spot, secret, trade post, plateau, shrine and tower is
+  still reachable (one pond fishing spot on the south coast was lost to the sea); an old save lands the player,
+  crops, boat, wagon, trade carts and Homestead pieces in the right places.
