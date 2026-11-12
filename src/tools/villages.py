@@ -67,6 +67,7 @@ def decor(kind,x,y,w=1):
         for xx in range(x,x+w): put(xx,yy,5,False)
     WD['decor'].append({'x':x,'y':y,'kind':kind,'w':w})
 def tree(x,y): put(x,y,1,False)
+hsh2=lambda x,y: (((x*73856093)^(y*19349663))&0xffffffff)%1000/1000
 def fence(x0,y0,x1,y1,gaps=()):
     for x in range(x0,x1+1):
         for y in (y0,y1):
@@ -448,6 +449,129 @@ for y in range(Y0,Y1+1):
     for x in range(X0,X1+1):
         if T(x,y) in (3,20) and any((raw[N+(y+b)*W+x+a]>>4) and T(x+a,y+b) not in (3,20,21) for a,b in ((1,0),(-1,0),(0,1),(0,-1))): PT['fishSpots'].setdefault(f"{x},{y}",'sea')
 
+# ════════════════════════════════════ THORNWOOD ════════════════════════════════════
+# The village up in the trees. Five giant trees stand about the road through the wood, a deck of planks round each, the
+# houses built on the decks — the chapel too, on the greatest of them, the Chapel Oak — and rope bridges between them that
+# sway as you cross; ladders go up from the forest floor (WORLD_DATA.treetops; engine/treetops.js). On the ground: the road,
+# the fire-ring where the hunters sit of an evening, the Hollow Log Inn, and the lumber yard with its saw-pit and stacks.
+# West, out in the deep wood over the brook, the Old Stones: a ring older than the village round a sunken stone well with a
+# stair going down — where the woodsmen carried their dead, down into the root-crypts. Of late, sounds come up from it.
+X0,Y0,X1,Y1=236,466,310,528
+ins3=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
+olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins3(v)}
+WD['decor']=[d for d in WD['decor'] if not ins3(d)]; WD['villagers']=[v for v in WD['villagers'] if not ins3(v)]
+POOL={k:v for k,v in WD['signs'].items() if v.startswith('FOREST POOL')}
+for k in [k for k in WD['signs'] if ins3(dict(zip('xy',map(int,k.split(',')))))]: WD['signs'].pop(k)
+for y in range(Y0,Y1+1):
+    for x in range(X0,X1+1):
+        t=T(x,y)
+        if t in (3,20,21): continue
+        sq=262<=x<=302 and 484<=y<=512                                     # the old fenced square: gone
+        core=258<=x<=305 and 474<=y<=522
+        if sq and t not in (1,7): put(x,y,0,True,0); continue
+        if core and t in (1,7,33) and (hsh2(x,y)<0.8 or sq): put(x,y,0,True,0); continue   # thinned: a few saplings stay among the giants
+        if core and t in (5,9,14,15,16,32,6): put(x,y,0,True,0)
+        if t==2 and 262<=x<=302 and 474<=y<=522: put(x,y,0,True,0)
+for y in range(486,523):                                                    # the commons and the lumber yard: open ground, no saplings
+    for x in range(268,307):
+        if T(x,y) in (1,7,33) and (y>=505 and x>=285 or 269<=x<=292 and y<=511): put(x,y,0,True,0)
+# the giants' decks, and the ground under them clear (you walk under them)
+DECKS=[dict(x0=262,y0=476,x1=276,y1=489,h=5.0,tree=[266.0,482.0,2.0],name='The Chapel Oak'),
+       dict(x0=289,y0=478,x1=299,y1=487,h=5.0,tree=[296.5,482.5,1.6],name='The Lodge Tree'),
+       dict(x0=292,y0=493,x1=302,y1=502,h=5.0,tree=[299.0,496.0,1.5],name='The Forester’s Tree'),
+       dict(x0=257,y0=494,x1=268,y1=503,h=5.0,tree=[261.0,497.0,1.5],name='The Trapper’s Tree'),
+       dict(x0=264,y0=508,x1=275,y1=518,h=5.0,tree=[268.0,512.0,1.6],name='The Burner’s Tree')]
+for d in DECKS:
+    for y in range(d['y0']-1,d['y1']+2):
+        for x in range(d['x0']-1,d['x1']+2):
+            if T(x,y) not in (3,20): put(x,y,0,True,0)
+BRIDGES=[dict(da=0,db=1,a=[276.6,486.5],b=[289.4,486.5],w=1.3),
+         dict(da=1,db=2,a=[294.5,487.6],b=[295.5,493.4],w=1.3),
+         dict(da=0,db=3,a=[265.5,489.6],b=[263.5,494.4],w=1.3),
+         dict(da=3,db=4,a=[265.5,503.6],b=[268.5,508.4],w=1.3)]
+LADDERS=[dict(deck=0,x=276,y=488,dx=1,dy=0),dict(deck=2,x=300,y=502,dx=0,dy=1),dict(deck=4,x=275,y=510,dx=1,dy=0)]
+WD.setdefault('flats',[]).append([256,472,306,524])
+WD['treetops']={'decks':DECKS,'bridges':BRIDGES,'ladders':LADDERS,'rect':[X0,Y0,X1,Y1]}
+def bldUp(id,name,style,x,y,w,h,deck,template='home1',who=None):
+    """a house on a deck up a tree: no footprint on the ground (you walk under it); world.js leaves its drawing to the treetops"""
+    b=next((b for b in WD['buildings'] if b['id']==id),None)
+    if b is None: b={'id':id}; WD['buildings'].append(b)
+    dx=x+w//2; b.update({'name':name,'style':style,'x':x,'y':y,'w':w,'h':h,'door':{'x':dx,'y':y+h-1},'interior':b.get('interior') or id,'deck':deck})
+    if b['interior'] not in INT:
+        I=copy.deepcopy(INT[template]); I['name']=name
+        for n in I.get('npcs',[]):
+            if who: n['name'],n['voutfit'],n['lines']=who[0],who[1],list(who[2:])
+        INT[b['interior']]=I
+    return b
+bldUp('tw_chapel','Thornwood Chapel','chapel',270,477,6,6,0)
+bldUp('tw_home1',"Hunter's Lodge",'cottage',289,478,5,4,1)
+bldUp('tw_home2',"Forester's Hut",'house',293,498,4,3,2)
+bldUp('tw_home3',"The Trapper's Treehouse",'cottage',263,499,5,3,3,who=('Trapper Ruth','hunterF','Mind your head on the snares. Rabbit, mostly — and once a fox who stole the lot.','Benji sleeps up in the crook of the tree when it’s warm. Says he can see the Old Stones from there.'))
+bldUp('tw_home4',"The Charcoal-Burner's Treehouse",'house',269,514,5,3,4,who=('Burner Amos','peasant','Smoke in my beard, soot in my bread. The best charcoal in the realm comes off my mound.','I sleep up here to be clear of the smoke. And of whatever walks the wood at night.'))
+# the road through the wood, the trail out to the Old Stones, the way into the lumber yard, paths to the ladders' feet
+lane([(283,466),(283,480),(282,492),(281,504),(281,512),(281,528)],w=3)
+lane([(279,492),(270,491),(260,491),(253,492),(249,495),(250,497)])
+lane([(282,507),(288,515)]); lane([(277,489),(280,490)]); lane([(300,504),(296,505),(292,507)]); lane([(277,511),(279,507)])
+# the ground village: the fire-ring by the road, the Hollow Log Inn, the well
+bld('tw_inn','Hollow Log Inn','inn',285,502,6,4)
+decor('campfire',275,498); decor('stump',273,497); decor('stump',277,496); decor('stump',274,500); decor('stump',277,500)
+decor('hsWell',287,494); decor('lantern',279,488); decor('lantern',285,489); decor('lantern',279,505); decor('tent',289,496,2)
+decor('netRack',272,494); decor('mushroom',270,505); decor('mushroom',286,499); decor('logpile',284,507); decor('barrel',291,503)
+# the lumber yard, south-east: the trade's shop, the saw-pit, timber stacked to season, the log cart
+fence(288,512,305,521,gaps={(296,512),(297,512),(298,512),(288,515),(288,516),(288,517)})
+bld('tw_shop',"Woodcutter's Trade",'shop',295,508,5,4)
+decor('sawpit',291,514,2); decor('timber',300,514,2); decor('timber',302,518); decor('logpile',293,518); decor('logpile',296,519); decor('logpile',290,519)
+decor('chopblock',298,516); decor('stump',303,514); decor('haycart',289,509,2); decor('crate',294,512); decor('crate',301,511); decor('lantern',299,512)
+# the Old Stones, in the deep wood across the brook: a clearing ringed by the old trees
+CX,CY=243,497
+for y in range(CY-9,CY+10):
+    for x in range(CX-10,CX+11):
+        d=math.hypot((x+0.5-CX-0.5)/1.1,y+0.5-CY-0.5)
+        if T(x,y) in (3,20): continue
+        if d<7.6: put(x,y,0,True,0)
+        elif d<9.2 and T(x,y) not in (1,7): put(x,y,1 if hsh2(x,y)<0.55 else 0,hsh2(x,y)>=0.55,0)
+for p in ((236,494),(238,503),(249,491),(240,489),(247,504)): decor('mushroom',*p)
+WD['cata']['3']={'x':CX,'y':CY,'face':math.pi/2,'name':'The Old Stones','where':'the Old Stones, the ring in the deep wood west of the village',
+    'door':['The doors are barred from within. Roots have grown over the threshold — and they are moving, very slowly.','Perhaps someone down in the village knows another way in.'],
+    'doorHeard':['The doors are barred from within. Roots have grown over the threshold — and they are moving, very slowly.','The sounds come from the Old Stones in the wood to the west. The woodsmen’s way down to their dead is there.'],
+    'goal':'Thornwood’s chapel up in the Chapel Oak is barred. Ask about the village — someone has heard something.',
+    'goalHeard':'Out to the Old Stones in the deep wood west of the village — the sounds come from there.',
+    'wayIn':'out in the deep wood west of the village the Old Stones stand in their ring round a sunken stone well, and a stair goes down it into the root-crypts.',
+    'journal':'Thornwood’s chapel, up in the Chapel Oak, is barred. The woodsmen used to carry their dead out to the Old Stones — a ring in the deep wood, older than the village — and down the stair in the stone well at its middle, into the crypts that run under the village to the oak’s roots. Since the dark came, there are sounds from the ring at night.'}
+# the people: those who were here (moved, with their stories), those who live here now — some on the ground, some up the trees
+mv={(277,498,'hunter'):(276,501,None),(286,497,'woodcutter'):(299,500,2),(283,500,'hunterF'):(292,485,1),(279,495,'woodcutter'):(301,517,None)}
+for (x,y,o),v in olds.items():
+    nx,ny,dk=mv.get((x,y,o),(278,502,None)); folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
+    if dk is not None: WD['villagers'][-1]['deck']=dk
+folk(271,492,'hunter',['I followed a hart out past the brook last week, right to the Old Stones. It stopped dead at the edge of the ring and would not go in — stood there trembling, and then it ran.','The deer won’t cross the ring. Never would. But they used to graze up to it.','And there’s singing in the ground there, of a night. Low. Like it comes up the well.'],
+     name='Old Esau',clue=3,after=['The deer graze in the ring again. I saw a doe drink from the brook by the Stones this morning, easy as you like.','You went down the well, didn’t you. God keep you, knight.'])
+folk(293,516,'peasantF',['When we fell timber out west by the Old Stones, every stroke of the axe comes back up out of the ground — a beat late.','Like something down there is knocking back.','The lads won’t cut west of the brook now. I don’t blame them.'],name='Sawyer Hannah',clue=3,after=['We’re cutting west of the brook again. The axe-strokes only come back off the trees now, the way they should.'])
+folk(259,502,'child',['From up here you can see over the trees to the Old Stones! At night there’s a light down in the middle of the ring — low and blue, like a candle in a well.','Ma says it’s marsh-fire. There isn’t any marsh.'],name='Benji',clue=3,after=['The blue light’s gone from the Stones. Ma says I can go and see them in the daytime now — if I take Esau.'])
+WD['villagers'][-1]['deck']=3
+folk(274,486,'monk',['I sweep the deck before the chapel every morning, though no one can go in. Roots have grown over the door, knight — up here, fifty feet from the ground.'],name='Brother Hollis')
+WD['villagers'][-1]['deck']=0
+folk(266,517,'peasant',['Up here we sleep above the smoke and the wolves both. My grandfather built this deck, and his father the one below it.'],name='Burner’s boy Caleb')
+WD['villagers'][-1]['deck']=4
+folk(290,519,'woodcutter',['Fell one, plant two. That’s the Thornwood law, and the wood’s still here, isn’t it.'],name='Woodcutter Gideon')
+folk(278,486,'hunterF',['The ladder’s sound, knight — up you go. The chapel’s at the top of the Chapel Oak, and the bridges take you to the rest of us.','Mind the bridges. They sway. That’s how you know they’re good rope.'],name='Ladder-keeper Mags')
+sign(285,473,'THORNWOOD\nWhere the old trees keep watch'); sign(258,489,'THE OLD STONES\n— west, over the brook. The woodsmen keep away.')
+sign(279,487,'THE CHAPEL OAK\nThe chapel is up the ladder. (Its doors are barred.)'); sign(287,511,'THE LUMBER YARD\nFell one, plant two.')
+for k,v in POOL.items():
+    x,y=map(int,k.split(','))
+    if T(x,y) not in (3,20): put(x,y,16,False)
+    WD['signs'][k]=v
+HT=['Strange things in the deep wood lately. Ask old Esau — he hunts out past the Old Stones.','The chapel up in the Chapel Oak’s been barred fifteen years. Nobody’s found another way in.']
+if isinstance(SQ['hints'],list): SQ['hints'][3]['out']=HT
+else: SQ['hints']['3']['out']=HT
+WD['villageRects'].append([X0,Y0,X1,Y1]); WD['townR']['Thornwood']=38
+cx,cy,rx,ry=272,497,38,27; WD['barriers'][3]=[cx,cy,rx,ry]
+ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
+WD['barrierSets']['3']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
+for z in WD['zones']:
+    if z['x0']<X1 and z['x1']>X0 and z['y1']>cy-ry-2 and z['y0']<cy+ry+2:
+        if z['y0']<cy-ry-2: z['y1']=cy-ry-3
+        elif z['y1']>cy+ry+2: z['y0']=cy+ry+3
+
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src
 for n in sorted(CON,key=lambda n:-CON[n][0]):
@@ -455,4 +579,4 @@ for n in sorted(CON,key=lambda n:-CON[n][0]):
 open(HEAD,'w',encoding='utf-8').write(new)
 json.dump(PT,open(D('data','pastimes.json'),'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
 hv=lambda o: 58<=o['x']<=136 and 42<=o['y']<=113
-print('villages: Hearthvale —',sum(1 for b in WD['buildings'] if hv(b)),'buildings,',sum(1 for v in WD['villagers'] if hv(v)),'villagers | Ironhold —',sum(1 for b in WD['buildings'] if 76<=b['x']<=143 and 222<=b['y']<=282),'buildings | Saltmere —',sum(1 for b in WD['buildings'] if ins2(b)),'buildings,',sum(1 for v in WD['villagers'] if ins2(v)),'villagers')
+print('villages: Hearthvale —',sum(1 for b in WD['buildings'] if hv(b)),'buildings,',sum(1 for v in WD['villagers'] if hv(v)),'villagers | Ironhold —',sum(1 for b in WD['buildings'] if 76<=b['x']<=143 and 222<=b['y']<=282),'buildings | Saltmere —',sum(1 for b in WD['buildings'] if ins2(b)),'buildings,',sum(1 for v in WD['villagers'] if ins2(v)),'villagers | Thornwood —',sum(1 for b in WD['buildings'] if ins3(b)),'buildings,',sum(1 for v in WD['villagers'] if ins3(v)),'villagers')

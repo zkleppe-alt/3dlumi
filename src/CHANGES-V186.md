@@ -304,3 +304,9 @@ After Oceanside harbour, as a beachfront town:
   dozen most recently visited and rebuilt from the data on return (geometry held flat at ≈22k instead of climbing).
   The JS heap still creeps a little per level (references held outside the rooms) — to chase later. The smoke test now
   starts a fresh page every 90 levels.
+
+## V202 — Thornwood, up in the trees
+- **tools/villages.py** Thornwood section: rect 236..310 × 466..528. Five giant trees with plank decks (WD.treetops.decks: the Chapel Oak, the Lodge Tree, the Forester's Tree, the Trapper's Tree, the Burner's Tree), four rope bridges, three ladders. The chapel (barred), the Hunter's Lodge, the Forester's Hut and two new treehouses (tw_home3, tw_home4) stand on the decks (`b.deck`). On the ground: the road, the fire-ring, the Hollow Log Inn, the lumber yard (Woodcutter's Trade, saw-pit, timber stacks, chopping block). `WD.flats` keeps the floor level under the decks.
+- **The Old Stones** (`WD.cata['3']`, 243,497): a ring of standing stones round a sunken stone well with a stair going down — Thornwood's way into the root-crypts (CFG[3].entrance `'circle'`). Clues: Old Esau, Sawyer Hannah, Benji (up in the Trapper's Tree).
+- **engine/treetops.js** (new): the overlay. Up a tree, `world.ground` is the deck or the sagging bridge and `canMove` keeps you on the boards; below, the decks are overhead (they fade as you walk under them), trunks and stilts are solid. Ladders climb like the wilds' ladders. Bridges sway, more under your feet. Treehouse doors only answer from the deck; folk below/above are out of earshot. `GAME.S.atUp` restores you up a tree from a save; `doorStep` carries `up` back out of a treehouse.
+- **world.js**: buildings with `deck` have no ground footprint, don't turn, aren't drawn by buildHouse; their door spots hide unless up; `lv.chapelLit`; `WD.flats`. **core.js**: auto doors honour `hide`. **decor.js**: sawpit, timber, chopblock.

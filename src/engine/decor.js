@@ -78,6 +78,14 @@ Object.assign(DECOR_KINDS,{
     const rp=B(0.5,0.06,1.4,wd,0,0.5,0.9,g); rp.rotation.x=-0.8; B(0.04,0.9,0.04,0x6a4a2a,0.55,1.2,0.55,g); B(0.3,0.2,0.02,rd,0.7,2.0,0.55,g); },
   slagheap(d,g){ const m=new THREE.Mesh(new THREE.ConeGeometry(0.9,0.75,9,1),new THREE.MeshLambertMaterial({color:0x2e2a28})); m.position.y=0.36; m.scale.set(1,1,0.8); m.rotation.y=hsh(d.x,d.y)*3; m.castShadow=true; g.add(m);   /* V199 */
     for(let i=0;i<5;i++) Sp(0.07,i%2?0x6a3a28:0x1e1c1c,(hsh(i,d.x)-0.5)*1.0,0.08,(hsh(d.y,i)-0.5)*0.8,g,5,4); },
+  sawpit(d,g){ g.position.x+=0.5; g.position.z+=0.5; const wd=0x7a5a36; [-0.75,0.75].forEach(o=>{ [-0.3,0.3].forEach(z=>{ const l=B(0.08,0.9,0.08,0x5a3e24,o,0,z,g); l.rotation.x=z>0?-0.25:0.25; }); B(0.12,0.1,0.7,0x5a3e24,o,0.82,0,g); });   /* V202: Thornwood's saw-pit: a log on trestles, a two-man saw stuck in the cut, sawdust */
+    const lg=Cy(0.26,0.26,2.2,10,0x8a6a42,0,0,0,g); lg.rotation.z=Math.PI/2; lg.position.y=1.12; [-1.1,1.1].forEach(o=>Cy(0.25,0.25,0.02,10,0xd0a870,o,0,0,g).rotation.z=Math.PI/2); g.children.slice(-2).forEach((c,i)=>{ c.position.set(i?1.11:-1.11,1.12,0); });
+    B(0.03,0.9,0.5,0x9aa0a4,0.3,0.75,0,g); B(0.06,0.22,0.06,wd,0.3,1.65,0.2,g); B(0.06,0.22,0.06,wd,0.3,0.55,0.2,g);
+    for(let i=0;i<6;i++) Sp(0.16,0xd8b884,(hsh(i,d.x)-0.5)*1.4,0.02,(hsh(d.y,i)-0.5)*0.9,g,6,4).scale.y=0.25; },
+  timber(d,g){ const n=(d.w||1)>1?2:1; g.position.x+=n*0.5-0.5; const c=[0xb08a5a,0xa07c4e,0xc09a68];   /* V202: squared timber stacked to season, with sticks between the courses */
+    for(let r=0;r<4;r++){ const along=r%2===0; for(let i=0;i<4;i++){ const o=-0.42+i*0.28; B(along?n*0.9+0.3:0.22,0.18,along?0.22:0.9,c[(i+r)%3],along?0:o,r*0.2,along?o:0,g); } } },
+  chopblock(d,g){ Cy(0.32,0.36,0.5,9,0x6a4a2a,0,0,0,g); Cy(0.3,0.3,0.02,9,0xc8a070,0,0.5,0,g); const ax=group(0.05,0.52,0,g); ax.rotation.z=-0.5; B(0.05,0.7,0.05,0x8a6a42,0,0,0,ax); B(0.04,0.14,0.22,0x9aa0a4,0,0.62,0.06,ax);   /* V202: the chopping block, its axe in it */
+    for(let i=0;i<3;i++){ const s=B(0.12,0.4,0.12,0xb08a5a,0.5+i*0.12,0,-0.3+i*0.18,g); s.rotation.z=0.3*(i-1); } },
   minecart(d,g){ const c=group(0,0,0,g); c.rotation.y=(d.r||0)+hsh(d.x,d.y)*0.4; B(0.66,0.42,0.48,0x5a4a3a,0,0.16,0,c); B(0.7,0.06,0.52,0x3a3632,0,0.56,0,c);   /* V199: an ore cart left on the rails */
     for(let i=0;i<4;i++) Cy(0.11,0.11,0.06,10,0x2a2622,(i%2-0.5)*0.46,0.11,(i>1?0.2:-0.2),c).rotation.x=Math.PI/2;
     if(!d.empty) for(let i=0;i<5;i++) Sp(0.09,0x4a4440,(hsh(i,d.y)-0.5)*0.4,0.62,(hsh(d.x,i)-0.5)*0.3,c,5,4);

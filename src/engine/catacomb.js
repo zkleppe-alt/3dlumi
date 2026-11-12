@@ -1577,7 +1577,7 @@ const CATACOMB=(function(){
       raiseWhy:['I was dead, knight. Truly dead. I counted my people until I could not see them — and the shadow took me in the middle of a sum, and hung me here with my ledger, to show the town what I had made of them.','And He has called me out of it, as He called Lazarus out of the tomb — by name. He did not count me. He called me. I am born again, and I will learn every name in Saltmere.'],
       goal:(c,inC,td)=>{ const nm=Object.keys(c.names||{}).length; return !c.seen?`${td.name}’s chapel is barred — go down the sea-stair in its churchyard.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep in the sea-caves.`:`Back down into ${td.name}’s sea-caves — ${td.general}’s tomb lies deepest.`)
         :nm<5?`Ring the Tide Bell in the flooded galleries, and find the uncounted — ${nm} of 5 names read.`:!(c.doors&&c.doors['0:9,9'])&&!c.bosskey?'The ledger-vault is open — the great key is inside.':!(c.doors&&c.doors['0:9,9'])?'The great door at the head of the net-menders’ hall.':`Up the stair to the nave — ${td.boss} waits.`; } },
-    3:{ entrance:'yew', wayIn:'in the churchyard an old yew has split open at its roots, and a stair goes down between them.', motif:'root',
+    3:{ entrance:'circle', wayIn:'out in the deep wood west of the village the Old Stones stand in their ring round a sunken stone well, and a stair goes down it into the root-crypts.', motif:'root',
       intro:['Damp earth and old leaves, and roots — roots everywhere, through the walls, through the tombs, thick as a man. The woodsmen of Thornwood are buried here.','The chapel overhead is bound by the dark. The way to it is down, among the roots.','Doors stay open once opened; halls stay cleared. Look for keys, and the map. And mind the dark below — it is darker than it ought to be.'],
       warden:{name:'The Rootbound Warden',tip:'👹 The Rootbound Warden — a brute grown through with roots: its blows come after a long heave. Roll clear, or parry, and strike while it reels.'},
       tool:{flag:'lantern',relic:'lantern',emoji:'🏮',name:'Deborah’s Lantern',take:'🙏 Take the lantern',zone:' · 🏮'},
@@ -1593,7 +1593,7 @@ const CATACOMB=(function(){
         codex:['Romans 5:12','Wherefore, as by one man sin entered into the world, and death by sin; and so death passed upon all men, for that all have sinned.'] },
       folk:{name:'Brother Ash',first:'The roots died back the day the chapel was cleansed — all of them, all at once. We have been clearing them since. Good firewood, as it turns out.',rest:'The General comes down with her lamp every evening, before she walks the walls. Below first, she says. Always below first.'},
       raiseWhy:['I was dead, knight. Truly dead. I hunted the rot everywhere but in myself — and the shadow grew up through me while I watched the road, and hung me here, split through with its roots.','And He has called me out of it, as He called Lazarus out of the tomb. He searched me and knew me, and did not throw me away. I am born again, and I will carry the lamp inward first.'],
-      goal:(c,inC,td)=>!c.seen?`${td.name}’s chapel is barred — go down between the roots of the old yew in its churchyard.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep among the roots.`:`Back down into ${td.name}’s root-crypts — ${td.general}’s tomb lies deepest.`)
+      goal:(c,inC,td)=>!c.seen?`${td.name}’s chapel is barred — go down the stone well in the Old Stones, in the wood west of the village.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep among the roots.`:`Back down into ${td.name}’s root-crypts — ${td.general}’s tomb lies deepest.`)
         :!c.heart?'Carry the lantern into the dark galleries, burn the roots — and find their heart.':!c.bosskey&&!(c.doors&&c.doors['0:9,9'])?'The roots have withered — the vault in the woodsmen’s hall is open. The great key is inside.':!(c.doors&&c.doors['0:9,9'])?'The great door at the head of the woodsmen’s hall.':`Up the stair to the nave — ${td.boss} waits.` },
     4:{ entrance:'well', wayIn:'in the market square, by the Caravan Bazaar, the old town well has run dry — and a rope ladder hangs down its shaft into the cisterns below.', motif:'sun',
       intro:['Dry, warm air, and sand underfoot — sand drifted in down the well-shaft, years of it. The caravan-folk of Dusthaven are buried here, in the cisterns their fathers cut.','The chapel overhead is bound by the dark. The way to it is down, through the old cisterns.','Shafts of noon light come down through the rock, and bronze stands stand in the dark to carry it. Doors stay open once opened; halls stay cleared. Look for keys, and the map.'],
@@ -2501,6 +2501,29 @@ const CATACOMB=(function(){
       shade(g); MOUTH[t]={x:mx+fx*1.9,z:mz+fz*1.9,face};
       world.spots.push({x:mx+fx*1.2,z:mz+fz*1.2,r:1.2,label:'Climb down',who:'The dry well',action:()=>{ ENGINE.go('cata'+t+':0'); }});
       { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.3&&d<Math.hypot(fx2-mx,fz2-mz)) return false; return base(fx2,fz2,tx,tz); }; }
+      return {x:mx,z:mz,mouth:MOUTH[t]}; }
+    if(CF.entrance==='circle'){   /* V202: Thornwood's way down: the Old Stones — a ring of standing stones in the deep wood, older than the village, round a
+      sunken stone well with a stair going down it (the woodsmen carried their dead out here, and down, into the root-crypts) */
+      const ST=[0x8a8678,0x7a776c,0x948f80,0x6e6c62], LI=[0x7a8a5a,0x8a9a62,0x6a7a4a]; const STONES=[];
+      const N=11, RR=4.3; for(let i=0;i<N;i++){ const a=i/N*Math.PI*2+0.15, lx=Math.sin(a)*RR, lz=Math.cos(a)*RR; if(Math.abs(lx)<1.6&&lz>2.5) continue;   /* the ring opens where the trail comes in */
+        const fallen=i===7, h=fallen?0.6:(i===2||i===3)?2.9:1.9+hsh(i,t)*1.3, w=0.7+hsh(t,i)*0.35, sg=group(lx,0,lz,g); sg.rotation.y=-a+(hsh(i,3)-0.5)*0.3;
+        const s=B(w,h,0.45+hsh(i,5)*0.15,ST[i%4],0,-0.15,0,sg); if(fallen){ s.rotation.z=Math.PI/2*0.92; s.position.set(0.9,0.3,0); } else { s.rotation.z=(hsh(i,9)-0.5)*0.14; s.rotation.x=(hsh(9,i)-0.5)*0.1; }
+        const cap=B(w*0.86,0.18,0.4,ST[(i+1)%4],0,h-0.2,0,sg); cap.visible=!fallen; Sp(0.22,LI[i%3],(hsh(i,2)-0.5)*w*0.6,h*0.35+hsh(2,i)*h*0.4,0.24,sg,6,5).scale.z=0.35;
+        if(!fallen){ B(0.06,0.42,0.02,0x4a4840,0,h*0.45,0.25,sg); B(0.26,0.06,0.02,0x4a4840,0,h*0.45+0.28,0.25,sg); }   /* a cross cut into it, later than the stone */
+        const wx=mx+Math.cos(face)*lx+Math.sin(face)*lz, wz=mz-Math.sin(face)*lx+Math.cos(face)*lz; STONES.push({x:wx,z:wz,r:fallen?0.9:0.55}); }
+      [[2,3]].forEach(([i0,i1])=>{ const a0=i0/N*Math.PI*2+0.15, a1=i1/N*Math.PI*2+0.15, ax=(Math.sin(a0)+Math.sin(a1))/2*RR, az=(Math.cos(a0)+Math.cos(a1))/2*RR, li=B(2.9,0.36,0.6,ST[2],ax*0.97,2.62,az*0.97,g); li.rotation.y=-(a0+a1)/2+Math.PI/2; });   /* one pair still carries its lintel */
+      // the well: a low round parapet of fitted stone, a gap in it toward the trail with a stair going down into the dark
+      const WR=1.75, pm=mt(0x8e8a7c); for(let i=0;i<20;i++){ const a=i/20*Math.PI*2, lx=Math.sin(a)*WR, lz=Math.cos(a)*WR; if(lz>1.2&&Math.abs(lx)<0.7) continue; const bk=B(0.62,0.55,0.4,i%2?0x8e8a7c:0x7e7a6e,lx,0,lz,g); bk.rotation.y=a; }
+      const pit=new THREE.Mesh(new THREE.CircleGeometry(WR-0.18,24),new THREE.MeshBasicMaterial({color:0x040404})); pit.rotation.x=-Math.PI/2; pit.position.y=0.04; g.add(pit);
+      const inner=new THREE.Mesh(new THREE.CylinderGeometry(WR-0.2,WR-0.35,0.5,24,1,true),new THREE.MeshLambertMaterial({color:0x3a3832,side:THREE.BackSide})); inner.position.y=0.3; g.add(inner);
+      for(let i=0;i<5;i++) B(0.95,0.09,0.32,0x8a857a,0,0.48-i*0.1,1.75-i*0.3,g);   /* the stair going down over the lip */
+      const mist=new THREE.Mesh(new THREE.CircleGeometry(WR-0.3,20),new THREE.MeshBasicMaterial({color:0x8ab0e0,transparent:true,opacity:0.12,depthWrite:false})); mist.rotation.x=-Math.PI/2; mist.position.y=0.12; g.add(mist);
+      world.anim.push(tt=>{ mist.material.opacity=0.08+0.06*Math.sin(tt*0.9); mist.rotation.z=tt*0.05; });
+      const lt=group(1.3,0,2.4,g); Cy(0.04,0.05,1.4,6,0x3a3a3a,0,0,0,lt); B(0.16,0.2,0.16,0x2a2a30,0,1.4,0,lt); themeFlame(0,1.48,0,lt,world.anim,0.8,CHAPEL_THEME(t));
+      shade(g); MOUTH[t]={x:mx+fx*2.9,z:mz+fz*2.9,face};
+      world.spots.push({x:mx+fx*2.0,z:mz+fz*2.0,r:1.1,label:'Descend',who:CS&&CS.name||'The Old Stones',action:()=>{ ENGINE.go('cata'+t+':0'); }});
+      { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<WR+0.35&&d<Math.hypot(fx2-mx,fz2-mz)) return false;
+          for(const s of STONES){ const e=Math.hypot(tx-s.x,tz-s.z); if(e<s.r+0.25&&e<Math.hypot(fx2-s.x,fz2-s.z)) return false; } return base(fx2,fz2,tx,tz); }; }
       return {x:mx,z:mz,mouth:MOUTH[t]}; }
     if(CF.entrance==='yew'){   /* V161: Thornwood's way down: an old yew split open at its roots, a stair going down between them */
       const tr=new THREE.Mesh(new THREE.CylinderGeometry(0.9,1.4,3.2,10),mt(0x4a3422)); tr.position.set(0,1.6,-0.6); g.add(tr);

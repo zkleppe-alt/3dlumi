@@ -259,7 +259,7 @@ const ENGINE=(function(){
     //  pushing that way. It arms once you've stepped clear of it, or stood a moment not pushing through it — so the door you
     //  arrive by never throws you straight back, yet turning round in the doorway takes you out again
     { const moving=l>0.08&&!(convo||busy||paused||hold), ml=Math.hypot(mvx,mvz)||1, now=performance.now();
-      for(const q of L.spots){ if(!q.auto) continue; const dd=Math.hypot(q.x-P.x,q.z-P.z), ar=q.ar||0.6, push=moving&&(q.auto==='any'||(mvx*q.auto[0]+mvz*q.auto[1])/ml>0.55);
+      for(const q of L.spots){ if(!q.auto||(q.hide&&q.hide())) continue; const dd=Math.hypot(q.x-P.x,q.z-P.z), ar=q.ar||0.6, push=moving&&(q.auto==='any'||(mvx*q.auto[0]+mvz*q.auto[1])/ml>0.55);
         if(!q._armed){ if(!q._t0) q._t0=now; if(dd>ar+0.45||(now-q._t0>650&&!push)) q._armed=true; continue; }
         if(dd<ar&&push){ q._armed=false; q._t0=now; if(q.action) q.action(q); else if(q.lines) speak(q.who,q.lines); break; } } }
     const gy=L.ground(P.x,P.z); if(Math.hypot(P.x-J.lx,P.z-J.lz)>1.5){ J.on=false; J.h=0; J.v=0; P.y=gy; } J.lx=P.x; J.lz=P.z;   // set down somewhere new: no falling from where you were

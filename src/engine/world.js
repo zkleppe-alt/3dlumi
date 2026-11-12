@@ -884,7 +884,7 @@ function buildWorld(WD,opt){
   const desert=BIO?(x,y)=>bio(x,y)===2:(x,y)=>!opt.land&&x>=SX(78)&&x<=SX(107)&&y>=SY(56)&&y<=SY(82), ashland=BIO?(x,y)=>{ const b=bio(x,y); return b===3||b===8; }:(x,y)=>!opt.land&&x>=SX(136)&&x<=SX(180)&&y>=SY(134)&&y<=SY(167);
   lv.bio=bio; lv.BIOME=['meadow','forest','desert','ash','alpine','marsh','coast','highland','scorched','farmland'];
   lv.towns=WD.towns||[]; lv.desert=desert; lv.ashland=ashland; lv.hemi=hemi;   /* V131: weather.js reads these */
-  const bAt=new Map(); WD.buildings.forEach(b=>{ for(let y=b.y;y<b.y+b.h;y++) for(let x=b.x;x<b.x+b.w;x++) bAt.set(y*W+x,b); });
+  const bAt=new Map(); WD.buildings.forEach(b=>{ if(b.deck!==undefined) return; /* V202: a house up a tree has no footprint on the ground */ for(let y=b.y;y<b.y+b.h;y++) for(let x=b.x;x<b.x+b.w;x++) bAt.set(y*W+x,b); });
   const dAt=new Set(); WD.decor.forEach(d=>{ for(let j=0;j<(d.w||1);j++) for(let i=0;i<(d.w||1);i++) dAt.add((d.y+j)*W+d.x+i); });
   // the barrier rings, as the game keeps them (BARRIERS[i].set, after its own edits)
   const rings={}; Object.entries(WD.barrierSets||{}).forEach(([i,arr])=>{ const s=new Set(); for(let k=0;k<arr.length;k+=2) s.add(arr[k+1]*W+arr[k]); rings[i]=s; });
@@ -908,6 +908,7 @@ function buildWorld(WD,opt){
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const k=y*W+x, t=T(x,y), e=E(x,y); let ok=(OPEN.has(t)||(t===19&&OW&&OW.m(x,y)>0.5))&&!bAt.has(k)&&!dAt.has(k);
       if(ok) for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]) if(inB(x+a,y+b)&&E(x+a,y+b)!==e){ ok=false; break; }
       D[k]=ok?1e9:0; }
+    (WD.flats||[]).forEach(([x0,y0,x1,y1])=>{ for(let y=Math.max(0,y0);y<=Math.min(H-1,y1);y++) for(let x=Math.max(0,x0);x<=Math.min(W-1,x1);x++) D[y*W+x]=0; });   // V202: ground kept level (Thornwood's floor under its decks)
     const chamfer=(A,w,h,init)=>{ for(let y=0;y<h;y++) for(let x=0;x<w;x++){ const k=y*w+x; if(x) A[k]=Math.min(A[k],A[k-1]+1); if(y) A[k]=Math.min(A[k],A[k-w]+1); if(x&&y) A[k]=Math.min(A[k],A[k-w-1]+1.4); if(y&&x<w-1) A[k]=Math.min(A[k],A[k-w+1]+1.4); }
       for(let y=h-1;y>=0;y--) for(let x=w-1;x>=0;x--){ const k=y*w+x; if(x<w-1) A[k]=Math.min(A[k],A[k+1]+1); if(y<h-1) A[k]=Math.min(A[k],A[k+w]+1); if(x<w-1&&y<h-1) A[k]=Math.min(A[k],A[k+w+1]+1.4); if(y<h-1&&x) A[k]=Math.min(A[k],A[k+w-1]+1.4); } };
     chamfer(D,W,H);
@@ -1400,7 +1401,7 @@ function buildWorld(WD,opt){
     instList(ch,lava,UNIT,glow(0xff6a1a));
     if(tilesOnly) return;
     // the chunk's buildings, decorations, signs and ships
-    WD.buildings.forEach(b=>{ if(chunkAt(b.x+b.w/2,b.y+b.h/2)===ch) buildHouse(b,ch.g); });
+    WD.buildings.forEach(b=>{ if(b.deck===undefined&&chunkAt(b.x+b.w/2,b.y+b.h/2)===ch) buildHouse(b,ch.g); });   /* (the treetops draw their own) */
     WD.decor.forEach(d=>{ if(chunkAt(d.x,d.y)!==ch) return; const fn=DECOR_KINDS[d.kind]; if(!fn) return; const g=new THREE.Group(); fn(d,g,lv.anim); if(PERSON_SIZED.has(d.kind)) g.scale.setScalar(VIEWMODE.ps(lv));
       g.position.x+=d.x+(d.w===2?1:0.5); g.position.z+=d.y+(d.w===2?1:0.5); g.position.y=EH(d.x,d.y)+0.02+(ROLL?roll(d.x+(d.w===2?1:0.5),d.y+(d.w===2?1:0.5)):0); if(d.kind==='lighthouse'&&LIFT(d.x,d.y)>1) g.scale.multiplyScalar(1.7); if(typeof LOOK2!=='undefined'&&LOOK2){ soften(g); g.traverse(o=>{ if(o.isMesh&&o.geometry&&o.geometry.type==='IcosahedronGeometry'&&o.material&&o.material.userData.soft){ const gg=o.geometry.parameters; o.geometry=new THREE.SphereGeometry(gg.radius,14,10); } }); const r=ROLL?roll(d.x+(d.w===2?1:0.5),d.y+(d.w===2?1:0.5)):0; g.position.y+=r; } ch.g.add(shade(g)); });   // the capital's harbour lights stand tall
     signs.forEach(s=>{ if(chunkAt(s.x,s.y)!==ch) return; const g=group(s.wx,EH(Math.floor(s.wx),Math.floor(s.wz))+0.02,s.wz,ch.g);
@@ -1417,7 +1418,7 @@ function buildWorld(WD,opt){
   // the heart of its town (north, east or west instead) wherever the ground on that side is open and joined to its old doorstep,
   // so a village's doors look in on its square. The footprint, and so the walk, is the game's own; only the face turns.
   const FACE={};
-  if(!opt.land) WD.buildings.forEach(b=>{ if(b.id==='sg_keep'||b.id==='sg_cathedral'||b.id==='home_house'||b.id==='home_barn') return;
+  if(!opt.land) WD.buildings.forEach(b=>{ if(b.deck!==undefined) return; if(b.id==='sg_keep'||b.id==='sg_cathedral'||b.id==='home_house'||b.id==='home_barn') return;
     const bx=b.x+b.w/2, by=b.y+b.h/2; let best=null, bd=1e9; (WD.towns||[]).forEach(([n,tx,ty])=>{ const d=Math.hypot(tx+0.5-bx,ty+0.5-by); if(d<bd){ bd=d; best=[tx+0.5,ty+0.5]; } });
     if(!best||bd>26||bd<2.5) return; const vx=best[0]-bx, vy=best[1]-by;
     const dirs=[['S',0,1],['N',0,-1],['E',1,0],['W',-1,0]].map(([d,a,c])=>[d,a,c,(a*vx+c*vy)/Math.hypot(vx,vy)]).sort((p,q)=>q[3]-p[3]);
@@ -1451,9 +1452,11 @@ function buildWorld(WD,opt){
     return {x:b.x-0.2,z:F.ty+0.5,auto:[1,0],sx:b.x-0.6,sz:F.ty+0.5,face:-Math.PI/2}; };
   lv.doorAt=doorAt;
   WD.buildings.forEach(b=>{ const into=opt.enter&&opt.enter(b), DA=doorAt(b), x=DA.x, z=DA.z;
-    lv.spots.push(into ? {x,z,r:1.2,label:'Enter',who:b.name,action:into,auto:DA.auto,hinges:hingeOf[b.id]||[]} : {x,z,r:1.2,label:'Door',who:b.name,lines:['The door is barred.'],auto:DA.auto}); });
+    const hide=b.deck!==undefined?()=>!(lv.treeUp&&lv.treeUp()):undefined;   /* V202: a treehouse's door is only at hand up on its deck */
+    lv.spots.push(into ? {x,z,r:1.2,label:'Enter',who:b.name,action:into,auto:DA.auto,hinges:hingeOf[b.id]||[],hide} : {x,z,r:1.2,label:'Door',who:b.name,lines:['The door is barred.'],auto:DA.auto,hide}); });
   doorSwing(lv);
-  lv.doorStep=id=>{ const b=WD.buildings.find(q=>q.id===id), D=doorAt(b); return {x:D.sx,z:D.sz,face:D.face,yaw:D.face}; };
+  lv.doorStep=id=>{ const b=WD.buildings.find(q=>q.id===id), D=doorAt(b); return {x:D.sx,z:D.sz,face:D.face,yaw:D.face,up:b.deck!==undefined}; };
+  lv.chapelLit=b=>!!(opt.chapelLight&&opt.chapelLight(b));
   // ── ships: one hull per run of bow(36) / deck(37) / stern(38) tiles ──
   const ships=[]; for(let y=0;y<H;y++){ let x=0; while(x<W){ const t=T(x,y); if(t===36||t===38){ let x2=x; while(x2+1<W&&T(x2+1,y)>=36&&T(x2+1,y)<=38) x2++;
       const wide=T(x,y+1)>=36&&T(x,y+1)<=38, above=T(x,y-1)>=36&&T(x,y-1)<=38; if(!above) ships.push({x,y,len:x2-x+1,wide,bowEast:T(x2,y)===36}); x=x2+1; } else x++; } }
