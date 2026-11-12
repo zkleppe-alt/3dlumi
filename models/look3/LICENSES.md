@@ -8,3 +8,4 @@
 | Knight.glb | Kay Lousberg — KayKit Adventurers | CC0 — the pack's own LICENSE.txt |
 | GLTFLoader.js, SkeletonUtils.js | three.js r128 | MIT |
 | ../anim_ual.js (the knight's and the townsfolk's motion: walk, jog, sword stance and blows, shield guard, roll, jump, fall, landing, death, sowing, nodding) | Quaternius — Universal Animation Library 1 and 2, Standard (the zips from quaternius.com), baked onto the game's bone names by tools/anim/bake_ual.html | CC0 — the packs' own License.txt (LICENSE-universal-animation-library.txt) |
+| body/Superhero_Male_FullBody.gltf/.bin, body/Superhero_Female_FullBody.gltf/.bin, body/Hair_*.gltf/.bin, body/Eyebrows_*.gltf/.bin, body/T_Eye_Brown.png (textures other than the eye stripped; everything is coloured by code) | Quaternius — Universal Base Characters, Standard (the zip from quaternius.com) | CC0 — the pack's own License_Standard.txt (LICENSE-universal-base-characters.txt) |
