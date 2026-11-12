@@ -72,6 +72,10 @@ Object.assign(DECOR_KINDS,{
     const n=B(0.2,0.5,0.22,c,0,0.8,0.5,g); n.rotation.x=0.5; B(0.18,0.2,0.4,c,0,1.15,0.72,g); B(0.06,0.4,0.3,m,0,0.95,0.42,g); B(0.06,0.4,0.06,m,0,0.55,-0.5,g);
     if(typeof ANIM3!=='undefined'){ const cc=new THREE.Color(c); ANIM3.dress(g,d.donkey?'donkey':'horse',d.donkey?{}:{tint:['#'+cc.clone().multiplyScalar(0.7).getHexString(),'#'+cc.getHexString(),'#'+cc.clone().lerp(new THREE.Color(0xffffff),0.25).getHexString()],mane:'#'+new THREE.Color(m).getHexString()}); } },   /* V190: rigged here too (a corral built without an animation list) */
   mule(d,g,an){ DECOR_KINDS.horse({c:'#8a7a6a',m:'#3a3028',x:d.x,y:d.y,donkey:true},g,an); if(!(typeof LOOK2!=='undefined'&&LOOK2)) B(0.5,0.25,0.4,0x9a7a48,0,0.95,0,g); else { const pk=B(0.42,0.22,0.36,0x9a7a48,0,0.82,0,g); } },
+  lifeguard(d,g){ const wd=0xe8e2d4, rd=0xc8402e;   /* V199: a lifeguard's tower on the sand, Oceanside-fashion */
+    [[-0.4,-0.4],[0.4,-0.4],[-0.4,0.4],[0.4,0.4]].forEach(([x,z])=>B(0.08,1.1,0.08,wd,x,0,z,g)); B(1.1,0.08,1.1,wd,0,1.1,0,g);
+    B(1.0,0.75,0.9,wd,0,1.18,0,g); B(0.7,0.35,0.04,0x2a3a4a,0,1.45,0.46,g); const rf=prism(1.3,0.45,1.2,rd); rf.position.y=1.93; g.add(rf);
+    const rp=B(0.5,0.06,1.4,wd,0,0.5,0.9,g); rp.rotation.x=-0.8; B(0.04,0.9,0.04,0x6a4a2a,0.55,1.2,0.55,g); B(0.3,0.2,0.02,rd,0.7,2.0,0.55,g); },
   slagheap(d,g){ const m=new THREE.Mesh(new THREE.ConeGeometry(0.9,0.75,9,1),new THREE.MeshLambertMaterial({color:0x2e2a28})); m.position.y=0.36; m.scale.set(1,1,0.8); m.rotation.y=hsh(d.x,d.y)*3; m.castShadow=true; g.add(m);   /* V199 */
     for(let i=0;i<5;i++) Sp(0.07,i%2?0x6a3a28:0x1e1c1c,(hsh(i,d.x)-0.5)*1.0,0.08,(hsh(d.y,i)-0.5)*0.8,g,5,4); },
   minecart(d,g){ const c=group(0,0,0,g); c.rotation.y=(d.r||0)+hsh(d.x,d.y)*0.4; B(0.66,0.42,0.48,0x5a4a3a,0,0.16,0,c); B(0.7,0.06,0.52,0x3a3632,0,0.56,0,c);   /* V199: an ore cart left on the rails */

@@ -277,3 +277,30 @@ The realm roughly doubles, from 370×420 to 760×830 tiles, and ends in a real c
 - Ironhold's dark dome and its blocking ring are redrawn round the whole town (east of the west road); the demon zones
   that sat inside it moved out. The keep contest marshals now stand either side of their keep's door (Ironhold and
   Hellgate), wherever it is. A planned way in faces its own way (catacomb.js), so its Descend prompt is at its mouth.
+
+## V201 — Saltmere, the harbour town (the villages, 3 of 10)
+
+After Oceanside harbour, as a beachfront town:
+- **The harbour**: a basin behind two breakwaters (the lighthouse on the south one), three plank slips, the quay with the
+  Fish Market, the Harbourmaster's House and a Chandlery. Your boat now moors in the basin between the slips.
+- **The beach**: a long sand beach with a **surf break** (tile 21, `PT.surf` regenerated) either side of a long **pier**
+  on pilings with rails out to a pier-head (`WORLD_DATA.piers`, dressed in luminar.js), lifeguard towers (new decor
+  `lifeguard`), umbrellas, palms, a sandcastle. **The Strand** — a boardwalk from the quay to the east road — with the
+  inn and the beach houses along it, every door to the sea. Behind: the chapel on its bluff (barred), a little square
+  with a fountain. 15 buildings (was 5); 10 new homes (the Surf Shack, the Lifeguard's, Old Peter's, Rhoda and Jonah's,
+  the Boatwright's, …). Saltmere is now walkable end to end.
+- **The Gull Head and the Grotto** (`WORLD_DATA.cata[2]`): the headland west of the harbour; a channel from the open
+  sea under a rock arch (catacomb.js, `arch`) into a grotto pool with a landing and the sea-stair. **Only a boat can reach
+  it**: sail in, Dock at the landing (the boat stays moored in the grotto), Descend; come back up, Board, sail out.
+  The fisherfolk rowed their dead in this way to the brothers (Old Ezra); a small bell rings in there at the turn of the
+  tide (Fishwife Leah); Jonah rowed in after crabs and found the steps (Tobit) — Rhoda's side quest.
+- **Harbourmaster Bart** (`villagers[].role:'harbour'`, sailing.js `world.boatHome`): if your boat is moored anywhere
+  else — in the grotto when you came up through the chapel, say — the harbour lads row her round to the quay.
+- The secret "lonely island" (a rectangle left over by the growing, ten tiles off the beach) is now a small island
+  further out with its secret; sea fishing spots found again along the new shore; Saltmere's dome and ring redrawn
+  round the whole town and the Gull Head.
+- **Memory** (core.js): every level ever visited used to stay built for the whole session (≈5 MB and 200 geometries
+  each); a run through all 172 levels exhausted the test browser. House and shop interiors are now kept only for the
+  dozen most recently visited and rebuilt from the data on return (geometry held flat at ≈22k instead of climbing).
+  The JS heap still creeps a little per level (references held outside the rooms) — to chase later. The smoke test now
+  starts a fresh page every 90 levels.

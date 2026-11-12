@@ -2521,7 +2521,10 @@ const CATACOMB=(function(){
       const boat=group(1.7,0,-0.1,g); boat.rotation.y=0.4; B(0.6,0.3,1.6,0x5a3e24,0,0,0,boat); B(0.5,0.08,1.4,0x3a2a1a,0,0.3,0,boat);
       const lt=group(-1.6,0,0.6,g); Cy(0.04,0.05,1.6,6,0x3a3a3a,0,0,0,lt); B(0.16,0.2,0.16,0x2a2a30,0,1.6,0,lt); themeFlame(0,1.68,0,lt,world.anim,0.8,CHAPEL_THEME(t));
       shade(g); MOUTH[t]={x:mx+fx*1.7,z:mz+fz*1.7,face};
-      world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:'The sea-stair',action:()=>{ ENGINE.go('cata'+t+':0'); }});
+      if(CS&&CS.arch){ const [ax,az,aw]=CS.arch, ar=group(ax,0,az,world.scene), rk=mt(0x6a655c);   /* V199: the arch of the Gull Head over the channel into the Grotto */
+        [-1,1].forEach(sd=>{ const p2=new THREE.Mesh(new THREE.CylinderGeometry(0.9,1.3,4.2,7),rk); p2.position.set(sd*aw*0.5,1.9,0); ar.add(p2); });
+        const sp=new THREE.Mesh(new THREE.TorusGeometry(aw*0.5,0.85,6,12,Math.PI),rk); sp.position.y=3.4; sp.scale.set(1,0.75,1.4); ar.add(sp); const cap=new THREE.Mesh(new THREE.SphereGeometry(1.4,8,5),rk); cap.position.y=4.3; cap.scale.set(aw*0.6,0.6,1.3); ar.add(cap); shade(ar); }
+      world.spots.push({x:mx+fx*1.05,z:mz+fz*1.05,r:1.1,label:'Descend',who:CS&&CS.name||'The sea-stair',action:()=>{ ENGINE.go('cata'+t+':0'); }});
       { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.3&&d<Math.hypot(fx2-mx,fz2-mz)) return false; return base(fx2,fz2,tx,tz); }; }
       return {x:mx,z:mz,mouth:MOUTH[t]}; }
     if(CF.entrance==='adit'){   /* V156: Ironhold's way down: an old mine adit cut into a knoll of rock, timbered, its rails running in under a lantern */

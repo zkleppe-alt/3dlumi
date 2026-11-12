@@ -89,6 +89,7 @@ function sailing(world,D){
   function landAhead(){ for(const r of [0.9,1.4]){ const fx=Math.floor(P.x+Math.sin(P.face)*r), fy=Math.floor(P.z+Math.cos(P.face)*r), t=world.T(fx,fy);
       if((fx!==Math.floor(P.x)||fy!==Math.floor(P.z))&&world.WK(fx,fy)&&(!SAIL.has(t)||t===12)&&world.barrierAt(fx,fy)<0) return [fx,fy]; } return null; }
 
+  world.boatHome=()=>{ if(boating||!S().boat) return false; S().boat=null; placeMoored(); GAME.save(); return true; };   // V199: the harbourmaster sends the lads to row her round to the quay
   const boardSpot={x:0,z:0,r:1.5,label:'Board',who:'Your boat',action:board};
   const dockSpot={x:0,z:0,r:0.2,label:'Dock',who:'The shore',action:()=>{ const a=landAhead(); if(a) dock(a[0],a[1]); }};
   const reg=D.regatta, regSpot=reg&&{x:reg.x+0.5,z:reg.y+0.5,r:1.6,label:'Regatta',who:'The Regatta',action:()=>world.openRegatta&&world.openRegatta({x:reg.x+0.5,z:reg.y-0.5,face:0})};

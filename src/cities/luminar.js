@@ -144,6 +144,19 @@
   world.guarded=(x,y)=>{ for(const tw of world.watched()) if(Math.hypot(x+0.5-tw[1],y+0.5-tw[2])<((WD.townR&&WD.townR[tw[0]])||GUARD_R)) return true; return false; };   // V199: a re-planned village is guarded to its edges
   /* V199: THE CLUES — a few villagers (WD.villagers[].clue = the town) have heard the sounds from the catacombs' way in. Hearing one marks the journal
      and turns the quest goal toward it; once the way is found (or the chapel cleansed) they say what they say after. */
+  /* V199: THE PIERS (WD.piers: [x0,y0,x1,y1] in tiles) stand on pilings, with a rail along each side where they run over the water */
+  (WD.piers||[]).forEach(([x0,y0,x1,y1])=>{ const g=new THREE.Group(), wd=new THREE.MeshLambertMaterial({color:0x5e4026}), rl=new THREE.MeshLambertMaterial({color:0x7a5a38}); world.scene.add(g);
+    const over=(x,y)=>{ const t=world.T(Math.floor(x),Math.floor(y)); return t===12||t===3||t===20||t===21; }, deck=(x,z)=>world.ground(x,z);
+    const box=(w,h,d,m,x,y,z)=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m); b.position.set(x,y,z); b.castShadow=true; g.add(b); return b; };
+    const side=(ax,az,bx,bz)=>{ const L=Math.hypot(bx-ax,bz-az), n=Math.max(1,Math.round(L/2)); let run=null;
+      for(let i=0;i<=n;i++){ const x=ax+(bx-ax)*i/n, z=az+(bz-az)*i/n, wet=world.T(Math.floor(x-(bx===ax?0.01:0)),Math.floor(z))!==12||true; const y=deck(x,z);
+        if(!over(x+(ax===bx?(ax===x0?0.3:-0.3):0),z+(az===bz?(az===y0?0.3:-0.3):0))) { run=null; continue; }
+        box(0.22,y+1.6,0.22,wd,x,(y-1.6)/2+0.0,z); box(0.12,0.9,0.12,wd,x,y+0.45,z);
+        if(run){ const mx=(run[0]+x)/2, mz=(run[1]+z)/2, ln=Math.hypot(x-run[0],z-run[1]); const r=box(ax===bx?0.08:ln,0.08,ax===bx?ln:0.08,rl,mx,y+0.85,mz); }
+        run=[x,z]; } };
+    side(x0,y0,x0,y1+1); side(x1+1,y0,x1+1,y1+1); if(x1-x0>2) side(x0,y1+1,x1+1,y1+1); });   // (a narrow run joins its pier-head: no rail across it)
+  WD.villagers.forEach(v=>{ if(v.role!=='harbour') return; const f=world.folk.find(q=>q.key==='v:'+v.x+','+v.y+':'+v.outfit); if(!f) return; f.label='Talk';   // V199: the harbourmaster fetches your boat home
+    f.action=()=>{ const away=!!S().boat; ENGINE.speak(f.who,away?['Your boat’s out somewhere, knight? Say no more.','I’ll send the lads to row her round. She’ll be at the quay before you are.']:['Your boat’s at the quay, knight, snug as you like. Mind the swell past the breakwater.'],f,()=>{ if(away&&world.boatHome&&world.boatHome()) UI.toast('⛵ The harbour lads row your boat round to the Saltmere quay.',2600); }); }; });
   WD.villagers.forEach(v=>{ if(v.clue===undefined) return; const t=v.clue, f=world.folk.find(q=>q.key==='v:'+v.x+','+v.y+':'+v.outfit); if(!f) return; f.label='Talk';
     f.action=()=>{ const s=S(), c=(s.cata&&s.cata[t])||{}, CS=WD.cata&&WD.cata[t]; if((c.seen||cleansed(t))&&v.after){ ENGINE.speak(f.who,v.after,f); return; }
       ENGINE.speak(f.who,v.lines,f,()=>{ const h=s.cataHeard||(s.cataHeard={}); if(h[t]||!CS) return; h[t]=true; GAME.save();

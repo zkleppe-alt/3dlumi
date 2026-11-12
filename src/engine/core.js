@@ -100,7 +100,16 @@ const ENGINE=(function(){
   function unstick(lv,quiet){ lv=lv||L; if(!lv||lv.custom) return false; if(freeAt(lv,P.x,P.z)&&!blocked(P.x,P.z)) return false; const cx=P.x, cz=P.z;
     for(let r=0.5;r<40;r+=0.5){ const n=Math.max(8,Math.round(r*8)); for(let i=0;i<n;i++){ const a=i/n*Math.PI*2, x=cx+Math.cos(a)*r, z=cz+Math.sin(a)*r; if(freeAt(lv,x,z)&&!blocked(x,z)){ P.x=x; P.z=z; P.y=lv.ground?lv.ground(x,z):0; if(!quiet) UI.toast('🧭 Back on open ground.',1200); return true; } } }
     return false; }
-  function get(id){ let lv=levels[id]; if(lv&&lv.lazy){ const b=lv.lazy(); b.id=id; lv=add(b); } return lv; }
+  function get(id){ let lv=levels[id]; if(lv&&lv.lazy){ const lz=lv.lazy, b=lv.lazy(); b.id=id; lv=add(b); if(/^in:/.test(id)) lv._lazy=lz; } return lv; }
+  /* V201: a house or shop interior is built when you step in and kept while you might come back — but only the dozen you
+     were in most lately: the rest are let go (their geometry and textures freed) and built again from the data if you
+     return. Before, every level ever visited stayed in memory, and a long session could exhaust a phone's. */
+  const KEEP_ROOMS=12;
+  function freeScene(sc){ if(!sc) return; sc.traverse(o=>{ if(o.geometry&&o.geometry.dispose) o.geometry.dispose(); const ms=Array.isArray(o.material)?o.material:o.material?[o.material]:[];
+      ms.forEach(m=>{ for(const k in m){ const v=m[k]; if(v&&v.isTexture&&v.dispose) v.dispose(); } if(m.dispose) m.dispose(); }); }); }
+  function evict(){ const cur=L&&L.id, ids=Object.keys(levels).filter(k=>levels[k]&&levels[k]._lazy&&k!==cur);
+    if(ids.length<=KEEP_ROOMS) return; ids.sort((a,b)=>(levels[a]._used||0)-(levels[b]._used||0));
+    ids.slice(0,ids.length-KEEP_ROOMS).forEach(k=>{ const lv=levels[k]; try{ freeScene(lv.scene); }catch(e){} levels[k]={id:k,lazy:lv._lazy}; }); }
   function place(lv,sp){ if(typeof ootLight==='function') ootLight(lv.scene); if(typeof COMBAT!=='undefined') COMBAT.reset(); K.guarding=false; K.alert=false; L=lv; if(typeof sp==='function') sp=sp(lv); sp=sp||lv.spawn||{x:0,z:0};
     if(!lv.custom||lv.custom.knight!==false) lv.scene.add(K);
     (lv.spots||[]).forEach(q=>{ q._armed=false; q._t0=0; });   // a door you arrive by won't take you straight back out
@@ -117,7 +126,7 @@ const ENGINE=(function(){
     if(c&&c.onEnter) c.onEnter(sp);
     if(lv.banner) speak(lv.name,[lv.banner]); }
   function go(id,sp){ if(busy) return; const lv=get(id); if(!lv) return; busy=true; convo=null; say.hidden=true; UI.close(); fade.classList.add('on');
-    setTimeout(()=>{ if(L&&L.onLeave) L.onLeave(); place(lv, sp||lv.spawn); GAME.save(); fade.classList.remove('on'); setTimeout(()=>busy=false,200); }, calm?10:380); }
+    setTimeout(()=>{ if(L&&L.onLeave) L.onLeave(); place(lv, sp||lv.spawn); lv._used=performance.now(); try{ evict(); }catch(e){} GAME.save(); fade.classList.remove('on'); setTimeout(()=>busy=false,200); }, calm?10:380); }
   function start(id,sp){ hud(); dressKnight(); const lv=get(id); place(lv, sp||lv.spawn); requestAnimationFrame(frame); }
 
   // ── input: keys, joystick, drag to turn, wheel to zoom, and action buttons ──

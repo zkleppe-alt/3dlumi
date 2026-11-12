@@ -18,7 +18,7 @@ def const(name):
     i=src.index('const '+name+'='); j=src.index('\n',i); s=src[i+len(name)+7:j]; return [i,j,json.loads(s[:-1] if s.endswith(';') else s),s.endswith(';')]
 CON={n:const(n) for n in ('WORLD_DATA','DIALOGUE_DATA','SIDEQUEST_DATA')}
 WD,DD,SQ=CON['WORLD_DATA'][2],CON['DIALOGUE_DATA'][2],CON['SIDEQUEST_DATA'][2]
-PT=json.load(open(D('data','pastimes.json'),encoding='utf-8'))
+PT=json.load(open(D('data','pastimes.json'),encoding='utf-8'))   # (grow.py has just written it from the V197 backup)
 W,H=WD['W'],WD['H']; N=W*H; raw=bytearray(base64.b64decode(WD['raw']))
 T=lambda x,y: raw[y*W+x]
 def put(x,y,t,walk,e=None):
@@ -288,10 +288,171 @@ for z in WD['zones']:
     if z['x0']==67 and z['y0']==274: z.update({'x0':58,'y0':262,'x1':70,'y1':283})
     elif z['x0']==97 and z['y0']==270: z.update({'x0':144,'y0':255,'x1':160,'y1':280})
 
+
+# ════════════════════════════════════ SALTMERE ════════════════════════════════════
+# A harbour town, after Oceanside: the harbour basin behind its breakwaters, the quay and its fish market, a long sand beach
+# with a surf break and a long pier out over the water, the Strand — a boardwalk of beach houses facing the sea — and the
+# chapel on its bluff behind. West of the harbour, the Gull Head: a headland of rock with a grotto in it that only a boat can
+# reach. Saltmere's fisherfolk rowed their dead in at slack water to the landing inside, and the brothers carried them down
+# the sea-stair to the caves under the town (the catacomb's own story). No one has rowed in since the dark came.
+X0,Y0,X1,Y1=24,666,160,745
+ins2=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
+olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins2(v)}
+keepD=[d for d in WD['decor'] if ins2(d) and d['kind']=='regatta']
+WD['decor']=[d for d in WD['decor'] if not ins2(d)]+keepD
+WD['villagers']=[v for v in WD['villagers'] if not ins2(v)]
+regT=(T(88,716),raw[N+716*W+88])
+for k in [k for k in WD['signs'] if ins2(dict(zip('xy',map(int,k.split(','))))) and k!='88,716']: WD['signs'].pop(k)
+SEA=lambda x,y: put(x,y,3,False,0)
+for y in range(Y0,Y1+1):
+    for x in range(X0,X1+1):
+        t=T(x,y)
+        if y<=699 and x>=44: 
+            if (x in (72,73) and y<=690 and t==2): put(x,y,2,True,0); continue
+            if t in (1,7) and (y<=680 and (x<58 or x>150)): continue
+            put(x,y,0,True,0)
+        elif y>=700 and x>=44: SEA(x,y)
+        elif x<44 and y>=684: SEA(x,y)
+raw[88+716*W]=regT[0]; raw[N+716*W+88]=regT[1]
+# the Gull Head: a headland of rock, its grotto, the landing and the channel in from the open sea under an arch
+for y in range(682,720):
+    for x in range(24,54):
+        if ((x-38)/14.0)**2+((y-700)/17.0)**2<=1 or (40<=x<=51 and 688<=y<=713): put(x,y,33,False,0)
+for y in range(704,722):
+    for x in (37,38): SEA(x,y)
+for y in range(700,706):
+    for x in range(33,43): SEA(x,y)
+for y in range(695,700):
+    for x in range(34,42): put(x,y,19,True,0)
+# the harbour: basin, breakwaters, quay and slips
+for y in range(700,716):
+    for x in range(52,77): SEA(x,y)
+for y in range(696,718):
+    for x in (77,78): put(x,y,33,False,0)
+for x in range(60,79):
+    for y in (716,717): put(x,y,33,False,0)
+for y in range(693,700):
+    for x in range(44,77): put(x,y,6,True,0)
+for px in (56,63,70):
+    for y in range(700,709):
+        for x in (px,px+1): put(x,y,12,True,0)
+WD['decor'].append({'x':60,'y':716,'kind':'lighthouse','w':2})
+PT['boat']=[{'x':58,'y':703,'kind':'boat','w':2}]; WD['decor'].append({'x':58,'y':703,'kind':'boat','w':2})
+for p in ((50,696),(74,695)): decor('netRack',*p)
+for p in ((59,697),(66,697),(72,698),(47,694)): decor('fishBarrel',*p)
+decor('crate',53,697); decor('crate',68,694)
+# the beach, the surf, the pier
+for y in range(693,701):
+    for x in range(79,153): put(x,y,19,True,0)
+for y in (701,702):
+    for x in range(79,153): put(x,y,20,True,0)
+surf=[]
+for y in (703,704,705):
+    for x in range(86,151):
+        if x in (111,112,113,114): continue
+        put(x,y,21,True,0); surf.append([x,y])
+PT['surf']=surf
+for y in range(690,729):
+    for x in (112,113): put(x,y,12,True,0)
+for y in range(724,729):
+    for x in range(109,117): put(x,y,12,True,0)
+decor('lantern',109,724); decor('lantern',116,724)
+WD.setdefault('piers',[]); WD['piers']=[q for q in WD['piers'] if not (X0<=q[0]<=X1 and Y0<=q[1]<=Y1)]+[[112,700,113,723],[109,724,116,728]]
+decor('lifeguard',98,697); decor('lifeguard',132,697)
+for p in ((84,694),(143,694),(151,695),(118,694)): decor('palm',*p)
+for p in ((91,698),(124,698),(139,697)): decor('umbrella',*p)
+decor('sandcastle',104,699)
+# the Strand: a boardwalk behind the beach, from the quay to the east road
+for y in (691,692):
+    for x in range(44,160):
+        if T(x,y)!=12: put(x,y,12,True,0)
+for x in range(150,161):
+    for y in (690,693): put(x,y,2,True,0)
+# the harbour village on the quay, and the beach houses along the Strand (every door to the sea)
+bld('sm_market','Fish Market','shop',52,685,6,4)
+bld('sm_harbour',"The Harbourmaster's House",'house',60,685,5,4,who=('Harbourmaster\'s wife','peasantF','He keeps the tide-book on the kitchen table. I keep the kettle on it.'))
+bld('sm_chandler',"The Chandlery",'shop',67,686,4,3,who=('Chandler Silas','merchant','Rope, pitch, hooks and lamp-oil. Everything a boat needs but courage.'))
+bld('sm_inn','The Salty Anchor','inn',104,686,6,4)
+bld('sm_home1',"Fisher's Cottage",'cottage',80,687,4,3); bld('sm_home2',"Netmender's Hut",'house',86,687,4,3)
+SMH=[('sm_home3',"The Surf Shack",'cottage',94,687,4,3,('Surfer Asa','sailor','The swell comes in off the deep water and stands up on the bar by the pier. Best wave in the realm. Ask anyone.')),
+     ('sm_home4',"The Lifeguard's House",'house',118,687,4,3,('Lifeguard Mara','peasantF','I watch the water from the tower all day. Kids, crabbers, fools on boards. I have not lost one yet.')),
+     ('sm_home5',"Old Peter's Cottage",'cottage',125,687,4,3,('Old Peter\'s grandson','child','Grandpa talks to Grandma Dorcas every night. She’s been gone fifteen years.')),
+     ('sm_home6',"The Shell-seller's House",'house',132,687,4,3,('Shell-seller Joanna','peasantF','Every shell on this beach was a house once. Something lived in it. I think about that.')),
+     ('sm_home7',"Rhoda and Jonah's House",'house',139,687,4,3,('Their aunt','peasantF','Jonah will climb anything. Rhoda worries enough for both of them.')),
+     ('sm_home8',"The Boatwright's House",'house',146,687,5,3,('Boatwright Ebed','woodcutter','Oak for the keel, larch for the planks, and patience for the rest.')),
+     ('sm_home9',"The Sailmaker's Cottage",'cottage',92,676,4,3,('Sailmaker Tabitha','peasantF','A good sail is a prayer you can see. Well. That’s what my mother said.')),
+     ('sm_home10',"The Cooper's House",'house',132,673,4,3,('Cooper Hiram','smith','Herring barrels. Ten thousand of them, give or take. I stopped counting. The General never did.'))]
+for id,nm,st,x,y,w,h,who in SMH: bld(id,nm,st,x,y,w,h,who=who)
+# the chapel on its bluff, and the little square below it
+WD['hills'].append([113,671,10,2.2])
+bld('sm_chapel','Saltmere Chapel','chapel',110,670,6,6); fence(106,667,120,678,gaps={(112,678),(113,678),(114,678)})
+for gx,gy in ((107,669),(107,672),(107,675),(119,669),(119,672),(119,675)): decor('tombstone',gx,gy)
+decor('netRack',117,676)
+for y in range(677,684):
+    for x in range(116,133):
+        if math.hypot((x-124)/7.5,(y-680)/3.4)<1: put(x,y,6,True,0)
+decor('marketStall',121,679,2); decor('lantern',127,679); decor('palm',117,681); decor('palm',131,680); decor('fountain',124,680,2)
+lane([(124,690),(124,683)]); lane([(117,680),(113,679)]); lane([(98,681),(110,681),(116,680)]); lane([(72,690),(72,684),(80,681),(98,681)])
+for s_ in PT['reuben']['spots']:
+    if ins2(s_): s_.update({'x':128,'y':682})
+for q in PT['trade']['points'].values():
+    if ins2(q): q.update({'x':120,'y':683,'dx':120,'dy':682})
+# the lonely island, a little further out to sea, its secret with it
+for y in range(706,720):
+    for x in range(79,145):
+        if T(x,y) not in (21,12) and not (x==88 and y==716): SEA(x,y)
+IX,IY=122,742
+for y in range(IY-8,IY+9):
+    for x in range(IX-9,IX+10):
+        d=math.hypot((x-IX)/1.2,y-IY)
+        if d<=4.5: put(x,y,1 if d<1.8 and (x+y)%2 else 0,not (d<1.8 and (x+y)%2),0)
+        elif d<=6.5: put(x,y,19,True,0)
+        elif d<=8.5: put(x,y,20,True,0)
+for s_ in PT['secrets']:
+    if s_['id']=='isle': s_['x'],s_['y']=IX,IY
+# the people
+for (x,y,o),v in olds.items():
+    nx,ny={('fisher'):(66,694),('fisherF'):(55,690),('sailor'):(108,697),('child'):(100,696),('peasant'):(126,684)}.get(o,(90,690))
+    while any(v2['x']==nx and v2['y']==ny for v2 in WD['villagers']): nx+=2
+    folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
+folk(70,693,'fisher',['When a Saltmere man died, we rowed him out to the Gull Head at slack water and in under the arch to the landing. The brothers met us there and carried him down the sea-stair.','There’s no path round the Head. Never was. You go by boat, or you don’t go.','Nobody has rowed in since the dark came. Nobody will.'],
+     name='Old Ezra',clue=2,after=['They rowed old Mattan in under the Gull Head last week, the way it was done. The brothers met us on the landing. First time in fifteen years.'])
+folk(60,690,'fisherF',['At the turn of the tide there’s a bell from under the Gull Head. Small, like a ship’s bell. Clear as you like across the harbour.','There is no bell in there, knight. There never was.'],
+     name='Fishwife Leah',clue=2,after=['The bell under the Gull Head still rings at the turn of the tide. But it’s the brothers ringing it now, and it sounds glad.'])
+folk(93,696,'child',['Jonah rowed his uncle’s skiff in under the Gull Head after crabs! He says there’s a landing in there with steps going down into the rock.','Rhoda boxed his ears. I’d have gone with him.'],
+     name='Tobit',clue=2,after=['Jonah says you came down the steps with a lamp and brought him home. Is it true you rang the tide out?'])
+folk(64,690,'sailor',['Your boat, knight? If you’ve left her somewhere you can’t walk to, say the word and the harbour lads will row her round to the quay.'],name='Harbourmaster Bart')
+WD['villagers'][-1]['role']='harbour'
+folk(120,697,'sailor',['Paddle out past the shallows by the pier and wait for the set. The third wave’s always the best.'],name='Surfer Zeb')
+folk(112,726,'fisher',['Fish bite best off the end of the pier at the turn of the tide. I’ve been out here forty years, give or take a storm.'],name='Pier-fisher Jude')
+sign(78,690,'SALTMERE\nThe salt-kissed port'); sign(100,693,'SURF SPOT\nThe swells stand up on the bar by the pier. Face the surf and paddle out.')
+sign(125,693,'THE SHORE\nFace the surf, press to paddle out.'); sign(46,693,'THE GULL HEAD\nNo path round it. The fishermen keep their distance.')
+sign(110,690,'THE PIER\nMind the gaps in the boards.')
+WD['cata']['2']={'x':37,'y':696,'face':0,'name':'The sea-stair under the Gull Head','arch':[37.5,712,3.2],
+    'where':'the Grotto under the Gull Head — only a boat can reach it',
+    'door':['The doors are barred from within. Salt water seeps out from under them, though the chapel stands high and dry.','Someone on the quay may know another way down.'],
+    'doorHeard':['The doors are barred from within. Salt water seeps out from under them, though the chapel stands high and dry.','The bell rings from the Grotto under the Gull Head. The old way down is there — by boat.'],
+    'goal':'Saltmere’s chapel is barred from within. Ask on the quay — someone has heard something.',
+    'goalHeard':'Sail into the Grotto under the Gull Head — your boat is moored in the harbour.',
+    'journal':'Saltmere’s chapel is barred. The fisherfolk used to row their dead in under the Gull Head, the headland west of the harbour, to a landing where the brothers carried them down the sea-stair into the caves under the town. Since the dark came a small bell rings in there at the turn of the tide. There is no path round the Head — I will need the boat.'}
+HS=['Nobody rows near the Gull Head since the dark came. Ask old Ezra on the quay — he rowed the dead in there himself, once.','The chapel’s been barred fifteen years. If there’s another way down, it’s by water.']
+if isinstance(SQ['hints'],list): SQ['hints'][2]['out']=HS
+else: SQ['hints']['2']['out']=HS
+WD['villageRects'].append([44,666,160,700]); WD['townR']['Saltmere']=40
+cx,cy,rx,ry=92,700,67,33; WD['barriers'][2]=[cx,cy,rx,ry]
+ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
+WD['barrierSets']['2']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
+# the sea's fishing spots along the new shore
+for k in [k for k,v in PT['fishSpots'].items() if v=='sea' and ins2(dict(zip('xy',map(int,k.split(',')))))]: PT['fishSpots'].pop(k)
+for y in range(Y0,Y1+1):
+    for x in range(X0,X1+1):
+        if T(x,y) in (3,20) and any((raw[N+(y+b)*W+x+a]>>4) and T(x+a,y+b) not in (3,20,21) for a,b in ((1,0),(-1,0),(0,1),(0,-1))): PT['fishSpots'].setdefault(f"{x},{y}",'sea')
+
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src
 for n in sorted(CON,key=lambda n:-CON[n][0]):
     i,j,o,semi=CON[n]; new=new[:i]+'const '+n+'='+json.dumps(o,separators=(',',':'),ensure_ascii=False)+(';' if semi else '')+new[j:]
 open(HEAD,'w',encoding='utf-8').write(new)
+json.dump(PT,open(D('data','pastimes.json'),'w',encoding='utf-8'),ensure_ascii=False,separators=(',',':'))
 hv=lambda o: 58<=o['x']<=136 and 42<=o['y']<=113
-print('villages: Hearthvale —',sum(1 for b in WD['buildings'] if hv(b)),'buildings,',sum(1 for v in WD['villagers'] if hv(v)),'villagers | Ironhold —',sum(1 for b in WD['buildings'] if ins(b)),'buildings,',sum(1 for v in WD['villagers'] if ins(v)),'villagers')
+print('villages: Hearthvale —',sum(1 for b in WD['buildings'] if hv(b)),'buildings,',sum(1 for v in WD['villagers'] if hv(v)),'villagers | Ironhold —',sum(1 for b in WD['buildings'] if 76<=b['x']<=143 and 222<=b['y']<=282),'buildings | Saltmere —',sum(1 for b in WD['buildings'] if ins2(b)),'buildings,',sum(1 for v in WD['villagers'] if ins2(v)),'villagers')
