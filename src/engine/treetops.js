@@ -110,6 +110,30 @@ const TREETOPS=(function(){
       const lt=group(dx+0.75,gy+1.85,fz-0.05,g); B(0.04,0.25,0.04,0x2a2a2a,0,0,0,lt); Sp(0.09,glow(0xffcf6a),0,-0.05,0,lt,8,6);
       for(let i=0;i<3;i++){ const sn=Sp(0.45+hsh(i,b.x)*0.3,0xeef3f8,b.x+0.6+i*(b.w-1.2)/2,top-0.05,fz-0.7,g,8,5); sn.scale.y=0.3; }   // snow lying on the rock
       shade(g); mergeStatic(g); });
+    // ── V204.2: houses of fitted stone, as the Andes build (b.inca): walls of grey blocks laid in courses, each a little
+    //   different, a trapezoid door under a lintel stone, trapezoid niches for windows, a steep roof of thatch on stone gables ──
+    WD.buildings.filter(b=>b.inca).forEach(b=>{ const g=group(0,0,0,scene), SC=[0x9a968c,0x8e8a80,0xa8a498,0x86827a,0x948f84], inn=b.style==='inn', Hw=inn?3.1:2.3, Hr=inn?2.2:1.8;
+      const x0=b.x+0.15, x1=b.x+b.w-0.15, z0=b.y+0.15, z1=b.y+b.h-0.15, dxc=b.door.x+0.5, gy=G0(dxc,b.y+b.h+0.6), TH=0.36;
+      const wall=(ax,az,bx,bz,door)=>{ const L=Math.hypot(bx-ax,bz-az), ux=(bx-ax)/L, uz=(bz-az)/L; let yy=0, r=0;
+        while(yy<Hw-0.05){ const h=Math.min(Hw-yy,0.24+hsh(r,b.x+b.y)*0.12); let s=(r%2)*0.22;
+          if(s>0){ B(ux?s-0.03:TH,h-0.025,uz?s-0.03:TH,SC[r%5],ax+ux*s/2,gy+yy,az+uz*s/2,g); }
+          while(s<L-0.01){ const w=Math.min(L-s,0.4+hsh(r*7+Math.round(s*10),b.x*3+b.y)*0.32), cxp=ax+ux*(s+w/2), czp=az+uz*(s+w/2);
+            const inDoor=door&&Math.abs(cxp-dxc)<0.62-(yy/2.0)*0.18&&yy<1.95;
+            if(!inDoor) B(ux?w-0.03:TH,h-0.025,uz?w-0.03:TH,SC[(r+Math.round(s*3))%5],cxp,gy+yy,czp,g); s+=w; }
+          yy+=h; r++; } };
+      wall(x0,z1,x1,z1,true); wall(x0,z0,x1,z0,false); wall(x0,z0+TH/2,x0,z1-TH/2,false); wall(x1,z0+TH/2,x1,z1-TH/2,false);
+      B(1.4,0.28,TH+0.04,0x7e7a70,dxc,gy+1.95,z1,g);   // the lintel
+      const trap=(w0,w1,h)=>{ const s=new THREE.Shape(); s.moveTo(-w0/2,0); s.lineTo(w0/2,0); s.lineTo(w1/2,h); s.lineTo(-w1/2,h); s.closePath(); return new THREE.ShapeGeometry(s); };
+      const dk=new THREE.Mesh(trap(1.0,0.72,1.95),mt(0x1e1612)); dk.position.set(dxc,gy,z1-0.05); g.add(dk);
+      [[x0+0.7,z1+TH/2+0.01,0],[x1-0.7,z1+TH/2+0.01,0],[x0-TH/2-0.01,(z0+z1)/2,-Math.PI/2],[x1+TH/2+0.01,(z0+z1)/2,Math.PI/2]].forEach(([wx,wz,ry],k)=>{ if(k<2&&Math.abs(wx-dxc)<1.0) return;
+        const n=new THREE.Mesh(trap(0.5,0.36,0.62),k<2?glow(0xffcf7a):mt(0x2a2420)); n.position.set(wx,gy+1.0,wz); n.rotation.y=ry; g.add(n); });
+      // the gables in stone, the thatch over them, its ridge, the pegs that held it down
+      const Wd=x1-x0, Dp=z1-z0, gb=prism(Dp+TH,Hr,Wd*0.02+TH,0x8e8a80); gb.rotation.y=Math.PI/2; [x0,x1].forEach(xx=>{ const q=gb.clone(); q.position.set(xx,gy+Hw,(z0+z1)/2); g.add(q); });
+      const th=prism(Dp+1.0,Hr+0.25,Wd+0.7,0xc8a860); th.rotation.y=Math.PI/2; th.position.set((x0+x1)/2,gy+Hw-0.15,(z0+z1)/2); g.add(th);
+      for(let k=1;k<4;k++){ const band=prism((Dp+1.0)*(1-k*0.22)+0.04,0.06,Wd+0.72,0xa88a48); band.rotation.y=Math.PI/2; band.position.set((x0+x1)/2,gy+Hw-0.15+(Hr+0.25)*k*0.22,(z0+z1)/2); g.add(band); }
+      B(Wd+0.8,0.14,0.18,0x9a7a40,(x0+x1)/2,gy+Hw+Hr-0.02,(z0+z1)/2,g);
+      [-1,1].forEach(sd=>{ for(let i=0;i<3;i++) Cy(0.04,0.04,0.3,4,0x8e8a80,x0+0.4+i*(Wd-0.8)/2,gy+Hw-0.3,(z0+z1)/2+sd*(Dp/2+0.2),g); });
+      shade(g); mergeStatic(g); });
     // ── the people up the trees stand on their decks; while you're up, the folk below can't hear you, and the reverse ──
     const R=TT.rect, inR=(x,z)=>x>=R[0]&&x<=R[2]+1&&z>=R[1]&&z<=R[3]+1;
     WD.villagers.forEach(v=>{ if(v.deck===undefined||!decks[v.deck]) return; const f=world.folk.find(q=>q.key==='v:'+v.x+','+v.y+':'+v.outfit); if(!f) return; f.tUp=true; f.y=decks[v.deck].top+0.02; f.g.position.y=f.y; });

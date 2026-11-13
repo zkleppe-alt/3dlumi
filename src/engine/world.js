@@ -1163,7 +1163,7 @@ function buildWorld(WD,opt){
   // and side faces only where the ground steps down, each band coloured by the column it belongs to
   const groundMat=detailify(new THREE.MeshLambertMaterial({vertexColors:true})), _gc=new THREE.Color(), _gd=new THREE.Color();
   function groundMesh(ch,cells,mcells){ if(!cells.size) return; const pos=[], col=[], nrm=[];
-    [cells,mcells].forEach(M=>M.forEach(q=>{ q.segs.sort((a,b)=>a[1]-b[1]); const t=q.segs[q.segs.length-1]; q.top=t[1]; q.bot=q.segs[0][0]; _gc.setHex(t[2]); if(t[3]) _gc.offsetHSL(0,0,t[3]); q.c=[_gc.r,_gc.g,_gc.b]; if(inCP(q.x,q.y)&&q.top>3.5&&T(q.x,q.y)!==24){ const f=Math.min(1,Math.max(0,(q.top-3.5)/5.5)); q.c=[q.c[0]+(0.93-q.c[0])*f,q.c[1]+(0.95-q.c[1])*f,q.c[2]+(0.97-q.c[2])*f]; } }));   // the high ledges of Crystalpeak lie under snow
+    [cells,mcells].forEach(M=>M.forEach(q=>{ q.segs.sort((a,b)=>a[1]-b[1]); const t=q.segs[q.segs.length-1]; q.top=t[1]; q.bot=q.segs[0][0]; _gc.setHex(t[2]); if(t[3]) _gc.offsetHSL(0,0,t[3]); q.c=[_gc.r,_gc.g,_gc.b]; if(inCP(q.x,q.y)&&q.top>3.5&&T(q.x,q.y)!==24&&T(q.x,q.y)!==18){ const f=Math.min(1,Math.max(0,(q.top-3.5)/5.5)); q.c=[q.c[0]+(0.93-q.c[0])*f,q.c[1]+(0.95-q.c[1])*f,q.c[2]+(0.97-q.c[2])*f]; } }));   // the high ledges of Crystalpeak lie under snow
     const at=(x,y)=>cells.get(y*W+x)||mcells.get(y*W+x), same=(q,x,y)=>{ const n=at(x,y); return n&&Math.abs(n.top-q.top)<0.03?n:null; };
     const quad=(a,b,c,d,ca,cb,cc,cd,n)=>{ pos.push(...a,...b,...c,...a,...c,...d); col.push(...ca,...cb,...cc,...ca,...cc,...cd); for(let i=0;i<6;i++) nrm.push(...n); };
     const avg=(list)=>{ const r=[0,0,0]; list.forEach(c=>{ r[0]+=c[0]; r[1]+=c[1]; r[2]+=c[2]; }); return r.map(v=>v/list.length); };
@@ -1401,7 +1401,7 @@ function buildWorld(WD,opt){
     instList(ch,lava,UNIT,glow(0xff6a1a));
     if(tilesOnly) return;
     // the chunk's buildings, decorations, signs and ships
-    WD.buildings.forEach(b=>{ if(b.deck===undefined&&!b.cave&&chunkAt(b.x+b.w/2,b.y+b.h/2)===ch) buildHouse(b,ch.g); });   /* (the treetops draw their own) */
+    WD.buildings.forEach(b=>{ if(b.deck===undefined&&!b.cave&&!b.inca&&chunkAt(b.x+b.w/2,b.y+b.h/2)===ch) buildHouse(b,ch.g); });   /* (the treetops draw their own) */
     WD.decor.forEach(d=>{ if(chunkAt(d.x,d.y)!==ch) return; const fn=DECOR_KINDS[d.kind]; if(!fn) return; const g=new THREE.Group(); fn(d,g,lv.anim); if(PERSON_SIZED.has(d.kind)) g.scale.setScalar(VIEWMODE.ps(lv));
       g.position.x+=d.x+(d.w===2?1:0.5); g.position.z+=d.y+(d.w===2?1:0.5); g.position.y=EH(d.x,d.y)+0.02+(ROLL?roll(d.x+(d.w===2?1:0.5),d.y+(d.w===2?1:0.5)):0); if(d.kind==='lighthouse'&&LIFT(d.x,d.y)>1) g.scale.multiplyScalar(1.7); if(typeof LOOK2!=='undefined'&&LOOK2){ soften(g); g.traverse(o=>{ if(o.isMesh&&o.geometry&&o.geometry.type==='IcosahedronGeometry'&&o.material&&o.material.userData.soft){ const gg=o.geometry.parameters; o.geometry=new THREE.SphereGeometry(gg.radius,14,10); } }); const r=ROLL?roll(d.x+(d.w===2?1:0.5),d.y+(d.w===2?1:0.5)):0; g.position.y+=r; } ch.g.add(shade(g)); });   // the capital's harbour lights stand tall
     signs.forEach(s=>{ if(chunkAt(s.x,s.y)!==ch) return; const g=group(s.wx,EH(Math.floor(s.wx),Math.floor(s.wz))+0.02,s.wz,ch.g);
@@ -1418,7 +1418,7 @@ function buildWorld(WD,opt){
   // the heart of its town (north, east or west instead) wherever the ground on that side is open and joined to its old doorstep,
   // so a village's doors look in on its square. The footprint, and so the walk, is the game's own; only the face turns.
   const FACE={};
-  if(!opt.land) WD.buildings.forEach(b=>{ if(b.deck!==undefined||b.cave) return; if(b.id==='sg_keep'||b.id==='sg_cathedral'||b.id==='home_house'||b.id==='home_barn') return;
+  if(!opt.land) WD.buildings.forEach(b=>{ if(b.deck!==undefined||b.cave||b.inca) return; if(b.id==='sg_keep'||b.id==='sg_cathedral'||b.id==='home_house'||b.id==='home_barn') return;
     const bx=b.x+b.w/2, by=b.y+b.h/2; let best=null, bd=1e9; (WD.towns||[]).forEach(([n,tx,ty])=>{ const d=Math.hypot(tx+0.5-bx,ty+0.5-by); if(d<bd){ bd=d; best=[tx+0.5,ty+0.5]; } });
     if(!best||bd>26||bd<2.5) return; const vx=best[0]-bx, vy=best[1]-by;
     const dirs=[['S',0,1],['N',0,-1],['E',1,0],['W',-1,0]].map(([d,a,c])=>[d,a,c,(a*vx+c*vy)/Math.hypot(vx,vy)]).sort((p,q)=>q[3]-p[3]);

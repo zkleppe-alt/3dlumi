@@ -327,3 +327,7 @@ After Oceanside harbour, as a beachfront town:
 - **Higher still**, on a ledge under the summit (13 ledges, 33 units): the hot spring and the Warm Hearth inn. Its overflow falls off the rock wall at the town's west end — the waterfall, with the cave behind it (`WD.cata['5']` 454,248). One more stair to the summit cross (15 ledges, 38 units).
 - Trees cleared from the high ledges and the town; a rock ladder from the plaza to the ledge behind it.
 - Test harness (scratchpad sm/tws/cps): forces every built chunk visible when the shot's camera differs from the game's, so wide shots no longer show the sea through culled ground.
+
+## V204.2 — Crystalpeak's rough edges
+- The farm terraces follow the hill (warped, wavering contours instead of rings) and are green turf (tile 18, which Crystalpeak's height-snow now leaves alone); the plaza too. Snow stays on the rock and the peak.
+- Andean stone houses (`b.inca`, drawn in treetops.js): walls of fitted grey blocks in courses, trapezoid door under a lintel, trapezoid niches (lit at the front), stone gables, a steep thatch roof with bands and ridge — the Pilgrim's Supply, the Abbot's Quarters, the Terrace-Farmer's House and the Warm Hearth inn.

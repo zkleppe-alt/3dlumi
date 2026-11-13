@@ -709,8 +709,11 @@ def cone(x,y):
 def saddle(x,y):                                                  # the town level, and the farm terraces below it: a ledge every 1.6 tiles
     d=((abs(x+0.5-TX)/TRX)**4+(abs(y+0.5-TY)/TRY)**4)**0.25
     if d<=1: return 10.0
-    dout=(d-1)*min(TRX,TRY)*1.25
-    return 10-math.floor(dout/2.0)
+    wx=x+2.5*math.sin(y*0.21+0.6)+1.5*math.sin(y*0.47+x*0.13); wy=y+2.5*math.sin(x*0.19+1.9)+1.5*math.sin(x*0.43-y*0.11)   # the terraces follow the hill, not a ruler
+    a=math.atan2((wy+0.5-TY)/TRY,(wx+0.5-TX)/TRX); dw=((abs(wx+0.5-TX)/TRX)**3+(abs(wy+0.5-TY)/TRY)**3)**(1/3)
+    rw=1+0.14*math.sin(3*a+0.7)+0.08*math.sin(5*a+2.1)+0.04*math.sin(9*a+0.3)
+    dout=max(0.0,(dw/rw-1))*min(TRX,TRY)*1.25
+    return max(0,10-math.floor(dout/2.0+0.5))
 for y in range(BY0,BY1+1):
     for x in range(BX0,BX1+1):
         if wat[y-BY0,x-BX0] and cone(x,y)>2.5: wat[y-BY0,x-BX0]=False; put(x,y,0,True,0); PT['fishSpots'].pop(f"{x},{y}",None)
@@ -762,6 +765,10 @@ def climb(pts,w=1,tile=2):
 for y in range(BY0,BY1+1):                                      # no trees up on the high ledges
     for x in range(BX0,BX1+1):
         if (E5(x,y)>=11 or (E5(x,y)>=9 and 440<=x<=482 and 240<=y<=263)) and T(x,y) in (1,7): put(x,y,0,True,None)
+for y in range(BY0,BY1+1):                                      # the farm terraces and the plaza: green turf (no snow on it)
+    for x in range(BX0,BX1+1):
+        sv=saddle(x,y)
+        if T(x,y)==0 and sv>=1 and E5(x,y)==int(sv) and E5(x,y)<=10: put(x,y,18,True,None)
 # the town: the plaza, grass on the saddle, the cathedral on its platform, houses cut into the wall, two more on the plaza
 bld('cp_chapel','Mountain Cathedral','chapel',457,248,7,6)
 def cave(id,name,x,y,w,h,who=None):
@@ -769,8 +776,9 @@ def cave(id,name,x,y,w,h,who=None):
 cave('cp_home1',"Monk's Cell",467,248,4,2,('Brother Ammon','monk','A cell in the rock is warm in winter and cool in summer. The mountain keeps me — and I keep the hours.'))
 cave('cp_home3',"The Guide's Cave-House",472,248,4,2,('Guide Ruth','pilgrimF','I take pilgrims up to the spring and the cross. Mind the ice past the spring.'))
 cave('cp_home4',"The Herbalist's Cave-House",449,248,4,2,('Herbalist Mara','monkF','Snow-gentian for fevers, pine-resin for cuts. The mountain has a remedy for most things.'))
-bld('cp_shop',"Pilgrim's Supply",'shop',451,255,4,3); bld('cp_home2',"Abbot's Quarters",'house',469,255,4,3)
+for b_ in (bld('cp_shop',"Pilgrim's Supply",'shop',451,255,4,3),bld('cp_home2',"Abbot's Quarters",'house',469,255,4,3)): b_['inca']=1
 bld('cp_home5',"The Terrace-Farmer's House",'cottage',448,252,3,3,who=('Farmer Obed','farmer','Potatoes on the high terraces, barley on the low. Every wall you see, my fathers built.'))
+next(b for b in WD['buildings'] if b['id']=='cp_home5')['inca']=1
 for p in ((455,259),(473,259),(461,258)): decor('lantern',*p)
 for p in ((459,256),(465,252)): decor('brazier',*p)
 decor('prayerFlag',454,252); decor('prayerFlag',470,252); decor('icePillar',448,257)
@@ -782,7 +790,7 @@ climb([(460,236),(460,230)])                                     # the last clim
 # the spring ledge: the hot spring, the Warm Hearth inn beside it
 for y in range(236,240):
     for x in range(462,468): put(x,y,24,True,None)
-bld('cp_inn','The Warm Hearth','inn',469,234,5,4); decor('lantern',468,240); decor('pineSnow',457,239); decor('pineSnow',474,239)
+bld('cp_inn','The Warm Hearth','inn',469,234,5,4)['inca']=1; decor('lantern',468,240); decor('pineSnow',457,239); decor('pineSnow',474,239)
 # the summit
 decor('summitCross',460,228); decor('prayerFlag',458,230); decor('prayerFlag',463,230)
 sign(458,231,'THE SUMMIT OF CRYSTALPEAK\n“I will lift up mine eyes unto the hills, from whence cometh my help. My help cometh from the LORD, which made heaven and earth.” — Psalm 121:1-2')
