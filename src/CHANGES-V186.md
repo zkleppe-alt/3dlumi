@@ -358,3 +358,6 @@ After Oceanside harbour, as a beachfront town:
 - Hellgate: the mountain behind the city rises in ridges to a snow-capped summit (AH rises with depth into the rock, world.js `inHG`); its walls are plain masonry again; near land is drawn 34 tiles further out round Hellgate on the higher graphics tiers so the whole city is seen from its gate (`VIEWX`). Far-country colours for both mountains updated.
 - Art style "painted" v2 (engine/style.js; ☰ → System → 🎨 Art style, or ?art=painted): cel bands, a world-space watercolour wash and brush strokes on every lit surface (`vArtW`), blue-violet shade and warm light, heaped sun-lit clouds on the sky dome (the older cloud cards hidden), grass blades that take the ground's own green, grow on lawns and flowers too, and pale wind-waves running over them. LOOK2's own trees are kept. Classic stays the default until the look is approved.
 - Screenshot harness note: with a detached camera the FAR-country mesh shows through near chunks (it is cut away round the player only) — hide it (art.py does).
+
+## V209 — the painted look is the default
+- engine/style.js: `painted` unless classic is chosen (☰ → System → 🎨 Art style). Smoke run in painted: clean.

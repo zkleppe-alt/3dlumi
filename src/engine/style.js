@@ -5,7 +5,7 @@
 //  (?art=painted, localStorage klk3d_art, or window.KLK_ART), so the game looks exactly as before by default.
 // ════════════════════════════════════════════════════════════════
 const ART=(function(){
-  let mode='classic'; try{ mode=window.KLK_ART||new URLSearchParams(location.search).get('art')||localStorage.getItem('klk3d_art')||'classic'; }catch(e){}
+  let mode='painted'; try{ mode=window.KLK_ART||new URLSearchParams(location.search).get('art')||localStorage.getItem('klk3d_art')||'painted'; }catch(e){}   /* V209: painted is the game's look now; ☰ → System switches back to classic */
   const on=mode==='painted', T={value:0};
   if(!on) return { on, mode, set(m){ try{ localStorage.setItem('klk3d_art',m); }catch(e){} location.reload(); } };
 
