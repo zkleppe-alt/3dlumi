@@ -8,9 +8,9 @@
 //  to us); villagers with v.deck stand on one.  TREETOPS.attach(world,WD).  State: GAME.S.atUp — the saved spot is up a tree.
 // ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
 const TREETOPS=(function(){
-  function attach(world,WD){ const TT=WD.treetops; if(!TT||!TT.decks) return; const scene=world.scene, P=ENGINE.P;
+  function attach(world,WD){ const TT=WD.treetops; if(!TT) return; TT.decks=TT.decks||[]; const scene=world.scene, P=ENGINE.P;
     const G0=world.ground, M0=world.canMove; let up=false, climb=null, onB=null;
-    const decks=TT.decks.map(d=>Object.assign({},d)), bridges=(TT.bridges||[]).map(b=>Object.assign({},b)), ladders=TT.ladders||[];
+    const decks=TT.decks.map(d=>Object.assign({},d)), bridges=(TT.bridges||[]).map(b=>Object.assign({},b)), ladders=(TT.ladders||[]).concat((TT.climbs||[]).map(c=>Object.assign({ground:true},c)));
     decks.forEach(d=>{ let m=-1e9; for(const [x,z] of [[d.x0,d.y0],[d.x1+1,d.y0],[d.x0,d.y1+1],[d.x1+1,d.y1+1],[(d.x0+d.x1+1)/2,(d.y0+d.y1+1)/2]]) m=Math.max(m,G0(x,z)); d.top=m+d.h; });
     const inDeck=(d,x,z,m)=>x>=d.x0+m&&x<=d.x1+1-m&&z>=d.y0+m&&z<=d.y1+1-m;
     const deckAt=(x,z,m)=>{ for(const d of decks) if(inDeck(d,x,z,m||0)) return d; return null; };
@@ -86,15 +86,30 @@ const TREETOPS=(function(){
       [[b.a,b.ya],[b.b,b.yb]].forEach(([p,y])=>{ const nx=-b.dz/b.L, nz=b.dx/b.L; [-1,1].forEach(sd=>{ Cy(0.07,0.08,1.25,6,0x5a3e24,p[0]+nx*sd*w/2,y,p[1]+nz*sd*w/2,scene); }); });
       shade(g); });
     // ── the ladders: from the forest floor to a gap in the rail ──
-    ladders.forEach(L=>{ const d=decks[L.deck], ex=L.x+0.5+L.dx*0.5, ez=L.y+0.5+L.dy*0.5, gy=G0(ex+L.dx*0.6,ez+L.dy*0.6), Hh=d.top-gy;
+    ladders.forEach(L=>{ const ex=L.x+0.5+L.dx*0.5, ez=L.y+0.5+L.dy*0.5, gy=G0(ex+L.dx*0.6,ez+L.dy*0.6), hiY=L.ground?G0(ex-L.dx*0.6,ez-L.dy*0.6):decks[L.deck].top, Hh=hiY-gy;
       const g=group(ex+L.dx*0.18,gy,ez+L.dy*0.18,scene); g.rotation.y=Math.atan2(L.dx,L.dy); g.rotation.x=0;
       [-0.3,0.3].forEach(o=>B(0.08,Hh+1.0,0.08,0x6a4a2a,o,0,0,g)); for(let i=0;i<Math.floor((Hh+0.7)/0.34);i++) B(0.62,0.05,0.07,0x7a5a32,0,0.28+i*0.34,0,g); shade(g);
-      L.foot={x:ex+L.dx*1.05,z:ez+L.dy*1.05}; L.top={x:ex-L.dx*0.75,z:ez-L.dy*0.75}; L.line={x:ex+L.dx*0.42,z:ez+L.dy*0.42}; L.lo=G0(L.foot.x,L.foot.z); L.hi=d.top; });
+      L.foot={x:ex+L.dx*1.05,z:ez+L.dy*1.05}; L.top={x:ex-L.dx*0.75,z:ez-L.dy*0.75}; L.line={x:ex+L.dx*0.42,z:ez+L.dy*0.42}; L.lo=G0(L.foot.x,L.foot.z); L.hi=L.ground?G0(L.top.x,L.top.z):hiY; });
     const go=(L,goUp)=>{ if(climb||ENGINE.busy) return; if(world.mounted&&world.mounted()){ UI.toast('🐴 Leave your mount at the foot of the tree — it won’t climb a ladder.',2000); return; }
       if(ENGINE.K.sheathe) ENGINE.K.sheathe(); const dur=0.45+(L.hi-L.lo)*0.26; P.x=L.line.x; P.z=L.line.z; P.face=Math.atan2(-L.dx,-L.dy);
       climb={L,u:0,dur,up:goUp,y:goUp?L.lo:L.hi}; ENGINE.hold(dur+0.05,'climb'); if(typeof SFX!=='undefined') try{ SFX.play('stairStep'); }catch(e){} };
-    ladders.forEach(L=>{ world.spots.push({x:L.foot.x,z:L.foot.z,r:1.1,label:'Climb',who:'A ladder up the tree',hide:()=>up||!!climb,action:()=>go(L,true)});
-      world.spots.push({x:L.top.x,z:L.top.z,r:0.95,label:'Climb down',who:'The ladder',hide:()=>!up||!!climb,action:()=>go(L,false)}); });
+    ladders.forEach(L=>{ world.spots.push({x:L.foot.x,z:L.foot.z,r:1.1,label:'Climb',who:L.ground?'A ladder up the rock':'A ladder up the tree',hide:()=>up||!!climb||(L.ground&&P.y>L.lo+1.2),action:()=>go(L,true)});
+      world.spots.push({x:L.top.x,z:L.top.z,r:0.95,label:'Climb down',who:'The ladder',hide:()=>(L.ground?up||P.y<L.hi-1.0:!up)||!!climb,action:()=>go(L,false)}); });
+    // ── V204: houses cut into the rock (b.cave): the building's footprint is a mass of the cliff it stands against, its front
+    //   a face of dressed stone with an arched door, lit windows, a timber porch roof on two posts, a lantern ──
+    WD.buildings.filter(b=>b.cave).forEach(b=>{ const fz=b.y+b.h, cx=b.x+b.w/2, gy=G0(b.door.x+0.5,fz+0.6), top=Math.max(gy+2.6,G0(cx,b.y-0.8)+0.3), g=group(0,0,0,scene), ST=[0x8a8478,0x7e786c,0x948e82,0x6e6a62], Hh=top-gy;
+      // the rock: boulders heaped over the whole footprint up to the cliff top, overhanging the front above the door
+      for(let i=0;i<b.w*2;i++) for(let j=0;j<3;j++){ const s=0.6+hsh(i+j*7,b.x)*0.35, x=b.x+0.35+i*(b.w-0.7)/(b.w*2-1)+(hsh(i,j)-0.5)*0.2, z=b.y+0.3+j*(b.h-0.55)/2, y=j===2?gy+2.35+s*0.5+hsh(j,i)*(Hh-2.6):gy+(0.3+hsh(i,j+3)*0.7)*Hh;
+        const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),mt(ST[(i+j)%4])); r.scale.set(1.0,j===2?0.7:Math.max(0.8,Hh/(s*2.2)),0.9); r.position.set(x,Math.min(y,top-0.2),Math.min(z,fz-0.2)); r.rotation.set(hsh(i,9)*0.5,hsh(j,i)*3,0); g.add(r); }
+      // the front: dressed stone round an arched door, two lit windows, a timber hood over the door on two posts, a lantern
+      const fw=b.w-0.5; B(fw,2.3,0.25,0x9a948a,cx,gy,fz-0.3,g); B(fw+0.1,0.16,0.3,0x7a7468,cx,gy+2.3,fz-0.28,g); for(let k=1;k<4;k++) B(fw+0.02,0.04,0.27,0x7e786c,cx,gy+k*0.58,fz-0.3,g);
+      const dx=b.door.x+0.5; B(0.95,1.65,0.05,0x3a2414,dx,gy,fz-0.15,g); const ar=new THREE.Mesh(new THREE.CircleGeometry(0.475,12,0,Math.PI),mt(0x3a2414)); ar.position.set(dx,gy+1.65,fz-0.15); g.add(ar);
+      const ring=new THREE.Mesh(new THREE.TorusGeometry(0.55,0.08,5,12,Math.PI),mt(0x6e6a62)); ring.position.set(dx,gy+1.65,fz-0.13); g.add(ring); [-0.55,0.55].forEach(o=>B(0.16,1.65,0.12,0x6e6a62,dx+o,gy,fz-0.13,g));
+      [-1,1].forEach(sd=>{ const wx=dx+sd*1.15; if(Math.abs(wx-cx)>fw/2-0.3) return; const w=B(0.42,0.46,0.04,0xffd890,wx,gy+0.95,fz-0.16,g); w.material=glow(0xffd890); B(0.5,0.06,0.08,0x5a3e24,wx,gy+0.9,fz-0.13,g); B(0.06,0.5,0.08,0x5a3e24,wx,gy+0.93,fz-0.13,g); });
+      const pr=B(1.6,0.07,0.9,0x6a4a2e,dx,gy+2.15,fz+0.25,g); pr.rotation.x=0.32; [-0.7,0.7].forEach(o=>Cy(0.05,0.06,2.05,6,0x5a3e24,dx+o,gy,fz+0.6,g));
+      const lt=group(dx+0.75,gy+1.85,fz-0.05,g); B(0.04,0.25,0.04,0x2a2a2a,0,0,0,lt); Sp(0.09,glow(0xffcf6a),0,-0.05,0,lt,8,6);
+      for(let i=0;i<3;i++){ const sn=Sp(0.45+hsh(i,b.x)*0.3,0xeef3f8,b.x+0.6+i*(b.w-1.2)/2,top-0.05,fz-0.7,g,8,5); sn.scale.y=0.3; }   // snow lying on the rock
+      shade(g); mergeStatic(g); });
     // ── the people up the trees stand on their decks; while you're up, the folk below can't hear you, and the reverse ──
     const R=TT.rect, inR=(x,z)=>x>=R[0]&&x<=R[2]+1&&z>=R[1]&&z<=R[3]+1;
     WD.villagers.forEach(v=>{ if(v.deck===undefined||!decks[v.deck]) return; const f=world.folk.find(q=>q.key==='v:'+v.x+','+v.y+':'+v.outfit); if(!f) return; f.tUp=true; f.y=decks[v.deck].top+0.02; f.g.position.y=f.y; });
@@ -112,7 +127,7 @@ const TREETOPS=(function(){
       if(up) P.y=world.ground(P.x,P.z); if(OE) OE(sp); };
     world.anim.push((t,dt)=>{ dt=dt||0.016; const S0=GAME.S;
       if(climb){ const c=climb, L=c.L; c.u=Math.min(1,c.u+dt/c.dur); c.y=c.up?L.lo+(L.hi-L.lo)*c.u:L.hi+(L.lo-L.hi)*c.u; P.x=L.line.x; P.z=L.line.z;
-        if(c.u>=1){ climb=null; up=c.up; if(c.up){ P.x=L.top.x; P.z=L.top.z; P.y=L.hi; } else { P.x=L.foot.x; P.z=L.foot.z; P.y=L.lo; } P.face=Math.atan2(c.up?-L.dx:L.dx,c.up?-L.dy:L.dy); } }
+        if(c.u>=1){ climb=null; if(!L.ground) up=c.up; if(c.up){ P.x=L.top.x; P.z=L.top.z; P.y=L.hi; } else { P.x=L.foot.x; P.z=L.foot.z; P.y=L.lo; } P.face=Math.atan2(c.up?-L.dx:L.dx,c.up?-L.dy:L.dy); } }
       if(up&&!climb&&P.y<world.ground(P.x,P.z)-2.5) up=false;   /* (fallen, somehow: back on the ground) */
       if(S0) S0.atUp=up;
       // the bridges sway: a little always, more under your feet

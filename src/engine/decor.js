@@ -103,6 +103,9 @@ Object.assign(DECOR_KINDS,{
     if(kneel){ [[-0.3,0.42],[0.3,0.42],[-0.3,-0.42],[0.3,-0.42]].forEach(([x,z])=>{ const l=B(0.16,0.14,0.42,col,x,0,z,c); }); }
     else [[-0.2,0.42],[0.2,0.42],[-0.2,-0.42],[0.2,-0.42]].forEach(([x,z])=>{ Cy(0.1,0.07,0.55,6,col,x,0.5,z,c); Cy(0.06,0.06,0.5,6,col,x,0.02,z,c); Sp(0.08,col,x,0.52,z,c,6,5); B(0.14,0.04,0.16,dk,x,0,z+0.02,c); });
     const tl=Cy(0.02,0.03,0.4,4,dk,0,0,0,c); tl.position.set(0,y0+0.15,-0.68); tl.rotation.x=-0.3; },
+  summitCross(d,g){ g.position.x+=0.5; g.position.z+=0.5; [[1.3,0.5],[1.0,0.45],[0.75,0.4],[0.5,0.35]].reduce((y,[r,h],i)=>{ const s=Sp(r,[0x8a8478,0x7a766c,0x948e82,0x6e6a62][i],0,y+h/2,0,g,8,6); s.scale.y=h/r; return y+h*0.85; },0);   /* V204: the cross on Crystalpeak's summit, on its cairn */
+    B(0.24,4.2,0.24,0x6a4a2a,0,1.2,0,g); B(2.0,0.24,0.24,0x6a4a2a,0,4.0,0,g); B(0.3,0.06,0.3,0xeef3f8,0,5.4,0,g); B(2.1,0.06,0.3,0xeef3f8,0,4.24,0,g); },
+  cairn(d,g){ [[0.42,0.24],[0.34,0.22],[0.27,0.2],[0.2,0.18],[0.14,0.14]].reduce((y,[r,h],i)=>{ const s=Sp(r,[0x8a8478,0x7a766c,0x9a9488,0x6a665e,0xa8a294][i],(hsh(i,d.x)-0.5)*0.08,y+h/2,0,g,7,5); s.scale.y=h/r; return y+h; },0); },   /* V204: a trail cairn */
   minecart(d,g){ const c=group(0,0,0,g); c.rotation.y=(d.r||0)+hsh(d.x,d.y)*0.4; B(0.66,0.42,0.48,0x5a4a3a,0,0.16,0,c); B(0.7,0.06,0.52,0x3a3632,0,0.56,0,c);   /* V199: an ore cart left on the rails */
     for(let i=0;i<4;i++) Cy(0.11,0.11,0.06,10,0x2a2622,(i%2-0.5)*0.46,0.11,(i>1?0.2:-0.2),c).rotation.x=Math.PI/2;
     if(!d.empty) for(let i=0;i<5;i++) Sp(0.09,0x4a4440,(hsh(i,d.y)-0.5)*0.4,0.62,(hsh(d.x,i)-0.5)*0.3,c,5,4);

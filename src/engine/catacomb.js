@@ -1613,7 +1613,7 @@ const CATACOMB=(function(){
       raiseWhy:['I was dead, knight. Truly dead. I made the Lord small enough for my people to carry — a teacher, a lamp — and when the dark came, a lamp was not enough to save them, nor me.','And He has called me out of it, as He called Lazarus out of the tomb. No teacher does that. No good man does that. Only God made flesh. I am born again, and I will preach the whole of Him.'],
       goal:(c,inC,td)=>{ const ni=Object.keys(c.idols||{}).length; return !c.seen?`${td.name}’s chapel is barred — climb down the dry well in the market square.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep under the cisterns.`:`Back down the dry well — ${td.general}’s tomb lies deepest.`)
         :ni<10?`Set the Sun Mirror in the empty bracket in the Hall of the Teacher, and turn the light on the images — ${ni} of 10 fallen.`:!(c.doors&&c.doors['0:9,9'])&&!c.bosskey?'The images are down — the vault in the Hall of the Teacher is open. The great key is inside.':!(c.doors&&c.doors['0:9,9'])?'The great door at the head of the cistern.':`Up the stair to the nave — ${td.boss} waits.`; } },
-    5:{ entrance:'snowcrypt', wayIn:'by the cathedral wall a crypt door lies half-buried in a drift of snow — dig it clear, and its stair goes down into the crypts.', motif:'ice',
+    5:{ entrance:'falls', wayIn:'east of the town a waterfall drops off a spur of the mountain, and behind the falling water a cave goes into the rock and down into the crypts.', motif:'ice',
       intro:['Cold — a cold that goes straight to the bone, and the breath smoking in front of you. The pilgrims and brothers of Crystalpeak are buried here, under the mountain.','The cathedral overhead is bound by the dark. The way to it is down, through the crypts.','Ice on the floors, ice down the walls. Doors stay open once opened; halls stay cleared. Look for keys, and the map.'],
       warden:{name:'The Frostbound Warden',tip:'👹 The Frostbound Warden — a brute rimed in ice: its blows come after a long heave. Roll clear, or parry, and strike while it reels.'},
       tool:{flag:'rope',relic:'rope',emoji:'🪢',name:'Lydia’s Rope',take:'🙏 Take the rope',zone:' · 🪢'},
@@ -1629,7 +1629,7 @@ const CATACOMB=(function(){
         codex:['Ephesians 2:8–9','For by grace are ye saved through faith; and that not of yourselves: it is the gift of God: Not of works, lest any man should boast.'] },
       folk:{name:'Brother Simeon',first:'The ice let go the day the cathedral was cleansed. The falls are running again — you can hear them from the nave. We have a fire in every crypt now.',rest:'The General comes down to the falls sometimes. She does not climb them any more. She sits by the water and listens. She says she is learning to rest.'},
       raiseWhy:['I was dead, knight. Truly dead. I was forgiven and I would not take it — I worked to earn what was already given, until the cold had all of me, and the shadow hung me here to show the town what my striving was worth.','And He has called me out of it, as He called Lazarus out of the tomb. Lazarus did not help. Neither could I. I am born again — by grace, and not of works — and I am learning to rest in it.'],
-      goal:(c,inC,td)=>!c.seen?`${td.name}’s cathedral is barred — dig clear the snow-buried crypt door by its wall.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep under the crypts.`:`Back down into ${td.name}’s crypts — ${td.general}’s tomb lies deepest.`)
+      goal:(c,inC,td)=>!c.seen?`${td.name}’s cathedral is barred — go in behind the waterfall east of the town.`:!c.trial?(inC?`Find ${td.general}’s tomb, deep under the crypts.`:`Back down into ${td.name}’s crypts — ${td.general}’s tomb lies deepest.`)
         :!c.bosskey&&!(c.doors&&c.doors['0:9,9'])?'At the frozen falls, cast Lydia’s rope over the pulley — the great chest waits on the high ledge.':!(c.doors&&c.doors['0:9,9'])?'The great door at the head of the frost hall.':`Up the stair to the nave — ${td.boss} waits.` },
     6:{ entrance:'ashcellar', wayIn:'in the churchyard a cellar door lies half-sunk in a drift of ash — clear it, and its stair goes down into the cellars.', motif:'ash',
       intro:['Heat — still, after fifteen years — and the bitter smell of old burning. The folk of Ashfield are buried here, under the town that burned.','The chapel overhead is bound by the dark. The way to it is down, through the cellars.','Ash in drifts, and fire still breathing in the floors. Doors stay open once opened; halls stay cleared. Look for keys, and the map.'],
@@ -2501,6 +2501,28 @@ const CATACOMB=(function(){
       shade(g); MOUTH[t]={x:mx+fx*1.9,z:mz+fz*1.9,face};
       world.spots.push({x:mx+fx*1.2,z:mz+fz*1.2,r:1.2,label:'Climb down',who:'The dry well',action:()=>{ ENGINE.go('cata'+t+':0'); }});
       { const base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-mx,tz-mz); if(d<1.3&&d<Math.hypot(fx2-mx,fz2-mz)) return false; return base(fx2,fz2,tx,tz); }; }
+      return {x:mx,z:mz,mouth:MOUTH[t]}; }
+    if(CF.entrance==='falls'){   /* V204: Crystalpeak's way down: a waterfall dropping off a spur of the mountain into a pool, and behind the
+      falling water a cave mouth in the rock — you walk in along the wet ledge, under the spray, and the stair goes down into the crypts */
+      const H=(CS&&CS.h)||5, ice=0xd8eaf6;
+      const wc=document.createElement('canvas'); wc.width=64; wc.height=256; const w2=wc.getContext('2d'); w2.fillStyle='rgba(200,230,250,0.55)'; w2.fillRect(0,0,64,256);
+      for(let i=0;i<70;i++){ w2.fillStyle=`rgba(255,255,255,${0.35+Math.random()*0.5})`; w2.fillRect(Math.random()*64,Math.random()*256,1+Math.random()*3,10+Math.random()*40); }
+      const wt=new THREE.CanvasTexture(wc); wt.wrapS=wt.wrapT=THREE.RepeatWrapping; wt.repeat.set(2,H/3);
+      const wm=new THREE.MeshBasicMaterial({map:wt,transparent:true,opacity:0.82,side:THREE.DoubleSide,depthWrite:false});
+      const sheet=new THREE.Mesh(new THREE.PlaneGeometry(2.6,H+0.4),wm); sheet.position.set(-0.3,(H+0.4)/2,0.05); g.add(sheet);
+      const lip=new THREE.Mesh(new THREE.PlaneGeometry(2.6,2.2),wm); lip.rotation.x=-Math.PI/2+0.12; lip.position.set(-0.3,H+0.35,-1.05); g.add(lip);   /* the stream running to the edge above */
+      B(1.5,1.9,0.12,0x050608,0.1,0,-0.47,g); const ar=new THREE.Mesh(new THREE.CircleGeometry(0.75,14,0,Math.PI),mt(0x050608)); ar.position.set(0.1,1.9,-0.405); g.add(ar);   /* the cave mouth in the rock */
+      for(let i=0;i<9;i++){ const a=i/8*Math.PI, r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.3,0),mt(0x7e786c)); r.position.set(0.1+Math.cos(a)*0.95,0.1+Math.sin(a)*2.0,-0.4); g.add(r); }
+      const pool=new THREE.Mesh(new THREE.CircleGeometry(1.5,20),new THREE.MeshPhongMaterial({color:0x4a8ab8,transparent:true,opacity:0.85,shininess:60})); pool.rotation.x=-Math.PI/2; pool.position.set(-0.6,0.05,1.25); g.add(pool);
+      for(let i=0;i<12;i++){ const a=i/12*Math.PI*2, r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.28+hsh(i,t)*0.15,0),mt(i%2?0x8a8478:0x6e6a62)); r.position.set(-0.6+Math.cos(a)*1.6,0.1,1.25+Math.sin(a)*1.6); if(Math.cos(a)>0.6&&Math.sin(a)<0.3) continue; g.add(r); }
+      for(let i=0;i<4;i++) B(0.6,0.1,0.5,0x8a857a,1.2-i*0.28,0.02,1.6-i*0.55,g);   /* the wet stepping-stones round the pool to the ledge behind the water */
+      for(let i=0;i<5;i++){ const ic=Cy(0.02,0.07,0.35+hsh(i,2)*0.3,5,ice,-1.4+i*0.55,H-0.5,-0.42,g); ic.rotation.x=Math.PI; }   /* icicles on the lip */
+      const mist=[]; for(let i=0;i<8;i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.45,8,6),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.18,depthWrite:false})); g.add(m); mist.push(m); }
+      const blue=new THREE.PointLight(0x8ab8ff,0.6,4); blue.position.set(0.1,1.0,-0.2); g.add(blue);
+      world.anim.push(tt=>{ wt.offset.y=(tt*1.6)%1; mist.forEach((m,i)=>{ const u=(tt*0.35+i/8)%1; m.position.set(-0.3+(hsh(i,5)-0.5)*2.2,0.2+u*1.2,0.5+u*0.6); m.material.opacity=0.22*(1-u); m.scale.setScalar(0.6+u); }); });
+      shade(g); sheet.castShadow=false; lip.castShadow=false; MOUTH[t]={x:mx+fx*2.6,z:mz+fz*2.6,face};
+      world.spots.push({x:mx+fx*0.15,z:mz+fz*0.15,r:1.1,label:'Descend',who:CS&&CS.name||'Behind the falls',action:()=>{ ENGINE.go('cata'+t+':0'); }});
+      { const px=mx+Math.cos(face)*-0.6+Math.sin(face)*1.25, pz=mz-Math.sin(face)*-0.6+Math.cos(face)*1.25, base=world.canMove; world.canMove=(fx2,fz2,tx,tz)=>{ const d=Math.hypot(tx-px,tz-pz); if(d<1.45&&d<Math.hypot(fx2-px,fz2-pz)) return false; return base(fx2,fz2,tx,tz); }; }
       return {x:mx,z:mz,mouth:MOUTH[t]}; }
     if(CF.entrance==='circle'){   /* V202: Thornwood's way down: the Old Stones — a ring of standing stones in the deep wood, older than the village, round a
       sunken stone well with a stair going down it (the woodsmen carried their dead out here, and down, into the root-crypts) */
