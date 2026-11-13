@@ -331,3 +331,8 @@ After Oceanside harbour, as a beachfront town:
 ## V204.2 — Crystalpeak's rough edges
 - The farm terraces follow the hill (warped, wavering contours instead of rings) and are green turf (tile 18, which Crystalpeak's height-snow now leaves alone); the plaza too. Snow stays on the rock and the peak.
 - Andean stone houses (`b.inca`, drawn in treetops.js): walls of fitted grey blocks in courses, trapezoid door under a lintel, trapezoid niches (lit at the front), stone gables, a steep thatch roof with bands and ridge — the Pilgrim's Supply, the Abbot's Quarters, the Terrace-Farmer's House and the Warm Hearth inn.
+
+## V205 — Ashfield, rebuilding after the fire
+- **tools/villages.py** Ashfield section: rect 446..512 × 462..524. The burnt quarter (north-west of a ragged line): ruined houses (decor `ruin`: blackened walls to jagged heights, a lone chimney, fallen beams, embers), charred trees, broken pillars, ember pits, the scorched chapel (barred) and its churchyard at its edge; and by the old cooper's ruin the **ash-buried cellar door** (`WD.cata['6']` 459,492, the existing clear-the-ash mechanic). The new town to the south-east: a cobbled square with a new well and stalls, fresh-timber houses (af_home3 Carpenter, af_home4 Bellfounder, af_home5 Glazier new), a house going up (`frame`, `scaffold`), lumber, the saw-pit. South of the road the ash fields ploughed and sown, green coming up in the furrows. Clues: Widow Hagar (the horn under the ash), Builder Jabez (snow won't lie there), Little Abijah (a warm door handle).
+- **engine/world.js**: `WD.turf` — hand-painted turf runs [y,x0,x1,colour,hard] on the biome ground colours: soft (blurred) for the burnt quarter's ash, hard for the furrows.
+- **engine/decor.js**: ruin, frame, scaffold.

@@ -106,6 +106,21 @@ Object.assign(DECOR_KINDS,{
   summitCross(d,g){ g.position.x+=0.5; g.position.z+=0.5; [[1.3,0.5],[1.0,0.45],[0.75,0.4],[0.5,0.35]].reduce((y,[r,h],i)=>{ const s=Sp(r,[0x8a8478,0x7a766c,0x948e82,0x6e6a62][i],0,y+h/2,0,g,8,6); s.scale.y=h/r; return y+h*0.85; },0);   /* V204: the cross on Crystalpeak's summit, on its cairn */
     B(0.24,4.2,0.24,0x6a4a2a,0,1.2,0,g); B(2.0,0.24,0.24,0x6a4a2a,0,4.0,0,g); B(0.3,0.06,0.3,0xeef3f8,0,5.4,0,g); B(2.1,0.06,0.3,0xeef3f8,0,4.24,0,g); },
   cairn(d,g){ [[0.42,0.24],[0.34,0.22],[0.27,0.2],[0.2,0.18],[0.14,0.14]].reduce((y,[r,h],i)=>{ const s=Sp(r,[0x8a8478,0x7a766c,0x9a9488,0x6a665e,0xa8a294][i],(hsh(i,d.x)-0.5)*0.08,y+h/2,0,g,7,5); s.scale.y=h/r; return y+h; },0); },   /* V204: a trail cairn */
+  ruin(d,g){ const n=d.w||3, o=n/2-0.5; g.position.x+=o; g.position.z+=o; const h=hsh(d.x,d.y), ST=[0x4a4440,0x3e3834,0x564e48,0x342e2a], BM=0x2a1e18;   /* V205: a house the fire took: walls of blackened stone standing to jagged heights, its chimney, fallen beams, ash, embers */
+    const W2=n-0.4; [[0,-W2/2,1,0],[0,W2/2,1,0],[-W2/2,0,0,1],[W2/2,0,0,1]].forEach(([x,z,ax,az],k)=>{ const segs=5; for(let i=0;i<segs;i++){ const u=(i+0.5)/segs-0.5, hh=k===1&&i===2?0.0:0.3+hsh(i+k*5,d.x+d.y)*(k===0?2.0:1.4); if(hh<0.05) continue;
+        B(ax?W2/segs-0.02:0.3,hh,az?W2/segs-0.02:0.3,ST[(i+k)%4],x+ax*u*W2,0,z+az*u*W2,g); } });
+    const cx2=(h<0.5?-1:1)*(W2/2-0.25); B(0.6,3.0+h,0.6,ST[1],cx2,0,-W2/2+0.3,g); B(0.7,0.15,0.7,ST[3],cx2,3.0+h,-W2/2+0.3,g);
+    for(let i=0;i<3;i++){ const bm=B(0.16,0.16,W2*0.9,BM,(hsh(i,d.x)-0.5)*W2*0.7,0.1+i*0.12,0,g); bm.rotation.set(0.15+hsh(d.y,i)*0.4,hsh(i,9)*2,0.2); }
+    for(let i=0;i<4;i++){ const a2=Sp(0.35+hsh(i,d.y)*0.25,0x5a5450,(hsh(i,3)-0.5)*W2*0.6,0.02,(hsh(3,i)-0.5)*W2*0.6,g,7,5); a2.scale.y=0.3; }
+    if(h>0.4) for(let i=0;i<3;i++) Sp(0.05,glow(0xff7a2a),(hsh(i,5)-0.5)*W2*0.5,0.08,(hsh(5,i)-0.5)*W2*0.5,g,5,4); },
+  frame(d,g){ const n=d.w||3, o=n/2-0.5; g.position.x+=o; g.position.z+=o; const W2=n-0.3, P2=0xc8a070, P3=0xb08a58;   /* V205: a house going up: a fresh timber frame on a stone footing, half its walls boarded, the rafters bare */
+    B(W2+0.2,0.3,W2+0.2,0x8a8478,0,0,0,g); [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1]].forEach(([a,b])=>B(0.16,2.2,0.16,P2,a*W2/2,0.3,b*W2/2,g));
+    [-1,1].forEach(b=>B(W2,0.16,0.16,P3,0,2.5,b*W2/2,g)); [-1,1].forEach(a=>B(0.16,0.16,W2,P3,a*W2/2,2.5,0,g));
+    for(let i=0;i<6;i++) B(W2/2-0.05,0.18,0.05,P2,-W2/4,0.4+i*0.3,-W2/2,g); for(let i=0;i<4;i++) B(0.05,0.18,W2-0.1,P2,-W2/2,0.4+i*0.3,0,g);
+    for(let i=0;i<4;i++){ const z=-W2/2+i*W2/3; [-1,1].forEach(sd=>{ const r=B(0.1,0.1,W2*0.62,P3,sd*W2/4,2.6+W2*0.18,z,g); r.rotation.y=Math.PI/2; r.rotation.z=sd*0.62; r.position.x=sd*W2/4; }); } },
+  scaffold(d,g){ g.position.x+=0.5; g.position.z+=0.5; [[-0.8,-0.8],[0.8,-0.8],[-0.8,0.8],[0.8,0.8]].forEach(([x,z])=>Cy(0.04,0.04,3.0,5,0x9a7a50,x,0,z,g));   /* V205: scaffolding: poles, lashed ledgers, plank decks, a ladder, a bucket on a rope */
+    [1.0,2.0].forEach(y=>{ B(1.7,0.06,1.7,0x9a7a50,0,y,0,g); for(let i=0;i<4;i++) B(1.7,0.04,0.3,0xb08a58,0,y+0.06,-0.6+i*0.4,g); B(1.7,0.05,0.05,0x8a6a40,0,y+0.8,0.85,g); });
+    [-0.2,0.2].forEach(o=>B(0.05,2.1,0.05,0x8a6a40,0.95,0,o,g)); for(let i=0;i<6;i++) B(0.05,0.04,0.45,0x8a6a40,0.95,0.3+i*0.33,0,g); Cy(0.12,0.1,0.22,8,0x6a5a4a,-0.5,1.1,0.3,g); },
   minecart(d,g){ const c=group(0,0,0,g); c.rotation.y=(d.r||0)+hsh(d.x,d.y)*0.4; B(0.66,0.42,0.48,0x5a4a3a,0,0.16,0,c); B(0.7,0.06,0.52,0x3a3632,0,0.56,0,c);   /* V199: an ore cart left on the rails */
     for(let i=0;i<4;i++) Cy(0.11,0.11,0.06,10,0x2a2622,(i%2-0.5)*0.46,0.11,(i>1?0.2:-0.2),c).rotation.x=Math.PI/2;
     if(!d.empty) for(let i=0;i<5;i++) Sp(0.09,0x4a4440,(hsh(i,d.y)-0.5)*0.4,0.62,(hsh(d.x,i)-0.5)*0.3,c,5,4);

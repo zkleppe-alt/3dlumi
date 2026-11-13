@@ -833,6 +833,103 @@ for q in PT['trade']['points'].values():
 for s_ in PT['reuben']['spots']:
     if ins5o(s_): s_['x'],s_['y']=457,259
 
+# ════════════════════════════════════ ASHFIELD ════════════════════════════════════
+# The town that burned, rebuilding. The north-west is still the burnt quarter: shells of houses on drifted ash, chimneys
+# standing alone, charred trees, the barred chapel scorched at its edge. The south-east is going up again in fresh timber
+# round a new market square — a house half-framed in scaffolding, the lumber stacked to build the next. South of the road
+# the ash fields are being ploughed and sown, green coming up in the furrows. In the burnt quarter, by the old cooper's
+# ruin, a cellar door lies half-sunk in the ash — the old way down to the cellars where Ashfield buries its dead.
+X0,Y0,X1,Y1=446,462,512,524
+BURNT=set()
+ins6=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
+olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins6(v)}
+WD['decor']=[d for d in WD['decor'] if not ins6(d)]; WD['villagers']=[v for v in WD['villagers'] if not ins6(v)]
+for k in [k for k in WD['signs'] if ins6(dict(zip('xy',map(int,k.split(',')))))]: WD['signs'].pop(k)
+for y in range(Y0,Y1+1):
+    for x in range(X0,X1+1):
+        t=T(x,y)
+        if t in (3,20,21): continue
+        if t==2 and (453<=x<=455 or 506<=y<=508 or 488<=x<=489): put(x,y,2,True,0); continue
+        burnt=x+0.6*(y-466)+3.5*math.sin(y*0.37)+2.5*math.sin(x*0.29+1)<492 and y<505                                 # the burnt quarter, north-west of a line
+        if t in (5,9,14,16,33,26,27,28,6,25,32,15) or (456<=x<=508 and 466<=y<=504 and t in (1,7)): put(x,y,0,True,0)
+        else: put(x,y,t,t not in (1,7),0)
+        if burnt and T(x,y) in (0,4): BURNT.add((x,y))
+# the lanes: the old street through the burnt quarter, the new street to the square, the way out to the fields
+lane([(455,484),(462,484),(470,482),(478,481),(486,484)],t=2)
+lane([(486,484),(488,490),(489,498),(489,506)])
+lane([(474,476),(475,481)]); lane([(462,484),(462,494),(468,500),(472,506)])
+for y in range(486,496):
+    for x in range(482,496):
+        if math.hypot((x+0.5-489)/7,(y+0.5-491)/5)<1 and T(x,y) in (0,25,2): put(x,y,6,True,0); BURNT.discard((x,y))
+decor('hsWell',488,490); decor('marketStall',484,488,2); decor('marketStall',492,493,2); decor('lantern',483,494); decor('lantern',494,488); decor('crate',491,487); decor('barrel',485,494)
+# the chapel, scorched, at the edge of the burnt quarter; its churchyard
+bld('af_chapel','Ashfield Chapel','chapel',472,469,6,6)
+for gx,gy in ((469,470),(469,473),(480,470),(480,473),(470,476),(479,476)): decor('tombstone',gx,gy)
+decor('charredTree',467,468); decor('charredTree',482,467)
+# the burnt quarter: shells of houses, chimneys, charred trees, rubble
+for p in ((458,470,3),(463,475,3),(457,488,3),(466,489,3),(458,496,3),(469,494,3),(464,468,3)): decor('ruin',*p)
+for p in ((461,480),(470,486),(455,478),(467,499),(474,491),(460,503)): decor('charredTree',*p)
+for p in ((456,483),(468,480),(472,497),(463,500)): decor('brokenPillar',*p)
+for p in ((459,474),(471,489),(466,483)): decor('emberPit',*p)
+# the new town: fresh timber round the square, a house going up in its scaffold, the lumber for the next
+bld('af_shop','Emberforge Trade','shop',479,478,5,4); decor('anvilMonument',485,479)
+bld('af_inn','The Cinder Rest','inn',497,484,5,4)
+bld('af_home1',"Survivor's Shelter",'cottage',480,497,5,4); bld('af_home2','Ashen Dwelling','house',492,497,4,3)
+for id,nm,st,x,y,w,h,who in (('af_home3',"The Carpenter's House",'house',500,491,4,3,('Carpenter Ira','embersmith','Every beam in the new street came off my bench. Smell that — green oak. Nothing in Ashfield has smelled like that in fifteen years.')),
+                             ('af_home4',"The Bellfounder's House",'cottage',486,476,4,3,('Bellfounder Tirzah','survivorF','We will cast a new bell when the chapel opens. I have the mould ready. I have had it ready for fifteen years.')),
+                             ('af_home5',"The Glazier's House",'house',503,478,4,3,('Glazier Seth','survivor','Glass from the ash, if you can believe it. The fire left us that much — sand fused to glass in the cellars. I melt it again.'))):
+    bld(id,nm,st,x,y,w,h,who=who)
+decor('frame',496,500,3); decor('scaffold',500,500,2); decor('timber',504,496,2); decor('logpile',494,503); decor('sawpit',503,504,2); decor('timber',507,500)
+for p in ((478,486),(497,490),(506,488),(480,503)): decor('planter',*p)
+# the ash fields, ploughed and sown: green coming up in the furrows
+for y in range(511,521):
+    for x in range(457,481):
+        if T(x,y) in (0,25,4,1,7): put(x,y,0,True,0)
+    WD.setdefault('turf',[]).append([y,457,480,0x5c9a44 if y%2 else 0x4a4036,1])
+fence(456,510,481,521,gaps={(468,510),(469,510),(481,515),(481,516)})
+decor('scarecrow',464,515); decor('scarecrow',474,518); decor('haystack',458,512); decor('haycart',478,512,2)
+for y in range(510,520):
+    for x in range(492,506):
+        if T(x,y) in (0,25,4,1,7): put(x,y,0,True,0)
+    for x in range(492,506): WD['turf'].append([y,x,x,0x5c9a44 if x%2 else 0x4a4036,1])
+decor('scarecrow',498,514)
+for y in range(Y0,Y1+1):                                           # the burnt quarter's ground: ash, dark and grey
+    xs=sorted(x for x in range(X0,X1+1) if (x,y) in BURNT)
+    i=0
+    while i<len(xs):
+        j=i
+        while j+1<len(xs) and xs[j+1]==xs[j]+1: j+=1
+        WD['turf'].append([y,xs[i],xs[j],0x3e3a36,0]); i=j+1
+# the cellar door under the ash, by the old cooper's ruin
+WD['cata']['6']={'x':459,'y':492,'face':math.pi/2,'name':'A cellar door under the ash','where':'the old cooper’s cellar in the burnt quarter, its door half-sunk in the ash',
+    'door':['The doors are barred from within. They are hot to the touch, and the ash at the threshold is still smoking.','Someone in the town may know another way in.'],
+    'doorHeard':['The doors are barred from within. They are hot to the touch, and the ash at the threshold is still smoking.','The sounds come from under the old cooper’s ruin in the burnt quarter. There is a cellar door there, half-sunk in the ash.'],
+    'goal':'Ashfield’s chapel is barred from within. Ask in the town — someone has heard something.',
+    'goalHeard':'To the old cooper’s ruin in the burnt quarter — clear the ash from the cellar door.',
+    'wayIn':'in the burnt quarter, by the old cooper’s ruin, a cellar door lies half-sunk in the ash — clear it, and its stair goes down into the cellars.',
+    'journal':'Ashfield’s chapel is barred. The cellars under the town — where Ashfield buries its dead — were reached from the old cooper’s cellar in the burnt quarter, its door now half-sunk in the ash. Since the dark came, a horn sounds under the ash at night, and the snow will not lie there.'}
+for i,((x,y,o),v) in enumerate(olds.items()):
+    nx,ny=[(486,492),(490,488),(479,484),(495,491)][i%4]; folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
+folk(476,487,'survivorF',['At night a horn sounds under the ash in the old quarter. Long and low, three times — like the trumpets before Jericho.','The old quarter’s cellars ran under half the town. My husband’s father is buried down there.'],name='Widow Hagar',clue=6,after=['The horn under the old quarter has stopped. Last night I slept with the window open, first time since the fire.'])
+folk(498,503,'embersmith',['Snow never lies by the old cooper’s ruin. Falls on the ash and melts the moment it lands.','Something down there is still burning, knight. After fifteen years.'],name='Builder Jabez',clue=6,after=['Snow lies on the old quarter now, same as anywhere. We’ll start clearing it come spring and build there too.'])
+folk(463,490,'child',['I found a door in the ash by the cooper’s ruin! The handle was WARM!','Mama says leave it alone. I left it alone. Mostly.'],name='Little Abijah',clue=6,after=['The cooper’s door was open and the brothers went down with lamps! Can I go down? Mama says no.'])
+folk(470,505,'farmer',['Ash makes good soil, they say. Give it fifteen years. Well — it’s been fifteen years. Look at the barley come up.'],name='Ploughman Eber')
+folk(476,478,'monk',['I sweep the ash off the chapel steps each morning. It blows back. I sweep it again. That is what faith looks like in Ashfield.'],name='Brother Ard')
+sign(456,481,'THE BURNT QUARTER\nMind the cellars. Mind the embers.'); sign(487,505,'ASHFIELD\nWhat the fire spared, faith keeps'); sign(482,495,'THE NEW SQUARE\nBuilt from the ash up.')
+HA=['Have you heard the horn under the old quarter at night? Ask Widow Hagar — she hears it plainest.','The chapel’s been barred fifteen years. If there’s a way down, it’s in the burnt quarter. Nobody goes there after dark.']
+if isinstance(SQ['hints'],list): SQ['hints'][6]['out']=HA
+else: SQ['hints']['6']['out']=HA
+WD['villageRects'].append([X0,Y0,X1,Y1]); WD['townR']['Ashfield']=32; WD.setdefault('flats',[]).append([452,464,510,522])
+cx,cy,rx,ry=480,492,34,30; WD['barriers'][6]=[cx,cy,rx,ry]
+ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
+WD['barrierSets']['6']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
+for z in WD['zones']:
+    if z['x0']<cx+rx+2 and z['x1']>cx-rx-2 and z['y0']<cy+ry+2 and z['y1']>cy-ry-2: z['x1']=min(z['x1'],cx-rx-3)
+for q in PT['trade']['points'].values():
+    if ins6(q): q.update({'x':490,'y':494,'dx':490,'dy':493})
+for s_ in PT['reuben']['spots']:
+    if ins6(s_): s_['x'],s_['y']=486,511
+
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src
 for n in sorted(CON,key=lambda n:-CON[n][0]):

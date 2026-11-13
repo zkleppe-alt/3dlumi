@@ -1149,9 +1149,12 @@ function buildWorld(WD,opt){
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const b=bio(x,y), k=(y*W+x)*3, r=ROLL?roll0(x+0.5,y+0.5):0; C.setHex(BCOL[b]||BCOL[0]);
       if(b===4) C.lerp(hi.setHex(0xe9eff3),Math.max(0,Math.min(1,(r-0.9)/2.4))); else if(b===7) C.lerp(hi.setHex(0x8f8c7c),Math.max(0,Math.min(0.75,(r-2)/5))); else if(b===2) C.lerp(hi.setHex(0xe2cc98),Math.max(0,Math.min(0.6,(r-0.6)/2.5))); else if(b===1) C.lerp(hi.setHex(0x3c7a3e),hsh(x>>2,y>>2)*0.5);
       A[k]=C.r; A[k+1]=C.g; A[k+2]=C.b; }
+    /* V205: turf painted by hand (WD.turf: runs [y,x0,x1,colour,hard]) — the burnt quarter's ash, soft-edged; the sown furrows, crisp */
+    const turf=(hard)=>(WD.turf||[]).forEach(([y,x0,x1,hex,hd])=>{ if(!!hd!==hard) return; C.setHex(hex); for(let x=Math.max(0,x0);x<=Math.min(W-1,x1);x++){ const k=(y*W+x)*3; A[k]=C.r; A[k+1]=C.g; A[k+2]=C.b; } });
+    turf(false);
     const R=3; for(let pass=0;pass<2;pass++){ const S=pass?B:A, D=pass?A:B, dx=pass?0:1, dy=pass?1:0;
       for(let y=0;y<H;y++) for(let x=0;x<W;x++){ let r=0,g=0,b=0,n=0; for(let i=-R;i<=R;i++){ const X=x+i*dx, Y=y+i*dy; if(X<0||Y<0||X>=W||Y>=H) continue; const q=(Y*W+X)*3; r+=S[q]; g+=S[q+1]; b+=S[q+2]; n++; } const k=(y*W+x)*3; D[k]=r/n; D[k+1]=g/n; D[k+2]=b/n; } }
-    return A; })(), _bgc=new THREE.Color();
+    turf(true); return A; })(), _bgc=new THREE.Color();
   const grassOf=(x,y)=>{ if(BGR&&x>=0&&y>=0&&x<W&&y<H){ const k=(y*W+x)*3; return _bgc.setRGB(BGR[k],BGR[k+1],BGR[k+2]).getHex(); } if(desert(x,y)) return 0xcdb47e; if(ashland(x,y)) return 0x77725e; return GRASS[region(x,y)]||0x5fa860; };
   function treeKind(x,y){ if(desert(x,y)){ if(BIO) for(const [a,b] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[2,0],[0,2],[-2,0],[0,-2]]){ const q=T(x+a,y+b); if(q===3||q===20) return 'palm'; } return 'cactus'; } if(ashland(x,y)) return 'charred'; const r=region(x,y);
     if(BIO){ const b=bio(x,y), hh=hsh(x,y); if(b===4) return (ROLL?roll0(x+0.5,y+0.5):0)>0.9||hh<0.35?'snow':'pine'; if(b===5) return 'mere'; if(b===7) return hh<0.75?'pine':'oak'; if(b===1) return hh<0.42?'pine':hh>0.9?'birch':'oak'; if(b===6&&hh<0.22) return 'palm'; if(b===9||b===0) return hh<0.12?'pine':hh>0.8?'birch':'oak'; }
