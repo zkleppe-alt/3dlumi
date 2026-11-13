@@ -86,6 +86,23 @@ Object.assign(DECOR_KINDS,{
     for(let r=0;r<4;r++){ const along=r%2===0; for(let i=0;i<4;i++){ const o=-0.42+i*0.28; B(along?n*0.9+0.3:0.22,0.18,along?0.22:0.9,c[(i+r)%3],along?0:o,r*0.2,along?o:0,g); } } },
   chopblock(d,g){ Cy(0.32,0.36,0.5,9,0x6a4a2a,0,0,0,g); Cy(0.3,0.3,0.02,9,0xc8a070,0,0.5,0,g); const ax=group(0.05,0.52,0,g); ax.rotation.z=-0.5; B(0.05,0.7,0.05,0x8a6a42,0,0,0,ax); B(0.04,0.14,0.22,0x9aa0a4,0,0.62,0.06,ax);   /* V202: the chopping block, its axe in it */
     for(let i=0;i<3;i++){ const s=B(0.12,0.4,0.12,0xb08a5a,0.5+i*0.12,0,-0.3+i*0.18,g); s.rotation.z=0.3*(i-1); } },
+  awning(d,g){ g.position.x+=0.5; g.position.z+=0.5; const h=hsh(d.x,d.y), C=[[0xc8502e,0xf0e2c0],[0x2e6a8a,0xf0e2c0],[0xd8a030,0x8a3a2a],[0x6a3a6a,0xe8d8b0]][Math.floor(h*4)];   /* V203: a market stall's cloth awning on four poles, goods under it */
+    [[-0.85,-0.75],[0.85,-0.75],[-0.85,0.75],[0.85,0.75]].forEach(([x,z])=>Cy(0.04,0.05,z<0?2.3:1.9,5,0x6a4a2a,x,0,z,g));
+    for(let i=0;i<6;i++){ const s2=B(1.85/6,0.03,1.7,i%2?C[1]:C[0],-0.925+1.85/6*(i+0.5),2.05,0,g); s2.rotation.x=0.24; }
+    for(let i=0;i<6;i++) B(1.85/6,0.18,0.02,i%2?C[1]:C[0],-0.925+1.85/6*(i+0.5),1.72,0.86,g);
+    B(1.5,0.08,0.6,0x9a7448,0,0.7,-0.1,g); [-0.65,0.65].forEach(x=>B(0.06,0.7,0.5,0x7a5432,x,0,-0.1,g));
+    const goods=Math.floor(hsh(d.y,d.x)*3); for(let i=0;i<4;i++){ const x=-0.5+i*0.33;
+      if(goods===0){ const j=Sp(0.12,[0xb0683a,0xc8885a,0x9a5a30][i%3],x,0.92,-0.1,g,8,6); j.scale.y=1.3; }
+      else if(goods===1) B(0.28,0.05+i%2*0.04,0.4,[0xa83a3a,0x3a6a8a,0xd8b040,0x6a8a3a][i],x,0.78,-0.1,g);
+      else Cy(0.11,0.13,0.14,8,[0xd8a030,0xb84a20,0x7a8a3a,0xe8d8a0][i],x,0.78,-0.1,g); } },
+  camel(d,g){ const c=group(0,0,0,g), h=hsh(d.x,d.y), kneel=h<0.4, col=h<0.7?0xc8a070:0xb8946a, dk=0x8a6a48; c.rotation.y=h*6.28;   /* V203: a camel in the caravan yard, standing or kneeling */
+    const y0=kneel?0.38:1.0, bd=Sp(0.5,col,0,y0+0.25,0,c,10,8); bd.scale.set(0.75,0.7,1.35); const hp=Sp(0.32,col,0,y0+0.6,0.05,c,9,7); hp.scale.set(0.8,0.9,1.0);
+    B(0.62,0.08,0.7,0xa83a2a,0,y0+0.48,0.05,c); B(0.64,0.03,0.72,0xd8a030,0,y0+0.5,0.05,c);
+    const nk=Cy(0.11,0.15,0.9,7,col,0,0,0,c); nk.position.set(0,y0+0.6,0.75); nk.rotation.x=0.7; const hd=B(0.18,0.2,0.42,col,0,y0+0.85,1.18,c);
+    [-0.06,0.06].forEach(x=>{ B(0.03,0.08,0.03,dk,x,y0+1.05,1.08,c); Sp(0.025,0x1a1410,x+Math.sign(x)*0.04,y0+1.0,1.25,c,5,4); });
+    if(kneel){ [[-0.3,0.42],[0.3,0.42],[-0.3,-0.42],[0.3,-0.42]].forEach(([x,z])=>{ const l=B(0.16,0.14,0.42,col,x,0,z,c); }); }
+    else [[-0.2,0.42],[0.2,0.42],[-0.2,-0.42],[0.2,-0.42]].forEach(([x,z])=>{ Cy(0.1,0.07,0.55,6,col,x,0.5,z,c); Cy(0.06,0.06,0.5,6,col,x,0.02,z,c); Sp(0.08,col,x,0.52,z,c,6,5); B(0.14,0.04,0.16,dk,x,0,z+0.02,c); });
+    const tl=Cy(0.02,0.03,0.4,4,dk,0,0,0,c); tl.position.set(0,y0+0.15,-0.68); tl.rotation.x=-0.3; },
   minecart(d,g){ const c=group(0,0,0,g); c.rotation.y=(d.r||0)+hsh(d.x,d.y)*0.4; B(0.66,0.42,0.48,0x5a4a3a,0,0.16,0,c); B(0.7,0.06,0.52,0x3a3632,0,0.56,0,c);   /* V199: an ore cart left on the rails */
     for(let i=0;i<4;i++) Cy(0.11,0.11,0.06,10,0x2a2622,(i%2-0.5)*0.46,0.11,(i>1?0.2:-0.2),c).rotation.x=Math.PI/2;
     if(!d.empty) for(let i=0;i<5;i++) Sp(0.09,0x4a4440,(hsh(i,d.y)-0.5)*0.4,0.62,(hsh(d.x,i)-0.5)*0.3,c,5,4);

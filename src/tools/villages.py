@@ -572,6 +572,104 @@ for z in WD['zones']:
         if z['y0']<cy-ry-2: z['y1']=cy-ry-3
         elif z['y1']>cy+ry+2: z['y0']=cy+ry+3
 
+# ════════════════════════════════════ DUSTHAVEN ════════════════════════════════════
+# The caravan town at the edge of the sand: a spring-fed pool in a ring of date palms, flat-roofed adobe houses stepping up a
+# low ridge to the chapel at its top, the market square by the Caravan Bazaar with the old town well in the middle of it —
+# dry since the night the chapel was barred — the bazaar street under its awnings, and the caravan yard by the south road
+# where the camels kneel. The well goes down into the cisterns the town's fathers cut; of late, something answers from it.
+X0,Y0,X1,Y1=246,236,318,300
+ins4=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
+olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins4(v)}
+WD['decor']=[d for d in WD['decor'] if not ins4(d)]; WD['villagers']=[v for v in WD['villagers'] if not ins4(v)]
+for k in [k for k in WD['signs'] if ins4(dict(zip('xy',map(int,k.split(',')))))]: WD['signs'].pop(k)
+for k in [k for k,v in PT['fishSpots'].items() if v=='oasis' and ins4(dict(zip('xy',map(int,k.split(',')))))]: PT['fishSpots'].pop(k)
+for y in range(Y0,Y1+1):
+    for x in range(X0,X1+1):
+        t=T(x,y); core=math.hypot((x-285)/29.0,(y-268)/29.5)+0.16*math.sin(x*0.37+y*0.11)+0.1*math.sin(y*0.53-x*0.21)+0.06*(hsh2(x,y)-0.5)<1.0
+        if t in (3,20) and not (262<=x<=300 and 254<=y<=284): continue      # the rivers either side stay
+        if not core and t in (1,7,33): continue
+        if core or t in (5,9,14,16,6,2,19): put(x,y,19 if core else 0,True,0)
+# the oasis: a spring pool in a ring of green and date palms
+OX,OY=276,264
+for y in range(OY-10,OY+11):
+    for x in range(OX-14,OX+15):
+        d=math.hypot((x+0.5-OX)/6.5,(y+0.5-OY)/4.5)
+        if d<0.62: put(x,y,3,False,0)
+        elif d<1.0: put(x,y,20,True,0); PT['fishSpots'][f"{x},{y}"]='oasis'
+        elif d<1.25: put(x,y,19,True,0)
+        elif d<1.95: put(x,y,4 if hsh2(x,y)<0.25 else 0,True,0)
+for i in range(14):
+    a=i/14*math.pi*2+0.2; r=1.45+0.25*hsh2(i,7); x=int(OX+math.cos(a)*6.5*r); y=int(OY+math.sin(a)*4.5*r)
+    if T(x,y) in (0,4): decor('palmDesert',x,y)
+# the roads: in from the north past the pool, the bazaar street east-west, south to the caravan yard and the road out
+lane([(266,236),(266,252),(267,262),(270,272),(273,277)])
+lane([(260,277),(306,277)],w=3)
+lane([(283,278),(283,300)],w=3)
+lane([(288,249),(288,256),(288,262)]); lane([(300,268),(296,272),(293,276)]); lane([(270,256),(276,252),(281,250)])
+# the market square, the dry well in its middle, the Caravan Bazaar on its east side
+for y in range(262,275):
+    for x in range(282,296):
+        if T(x,y) in (19,0,2): put(x,y,6,True,0)
+bld('dh_bazaar','Caravan Bazaar','shop',296,263,5,4); decor('awning',296,268,2); decor('waterjug',295,262); decor('crate',301,262)
+for p in ((283,263),(294,273),(283,273)): decor('lantern',*p)
+decor('waterjug',285,266); decor('waterjug',291,271); decor('barrel',293,264)
+# the chapel up on the ridge, the adobe houses stepping up to it
+WD['hills'].append([288,246,12,2.6])
+bld('dh_chapel','Dusthaven Chapel','chapel',285,242,6,6)
+for p in ((283,246),(292,246),(283,243),(292,243)): decor('palmDesert',*p)
+H4=[('dh_home3',"The Water-Seller's House",'house',275,248,4,3,('Old Zillah','nomadF','Water was a copper a jar when I was a girl. Now it comes free from the spring — praise God — and I sell the jars.')),
+    ('dh_home4',"The Potter's House",'house',296,246,4,3,('Potter Ezer','nomad','Every jar in the bazaar came off my wheel. The cracked ones I keep. They hold flowers well enough.')),
+    ('dh_home5',"The Weaver's House",'cottage',301,252,5,3,('Weaver Tamar','nomadF','Camel-hair for the tent-cloth, goat-hair for the ropes. Feel how the weave keeps the sand out.')),
+    ('dh_home6',"The Spice-Merchant's House",'house',269,248,4,3,('Spice-merchant Asa','merchantD','Cumin, coriander, saffron from over the dunes. Sniff that — no, not too close.')),
+    ('dh_home7',"The Camel-Driver's House",'cottage',297,282,4,3,('Driver Joab\'s wife','nomadF','He’s out in the yard with the beasts. He talks to that grey camel more than to me.')),
+    ('dh_home8',"The Date-Grower's House",'house',264,282,4,3,('Date-grower Uzzi','nomad','Twelve palms by the pool, and every one older than me. The sweetest dates in the realm. Have one.'))]
+for id,nm,st,x,y,w,h,who in H4: bld(id,nm,st,x,y,w,h,who=who)
+bld('dh_inn','The Oasis Rest','inn',257,262,5,4); decor('tent',255,268,2); decor('waterjug',262,266)
+bld('dh_home1','Adobe Dwelling','cottage',272,281,5,4); bld('dh_home2',"Nomad's Tent-Home",'house',288,282,4,3)
+# the bazaar street: stalls under awnings on both hands
+for x in (262,268,276,288,298,304):
+    decor('awning',x,274,2)
+for x in (266,278,292,302):
+    if T(x,280) in (19,0,2): decor('awning',x,280,2)
+decor('marketStall',270,274,2); decor('farmStand',300,280); decor('crate',281,280); decor('waterjug',286,280)
+# the caravan yard by the south road: the corral, camels kneeling and standing, the wagons, tents
+fence(300,286,315,297,gaps={(300,290),(300,291),(300,292)})
+for p in ((303,289),(307,288),(311,291),(304,294),(309,295)): decor('camel',*p)
+decor('mule',313,288); decor('haycart',290,292,2); decor('haycart',293,296,2); decor('tent',287,289,2); decor('tent',295,290,2); decor('waterjug',299,288); decor('crate',299,296)
+lane([(284,291),(300,291)])
+for i in range(22):
+    a_=i/22*math.pi*2; r_=27+4*hsh2(i,3); x=int(285+math.cos(a_)*r_); y=int(268+math.sin(a_)*r_)
+    if T(x,y) in (19,0): decor('cactus',x,y)
+WD['cata']['4']={'x':288,'y':268,'face':0,'name':'The dry well','where':'the dry well in the middle of the market square',
+    'door':['The doors are barred from within. Sand has drifted against them from the inside — fine and pale, the sand from deep down.','Someone in the market may know another way in.'],
+    'doorHeard':['The doors are barred from within. Sand has drifted against them from the inside — fine and pale, the sand from deep down.','The sounds come up the dry well in the market square. The old cisterns are under it.'],
+    'goal':'Dusthaven’s chapel is barred from within. Ask in the market — someone has heard something.',
+    'goalHeard':'Down the dry well in the middle of the market square — the sounds come up from there.',
+    'wayIn':'in the middle of the market square the old town well has run dry, and a rope ladder hangs down its shaft into the cisterns below.',
+    'journal':'Dusthaven’s chapel is barred. The town well in the market square ran dry the night it was barred, and the cisterns the town’s fathers cut — where the caravan-folk bury their dead — are under it. Since then, things answer from the bottom of the well. There is a rope ladder down it.'}
+mv={}
+for i,((x,y,o),v) in enumerate(olds.items()):
+    nx,ny=[(272,258),(299,270),(279,269),(290,279),(268,276)][i%5]; folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
+folk(286,270,'nomadF',['Drop a pebble down the old well and you don’t hear it land, knight. You hear it come back up — rolled, all the way, up the stones, and out at your feet.','I’ve done it three times. I won’t do it a fourth.'],name='Miriam the Water-Carrier',clue=4,after=['The well’s sweet again! I let my jar down this morning and it came up full and cold.'])
+folk(305,290,'nomad',['Thirty years I’ve brought caravans in to Dusthaven. The well went dry the night the chapel was barred — the very night.','Now at noon, with the sun straight down the shaft, there’s a glint at the bottom, like a mirror turning. And under it, singing. Hymns, knight — but the words are wrong.'],name='Hosea the Caravan-Master',clue=4,after=['Noon in the market, and the glint’s still down the well — but the singing’s right again. The words are the old words.'])
+folk(281,266,'child',['I let our bucket down the old well on Papa’s longest rope. Something at the bottom tugged it — twice! — and let go.','Papa says it was the rope catching. Ropes don’t tug.'],name='Little Nadab',clue=4,after=['Papa let me drop the bucket down the well and it came up with WATER. Did you do that?'])
+folk(310,293,'nomad',['Kneel, Sheba. Kneel. — There. She kneels for nobody but me and the Lord’s own sunset.'],name='Driver Joab')
+folk(267,259,'nomadF',['The spring has never failed, not in the worst summer. My grandmother said God set it here for the caravans, the way He set the rock for Moses.'],name='Abigail at the Pool')
+folk(290,252,'monk',['I sweep the chapel steps each morning. The sand comes back each night — from under the door.'],name='Brother Shem')
+sign(268,240,'DUSTHAVEN\nWater and shade for the caravans'); sign(286,298,'THE CARAVAN YARD\nCamels watered, wagons mended.')
+sign(287,258,'THE MARKET SQUARE\n(The town well has been dry these fifteen years.)')
+HD=['Have you heard what comes up the old well at night? Ask Hosea in the caravan yard — he’s heard it longest.','The chapel’s been barred from the inside fifteen years. The well went dry the same night.']
+if isinstance(SQ['hints'],list): SQ['hints'][4]['out']=HD
+else: SQ['hints']['4']['out']=HD
+WD['villageRects'].append([X0,Y0,X1,Y1]); WD['townR']['Dusthaven']=36; WD.setdefault('flats',[]).append([256,255,316,298])
+cx,cy,rx,ry=284,268,36,31; WD['barriers'][4]=[cx,cy,rx,ry]
+ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
+WD['barrierSets']['4']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
+for z in WD['zones']:
+    if z['x0']<cx+rx+2 and z['x1']>cx-rx-2 and z['y0']<cy+ry+2 and z['y1']>cy-ry-2 and z['x1']-z['x0']<20: z['x1']=cx-rx-3; z['x0']=z['x1']-10
+for q in PT['trade']['points'].values():
+    if ins4(q): q.update({'x':291,'y':276,'dx':291,'dy':275})
+
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src
 for n in sorted(CON,key=lambda n:-CON[n][0]):

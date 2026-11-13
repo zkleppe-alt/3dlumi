@@ -74,7 +74,7 @@ const VILLAGE3=(function(){
     crystalpeak:{wall:0xe8eef4,wallD:0xb8c4d0,beam:0x4a5a6a,roof:0xf0f4f8}, stormgate:{wall:0xd8d4cc,wallD:0xb3b4b8,beam:0x3a3430,roof:0x2c4c9e,slate:0x2c4c9e,stone:1},
     ashfield:{wall:0x9a948c,wallD:0x6a645e,beam:0x3a2a22,roof:0x6a2a24,stone:1}, shadowmere:{wall:0x7a7486,wallD:0x4e4a58,beam:0x2a2630,roof:0x3e5a46},
     hearthvale:{wall:0xf2e6c8,wallD:0xb0a48e,beam:0x6b4a2e,roof:0x9a7a42}, homestead:{wall:0xf0e2c4,wallD:0xa8987e,beam:0x5a3c24,roof:0x8a6a3a} };
-  function swap(M0,par,g,b,bm,c,key){ if(!on()||!M0||KEEP.has(b.id)) return; const chapel=b.style==='chapel'; if(!chapel&&!KINDS[b.style]) return;
+  function swap(M0,par,g,b,bm,c,key){ if(!on()||!M0||KEEP.has(b.id)) return; const chapel=b.style==='chapel'; if(!chapel&&!KINDS[b.style]) return; if(key==='dusthaven'&&!chapel) return;   /* V203: Dusthaven keeps its own flat-roofed adobe */
     const pal=Object.assign({},{wall:c.wall,wallD:c.wallD,beam:c.beam,roof:c.roof},TOWN[key]||{}), kids=M0.children.slice();
     const o=chapel?{w:bm.w-0.6,d:bm.h-0.3,c:pal,dark:!!c.dark}:{w:bm.w-0.4,d:bm.h-0.3,h:KINDS[b.style],c:pal,storeys:KINDS[b.style]>2.2?2:1,shop:b.style==='shop'};
     // the kit's building goes inside the merged one (mergeStatic keeps the house's own group), so whatever shows or hides it
