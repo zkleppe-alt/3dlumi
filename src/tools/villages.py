@@ -930,6 +930,109 @@ for q in PT['trade']['points'].values():
 for s_ in PT['reuben']['spots']:
     if ins6(s_): s_['x'],s_['y']=486,511
 
+# ════════════════════════════════════ SHADOWMERE ════════════════════════════════════
+# The marsh town on the mere: houses on stilts over the black water, joined by boardwalks; lanterns in the mist, reeds,
+# punts tied up. On the one rise of dry ground to the north, the chapel (barred) and the old Knights' Hall. Out past the
+# east shore, on an islet in the open water, the tomb of the old knights — no path to it: old Asa the ferryman poles you
+# across from the jetty on his punt (WORLD_DATA.ferries; engine/treetops.js), and waits there to bring you back.
+X0,Y0,X1,Y1=640,462,724,516
+ins8=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
+olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins8(v)}
+WD['decor']=[d for d in WD['decor'] if not ins8(d)]; WD['villagers']=[v for v in WD['villagers'] if not ins8(v)]
+for k in [k for k in WD['signs'] if ins8(dict(zip('xy',map(int,k.split(',')))))]: WD['signs'].pop(k)
+for y in range(Y0,Y1+1):
+    for x in range(X0,X1+1):
+        t=T(x,y)
+        if x>=692 and t in (3,20,21): continue                                # the open water east
+        if t==2 and (667<=x<=669 and y>=500 or y<=476 and x<=672): put(x,y,2,True,0); continue
+        if t in (5,9,12,16,29,30,6,14,1,7,33) and 646<=x<=692 and 464<=y<=512: put(x,y,28 if hsh2(x,y)<0.5 else 0,True,0)
+        else: put(x,y,t,t not in (1,7,3,33),0)
+# the mere: black water in the middle of the town, reeds at its edges
+MX,MY=670,494
+for y in range(478,512):
+    for x in range(646,694):
+        d=math.hypot((x+0.5-MX)/21.0,(y+0.5-MY)/12.0)+0.06*math.sin(x*0.5)+0.05*math.sin(y*0.7)
+        if d<0.86: put(x,y,3,False,0)
+        elif d<1.0: put(x,y,20,True,0); PT['fishSpots'][f"{x},{y}"]='pond'
+for x in range(686,694):                                                    # the mere runs out to the sea by the jetty
+    for y in range(492,497): put(x,y,3,False,0)
+# the boardwalks: north–south through the town to the south road, and two east–west runs; the jetty out to the ferry
+lane([(668,477),(668,506)],w=2,t=12); lane([(650,490),(690,490)],w=2,t=12); lane([(652,500),(686,500)],w=2,t=12)
+lane([(690,490),(696,490)],w=2,t=12)
+for y in range(489,491):
+    for x in range(650,697):
+        if T(x,y)==2: put(x,y,12,True,0)
+# houses on stilts over the water, their doors on the boardwalks (b.stilts: a deck under each on posts)
+def stilt(id,name,style,x,y,w,h,who=None):
+    for yy in range(y,y+h):
+        for xx in range(x,x+w): put(xx,yy,3,False,0)
+    b=bld(id,name,style,x,y,w,h,who=who); b['stilts']=1; put(b['door']['x'],y+h,12,True,0); return b
+stilt('sh_shop','Mistmarket','shop',655,486,5,4)
+stilt('sh_home2',"Watcher's Cabin",'house',674,487,4,3)
+stilt('sh_inn','The Lantern Rest','inn',680,486,5,4)
+stilt('sh_home1','Shrouded Hut','cottage',656,497,5,3)
+stilt('sh_home3',"The Eel-Fisher's House",'house',673,497,4,3,who=('Eel-fisher Tobit','fisher','Eels in the traps, eels in the pot, eels in my dreams. You get used to it.'))
+stilt('sh_home4',"The Reed-Cutter's House",'cottage',679,497,4,3,who=('Reed-cutter Dinah','shadeF','Every roof in Shadowmere is my reeds. Twelve years they last — longer than the fear does, lately.'))
+stilt('sh_home5',"The Lamplighter's House",'house',661,486,4,3,who=('Lamplighter Hosea','watcher','I light the boardwalk lamps at dusk and put them out at dawn. In fifteen years I have not missed a night.'))
+# the dry rise to the north: the chapel and the old Knights' Hall
+bld('sh_chapel','Shadowmere Chapel','chapel',659,468,6,6)
+bld('sh_hall',"The Knights' Hall",'keep',671,467,7,6,who=('Old Sir Bevan','watcher','I carried the banner of the knights of Shadowmere for forty years. Now I carry the key to an empty hall. Sit, knight. Tell me how the world goes.'))
+for gx,gy in ((656,468),(656,471),(656,474),(667,468),(667,471)): decor('tombstone',gx,gy)
+decor('banner2',670,474); decor('banner2',679,474)
+# mist and lamps along the water, reeds, dead trees on the bank, punts tied up
+for p in ((652,488),(666,488),(684,488),(652,502),(666,502),(686,502),(670,480),(670,506)): decor('lantern',*p)
+for p in ((648,484),(690,484),(648,504),(688,508),(660,480),(682,481)): decor('mistWisp',*p)
+for p in ((646,480),(692,480),(645,500),(691,510),(650,509)): decor('deadTree',*p)
+for p in ((664,493),(686,494),(660,503)): 
+    if T(*p)==3: decor('boat',*p)
+# the jetty, and the islet of the knights' tomb out in the open water
+for x in range(693,698):
+    for y in range(489,491): put(x,y,12,True,0)
+IX,IY=716,491
+for y in range(IY-6,IY+7):
+    for x in range(IX-6,IX+8):
+        d=math.hypot((x+0.5-IX-0.5)/1.1,y+0.5-IY-0.5)
+        if d<4.6: put(x,y,28 if hsh2(x,y)<0.4 else 0,True,0)
+        elif d<5.6: put(x,y,20,True,0)
+        elif T(x,y) in (0,28,19,20): put(x,y,3,False,0)
+for x in range(709,712):
+    for y in range(489,491): put(x,y,12,True,0)                           # the islet's landing
+decor('deadTree',719,487); decor('mistWisp',714,495); decor('lantern',711,488)
+WD.setdefault('piers',[]).extend([[692,489,697,490],[708,489,711,490]])   # dressed as piers: pilings and rails
+WD['ferries']=[{'path':[[698.9,490.0],[703.5,491.3],[708.1,490.0]],'from':[697.3,490.0],'to':[709.7,490.0],'who':'Asa the Ferryman','look':'fisher',
+    'over':['Across to the knights’ isle? Step aboard, knight. Mind the water — it is deeper than it looks, and colder.'],
+    'back':['Back to the town, then. I have waited. I always wait.'],
+    'first':['Nobody has asked me to take them across in fifteen years. Step aboard, knight.']}]
+WD['cata']['8']={'x':716,'y':490,'face':-math.pi/2,'name':'The knights’ tomb','where':'the knights’ tomb on the islet out past the jetty — old Asa the ferryman can pole you across',
+    'door':['The doors are barred from within. Black water seeps out from under them, though the chapel stands on the dry rise.','Someone in the town may know another way in.'],
+    'doorHeard':['The doors are barred from within. Black water seeps out from under them, though the chapel stands on the dry rise.','The knights’ tomb on the islet is the old way down. Old Asa the ferryman can take you across from the jetty.'],
+    'goal':'Shadowmere’s chapel is barred from within. Ask along the boardwalks — someone has heard something.',
+    'goalHeard':'Out to the knights’ tomb on the islet — old Asa the ferryman poles across from the jetty.',
+    'wayIn':'out past the jetty, on an islet in the open water, stands the tomb of the old knights; old Asa the ferryman poles you across, and its sealed door opens to a bell.',
+    'journal':'Shadowmere’s chapel is barred. The old knights were rowed out to their tomb on the islet past the jetty, and their barrow goes down under the mere to the chapel. Since the dark came, a bell rings out there in the mist, and a light walks on the islet. Old Asa the ferryman still keeps his punt at the jetty.'}
+for i,((x,y,o),v) in enumerate(olds.items()):
+    nx,ny=[(669,483),(664,491),(676,491),(669,503)][i%4]; folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
+folk(686,491,'watcher',['On still nights there’s a bell out on the knights’ isle. One stroke, then nothing, then one stroke. The old knights rang it to call each other to the watch.','There’s nobody out there to ring it, knight. Not for fifteen years.'],name='Watchman Gideon',clue=8,after=['The bell on the isle rang at dawn — three strokes, clear and glad. The brothers say it was the old knights’ watch-bell, rung for the last time.'])
+folk(650,491,'shadeF',['My grandfather was a knight of Shadowmere. When he died, Asa’s father poled him out to the isle, and the brothers took him down into the tomb.','Lately there’s a light walking on the isle at night. Round and round the tomb, like someone keeping watch.'],name='Widow Esther',clue=8,after=['The light on the isle is gone. The brothers put a lamp in the tomb door, and it burns steady now.'])
+folk(678,501,'child',['Asa says nobody’s asked him to take them to the knights’ isle in fifteen years. I asked! He said no. He said ask me when you’re a knight.'],name='Little Joel',clue=8,after=['Asa took ME across to the isle! With the brothers! I touched the knights’ door!'])
+folk(664,476,'monk',['I keep the chapel steps, though the doors are barred. The mist comes up under them every evening, black as ink.'],name='Brother Mordecai')
+sign(669,509,'SHADOWMERE\nWhere faith holds back the dark'); sign(691,488,'THE FERRY\nTo the knights’ isle. Ask Asa.'); sign(670,476,'THE BOARDWALKS\nKeep to the planks.')
+HSm=['Have you heard the bell out on the knights’ isle? Ask Watchman Gideon on the east boardwalk.','The chapel’s been barred fifteen years. The old way down was out on the isle — ask Asa at the jetty.']
+if isinstance(SQ['hints'],list): SQ['hints'][8]['out']=HSm
+else: SQ['hints']['8']['out']=HSm
+for t_ in WD['towns']:
+    if t_[0]=='Shadowmere': t_[1],t_[2]=669,483
+WD['villageRects'].append([X0,Y0,X1,Y1]); WD['townR']['Shadowmere']=34; WD.setdefault('flats',[]).append([644,464,714,514])
+cx,cy,rx,ry=680,490,46,28; WD['barriers'][8]=[cx,cy,rx,ry]
+ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
+WD['barrierSets']['8']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
+for z in WD['zones']:
+    if z['x0']<cx+rx+2 and z['x1']>cx-rx-2 and z['y0']<cy+ry+2 and z['y1']>cy-ry-2: z['x1']=min(z['x1'],cx-rx-3)
+for q in PT['trade']['points'].values():
+    if ins8(q): q.update({'x':669,'y':484,'dx':669,'dy':483})
+for s_ in PT['reuben']['spots']:
+    if ins8(s_): s_['x'],s_['y']=671,508
+
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src
 for n in sorted(CON,key=lambda n:-CON[n][0]):

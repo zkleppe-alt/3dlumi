@@ -106,13 +106,30 @@ Object.assign(DECOR_KINDS,{
   summitCross(d,g){ g.position.x+=0.5; g.position.z+=0.5; [[1.3,0.5],[1.0,0.45],[0.75,0.4],[0.5,0.35]].reduce((y,[r,h],i)=>{ const s=Sp(r,[0x8a8478,0x7a766c,0x948e82,0x6e6a62][i],0,y+h/2,0,g,8,6); s.scale.y=h/r; return y+h*0.85; },0);   /* V204: the cross on Crystalpeak's summit, on its cairn */
     B(0.24,4.2,0.24,0x6a4a2a,0,1.2,0,g); B(2.0,0.24,0.24,0x6a4a2a,0,4.0,0,g); B(0.3,0.06,0.3,0xeef3f8,0,5.4,0,g); B(2.1,0.06,0.3,0xeef3f8,0,4.24,0,g); },
   cairn(d,g){ [[0.42,0.24],[0.34,0.22],[0.27,0.2],[0.2,0.18],[0.14,0.14]].reduce((y,[r,h],i)=>{ const s=Sp(r,[0x8a8478,0x7a766c,0x9a9488,0x6a665e,0xa8a294][i],(hsh(i,d.x)-0.5)*0.08,y+h/2,0,g,7,5); s.scale.y=h/r; return y+h; },0); },   /* V204: a trail cairn */
-  ruin(d,g){ const n=d.w||3, o=n/2-0.5; g.position.x+=o; g.position.z+=o; const h=hsh(d.x,d.y), ST=[0x4a4440,0x3e3834,0x564e48,0x342e2a], BM=0x2a1e18;   /* V205: a house the fire took: walls of blackened stone standing to jagged heights, its chimney, fallen beams, ash, embers */
-    const W2=n-0.4; [[0,-W2/2,1,0],[0,W2/2,1,0],[-W2/2,0,0,1],[W2/2,0,0,1]].forEach(([x,z,ax,az],k)=>{ const segs=5; for(let i=0;i<segs;i++){ const u=(i+0.5)/segs-0.5, hh=k===1&&i===2?0.0:0.3+hsh(i+k*5,d.x+d.y)*(k===0?2.0:1.4); if(hh<0.05) continue;
-        B(ax?W2/segs-0.02:0.3,hh,az?W2/segs-0.02:0.3,ST[(i+k)%4],x+ax*u*W2,0,z+az*u*W2,g); } });
-    const cx2=(h<0.5?-1:1)*(W2/2-0.25); B(0.6,3.0+h,0.6,ST[1],cx2,0,-W2/2+0.3,g); B(0.7,0.15,0.7,ST[3],cx2,3.0+h,-W2/2+0.3,g);
-    for(let i=0;i<3;i++){ const bm=B(0.16,0.16,W2*0.9,BM,(hsh(i,d.x)-0.5)*W2*0.7,0.1+i*0.12,0,g); bm.rotation.set(0.15+hsh(d.y,i)*0.4,hsh(i,9)*2,0.2); }
-    for(let i=0;i<4;i++){ const a2=Sp(0.35+hsh(i,d.y)*0.25,0x5a5450,(hsh(i,3)-0.5)*W2*0.6,0.02,(hsh(3,i)-0.5)*W2*0.6,g,7,5); a2.scale.y=0.3; }
-    if(h>0.4) for(let i=0;i<3;i++) Sp(0.05,glow(0xff7a2a),(hsh(i,5)-0.5)*W2*0.5,0.08,(hsh(5,i)-0.5)*W2*0.5,g,5,4); },
+  ruin(d,g,an){ const n=d.w||3, o=n/2-0.5; g.position.x+=o; g.position.z+=o; const h=hsh(d.x,d.y), W2=n-0.3, TH=0.32, C=new THREE.Color();   /* V205.1: a house the fire took — rubble-stone walls laid in courses, broken off at ragged heights and blackened with soot toward the top; a door and windows with charred lintels; the chimney standing whole over its hearth; the roof fallen in, rafters leaning from the wall-head to the floor; rubble at the wall feet, an ash floor, embers still breathing */
+    const stone=(y,k)=>{ const t=Math.min(1,y/2.2), base=[0x7a746c,0x6e6860,0x847e74,0x686258][k%4]; return C.setHex(base).lerp(new THREE.Color(0x24201c),0.25+t*0.6).getHex(); };
+    const walls=[[-W2/2,W2/2,W2/2,W2/2,'door'],[-W2/2,-W2/2,W2/2,-W2/2,'back'],[-W2/2,-W2/2+TH,-W2/2,W2/2-TH,'win'],[W2/2,-W2/2+TH,W2/2,W2/2-TH,'win']];
+    walls.forEach(([ax,az,bx,bz,kind],wi)=>{ const L=Math.hypot(bx-ax,bz-az), ux=(bx-ax)/L, uz=(bz-az)/L, top=u=>{ const q=u/L; return kind==='back'?2.3+0.5*Math.sin(q*3+h*5):0.5+1.7*Math.abs(Math.sin(q*2.6+wi+h*4))*(0.6+0.4*hsh(wi,d.x))+0.3*Math.sin(q*9+wi); };
+      let y=0, r=0; while(y<2.9){ const ch=0.2+hsh(r,wi+d.y)*0.1; let s2=(r%2)*0.2;
+        while(s2<L-0.02){ const w=Math.min(L-s2,0.36+hsh(r*5+Math.round(s2*10),wi*7+d.x)*0.26), mid=s2+w/2, cx=ax+ux*mid, cz=az+uz*mid;
+          const open=(kind==='door'&&Math.abs(mid-L/2)<0.5&&y<1.75)||(kind==='win'&&Math.abs(mid-L/2)<0.35&&y>0.75&&y<1.45);
+          if(y+ch<=top(mid)+0.05&&!open){ const b=B(ux?w-0.03:TH,ch-0.02,uz?w-0.03:TH,stone(y,r+Math.round(s2*3)),cx,y,cz,g); b.rotation.y=(hsh(r,Math.round(s2*7))-0.5)*0.06; }
+          s2+=w; }
+        y+=ch; r++; }
+      if(kind==='door'&&top(L/2)>1.9){ const li=B(1.3,0.18,TH+0.06,0x1e1612,ax+ux*L/2,1.76,az+uz*L/2,g); li.rotation.z=0.06; }
+      if(kind==='win'&&top(L/2)>1.5) B(ux?0.9:TH+0.06,0.12,uz?0.9:TH+0.06,0x1e1612,ax+ux*L/2,1.45,az+uz*L/2,g); });
+    // the chimney and its hearth, standing whole
+    const chx=(h<0.5?-1:1)*(W2/2-0.45), chz=-W2/2+0.15; for(let k=0;k<14;k++) B(0.7,0.24,0.62,stone(k*0.24,k),chx,k*0.24,chz,g); B(0.8,0.12,0.72,0x2a2622,chx,3.36,chz,g); B(0.42,0.6,0.1,0x0e0c0a,chx,0.05,chz+0.29,g);
+    // the roof fallen in: charred rafters leaning from the wall-head, a ridge beam across them, scorched boards
+    for(let i=0;i<4;i++){ const z=-W2/2+0.5+i*(W2-1)/3, r2=B(0.12,0.12,1.9,0x1e1612,0,0,0,g); r2.position.set((h<0.5?1:-1)*(W2/2-0.75),0.75,z); r2.rotation.set(0,0,(h<0.5?1:-1)*0.9+(hsh(i,d.x)-0.5)*0.3); }
+    const rb=B(0.16,0.16,W2*0.95,0x1a1410,(h<0.5?1:-1)*0.15,0.12,0,g); rb.rotation.y=0.15; rb.rotation.z=0.12;
+    for(let i=0;i<5;i++){ const pl=B(0.9,0.05,0.22,i%2?0x2a2018:0x3a2c20,(hsh(i,5)-0.5)*W2*0.6,0.05+hsh(i,7)*0.15,(hsh(7,i)-0.5)*W2*0.6,g); pl.rotation.set(hsh(i,1)*0.4,hsh(i,2)*3,hsh(i,3)*0.3); }
+    // the ash floor, rubble at the wall feet, embers
+    const fl=new THREE.Mesh(new THREE.CircleGeometry(W2*0.45,12),mt(0x2e2a26)); fl.rotation.x=-Math.PI/2; fl.position.y=0.02; g.add(fl);
+    for(let i=0;i<16;i++){ const a=i/16*Math.PI*2+h, rr=W2*0.5+(hsh(i,d.y)-0.3)*0.4, r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.14+hsh(i,4)*0.16,0),mt(stone(0.6,i))); r.position.set(Math.cos(a)*rr,0.08,Math.sin(a)*rr); r.rotation.set(hsh(i,6)*3,hsh(i,8)*3,0); g.add(r); }
+    for(let i=0;i<3;i++){ const a2=Sp(0.3+hsh(i,d.y)*0.2,0x4a4642,(hsh(i,3)-0.5)*W2*0.5,0.02,(hsh(3,i)-0.5)*W2*0.5,g,7,5); a2.scale.y=0.28; }
+    if(h>0.3){ const em=[]; for(let i=0;i<4;i++){ const m=new THREE.MeshBasicMaterial({color:0xff6a1a}); const e=new THREE.Mesh(new THREE.SphereGeometry(0.05,5,4),m); e.position.set((hsh(i,5)-0.5)*W2*0.5,0.08,(hsh(5,i)-0.5)*W2*0.5); g.add(e); em.push(m); }
+      if(an) an.push(t=>{ em.forEach((m,i)=>{ const f=0.55+0.45*Math.sin(t*3.1+i*1.7+h*9); m.color.setRGB(1,0.25+0.35*f,0.05*f); }); }); } },
   frame(d,g){ const n=d.w||3, o=n/2-0.5; g.position.x+=o; g.position.z+=o; const W2=n-0.3, P2=0xc8a070, P3=0xb08a58;   /* V205: a house going up: a fresh timber frame on a stone footing, half its walls boarded, the rafters bare */
     B(W2+0.2,0.3,W2+0.2,0x8a8478,0,0,0,g); [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1]].forEach(([a,b])=>B(0.16,2.2,0.16,P2,a*W2/2,0.3,b*W2/2,g));
     [-1,1].forEach(b=>B(W2,0.16,0.16,P3,0,2.5,b*W2/2,g)); [-1,1].forEach(a=>B(0.16,0.16,W2,P3,a*W2/2,2.5,0,g));

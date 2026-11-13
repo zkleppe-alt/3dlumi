@@ -134,22 +134,52 @@ const TREETOPS=(function(){
       B(Wd+0.8,0.14,0.18,0x9a7a40,(x0+x1)/2,gy+Hw+Hr-0.02,(z0+z1)/2,g);
       [-1,1].forEach(sd=>{ for(let i=0;i<3;i++) Cy(0.04,0.04,0.3,4,0x8e8a80,x0+0.4+i*(Wd-0.8)/2,gy+Hw-0.3,(z0+z1)/2+sd*(Dp/2+0.2),g); });
       shade(g); mergeStatic(g); });
+    // ── V206: houses on stilts over the water (b.stilts): a plank deck under each, on posts going down into the mere ──
+    WD.buildings.filter(b=>b.stilts).forEach(b=>{ const g=group(0,0,0,scene), x0=b.x-0.35, x1=b.x+b.w+0.35, z0=b.y-0.35, z1=b.y+b.h+0.35;
+      for(let z=z0+0.15,i=0;z<z1;z+=0.36,i++) B(x1-x0,0.1,0.32,PLANK[i%4],(x0+x1)/2,-0.1,z,g);
+      for(let x=x0+0.1;x<=x1;x+=Math.max(0.9,(x1-x0)/4)) [z0+0.1,z1-0.1].forEach(z=>Cy(0.1,0.12,2.2,6,0x3a2e22,x,-2.2,z,g));
+      [x0+0.1,x1-0.1].forEach(x=>Cy(0.1,0.12,2.2,6,0x3a2e22,x,-2.2,(z0+z1)/2,g));
+      shade(g); mergeStatic(g); });
+    // ── V206: the ferry (WD.ferries): a punt poled across open water by its ferryman, to a landing and back ──
+    let ride=null; const ferries=[];
+    (WD.ferries||[]).forEach((F,fi)=>{ const pts=F.path.map(p=>({x:p[0],z:p[1]})), lens=[]; let L=0; for(let i=1;i<pts.length;i++){ const l=Math.hypot(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z); lens.push(l); L+=l; }
+      const at=u=>{ let d=u*L; for(let i=0;i<lens.length;i++){ if(d<=lens[i]||i===lens.length-1){ const a=pts[i], b=pts[i+1], t=Math.min(1,d/lens[i]); return {x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t,yaw:Math.atan2(b.x-a.x,b.z-a.z)}; } d-=lens[i]; } };
+      const punt=group(0,0,0,scene), hull=group(0,0,0,punt);
+      for(let i=0;i<5;i++) B(0.24,0.08,2.6,PLANK[i%4],-0.5+i*0.25,0.0,0,hull); [-0.62,0.62].forEach(o=>B(0.08,0.22,2.6,0x4a3624,o,-0.05,0,hull)); [-1.3,1.3].forEach(o=>B(1.32,0.2,0.1,0x4a3624,0,-0.04,o,hull));
+      B(0.06,1.1,0.06,0x3a2a1e,0.5,0.05,1.15,hull); Sp(0.09,glow(0xffcf6a),0.5,1.12,1.15,hull,8,6);
+      const pole=group(0,0,0,punt); const pm=Cy(0.03,0.03,4.2,5,0x8a6a42,0,-2.1,0,pole); shade(punt);
+      const man=addPerson(world,scene,F.look||'fisher',0,0,0,F.who,F.over); man.still=true; man.label='Talk';
+      const fr={F,at,L,punt,pole,man,side:0}; ferries.push(fr);
+      const WY=-0.12;
+      fr.place=side=>{ fr.side=side; const p=at(side?1:0), yaw=side?p.yaw+Math.PI:p.yaw; punt.position.set(p.x,WY,p.z); punt.rotation.y=yaw;
+        const bx=p.x-Math.sin(yaw)*0.85, bz=p.z-Math.cos(yaw)*0.85; man.x=bx; man.z=bz; man.y=WY+0.05; man.g.position.set(bx,man.y,bz); man.g.rotation.y=yaw; man.rest=yaw;
+        pole.position.set(bx+Math.cos(yaw)*0.35,WY+1.4,bz-Math.sin(yaw)*0.35); pole.rotation.set(0,0,0); };
+      fr.place(0);
+      man.action=()=>{ if(ride) return; if(world.mounted&&world.mounted()){ UI.toast('🐴 Leave your mount on the jetty — the punt will not take it.',1800); return; }
+        const S0=GAME.S, first=!(S0.ferried&&S0.ferried[fi]); ENGINE.speak(F.who,fr.side?F.back:(first&&F.first?F.first:F.over),man,()=>{ (S0.ferried||(S0.ferried={}))[fi]=true;
+          const dur=4+L*0.9; ride={fr,u:0,dur,dir:fr.side?-1:1}; ENGINE.hold(dur+0.2); if(ENGINE.K.sheathe) ENGINE.K.sheathe(); }); }; });
+    const rideTick=(t,dt)=>{ if(!ride) return; const r=ride, fr=r.fr; r.u=Math.min(1,r.u+dt/r.dur); const e=r.u<0.5?2*r.u*r.u:1-Math.pow(-2*r.u+2,2)/2, s2=r.dir>0?e:1-e, p=fr.at(s2), yaw=r.dir>0?p.yaw:p.yaw+Math.PI, bob=Math.sin(t*1.6)*0.03;
+      fr.punt.position.set(p.x,-0.12+bob,p.z); fr.punt.rotation.y=yaw; fr.punt.rotation.z=Math.sin(t*1.1)*0.02;
+      const bx=p.x-Math.sin(yaw)*0.85, bz=p.z-Math.cos(yaw)*0.85, push=Math.sin(t*1.8); fr.man.x=bx; fr.man.z=bz; fr.man.y=-0.07+bob; fr.man.g.position.set(bx,fr.man.y,bz); fr.man.g.rotation.y=yaw; fr.man.rest=yaw;
+      fr.pole.position.set(bx+Math.cos(yaw)*0.35,-0.12+1.4+bob,bz-Math.sin(yaw)*0.35); fr.pole.rotation.set(-Math.cos(yaw)*0.35*push,0,Math.sin(yaw)*0.35*push);
+      P.x=p.x+Math.sin(yaw)*0.55; P.z=p.z+Math.cos(yaw)*0.55; P.face=yaw;
+      if(r.u>=1){ ride=null; fr.place(r.dir>0?1:0); const L2=r.dir>0?fr.F.to:fr.F.from; P.x=L2[0]; P.z=L2[1]; P.y=G0(P.x,P.z); GAME.save(); } };
     // ── the people up the trees stand on their decks; while you're up, the folk below can't hear you, and the reverse ──
     const R=TT.rect, inR=(x,z)=>x>=R[0]&&x<=R[2]+1&&z>=R[1]&&z<=R[3]+1;
     WD.villagers.forEach(v=>{ if(v.deck===undefined||!decks[v.deck]) return; const f=world.folk.find(q=>q.key==='v:'+v.x+','+v.y+':'+v.outfit); if(!f) return; f.tUp=true; f.y=decks[v.deck].top+0.02; f.g.position.y=f.y; });
     // ── the world, wrapped ──
     world.treeUp=()=>up; world.treetops={decks,bridges,ladders,deckAt,bridgeAt,get up(){ return up; },set up(v){ up=!!v; }};
-    world.ground=(x,z)=>{ if(climb) return climb.y; if(up){ const d=deckAt(x,z); if(d) return d.top; const q=bridgeAt(x,z); if(q) return bY(q.b,q.u)+(q.b===onB?Math.sin(performance.now()*0.006)*0.035*Math.sin(Math.PI*q.u):0); } return G0(x,z); };
+    world.ground=(x,z)=>{ if(climb) return climb.y; if(ride&&Math.hypot(x-P.x,z-P.z)<0.01) return -0.02; if(up){ const d=deckAt(x,z); if(d) return d.top; const q=bridgeAt(x,z); if(q) return bY(q.b,q.u)+(q.b===onB?Math.sin(performance.now()*0.006)*0.035*Math.sin(Math.PI*q.u):0); } return G0(x,z); };
     const hitC=(cs,fx,fz,tx,tz)=>{ for(const c of cs){ const dT=Math.hypot(tx-c.x,tz-c.z); if(dT<c.r+0.22&&dT<Math.hypot(fx-c.x,fz-c.z)) return true; } return false; };
-    world.canMove=(fx,fz,tx,tz)=>{ if(climb) return false;
+    world.canMove=(fx,fz,tx,tz)=>{ if(climb||ride) return false;
       if(up){ if(!(deckAt(tx,tz,0.28)||bridgeAt(tx,tz,0.22))) return false; if(hitC(upC,fx,fz,tx,tz)) return false;
         for(const r of upR) if(tx>r.x0-0.22&&tx<r.x1+0.22&&tz>r.z0-0.22&&tz<r.z1+0.22&&!(fx>r.x0-0.22&&fx<r.x1+0.22&&fz>r.z0-0.22&&fz<r.z1+0.22)) return false;
         return true; }
       if(inR(tx,tz)&&hitC(downC,fx,fz,tx,tz)) return false; return M0(fx,fz,tx,tz); };
-    const OE=world.onEnter; world.onEnter=sp=>{ climb=null; const S0=GAME.S, at=S0&&S0.at;
+    const OE=world.onEnter; world.onEnter=sp=>{ climb=null; ride=null; ferries.forEach(fr=>{ const a=fr.F.from, b=fr.F.to, x=sp?sp.x:P.x, z=sp?sp.z:P.z; fr.place(Math.hypot(x-b[0],z-b[1])<Math.min(14,Math.hypot(x-a[0],z-a[1]))?1:0); }); const S0=GAME.S, at=S0&&S0.at;
       up=!!sp&&(sp.up===true||(!!S0.atUp&&!!at&&Math.abs(sp.x-at.x)<0.01&&Math.abs(sp.z-at.z)<0.01))&&!!(deckAt(sp.x,sp.z)||bridgeAt(sp.x,sp.z));
       if(up) P.y=world.ground(P.x,P.z); if(OE) OE(sp); };
-    world.anim.push((t,dt)=>{ dt=dt||0.016; const S0=GAME.S;
+    world.anim.push((t,dt)=>{ dt=dt||0.016; const S0=GAME.S; rideTick(t,dt);
       if(climb){ const c=climb, L=c.L; c.u=Math.min(1,c.u+dt/c.dur); c.y=c.up?L.lo+(L.hi-L.lo)*c.u:L.hi+(L.lo-L.hi)*c.u; P.x=L.line.x; P.z=L.line.z;
         if(c.u>=1){ climb=null; if(!L.ground) up=c.up; if(c.up){ P.x=L.top.x; P.z=L.top.z; P.y=L.hi; } else { P.x=L.foot.x; P.z=L.foot.z; P.y=L.lo; } P.face=Math.atan2(c.up?-L.dx:L.dx,c.up?-L.dy:L.dy); } }
       if(up&&!climb&&P.y<world.ground(P.x,P.z)-2.5) up=false;   /* (fallen, somehow: back on the ground) */
