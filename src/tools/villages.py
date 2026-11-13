@@ -671,154 +671,159 @@ for q in PT['trade']['points'].values():
     if ins4(q): q.update({'x':291,'y':276,'dx':291,'dy':275})
 
 # ════════════════════════════════════ CRYSTALPEAK ════════════════════════════════════
-# The mountain town. The peak rises north of the town in ledges of rock and snow (WORLD_DATA E bands, each one 2.55 high
-# inside WD.cpBox where the land climbs 3.4 times as steep), the sea at its western foot. The town stands on terraces cut
-# into its southern shoulder: the gate and the hot spring with the Warm Hearth inn below; houses cut into the rock of
-# each terrace's back wall, stairs and ladders between them; the Mountain Cathedral (barred) on the top terrace; and from
-# behind it the Pilgrims' Trail switchbacks up the ledges to the summit cross. East of the town a waterfall drops off a
-# spur of rock into a pool — and behind the falling water a cave goes into the mountain, down into the crypts.
+# The town high on the mountain, as Machu Picchu sits on its saddle. The mountain rises from the coast in ledges of rock
+# and snow (WORLD_DATA E bands, each 2.55 high inside WD.cpBox, where the land climbs 3.4 times as steep). Up on its
+# shoulder, ten ledges above the sea, the town stands on a level saddle: the plaza, the Mountain Cathedral (barred) on its
+# own raised platform against the rock, houses cut into the rock wall behind, and below the town on every side the
+# narrow green terraces stepping down the mountain. A stair-road climbs to it from the foot in switchbacks. Higher still,
+# on a ledge under the summit, the hot spring steams beside the Warm Hearth inn; its overflow runs to the edge and falls
+# as a waterfall past the town's western end — and behind the falling water a cave goes down into the crypts.
+# From the spring the last of the Pilgrims' Trail climbs to the summit cross.
 from scipy import ndimage
 BX0,BY0,BX1,BY1=418,176,540,302
 WD['cpBox']=[BX0,BY0,BX1+1,BY1+1]
 inB5=lambda o: BX0<=o['x']<=BX1 and BY0<=o['y']<=BY1
-X0,Y0,X1,Y1=444,248,504,298
-ins5=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
-olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins5(v)}
-WD['decor']=[d for d in WD['decor'] if not inB5(d)]; WD['villagers']=[v for v in WD['villagers'] if not ins5(v)]
+OX0,OY0,OX1,OY1=444,248,504,298                                  # where the old town stood
+ins5o=lambda o: OX0<=o['x']<=OX1 and OY0<=o['y']<=OY1
+olds={(v['x'],v['y'],v['outfit']):v for v in WD['villagers'] if ins5o(v)}
+WD['decor']=[d for d in WD['decor'] if not inB5(d)]; WD['villagers']=[v for v in WD['villagers'] if not ins5o(v)]
 for k in [k for k in WD['signs'] if inB5(dict(zip('xy',map(int,k.split(',')))))]: WD['signs'].pop(k)
 E5=lambda x,y: raw[N+y*W+x]&15
 def setE(x,y,e): k=y*W+x; raw[N+k]=(raw[N+k]&0xF0)|max(0,min(15,int(e)))
-# clear the old rings and stairs; water stays
 for y in range(BY0,BY1+1):
     for x in range(BX0,BX1+1):
         t=T(x,y)
         if t in (3,20,21): setE(x,y,0); continue
-        if t in (22,32,10,11,5,9,14,16,6,8,24,2,12) and not (x in (473,474) and y>=291): put(x,y,0,True,0)
-        if (ins5({'x':x,'y':y}) and t in (1,7)) or t==33: put(x,y,0,True,0)
+        if t in (22,32,10,11,5,9,14,16,6,8,24,2,12,33) and not (x in (473,474) and y>=299): put(x,y,0,True,0)
         setE(x,y,0)
-# the mountain: a peak north-west of the town, its shoulders flattening, ledges of 2.55 each
-PX,PY,RX_,RY_,PK=465,218,40.0,40.0,38.0
 wat=np.zeros((BY1-BY0+1,BX1-BX0+1),bool)
 for y in range(BY0,BY1+1):
     for x in range(BX0,BX1+1): wat[y-BY0,x-BX0]=T(x,y) in (3,20,21)
-dW=ndimage.distance_transform_edt(~wat)
-LAKE=(490,241)
-def mtnH(x,y):
-    wx=x+5*math.sin(y*0.13+1)+3*math.sin(y*0.31+x*0.07); wy=y+5*math.sin(x*0.11+2)+3*math.sin(x*0.29-y*0.05)   # warped: crags, not rings
-    a=math.atan2(wy-PY,wx-PX); u=math.hypot((wx-PX)/RX_,(wy-PY)/RY_)*(1+0.12*math.sin(a*3+1.3)+0.07*math.sin(a*5+0.4)+0.04*math.sin(a*9))
+PX,PY,PR,PKb=460,231,36.0,15.6                                    # the peak (in ledges)
+TX,TY,TRX,TRY=462,254,14.0,6.5                                    # the town's saddle
+def cone(x,y):
+    wx=x+4*math.sin(y*0.13+1)+2.5*math.sin(y*0.31+x*0.07); wy=y+4*math.sin(x*0.11+2)+2.5*math.sin(x*0.29-y*0.05)
+    a=math.atan2(wy-PY,wx-PX); u=math.hypot(wx-PX,wy-PY)/PR*(1+0.12*math.sin(a*3+1.3)+0.07*math.sin(a*5+0.4))
     if u>=1: return 0.0
-    rid=math.sin(x*0.21+y*0.17)*math.sin(y*0.23-x*0.09)+0.5*math.sin(x*0.43-y*0.37)*math.sin(y*0.41+x*0.19)
-    return PK*(1-u**1.7)+rid*4.5*(1-u)*min(1,u*3)
+    return PKb*(1-u**1.6)+(math.sin(x*0.21+y*0.17)*math.sin(y*0.23-x*0.09))*1.6*(1-u)*min(1,u*3)
+def saddle(x,y):                                                  # the town level, and the farm terraces below it: a ledge every 1.6 tiles
+    d=((abs(x+0.5-TX)/TRX)**4+(abs(y+0.5-TY)/TRY)**4)**0.25
+    if d<=1: return 10.0
+    dout=(d-1)*min(TRX,TRY)*1.25
+    return 10-math.floor(dout/2.0)
 for y in range(BY0,BY1+1):
     for x in range(BX0,BX1+1):
-        if wat[y-BY0,x-BX0] and mtnH(x,y)>6:                       # a pond up on the mountain is filled in
-            wat[y-BY0,x-BX0]=False; put(x,y,0,True,0); PT['fishSpots'].pop(f"{x},{y}",None)
+        if wat[y-BY0,x-BX0] and cone(x,y)>2.5: wat[y-BY0,x-BX0]=False; put(x,y,0,True,0); PT['fishSpots'].pop(f"{x},{y}",None)
 dW=ndimage.distance_transform_edt(~wat)
+LAKE=(490,241)
 for y in range(BY0,BY1+1):
     for x in range(BX0,BX1+1):
         if wat[y-BY0,x-BX0]: continue
-        e=int(mtnH(x,y)/2.55); e=min(e,int(dW[y-BY0,x-BX0]/1.6),max(0,int((math.hypot(x-LAKE[0],y-LAKE[1])-8)/1.6)))
+        e=max(int(cone(x,y)),int(saddle(x,y)) if saddle(x,y)>0 else 0)
+        e=min(e,int(dW[y-BY0,x-BX0]/1.4),max(0,int((math.hypot(x-LAKE[0],y-LAKE[1])-6)/1.4)))
         setE(x,y,max(0,min(15,e)))
-# the town's terraces, cut into the shoulder: the gate (0), the lower town (1), the middle (2), the top with the cathedral (3)
-def lvl(x,y):
-    w=0 if 452<=x<=496 else 1.4*math.sin(x*0.35)+0.8*math.sin(x*0.13+1.0)
-    if y>=287+w*0.5: return 0
-    if y>=277+w: return 1 if 448<=x<=501 else 0
-    if y>=267+w: return 2 if 451<=x<=498 else (1 if 448<=x<=501 else 0)
-    return 3 if 455<=x<=495 else (2 if 451<=x<=498 else 1)
-for y in range(Y0,Y1+1):
-    for x in range(X0,X1+1):
-        if T(x,y) in (3,20): continue
-        setE(x,y,max(E5(x,y),lvl(x,y)) if y<=266 else lvl(x,y))
-# the spur of rock east of the town that the falls come off, and the falls' ledge below it
-for y in range(268,281):
-    for x in range(490,500): setE(x,y,3)
-def climb(pts,w=2,tile=2):
+# the saddle itself level (where the cone stands higher, it is the rock wall behind the town); the wall made sure of
+for y in range(244,262):
+    for x in range(446,480):
+        d=((abs(x+0.5-TX)/TRX)**4+(abs(y+0.5-TY)/TRY)**4)**0.25
+        if y<=247 and 448<=x<=477: setE(x,y,max(E5(x,y),12))
+        elif d<=1: setE(x,y,min(10,E5(x,y)) if y>=248 else E5(x,y)); 
+        if 248<=y and d<=1: setE(x,y,10)
+# the cathedral's platform, a ledge above the plaza against the rock
+for y in range(248,255):
+    for x in range(456,466): setE(x,y,11)
+# the spring ledge under the summit, and the summit
+for y in range(233,243):
+    for x in range(456,476):
+        if math.hypot((x+0.5-466)/9.5,(y+0.5-238)/4.2)<=1: setE(x,y,13)
+for y in range(224,234):
+    for x in range(455,466):
+        if math.hypot(x+0.5-460.5,(y+0.5-229)*1.2)<3.6: setE(x,y,15)
+def climb(pts,w=1,tile=2):
     """a path that climbs: tile by tile along an axis-aligned polyline, its level moves at most one ledge a step, and each
     step up or down is a pair of stairs (lower and upper)"""
     seq=[]
     for (ax,ay),(bx,by) in zip(pts,pts[1:]):
         n=max(abs(bx-ax),abs(by-ay))
-        for i in range(n+(1 if (bx,by)==pts[-1] else 0)):
-            seq.append((ax+(bx-ax)*i//n,ay+(by-ay)*i//n))
-    prev=None; dirs=[]
+        for i in range(n+(1 if (bx,by)==pts[-1] else 0)): seq.append((ax+(bx-ax)*i//n,ay+(by-ay)*i//n))
+    dirs=[]
     for k,c in enumerate(seq):
-        n2=seq[min(k+1,len(seq)-1)] if k+1<len(seq) else c; p2=seq[k-1] if k else c; dv=(n2[0]-p2[0],n2[1]-p2[1]); dirs.append((0,1) if dv[0]!=0 else (1,0))
+        n2=seq[k+1] if k+1<len(seq) else c; p2=seq[k-1] if k else c; dv=(n2[0]-p2[0],n2[1]-p2[1]); dirs.append((0,1) if dv[0]!=0 else (1,0))
     cellsK=lambda k:[(seq[k][0]+dirs[k][0]*i,seq[k][1]+dirs[k][1]*i) for i in range(w)]
+    prev=None
     for k,c in enumerate(seq):
-        cells=lambda _c,k=k:cellsK(k)
-        want=max(E5(*q) for q in cells(c)) if prev is None else E5(*c)
-        e=want if prev is None else max(prev[1]-1,min(prev[1]+1,want))
-        for q in cells(c):
+        want=max(E5(*q) for q in cellsK(k)) if prev is None else E5(*c)
+        e=want if prev is None else max(prev-1,min(prev+1,want))
+        for q in cellsK(k):
             if T(*q) not in (5,9): put(q[0],q[1],tile,True,None); setE(q[0],q[1],e)
-        if prev is not None and e!=prev[1]:
+        if prev is not None and e!=prev:
             for q in cellsK(k)+cellsK(k-1): put(q[0],q[1],10,True,None)
-        prev=(c,e)
-# the summit: a level top
-for y in range(213,220):
-    for x in range(461,470):
-        if math.hypot(x+0.5-465.5,(y+0.5-216.5)*1.2)<4.2: setE(x,y,15)
-# the road up from the south, the stairs through the town, the trail to the summit
-climb([(474,300),(474,290),(474,282),(474,268),(474,264)])
-climb([(458,288),(458,280),(458,272)]); climb([(490,290),(490,284),(486,284),(486,274)],w=1)
-climb([(474,264),(474,252),(464,252),(464,246),(472,246),(472,240),(460,240),(460,234),(470,234),(470,228),(462,228),(462,224),(468,224),(468,220),(466,220),(466,216)],w=1)
-# the summit: a level top, the cross on its cairn
-decor('summitCross',465,214); decor('prayerFlag',462,217); decor('prayerFlag',468,217)
-sign(463,215,'THE SUMMIT OF CRYSTALPEAK\n“I will lift up mine eyes unto the hills, from whence cometh my help. My help cometh from the LORD, which made heaven and earth.” — Psalm 121:1-2')
-for p in ((476,256),(466,250),(474,244),(458,238),(472,232),(460,226),(470,222)): 
-    if T(*p) in (0,1,7,4): decor('prayerFlag' if p[1]%2 else 'cairn',*p)
-# the town: the gate and the hot spring below, the inn beside it
-bld('cp_inn','The Warm Hearth','inn',478,290,5,4)
-for y in range(289,293):
-    for x in range(466,472): put(x,y,24,True,None)
-decor('lantern',465,288); decor('lantern',472,288); decor('brazier',476,289)
-bld('cp_shop',"Pilgrim's Supply",'shop',462,280,4,3); decor('crate',461,284)
-# houses cut into the rock at the back of each terrace (b.cave: drawn as a front of stone and timber in the cliff)
+        prev=e
+for y in range(BY0,BY1+1):                                      # no trees up on the high ledges
+    for x in range(BX0,BX1+1):
+        if (E5(x,y)>=11 or (E5(x,y)>=9 and 440<=x<=482 and 240<=y<=263)) and T(x,y) in (1,7): put(x,y,0,True,None)
+# the town: the plaza, grass on the saddle, the cathedral on its platform, houses cut into the wall, two more on the plaza
+bld('cp_chapel','Mountain Cathedral','chapel',457,248,7,6)
 def cave(id,name,x,y,w,h,who=None):
     b=bld(id,name,'house',x,y,w,h,who=who); b['cave']=1; return b
-cave('cp_home1',"Monk's Cell",466,277,4,2,('Brother Ammon','monk','A cell in the rock is warm in winter and cool in summer. The mountain keeps me — and I keep the hours.'))
-cave('cp_home3',"The Guide's Cave-House",479,277,4,2,('Guide Ruth','pilgrimF','I take pilgrims up the trail to the cross. Mind the ice past the third switchback.'))
-cave('cp_home4',"The Herbalist's Cave-House",455,277,4,2,('Herbalist Mara','monkF','Snow-gentian for fevers, pine-resin for cuts. The mountain has a remedy for most things.'))
-cave('cp_home5',"The Stonecutter's Cave-House",459,267,4,2,('Stonecutter Boaz','pilgrim','I cut every one of these houses into the rock. The cathedral’s steps too.'))
-cave('cp_home6',"The Beekeeper's Cave-House",480,267,4,2,('Old Keturah','monkF','Mountain bees. Mountain honey. Thick as tar and twice as sweet.'))
-bld('cp_home2',"Abbot's Quarters",'house',484,258,4,3)
-bld('cp_chapel','Mountain Cathedral','chapel',465,255,7,6)
-for p in ((462,258),(478,251),(484,254),(458,270),(490,276),(470,284),(452,282),(498,284)): decor('pineSnow',*p)
-for p in ((470,262),(478,262)): decor('brazier',*p)
-decor('icePillar',461,270); decor('prayerFlag',476,272); decor('prayerFlag',471,272); decor('snowman',456,290)
-# ladders up the terrace walls (TREETOPS ladders on the ground: x,y the tile at the top, dx,dy outward and down)
+cave('cp_home1',"Monk's Cell",467,248,4,2,('Brother Ammon','monk','A cell in the rock is warm in winter and cool in summer. The mountain keeps me — and I keep the hours.'))
+cave('cp_home3',"The Guide's Cave-House",472,248,4,2,('Guide Ruth','pilgrimF','I take pilgrims up to the spring and the cross. Mind the ice past the spring.'))
+cave('cp_home4',"The Herbalist's Cave-House",449,248,4,2,('Herbalist Mara','monkF','Snow-gentian for fevers, pine-resin for cuts. The mountain has a remedy for most things.'))
+bld('cp_shop',"Pilgrim's Supply",'shop',451,255,4,3); bld('cp_home2',"Abbot's Quarters",'house',469,255,4,3)
+bld('cp_home5',"The Terrace-Farmer's House",'cottage',448,252,3,3,who=('Farmer Obed','farmer','Potatoes on the high terraces, barley on the low. Every wall you see, my fathers built.'))
+for p in ((455,259),(473,259),(461,258)): decor('lantern',*p)
+for p in ((459,256),(465,252)): decor('brazier',*p)
+decor('prayerFlag',454,252); decor('prayerFlag',470,252); decor('icePillar',448,257)
+# the stair-road up from the foot, in switchbacks across the terraces, and the stairs within the town
+climb([(474,300),(474,288),(456,288),(456,280),(470,280),(470,272),(458,272),(458,266),(466,266),(466,258)])
+climb([(462,258),(462,256),(460,256),(460,254)])
+climb([(466,252),(466,241)])                  # from the plaza up the rock to the spring
+climb([(460,236),(460,230)])                                     # the last climb to the summit
+# the spring ledge: the hot spring, the Warm Hearth inn beside it
+for y in range(236,240):
+    for x in range(462,468): put(x,y,24,True,None)
+bld('cp_inn','The Warm Hearth','inn',469,234,5,4); decor('lantern',468,240); decor('pineSnow',457,239); decor('pineSnow',474,239)
+# the summit
+decor('summitCross',460,228); decor('prayerFlag',458,230); decor('prayerFlag',463,230)
+sign(458,231,'THE SUMMIT OF CRYSTALPEAK\n“I will lift up mine eyes unto the hills, from whence cometh my help. My help cometh from the LORD, which made heaven and earth.” — Psalm 121:1-2')
+for p in ((476,286),(458,284),(470,276),(458,270),(466,262)):
+    if T(*p) in (0,1,7,4): decor('cairn',*p)
+for p in ((452,276),(480,270),(446,268),(478,282),(450,286),(468,292)): decor('pineSnow',*p)
 WD.setdefault('treetops',{'decks':[],'bridges':[],'ladders':[],'rect':[0,0,0,0]})
-WD['treetops'].setdefault('climbs',[]).extend([dict(x=452,y=276,dx=0,dy=1),dict(x=488,y=286,dx=0,dy=1),dict(x=464,y=266,dx=0,dy=1)])
-# the waterfall's cave, the way down
-WD['cata']['5']={'x':494,'y':281,'face':0,'h':5.1,'name':'Behind the falls','where':'the cave behind the waterfall east of the town',
+WD['treetops'].setdefault('climbs',[]).extend([dict(x=476,y=247,dx=0,dy=1)])
+# the waterfall off the west end of the rock wall, and the cave behind it
+WD['cata']['5']={'x':454,'y':248,'face':0,'h':5.1,'name':'Behind the falls','where':'the cave behind the waterfall at the west end of the town',
     'door':['The doors are barred from within. Frost has crept out from under them, though the sun is on the steps.','Someone in the town may know another way in.'],
-    'doorHeard':['The doors are barred from within. Frost has crept out from under them, though the sun is on the steps.','There is a cave behind the waterfall east of the town. The old way down is there.'],
+    'doorHeard':['The doors are barred from within. Frost has crept out from under them, though the sun is on the steps.','There is a cave behind the waterfall at the west end of the town. The old way down is there.'],
     'goal':'Crystalpeak’s cathedral is barred from within. Ask in the town — someone has heard something.',
-    'goalHeard':'Behind the waterfall east of the town — walk in under the falling water.',
-    'wayIn':'east of the town a waterfall drops off a spur of the mountain, and behind the falling water a cave goes into the rock and down into the crypts.',
-    'journal':'Crystalpeak’s cathedral is barred. The townsfolk say the pilgrims and brothers who died on the mountain were carried in behind the waterfall east of the town, where a cave goes down into the crypts under the cathedral. Since the dark came there has been singing behind the water, and a cold blue light.'}
+    'goalHeard':'Behind the waterfall at the west end of the town — walk in under the falling water.',
+    'wayIn':'at the west end of the town the spring’s overflow falls off the rock as a waterfall, and behind the falling water a cave goes into the mountain and down into the crypts.',
+    'journal':'Crystalpeak’s cathedral is barred. The townsfolk say the pilgrims and brothers who died on the mountain were carried in behind the waterfall at the west end of the town, where a cave goes down into the crypts under the cathedral. Since the dark came there has been singing behind the water, and a cold blue light.'}
 for i,((x,y,o),v) in enumerate(olds.items()):
-    nx,ny=[(470,287),(476,285),(480,270),(468,264)][i%4]; folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
-folk(488,286,'pilgrim',['When the wind drops you can hear it — singing, behind the falls. Through all that roar, clear as a bell.','It isn’t the brothers. The brothers are all barred out of the cathedral like the rest of us.'],name='Pilgrim Silas',clue=5,after=['The singing behind the falls is the brothers now. They go in under the water every morning to say the hours with the dead.'])
-folk(476,288,'monkF',['The falls ran warm all winter, and froze in the summer. Backwards, knight. And at night there’s a light behind the water — blue as ice.'],name='Hannah of the Warm Hearth',clue=5,after=['The falls run as they ought now — cold in winter, warm off the snow in spring. Come and soak your bones in the spring.'])
-folk(492,286,'child',['I threw a snowball through the waterfall and it didn’t splash — it went THUNK! Like it hit a door! There’s a cave back there, I know it.'],name='Little Jesse',clue=5,after=['I went behind the waterfall with Brother Ammon! There’s a cave, and steps, and it’s FREEZING.'])
-folk(468,259,'monk',['I keep the cathedral steps clear of snow, though its doors are barred. Somebody must be ready for when they open.'],name='Brother Ezekiel')
-folk(472,235,'pilgrimF',['Three more turns of the trail and you’ll see the cross. Rest here — nobody climbs the last stretch in a hurry.'],name='Pilgrim Naomi')
-sign(476,297,'CRYSTALPEAK\nThe town on the mountain'); sign(477,262,'THE PILGRIMS’ TRAIL\nTo the summit cross. Mind the ice.'); sign(495,288,'THE FALLS\nThe spring above the town comes down here.')
-HC=['Have you heard the singing behind the falls? Ask Pilgrim Silas — he sits by the pool most days.','The cathedral’s been barred from inside fifteen years. The falls have run backwards ever since — warm in winter, frozen in summer.']
+    nx,ny=[(463,258),(467,259),(457,257),(471,259)][i%4]; folk(nx,ny,o,v['lines'],v.get('name'),old=(x,y))
+folk(455,252,'pilgrim',['When the wind drops you can hear it — singing, behind the falls. Through all that roar, clear as a bell.','It isn’t the brothers. The brothers are all barred out of the cathedral like the rest of us.'],name='Pilgrim Silas',clue=5,after=['The singing behind the falls is the brothers now. They go in under the water every morning to say the hours with the dead.'])
+folk(466,240,'monkF',['The spring’s overflow runs off the edge and falls past the town. All winter it ran warm, and in the summer it froze. Backwards, knight.','And at night there’s a light behind the falling water — blue as ice.'],name='Hannah of the Warm Hearth',clue=5,after=['The falls run as they ought now — cold in winter, warm off the snow in spring. Come and soak your bones in the spring.'])
+folk(451,250,'child',['I threw a snowball through the waterfall and it didn’t splash — it went THUNK! Like it hit a door! There’s a cave back there, I know it.'],name='Little Jesse',clue=5,after=['I went behind the waterfall with Brother Ammon! There’s a cave, and steps, and it’s FREEZING.'])
+folk(462,253,'monk',['I keep the cathedral steps clear of snow, though its doors are barred. Somebody must be ready for when they open.'],name='Brother Ezekiel')
+folk(470,286,'pilgrimF',['Halfway, knight. Look back — you can see the sea. Rest here; nobody climbs to Crystalpeak in a hurry.'],name='Pilgrim Naomi')
+sign(468,260,'CRYSTALPEAK\nThe town on the mountain'); sign(477,253,'THE HOT SPRING\nUp the rock to the Warm Hearth — and on to the summit cross.'); sign(453,252,'THE FALLS\nThe spring’s overflow comes down here.')
+HC=['Have you heard the singing behind the falls? Ask Pilgrim Silas — he sits by the falls most days.','The cathedral’s been barred from inside fifteen years. The falls have run backwards ever since — warm in winter, frozen in summer.']
 if isinstance(SQ['hints'],list): SQ['hints'][5]['out']=HC
 else: SQ['hints']['5']['out']=HC
-WD['villageRects'].append([X0,Y0,X1,Y1]); WD['villageRects'].append([BX0,BY0,BX1,246]); WD['townR']['Crystalpeak']=34
+for t_ in WD['towns']:
+    if t_[0]=='Crystalpeak': t_[1],t_[2]=463,258
+X0,Y0,X1,Y1=440,224,486,300; ins5=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1
+WD['villageRects'].append([BX0,BY0,BX1,BY1]); WD['townR']['Crystalpeak']=30
 WD.setdefault('flats',[]).append([BX0,BY0,BX1,BY1])   # the mountain is its ledges: no swell on top of them
-cx,cy,rx,ry=474,272,34,28; WD['barriers'][5]=[cx,cy,rx,ry]
+cx,cy,rx,ry=462,250,22,20; WD['barriers'][5]=[cx,cy,rx,ry]
 ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
 WD['barrierSets']['5']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
 for z in WD['zones']:
     if z['x0']<cx+rx+2 and z['x1']>cx-rx-2 and z['y0']<cy+ry+2 and z['y1']>cy-ry-2: z['x1']=min(z['x1'],cx-rx-3)
 for q in PT['trade']['points'].values():
-    if ins5(q) or inB5(q): q.update({'x':476,'y':286,'dx':476,'dy':285}) if ins5(q) else None
+    if ins5o(q) or inB5(q): q.update({'x':463,'y':259,'dx':463,'dy':258}) if (ins5o(q) or ins5(q)) else None
 for s_ in PT['reuben']['spots']:
-    if ins5(s_): s_['x'],s_['y']=470,283
+    if ins5o(s_): s_['x'],s_['y']=457,259
 
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src

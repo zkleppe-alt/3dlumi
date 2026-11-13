@@ -321,3 +321,9 @@ After Oceanside harbour, as a beachfront town:
 - **engine/catacomb.js**: the `'falls'` entrance (falling-water sheet with a scrolling texture, the stream at its lip, icicles, mist, the pool and its stepping-stones, the dark cave mouth, a cold blue light).
 - **engine/treetops.js**: ground ladders (`climbs`, rock to rock, no "up" state), and cave houses: boulders heaped over the footprint to the cliff top, a dressed-stone front with an arched door, lit windows, a timber hood, a lantern, snow on the rock.
 - **engine/world.js**: `WD.cpBox` overrides Crystalpeak's steep box; cave houses aren't drawn by buildHouse nor turned. **decor.js**: summitCross, cairn.
+
+## V204.1 — Crystalpeak moved up the mountain (Machu Picchu)
+- The town now stands on a level saddle **ten ledges up** (25.5 units), its plaza, the cathedral on a raised platform against the rock, and the cave houses in the rock wall behind; below it on every side narrow terraces step down the mountain (a ledge every two tiles), and a one-tile stair-road switchbacks up them from the foot of the south road. `WD.towns` Crystalpeak moved to the plaza (463,258).
+- **Higher still**, on a ledge under the summit (13 ledges, 33 units): the hot spring and the Warm Hearth inn. Its overflow falls off the rock wall at the town's west end — the waterfall, with the cave behind it (`WD.cata['5']` 454,248). One more stair to the summit cross (15 ledges, 38 units).
+- Trees cleared from the high ledges and the town; a rock ladder from the plaza to the ledge behind it.
+- Test harness (scratchpad sm/tws/cps): forces every built chunk visible when the shot's camera differs from the game's, so wide shots no longer show the sea through culled ground.
