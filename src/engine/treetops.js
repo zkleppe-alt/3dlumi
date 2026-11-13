@@ -14,7 +14,7 @@ const TREETOPS=(function(){
     decks.forEach(d=>{ let m=-1e9; for(const [x,z] of [[d.x0,d.y0],[d.x1+1,d.y0],[d.x0,d.y1+1],[d.x1+1,d.y1+1],[(d.x0+d.x1+1)/2,(d.y0+d.y1+1)/2]]) m=Math.max(m,G0(x,z)); d.top=m+d.h; });
     const inDeck=(d,x,z,m)=>x>=d.x0+m&&x<=d.x1+1-m&&z>=d.y0+m&&z<=d.y1+1-m;
     const deckAt=(x,z,m)=>{ for(const d of decks) if(inDeck(d,x,z,m||0)) return d; return null; };
-    bridges.forEach(b=>{ b.ya=decks[b.da].top; b.yb=decks[b.db].top; b.dx=b.b[0]-b.a[0]; b.dz=b.b[1]-b.a[1]; b.L=Math.hypot(b.dx,b.dz); b.sag=Math.min(0.55,b.L*0.045); b.sw=0; });
+    bridges.forEach(b=>{ b.ya=b.da!==undefined?decks[b.da].top:G0(b.a[0],b.a[1]); b.yb=b.db!==undefined?decks[b.db].top:G0(b.b[0],b.b[1]); b.dx=b.b[0]-b.a[0]; b.dz=b.b[1]-b.a[1]; b.L=Math.hypot(b.dx,b.dz); b.sag=b.stone?0:Math.min(0.55,b.L*0.045); b.sw=0; });
     const bY=(b,u)=>b.ya+(b.yb-b.ya)*u-b.sag*Math.sin(Math.PI*u);
     const bridgeAt=(x,z,m)=>{ for(const b of bridges){ const u=((x-b.a[0])*b.dx+(z-b.a[1])*b.dz)/(b.L*b.L); if(u<-0.02||u>1.02) continue; const px=b.a[0]+b.dx*u, pz=b.a[1]+b.dz*u; if(Math.hypot(x-px,z-pz)<=b.w/2-(m||0)) return {b,u:Math.max(0,Math.min(1,u))}; } return null; };
     const HOUSES=WD.buildings.filter(b=>b.deck!==undefined&&decks[b.deck]);
@@ -76,7 +76,14 @@ const TREETOPS=(function(){
       if(!ch){ make(false); return; }
       const lit=make(false), dark=make(true); world.anim.push(()=>{ const on=!!(world.chapelLit&&world.chapelLit(b)); lit.visible=on; dark.visible=!on; }); }
     // ── the rope bridges: planks on a sagging line, rope hand-lines and hangers, posts at both ends; they sway ──
-    bridges.forEach((b,bi)=>{ const mx=(b.a[0]+b.b[0])/2, mz=(b.a[1]+b.b[1])/2, py=(b.ya+b.yb)/2+0.95, g=group(mx,py,mz,scene); g.rotation.y=Math.atan2(-b.dz,b.dx);
+    bridges.forEach((b,bi)=>{ if(!b.stone) return; const mx=(b.a[0]+b.b[0])/2, mz=(b.a[1]+b.b[1])/2, g=group(mx,0,mz,scene); g.rotation.y=Math.atan2(-b.dz,b.dx);   /* V207: a stone bridge — the deck, its parapets, the arch under it, white stone of the old kingdom */
+      const L=b.L+0.4, w=b.w, ST=[0xe2ded2,0xd4d0c4,0xc8c4b8], n=Math.max(6,Math.round(L/0.5));
+      for(let i=0;i<n;i++){ const u=(i+0.5)/n, x=(u-0.5)*L, y=b.ya+(b.yb-b.ya)*u; B(L/n+0.01,0.32,w,ST[i%3],x,y-0.32,0,g);
+        const dep=0.35+2.2*Math.pow(Math.abs(u-0.5)*2,2.4); B(L/n+0.01,dep,w-0.1,ST[(i+1)%3],x,y-0.32-dep,0,g);
+        [-1,1].forEach(sd=>{ B(L/n+0.01,0.62,0.2,ST[(i+2)%3],x,y,sd*(w/2-0.1),g); }); }
+      [-1,1].forEach(sd=>{ B(L+0.02,0.1,0.26,0xbcb8ac,0,b.ya+0.62,sd*(w/2-0.1),g); });
+      shade(g); mergeStatic(g); });
+    bridges.forEach((b,bi)=>{ if(b.stone) return; const mx=(b.a[0]+b.b[0])/2, mz=(b.a[1]+b.b[1])/2, py=(b.ya+b.yb)/2+0.95, g=group(mx,py,mz,scene); g.rotation.y=Math.atan2(-b.dz,b.dx);
       const sw=group(0,0,0,g); b.g=sw; const n=Math.max(4,Math.round(b.L/0.36)), w=b.w;
       for(let i=0;i<=n;i++){ const u=i/n, s=(u-0.5)*b.L, y=bY(b,u)-py; const pl=B(0.28,0.07,w-0.1+(hsh(i,bi)-0.5)*0.1,PLANK[(i+bi)%4],s,y-0.07,(hsh(bi,i)-0.5)*0.05,sw); pl.rotation.y=(hsh(i,bi*3)-0.5)*0.08; }
       [-1,1].forEach(sd=>{ const pts=[]; for(let i=0;i<=16;i++){ const u=i/16; pts.push(new THREE.Vector3((u-0.5)*b.L,bY(b,u)-py+0.95+b.sag*0.35*Math.sin(Math.PI*u),sd*w/2)); }
@@ -169,13 +176,18 @@ const TREETOPS=(function(){
     WD.villagers.forEach(v=>{ if(v.deck===undefined||!decks[v.deck]) return; const f=world.folk.find(q=>q.key==='v:'+v.x+','+v.y+':'+v.outfit); if(!f) return; f.tUp=true; f.y=decks[v.deck].top+0.02; f.g.position.y=f.y; });
     // ── the world, wrapped ──
     world.treeUp=()=>up; world.treetops={decks,bridges,ladders,deckAt,bridgeAt,get up(){ return up; },set up(v){ up=!!v; }};
-    world.ground=(x,z)=>{ if(climb) return climb.y; if(ride&&Math.hypot(x-P.x,z-P.z)<0.01) return -0.02; if(up){ const d=deckAt(x,z); if(d) return d.top; const q=bridgeAt(x,z); if(q) return bY(q.b,q.u)+(q.b===onB?Math.sin(performance.now()*0.006)*0.035*Math.sin(Math.PI*q.u):0); } return G0(x,z); };
+    world.ground=(x,z)=>{ if(climb) return climb.y; if(ride&&Math.hypot(x-P.x,z-P.z)<0.01) return -0.02; const me=x===P.x&&z===P.z;
+      if(up){ const d=deckAt(x,z); if(d) return d.top; const q=bridgeAt(x,z); if(q) return bY(q.b,q.u)+(q.b===onB&&!q.b.stone?Math.sin(performance.now()*0.006)*0.035*Math.sin(Math.PI*q.u):0); if(me&&!climb){ const g=G0(x,z); if(Math.abs(g-P.y)<0.9) up=false; return g; } return G0(x,z); }
+      if(me){ const q=bridgeAt(x,z); if(q&&q.b.stone){ const h=bY(q.b,q.u); if(Math.abs(h-P.y)<0.9){ up=true; return h; } } }   /* V207: onto a stone bridge from the wall-head at its end, and off it the same way */
+      return G0(x,z); };
     const hitC=(cs,fx,fz,tx,tz)=>{ for(const c of cs){ const dT=Math.hypot(tx-c.x,tz-c.z); if(dT<c.r+0.22&&dT<Math.hypot(fx-c.x,fz-c.z)) return true; } return false; };
     world.canMove=(fx,fz,tx,tz)=>{ if(climb||ride) return false;
-      if(up){ if(!(deckAt(tx,tz,0.28)||bridgeAt(tx,tz,0.22))) return false; if(hitC(upC,fx,fz,tx,tz)) return false;
+      if(up){ if(!(deckAt(tx,tz,0.28)||bridgeAt(tx,tz,0.22))){ const q=bridgeAt(fx,fz); return !!(q&&q.b.stone&&Math.abs(G0(tx,tz)-bY(q.b,q.u))<0.7); } if(hitC(upC,fx,fz,tx,tz)) return false;
         for(const r of upR) if(tx>r.x0-0.22&&tx<r.x1+0.22&&tz>r.z0-0.22&&tz<r.z1+0.22&&!(fx>r.x0-0.22&&fx<r.x1+0.22&&fz>r.z0-0.22&&fz<r.z1+0.22)) return false;
         return true; }
-      if(inR(tx,tz)&&hitC(downC,fx,fz,tx,tz)) return false; return M0(fx,fz,tx,tz); };
+      if(inR(tx,tz)&&hitC(downC,fx,fz,tx,tz)) return false;
+      { const q=bridgeAt(tx,tz,0.22); if(q&&q.b.stone&&Math.abs(bY(q.b,q.u)-G0(fx,fz))<0.7) return true; }
+      return M0(fx,fz,tx,tz); };
     const OE=world.onEnter; world.onEnter=sp=>{ climb=null; ride=null; ferries.forEach(fr=>{ const a=fr.F.from, b=fr.F.to, x=sp?sp.x:P.x, z=sp?sp.z:P.z; fr.place(Math.hypot(x-b[0],z-b[1])<Math.min(14,Math.hypot(x-a[0],z-a[1]))?1:0); }); const S0=GAME.S, at=S0&&S0.at;
       up=!!sp&&(sp.up===true||(!!S0.atUp&&!!at&&Math.abs(sp.x-at.x)<0.01&&Math.abs(sp.z-at.z)<0.01))&&!!(deckAt(sp.x,sp.z)||bridgeAt(sp.x,sp.z));
       if(up) P.y=world.ground(P.x,P.z); if(OE) OE(sp); };

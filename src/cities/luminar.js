@@ -54,7 +54,7 @@
     chapelLight:b=>cleansed(WD.chapelTown[b.id]),
     onBarrier:i=>{ if(performance.now()-lastBarrier<2600) return; lastBarrier=performance.now(); UI.toast(`⛔ Abaddon’s barrier seals ${TD[i].name}. Cleanse ${TD[i-1].name} to shatter this dome.`,2600); },
     enter:b=>enterFor(b),
-    hollow:(x,y)=> x<SX(60) ? ()=>forest.enter(y<SY(120)?'north':'south') : (x===SX(196)&&y===SY(7)) ? ()=>forest.enterCave() : null }));
+    hollow:(x,y)=> x<SX(60) ? ()=>forest.enter(y<SY(120)?'north':'south') : (WD.monkCave?(x===WD.monkCave[0]&&y===WD.monkCave[1]):(x===SX(196)&&y===SY(7))) ? ()=>forest.enterCave() : null }));
   world.speed=5.0;
   // V154: THE HOMESTEAD GATE. The homestead's basin has one way in, the old lane at its south end; the family barred it
   //  against the demons roaming the roads. It stays shut and chained until Abaddon falls; then Sir Aldric rides on ahead

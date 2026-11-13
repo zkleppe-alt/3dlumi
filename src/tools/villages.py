@@ -16,7 +16,7 @@ subprocess.check_call([sys.executable,D('tools','grow.py')])
 HEAD=D('data','built','head.js'); src=open(HEAD,encoding='utf-8').read()
 def const(name):
     i=src.index('const '+name+'='); j=src.index('\n',i); s=src[i+len(name)+7:j]; return [i,j,json.loads(s[:-1] if s.endswith(';') else s),s.endswith(';')]
-CON={n:const(n) for n in ('WORLD_DATA','DIALOGUE_DATA','SIDEQUEST_DATA')}
+CON={n:const(n) for n in ('WORLD_DATA','DIALOGUE_DATA','SIDEQUEST_DATA','STRETCH')}
 WD,DD,SQ=CON['WORLD_DATA'][2],CON['DIALOGUE_DATA'][2],CON['SIDEQUEST_DATA'][2]
 PT=json.load(open(D('data','pastimes.json'),encoding='utf-8'))   # (grow.py has just written it from the V197 backup)
 W,H=WD['W'],WD['H']; N=W*H; raw=bytearray(base64.b64decode(WD['raw']))
@@ -1032,6 +1032,183 @@ for q in PT['trade']['points'].values():
     if ins8(q): q.update({'x':669,'y':484,'dx':669,'dy':483})
 for s_ in PT['reuben']['spots']:
     if ins8(s_): s_['x'],s_['y']=671,508
+
+# ════════════════════════════════════ HELLGATE ════════════════════════════════════
+# The ruins of the old kingdom's great city — the grandest thing in the realm, and the reason Abaddon took it. Built
+# against the mountain over the northern sea in six great circles and the citadel, each circle a level street two
+# ledges above the last, behind a wall you can walk along the top of (WORLD_DATA E bands inside WD.hgBox, where the land
+# climbs 3.4 times as steep, as at Crystalpeak). The gates go up alternately east and west, so the way climbs the whole
+# city; the old houses and shops are cut into the foot of each wall above. Down the middle runs the prow: a tower on each
+# wall and a stone bridge from each wall to the tower below it, over the street — so you go under it on the street and
+# over it along the walls (stone bridges: engine/treetops.js). The citadel holds Abaddon's throne and the desecrated
+# cathedral. Inside the Great Gate, where the pilgrims died, stands their ossuary — the way down.
+CX,CY=658,50
+R=[52,45,38,31,24,17,10]                                                  # the circles' outer radii; the citadel inside the last
+HX0,HY0,HX1,HY1=598,30,746,118
+WD['hgBox']=[HX0,HY0,HX1+1,HY1+1]
+inH=lambda o: HX0<=o['x']<=HX1 and HY0<=o['y']<=HY1
+WD['decor']=[d for d in WD['decor'] if not inH(d)]; WD['villagers']=[v for v in WD['villagers'] if not inH(v)]
+for k in [k for k in WD['signs'] if inH(dict(zip('xy',map(int,k.split(',')))))]: WD['signs'].pop(k)
+dd=lambda x,y: math.hypot(x+0.5-CX,(y+0.5-CY)/0.85)
+def ring(x,y):
+    d=dd(x,y)
+    if d>R[0]: return None
+    for k in range(6):
+        if d>R[k+1]: return k
+    return 6
+lvl=lambda k: 13 if k==6 else 2*k+1                                       # a circle's street; its wall-top one above
+def band(x,y):
+    k=ring(x,y); return k is not None and dd(x,y)>R[k]-2
+for y in range(HY0,HY1+1):
+    for x in range(HX0,HX1+1):
+        t=T(x,y)
+        k=ring(x,y); mtn=y<CY-5 and (k is not None or dd(x,y)<R[0]+8)
+        if t in (3,20,21) and k is None and not mtn: setE(x,y,0); continue
+        if mtn: put(x,y,33,False,15 if dd(x,y)<R[0]*0.75 else max(2,15-int((dd(x,y)-R[0]*0.75)/1.6))); continue   # the mountain the city is built against, falling to the sea
+        if k is None: put(x,y,0 if t in (5,9,14,16,6,25,26,27,28,33,35,2,12,10,11) or t not in (1,4,7) else t,t not in (1,7),0); continue
+        e=lvl(k)+(1 if band(x,y) else 0)
+        put(x,y,6,True,e)
+# the gates: the Great Gate at the south, then east, west, east, west, east, and into the citadel from the west
+def gate(k,side):
+    """carve a gate through circle k's wall and climb through it from the circle below: side 0 south, +1 east, -1 west"""
+    if side==0:
+        y0=int(CY+R[k]*0.85)+2; y1=int(CY+(R[k]-3)*0.85); pts=[(CX-1,y0),(CX-1,y1)]
+        for y in range(y1,y0+1):
+            for x in range(CX-1,CX+2):
+                if band(x,y): setE(x,y,lvl(k))
+        climb(pts,w=3); return
+    x0=CX+side*(R[k]+2); x1=CX+side*(R[k]-3)
+    for x in range(min(x0,x1),max(x0,x1)+1):
+        for y in range(CY+1,CY+4):
+            if band(x,y): setE(x,y,lvl(k))
+    climb([(x0,CY+1),(x1,CY+1)],w=3)
+GATES=[(0,0),(1,1),(2,-1),(3,1),(4,-1),(5,1),(6,-1)]
+for k,sd in GATES: gate(k,sd)
+climb([(CX-1,HY1),(CX-1,int(CY+R[0]*0.85)+2)],w=3)                            # the road up to the Great Gate
+# the prow: a tower on each wall down the middle, and a stone bridge from the wall above to the tower, over the street
+BR=[]
+for k in range(1,6):
+    top=lvl(k+1)+1                                                         # the wall above's height
+    ys=[y for y in range(CY,HY1+1) if ring(CX,y)==k and band(CX,y)]
+    yb=[y for y in range(CY,HY1+1) if ring(CX,y)==k+1 and band(CX,y)]
+    if not ys or not yb: continue
+    for y in ys:
+        for x in range(CX-2,CX+3): setE(x,y,top)                            # the tower
+    yT=min(ys); yW=max(yb)
+    for sd in (-1,1):                                                      # its stairs down to the wall-walk, either side
+        for i,x in enumerate((CX+sd*3,CX+sd*4,CX+sd*5)):
+            for y in ys:
+                setE(x,y,top-1-i if i<2 else lvl(k)+1); put(x,y,10,True,None)
+    BR.append(dict(a=[CX+0.5,yW+0.9],b=[CX+0.5,yT+0.15],w=2.6,stone=1))
+WD['treetops'].setdefault('bridges',[]).extend(BR)
+# stairs up onto each wall-walk from its street, a few places round each circle
+for k in range(0,6):
+    for sx in (-14,14,-30,30):
+        x=CX+sx; ys=[y for y in range(CY,HY1+1) if ring(x,y)==k]
+        yb=[y for y in ys if band(x,y)]
+        if not yb or E5(x,min(yb)-1)!=lvl(k): continue
+        y=min(yb); put(x,y-1,10,True,None); put(x,y,10,True,None)
+def cavein(id,name,k,xc,w=4,who=None):
+    ys=[]
+    for x in range(xc,xc+w):
+        col=[y for y in range(CY,HY1+1) if ring(x,y)==k and not band(x,y) and ring(x,y-1)==k+1]
+        if not col: print('no cave row',id); return None
+        ys.append(col[0])
+    y=max(ys)
+    if not all(ring(x,yy)==k and not band(x,yy) and T(x,yy) in (0,6) for x in range(xc,xc+w) for yy in (y,y+1)): print('cave blocked',id); return None
+    for x in range(xc,xc+w):
+        for yy in range(min(ys),y): setE(x,yy,lvl(k+1)+1)                 # the rock behind it, up to the wall above
+    b=bld(id,name,'house',xc,y,w,2,who=who); b['cave']=1; return b
+cavein('hg_home1','The Last Hostel',0,CX-24,who=('Hostel-keeper Miriam','pilgrimF','Pilgrims still come, knight — fewer every year. I give them a bed and a lamp and a prayer, and send them up no further than the second gate.'))
+cavein('hg_home2','The Old Armoury',1,CX+20,who=('Armourer Uriah','watcher','The kingdom’s armour was forged here, in the second circle. The forges are cold. I keep them clean, in case.'))
+cavein('hg_home3','The Gatewarden’s House',0,CX+20,who=('Old Gatewarden Simeon','monk','My father kept the Great Gate, and his father. I keep the house. There is nothing left to keep the gate against — or everything.'))
+# battlements along the outer edge of each wall (not over the gates, the towers or the stairs)
+for y in range(CY-5,HY1+1):
+    for x in range(HX0,HX1+1):
+        k=ring(x,y)
+        if k is None or not band(x,y) or T(x,y)!=6 and T(x,y)!=0: continue
+        if dd(x,y)>R[k]-1 and (x+y)%2==0 and abs(x-CX)>5: decor('merlon',x,y)
+# houses and shops cut into the foot of each wall above the street: most of them ruins now
+fronts=0
+for k in range(0,6):
+    rIn=R[k+1]
+    for a in range(-80,81,9):
+        if abs(a)<12: continue
+        ang=math.radians(a); x=int(CX+math.sin(ang)*(rIn+1.2)); y=int(CY+math.cos(ang)*(rIn+1.2)*0.85)
+        if y<CY+5 or ring(x,y)!=k or band(x,y) or T(x,y) not in (0,6): continue
+        if any(abs(x-(CX+sd*(R[kk]))) <5 and abs(y-CY-2)<5 for kk,sd in GATES): continue
+        decor('ruinfront',x,y,2); WD['decor'][-1]['r']=ang; fronts+=1
+# the citadel: Abaddon's throne in the old king's keep, the desecrated cathedral beside it, the white tree's dead stump
+bld('hg_keep',"Abaddon's Throne",'keep',CX-6,CY-4,7,6); bld('hg_chapel','Desecrated Cathedral','chapel',CX+3,CY-3,6,6)
+decor('deadTree',CX-1,CY+5); decor('brokenPillar',CX-6,CY+4); decor('brokenPillar',CX+6,CY+5); decor('emberPit',CX+2,CY+7); decor('lavaAltar',CX-3,CY+7)
+# ruin and wreck in the streets
+for i in range(70):
+    ang=math.radians(-85+170*hsh2(i,7)); k=i%6; rr=R[k+1]+2.5+hsh2(i,3)*(R[k]-R[k+1]-5)
+    x=int(CX+math.sin(ang)*rr); y=int(CY+math.cos(ang)*rr*0.85)
+    if y<CY or ring(x,y)!=k or band(x,y) or T(x,y)!=6 or abs(x-CX)<4: continue
+    decor(['brokenPillar','ruin','charredTree','emberPit','brokenPillar'][i%5],x,y,2 if i%5==1 else 1)
+# the pilgrims' camp just inside the Great Gate, and the ossuary of those who died there
+yG=int(CY+(R[0]-3)*0.85)
+decor('tent',CX+6,yG-3,2); decor('tent',CX+10,yG-2,2); decor('campfire',CX+8,yG-5); decor('lantern',CX+3,yG)
+WD['cata']['9']={'x':CX-9,'y':yG-2,'face':0,'name':'The pilgrims’ ossuary','where':'the pilgrims’ ossuary just inside the Great Gate',
+    'door':['The doors are barred from within. The stone of them is warm, and from behind them comes a sound like a great slow breath.','The pilgrims camped by the Great Gate may know another way in.'],
+    'doorHeard':['The doors are barred from within. The stone of them is warm, and from behind them comes a sound like a great slow breath.','The old way down is the pilgrims’ ossuary, just inside the Great Gate. Its door is stopped with a round stone.'],
+    'goal':'Hellgate’s cathedral is barred from within. Ask the pilgrims by the Great Gate — someone has heard something.',
+    'goalHeard':'To the pilgrims’ ossuary, just inside the Great Gate — drag its stone clear.',
+    'wayIn':'just inside the Great Gate stands the pilgrims’ ossuary, its door stopped with a round stone and an iron ring; a crook could drag it clear.',
+    'journal':'Hellgate’s cathedral, up in the citadel, is barred. The pilgrims who died at the Great Gate were laid in their ossuary just inside it, and its stair goes down under the whole city. The pilgrims camped there say the dead sing in it at night — and that it is breathing.'}
+folk(CX+7,yG-1,'pilgrim',['The ossuary by the gate sings at night, knight. Not the way the brothers sang — slow, and under the ground, and every one of the voices tired.','Ten thousand pilgrims are laid in there. I came to pray for them. I did not come to hear them.'],name='Pilgrim Ephraim',clue=9,after=['The ossuary is quiet now. The good quiet — like a church after the last prayer.'])
+folk(CX+11,yG-4,'pilgrimF',['Put your hand on the ossuary door. Go on. It is warm. And it moves — in, and out, slow, like something asleep behind it breathing.'],name='Pilgrim Huldah',clue=9,after=['The ossuary door is cold now, as stone should be. Thank God.'])
+folk(CX+4,yG-6,'child',['My father says the round stone on the ossuary door can’t be moved by hand — you’d need a hook, like a shepherd’s. I said why would a shepherd want in there. He didn’t answer.'],name='Little Micah',clue=9,after=['You dragged the stone! With a SHEPHERD’S crook! Father owes me a copper.'])
+sign(CX+4,int(CY+R[0]*0.85)+4,'HELLGATE CITADEL\nThe old kingdom’s crown — and Abaddon’s seat')
+sign(CX+3,yG-1,'THE GREAT GATE\nFirst of the seven circles.')
+HHg=['The pilgrims by the Great Gate hear singing from the ossuary at night. Ask Pilgrim Ephraim.','The cathedral up in the citadel is barred. The old way under the city starts at the pilgrims’ ossuary.']
+if isinstance(SQ['hints'],list): SQ['hints'][9]['out']=HHg
+else: SQ['hints']['9']['out']=HHg
+# the old monk's cave mouth moves out west of the walls; the trek's last stretch ends before the gate
+for k_,v_ in list(WD['signs'].items()):
+    pass
+put(606,72,35,False,0); WD['monkCave']=[606,72]; sign(604,74,'A low cave mouth breathes cool air...\n(something old and quiet waits inside)')
+for y in range(73,76):
+    for x in range(604,609):
+        if T(x,y) not in (16,35): put(x,y,0,True,0)
+ST=CON['STRETCH'][2]
+if ST.get('trek') and ST['trek'].get('samples'): ST['trek']['samples']=[q for q in ST['trek']['samples'] if q[1]>=int(CY+R[0]*0.85)+5]
+for t_ in WD['towns']:
+    if t_[0]=='Hellgate': t_[1],t_[2]=CX,int(CY+R[0]*0.85)+6
+WD['villageRects'].append([HX0,HY0,HX1,HY1]); WD['townR']['Hellgate']=20; WD.setdefault('flats',[]).append([HX0,HY0,HX1,HY1])
+cx,cy,rx,ry=CX,62,70,52; WD['barriers'][9]=[cx,cy,rx,ry]
+ins_e=lambda x,y: ((x+0.5-cx)/rx)**2+((y+0.5-cy)/ry)**2<=1
+WD['barrierSets']['9']=[c for y in range(cy-ry-1,cy+ry+2) for x in range(cx-rx-1,cx+rx+2) if ins_e(x,y) and not all(ins_e(x+a,y+b) for a,b in ((1,0),(-1,0),(0,1),(0,-1))) for c in (x,y)]
+for z in WD['zones']:
+    if z['x0']<HX1 and z['x1']>HX0 and z['y0']<HY1+2 and z['y1']>HY0: z['y0']=max(z['y0'],HY1+3)
+for q in PT['trade']['points'].values():
+    if inH(q): q.update({'x':CX+2,'y':int(CY+R[0]*0.85)+5,'dx':CX+2,'dy':int(CY+R[0]*0.85)+4})
+for s_ in PT['reuben']['spots']:
+    if inH(s_): s_['x'],s_['y']=CX-4,int(CY+R[0]*0.85)+6
+# keep a clear way round the middle of every street, so nothing fallen ever cuts a circle in two
+onLane=lambda x,y: ring(x,y) is not None and ring(x,y)<6 and not band(x,y) and abs(dd(x,y)-(R[ring(x,y)+1]+R[ring(x,y)]-2)/2)<0.8 and y>=CY-5
+cut=[d for d in WD['decor'] if inH(d) and any(onLane(xx,yy) for xx in range(d['x'],d['x']+d.get('w',1)) for yy in range(d['y'],d['y']+d.get('w',1)))]
+for d in cut:
+    WD['decor'].remove(d)
+    for yy in range(d['y'],d['y']+d.get('w',1)):
+        for xx in range(d['x'],d['x']+d.get('w',1)):
+            if T(xx,yy)==5: put(xx,yy,6,True)
+def hgBFS(sx,sy):
+    from collections import deque
+    seen={(sx,sy)}; q=deque([(sx,sy)])
+    wk=lambda x,y:(raw[N+y*W+x]>>4)&1; st=lambda x,y:T(x,y) in (10,11,8)
+    while q:
+        x,y=q.popleft()
+        for a_,b_ in ((1,0),(-1,0),(0,1),(0,-1)):
+            X,Y=x+a_,y+b_
+            if (X,Y) in seen or not (HX0<=X<=HX1 and HY0<=Y<=HY1) or not wk(X,Y): continue
+            if E5(X,Y)!=E5(x,y) and not (abs(E5(X,Y)-E5(x,y))==1 and (st(x,y) or st(X,Y))): continue
+            seen.add((X,Y)); q.append((X,Y))
+    return seen
+_S=hgBFS(CX-1,HY1-1)
+print('hellgate: lane cleared',len(cut),'| reach max e',max(E5(x,y) for x,y in _S),'| keep door',(CX-3,CY+2) in _S,'| ossuary',(CX-9,yG-1) in _S)
+print('hellgate: ruined fronts',fronts,'bridges',len(BR))
 
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src

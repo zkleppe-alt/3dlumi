@@ -138,6 +138,12 @@ Object.assign(DECOR_KINDS,{
   scaffold(d,g){ g.position.x+=0.5; g.position.z+=0.5; [[-0.8,-0.8],[0.8,-0.8],[-0.8,0.8],[0.8,0.8]].forEach(([x,z])=>Cy(0.04,0.04,3.0,5,0x9a7a50,x,0,z,g));   /* V205: scaffolding: poles, lashed ledgers, plank decks, a ladder, a bucket on a rope */
     [1.0,2.0].forEach(y=>{ B(1.7,0.06,1.7,0x9a7a50,0,y,0,g); for(let i=0;i<4;i++) B(1.7,0.04,0.3,0xb08a58,0,y+0.06,-0.6+i*0.4,g); B(1.7,0.05,0.05,0x8a6a40,0,y+0.8,0.85,g); });
     [-0.2,0.2].forEach(o=>B(0.05,2.1,0.05,0x8a6a40,0.95,0,o,g)); for(let i=0;i<6;i++) B(0.05,0.04,0.45,0x8a6a40,0.95,0.3+i*0.33,0,g); Cy(0.12,0.1,0.22,8,0x6a5a4a,-0.5,1.1,0.3,g); },
+  merlon(d,g){ B(0.82,0.85,0.82,0xc8c4b8,0,0,0,g); B(0.92,0.1,0.92,0xa8a498,0,0.85,0,g); },   /* V207: a battlement on Hellgate's walls */
+  ruinfront(d,g,an){ const n=d.w||2; g.position.x+=n/2-0.5; g.position.z+=n/2-0.5; const f=group(0,0,0,g); f.rotation.y=d.r||0; const h=hsh(d.x,d.y), ST=[0xd8d4c8,0xc8c4b8,0xbcb8ac,0xe2ded2];   /* V207: a house or shop cut into the foot of a wall in the old city — its dressed front, the doorway dark, the lintel cracked, rubble fallen from it */
+    for(let r=0;r<6;r++){ const y=r*0.42; for(let i=0;i<5;i++){ const x=-0.9+i*0.45; if(Math.abs(x)<0.4&&y<1.8) continue; if(r>=4&&hsh(i+r,d.x)<0.35) continue; B(0.43,0.4,0.3,ST[(i+r)%4],x,y,-0.55,f); } }
+    B(0.82,1.8,0.06,0x161412,0,0,-0.4,f); const li=B(1.15,0.22,0.36,0xb8b4a8,h<0.5?0.06:-0.06,1.8,-0.5,f); li.rotation.z=h<0.5?0.12:-0.08;
+    if(h>0.4){ B(0.36,0.36,0.04,0x161412,0.7,1.1,-0.39,f); B(0.36,0.36,0.04,0x161412,-0.7,1.1,-0.39,f); }
+    for(let i=0;i<5;i++){ const r=new THREE.Mesh(new THREE.DodecahedronGeometry(0.12+hsh(i,d.y)*0.14,0),mt(ST[i%4])); r.position.set((hsh(i,3)-0.5)*1.6,0.08,-0.1+hsh(3,i)*0.6); r.rotation.set(hsh(i,5)*3,hsh(i,6)*3,0); f.add(r); } },
   minecart(d,g){ const c=group(0,0,0,g); c.rotation.y=(d.r||0)+hsh(d.x,d.y)*0.4; B(0.66,0.42,0.48,0x5a4a3a,0,0.16,0,c); B(0.7,0.06,0.52,0x3a3632,0,0.56,0,c);   /* V199: an ore cart left on the rails */
     for(let i=0;i<4;i++) Cy(0.11,0.11,0.06,10,0x2a2622,(i%2-0.5)*0.46,0.11,(i>1?0.2:-0.2),c).rotation.x=Math.PI/2;
     if(!d.empty) for(let i=0;i<5;i++) Sp(0.09,0x4a4440,(hsh(i,d.y)-0.5)*0.4,0.62,(hsh(d.x,i)-0.5)*0.3,c,5,4);

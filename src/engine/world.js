@@ -771,7 +771,7 @@ function buildWorld(WD,opt){
   // the capital stands taller than any town: Stormgate's terraces rise 2.2× as high (its keep and cathedral on a high
   // acropolis over the lower town and the harbour), and its walls are a fortress's
   const CPL=typeof LOOK2!=="undefined"&&LOOK2?3.4:2.6;   // V113: Crystalpeak stands taller still in the new look: the town up on a high mountain
-  const SGB=opt.land?null:[SX(138),SY(186)-10,SX(198),SY(241)], CPB=opt.land?null:(WD.cpBox||[SX(118),SY(40),SX(190),SY(98)]), inCP=(x,y)=>!!CPB&&x>=CPB[0]&&x<CPB[2]&&y>=CPB[1]&&y<CPB[3],   // Crystalpeak climbs 2.6 times as steep: a real mountain
+  const SGB=opt.land?null:[SX(138),SY(186)-10,SX(198),SY(241)], CPB=opt.land?null:(WD.cpBox||[SX(118),SY(40),SX(190),SY(98)]), HGB=opt.land?null:(WD.hgBox||null), inCP=(x,y)=>(!!CPB&&x>=CPB[0]&&x<CPB[2]&&y>=CPB[1]&&y<CPB[3])||(!!HGB&&x>=HGB[0]&&x<HGB[2]&&y>=HGB[1]&&y<HGB[3]),   /* V207: Hellgate's great city climbs as steep */   // Crystalpeak climbs 2.6 times as steep: a real mountain
     LIFT=(x,y)=>SGB&&x>=SGB[0]&&x<SGB[2]&&y>=SGB[1]&&y<SGB[3]?1.8:inCP(x,y)?CPL:1, EH=(x,y)=>E(x,y)*TIER*LIFT(x,y);
   const scene=new THREE.Scene(), sky=0x9cc4e4; scene.background=new THREE.Color(sky); scene.fog=new THREE.Fog(sky,26,58);
   const lv={id:opt.id,name:opt.name,scene,folk:[],spots:[],anim:[],cam:{pitch:0.62,dist:10,min:5,max:19},T,E,WK,W,H};
@@ -1166,7 +1166,7 @@ function buildWorld(WD,opt){
   // and side faces only where the ground steps down, each band coloured by the column it belongs to
   const groundMat=detailify(new THREE.MeshLambertMaterial({vertexColors:true})), _gc=new THREE.Color(), _gd=new THREE.Color();
   function groundMesh(ch,cells,mcells){ if(!cells.size) return; const pos=[], col=[], nrm=[];
-    [cells,mcells].forEach(M=>M.forEach(q=>{ q.segs.sort((a,b)=>a[1]-b[1]); const t=q.segs[q.segs.length-1]; q.top=t[1]; q.bot=q.segs[0][0]; _gc.setHex(t[2]); if(t[3]) _gc.offsetHSL(0,0,t[3]); q.c=[_gc.r,_gc.g,_gc.b]; if(inCP(q.x,q.y)&&q.top>3.5&&T(q.x,q.y)!==24&&T(q.x,q.y)!==18){ const f=Math.min(1,Math.max(0,(q.top-3.5)/5.5)); q.c=[q.c[0]+(0.93-q.c[0])*f,q.c[1]+(0.95-q.c[1])*f,q.c[2]+(0.97-q.c[2])*f]; } }));   // the high ledges of Crystalpeak lie under snow
+    [cells,mcells].forEach(M=>M.forEach(q=>{ q.segs.sort((a,b)=>a[1]-b[1]); const t=q.segs[q.segs.length-1]; q.top=t[1]; q.bot=q.segs[0][0]; _gc.setHex(t[2]); if(t[3]) _gc.offsetHSL(0,0,t[3]); q.c=[_gc.r,_gc.g,_gc.b]; if(inCP(q.x,q.y)&&!(HGB&&q.x>=HGB[0]&&q.x<HGB[2]&&q.y>=HGB[1]&&q.y<HGB[3])&&q.top>3.5&&T(q.x,q.y)!==24&&T(q.x,q.y)!==18){   /* V207: Hellgate's walls are stone, not snow */  const f=Math.min(1,Math.max(0,(q.top-3.5)/5.5)); q.c=[q.c[0]+(0.93-q.c[0])*f,q.c[1]+(0.95-q.c[1])*f,q.c[2]+(0.97-q.c[2])*f]; } }));   // the high ledges of Crystalpeak lie under snow
     const at=(x,y)=>cells.get(y*W+x)||mcells.get(y*W+x), same=(q,x,y)=>{ const n=at(x,y); return n&&Math.abs(n.top-q.top)<0.03?n:null; };
     const quad=(a,b,c,d,ca,cb,cc,cd,n)=>{ pos.push(...a,...b,...c,...a,...c,...d); col.push(...ca,...cb,...cc,...ca,...cc,...cd); for(let i=0;i<6;i++) nrm.push(...n); };
     const avg=(list)=>{ const r=[0,0,0]; list.forEach(c=>{ r[0]+=c[0]; r[1]+=c[1]; r[2]+=c[2]; }); return r.map(v=>v/list.length); };
