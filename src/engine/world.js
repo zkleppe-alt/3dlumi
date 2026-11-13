@@ -771,7 +771,7 @@ function buildWorld(WD,opt){
   // the capital stands taller than any town: Stormgate's terraces rise 2.2× as high (its keep and cathedral on a high
   // acropolis over the lower town and the harbour), and its walls are a fortress's
   const CPL=typeof LOOK2!=="undefined"&&LOOK2?3.4:2.6;   // V113: Crystalpeak stands taller still in the new look: the town up on a high mountain
-  const SGB=opt.land?null:[SX(138),SY(186)-10,SX(198),SY(241)], CPB=opt.land?null:(WD.cpBox||[SX(118),SY(40),SX(190),SY(98)]), HGB=opt.land?null:(WD.hgBox||null), inCP=(x,y)=>(!!CPB&&x>=CPB[0]&&x<CPB[2]&&y>=CPB[1]&&y<CPB[3])||(!!HGB&&x>=HGB[0]&&x<HGB[2]&&y>=HGB[1]&&y<HGB[3]),   /* V207: Hellgate's great city climbs as steep */   // Crystalpeak climbs 2.6 times as steep: a real mountain
+  const SGB=opt.land?null:[SX(138),SY(186)-10,SX(198),SY(241)], CPB=opt.land?null:(WD.cpBox||[SX(118),SY(40),SX(190),SY(98)]), HGB=opt.land?null:(WD.hgBox||null), inHG=(x,y)=>!!HGB&&x>=HGB[0]&&x<HGB[2]&&y>=HGB[1]&&y<HGB[3], inCP=(x,y)=>(!!CPB&&x>=CPB[0]&&x<CPB[2]&&y>=CPB[1]&&y<CPB[3])||(!!HGB&&x>=HGB[0]&&x<HGB[2]&&y>=HGB[1]&&y<HGB[3]),   /* V207: Hellgate's great city climbs as steep */   // Crystalpeak climbs 2.6 times as steep: a real mountain
     LIFT=(x,y)=>SGB&&x>=SGB[0]&&x<SGB[2]&&y>=SGB[1]&&y<SGB[3]?1.8:inCP(x,y)?CPL:1, EH=(x,y)=>E(x,y)*TIER*LIFT(x,y);
   const scene=new THREE.Scene(), sky=0x9cc4e4; scene.background=new THREE.Color(sky); scene.fog=new THREE.Fog(sky,26,58);
   const lv={id:opt.id,name:opt.name,scene,folk:[],spots:[],anim:[],cam:{pitch:0.62,dist:10,min:5,max:19},T,E,WK,W,H};
@@ -1055,7 +1055,7 @@ function buildWorld(WD,opt){
     for(let i=0;i<q.length;i++){ const k=q[i], x=k%W, y=(k/W)|0; for(let b=-1;b<=1;b++) for(let a=-1;a<=1;a++){ const X=x+a, Y=y+b; if(!inB(X,Y)) continue; const j=Y*W+X; if(D[j]<0){ D[j]=D[k]+1; q.push(j); } } }
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=cls(x,y), k=y*W+x, d=D[k]; if(!c) continue;
       if(c===3){ RK[k]=3; let lo=1e9, hi=-1e9; for(let b=-1;b<=1;b++) for(let a=-1;a<=1;a++){ const X=x+a,Y=y+b; if(!inB(X,Y)||cls(X,Y)) continue; const g=EH(X,Y)+0.02; lo=Math.min(lo,g); hi=Math.max(hi,g); }   // the mountainside between two ledges of the trail
-        AH[k]=hi>-1e8?(lo+hi)/2+0.15+hsh(x*7,y*5)*0.2:EH(x,y)+0.4; continue; }
+        AH[k]=hi>-1e8?(lo+hi)/2+0.15+hsh(x*7,y*5)*0.2:EH(x,y)+0.4; if(hi<=-1e8&&inHG(x,y)&&d>2){ const rid=1-Math.abs(Math.sin(x*0.23+Math.sin(y*0.17)*2.2)*Math.cos(y*0.19+Math.sin(x*0.13)*1.7)); AH[k]+=Math.min(34,(d-2)*1.5*(0.45+0.85*rid))+hsh(x*5,y*3)*0.9; }   /* V208: the mountain behind Hellgate is a mountain — ridges and a summit, not a shelf */ continue; }
       if(c===1){ RK[k]=1; RH[k]=Math.min(10,1.1+d*1.55+hsh(x*3,y*7)*1.1+(d>2?hsh(y,x*5)*1.6:0)); }
       else if(d>=2){ RK[k]=2; const rid=1-Math.abs(Math.sin(x*0.29+Math.sin(y*0.13)*2.2)*Math.cos(y*0.21+Math.sin(x*0.11)*1.7));   // ridges and saddles, so a range isn't one cone
         RH[k]=d<=4?(d-1)*0.7+hsh(x*5,y*3)*0.35:Math.min(13,2.1+(d-4)*1.2*(0.55+0.75*rid)+hsh(x*5,y*3)*0.8); } } }
@@ -1076,7 +1076,8 @@ function buildWorld(WD,opt){
     const tri=(a,b,c,kind,x,y)=>{ const ux=b[0]-a[0],uy=b[1]-a[1],uz=b[2]-a[2],vx=c[0]-a[0],vy=c[1]-a[1],vz=c[2]-a[2]; let nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx; const l=Math.hypot(nx,ny,nz)||1; ny/=l;
       const hm=(a[1]+b[1]+c[1])/3-RB(x,y)-(ROLL?roll(x+0.5,y+0.5):0), r=region(x,y), ash=ashland(x,y)||r==='hellgate'||r==='ashfield', sand=desert(x,y), cold=r==='crystalpeak'||r==='hellgate'||bio(x,y)===4||(!opt.land&&x>=SX(72)&&x<=SX(118)&&y>=SY(252)&&y<=SY(299)), jit=(hsh(x*7+Math.round(a[0]*3),y*3+Math.round(a[2]*3))-0.5)*0.06;
       const ya=(a[1]+b[1]+c[1])/3;
-      let hex; if(kind===3&&L2&&inCP(x,y)) hex=ny>0.72?(ya>3.2?0xeef3f8:0xa8c890):ny>0.5?(ya>4.5?0xc8d0dc:0x8e8a84):(ya>6?0x8a8e9c:0x78726c);   // V113: Crystalpeak — snow on the ledges, grey rock on the cliffs
+      let hex; if(kind===3&&inHG(x,y)) hex=ny>0.7?(ya>50?0xeef2f6:ya>36?0x9a948a:0x8a8478):ny>0.45?(ya>54?0xc8d0dc:0x77716a):0x5e5955;   // V208: Hellgate's mountain — bare grey rock, snow only on the summit
+      else if(kind===3&&L2&&inCP(x,y)) hex=ny>0.72?(ya>17?0xeef3f8:ya>10?0x9fb088:0x7fb068):ny>0.5?(ya>20?0xc8d0dc:ya>10?0x8e8a84:0x86906e):(ya>22?0x8a8e9c:0x78726c);   /* V208: meadow at the foot, alpine turf, then snow */   // V113: Crystalpeak — snow on the ledges, grey rock on the cliffs
       else if(kind===3&&BIO&&bio(x,y)!==4&&!(bio(x,y)===7&&ya>9)) hex=ny<0.55?0x7a7468:ya>5?(ny>0.75?0x8a8c78:0x7e786c):ya>2.5?(ny>0.7?0x8aa070:0x7a7468):(ny>0.6?0x5f9a50:0x766a58);   // V198: warm country's crags are bare rock, no snow
       else if(kind===3) hex=ny<0.55?(ya>7?0x9aa2ae:0x7a7468):ya>8?0xeef2f6:ya>5?(ny>0.75?0xdfe6ee:0x9aa2ae):ya>2.5?(ny>0.7?0x8aa070:0x7a7468):(ny>0.6?0x5f9a50:0x766a58);   // the mountainside: rock on the faces, meadow below, snow above   // the mountainside: meadow, then rock and scree, then snow
       else if(kind===2&&hm<(cold?3.2:5.6)) hex=ny>0.8?0x4f8a44:ny>0.6?0x5a6a3c:0x6c6258;                 // wooded slopes: turf, bare earth on the steeper faces, rock on the steepest
@@ -1156,6 +1157,7 @@ function buildWorld(WD,opt){
       for(let y=0;y<H;y++) for(let x=0;x<W;x++){ let r=0,g=0,b=0,n=0; for(let i=-R;i<=R;i++){ const X=x+i*dx, Y=y+i*dy; if(X<0||Y<0||X>=W||Y>=H) continue; const q=(Y*W+X)*3; r+=S[q]; g+=S[q+1]; b+=S[q+2]; n++; } const k=(y*W+x)*3; D[k]=r/n; D[k+1]=g/n; D[k+2]=b/n; } }
     turf(true); return A; })(), _bgc=new THREE.Color();
   const grassOf=(x,y)=>{ if(BGR&&x>=0&&y>=0&&x<W&&y<H){ const k=(y*W+x)*3; return _bgc.setRGB(BGR[k],BGR[k+1],BGR[k+2]).getHex(); } if(desert(x,y)) return 0xcdb47e; if(ashland(x,y)) return 0x77725e; return GRASS[region(x,y)]||0x5fa860; };
+  lv.grassOf=(x,y)=>grassOf(x,y);   // V208: the painted style's blades take the ground's own green
   function treeKind(x,y){ if(desert(x,y)){ if(BIO) for(const [a,b] of [[0,1],[0,-1],[1,0],[-1,0],[1,1],[-1,-1],[2,0],[0,2],[-2,0],[0,-2]]){ const q=T(x+a,y+b); if(q===3||q===20) return 'palm'; } return 'cactus'; } if(ashland(x,y)) return 'charred'; const r=region(x,y);
     if(BIO){ const b=bio(x,y), hh=hsh(x,y); if(b===4) return (ROLL?roll0(x+0.5,y+0.5):0)>0.9||hh<0.35?'snow':'pine'; if(b===5) return 'mere'; if(b===7) return hh<0.75?'pine':'oak'; if(b===1) return hh<0.42?'pine':hh>0.9?'birch':'oak'; if(b===6&&hh<0.22) return 'palm'; if(b===9||b===0) return hh<0.12?'pine':hh>0.8?'birch':'oak'; }
     if(opt.land) return hsh(x,y)<0.5?'oak':'pine';
@@ -1209,10 +1211,17 @@ function buildWorld(WD,opt){
       const banked=(dx,dy)=>(bankOK&&wl(x+dx,y+dy)!==null&&h-wl(x+dx,y+dy)<0.45)||(W0&&!at(x+dx,y+dy)&&T(x+dx,y+dy)===3);
       for(const [dx,dy] of [[0,-1],[0,1],[-1,0],[1,0]]){ if(banked(dx,dy)||softEdge(x,y,dx,dy)) continue; const n=at(x+dx,y+dy), from=Math.max(n?n.top:q.bot,q.bot); if(from>=h-0.001) continue;
         const N=[dx,0,dy], a=dx?(dx>0?[x+1,y+1]:[x,y]):(dy>0?[x,y+1]:[x+1,y]), b=dx?(dx>0?[x+1,y]:[x,y+1]):(dy>0?[x+1,y+1]:[x,y]);
-        if(typeof LOOK2!=='undefined'&&LOOK2&&inCP(x,y)&&h-from>0.5){   // V113: Crystalpeak's drops are rock faces — cut in rows, pushed in and out, banded grey; edges meet as before
-          const NR=Math.max(2,Math.round((h-from)/0.32)), NC=4, RC=[[0.52,0.53,0.58],[0.46,0.47,0.52],[0.58,0.59,0.64],[0.5,0.5,0.54]];
-          const P=(u,r)=>{ const X=a[0]+(b[0]-a[0])*u, Z=a[1]+(b[1]-a[1])*u, Y=from+(h-from)*r/NR; const inner=u>0&&u<1&&r<NR; const n=inner?(Math.sin(X*3.1+Y*1.7)*0.5+Math.sin(Z*2.3-Y*2.9)*0.35+Math.sin((X+Z)*5.1+Y)*0.15):0, push=inner?0.05+n*0.12:0; return [X+dx*push,Y+(inner?n*0.05:0),Z+dy*push]; };
-          for(let r=0;r<NR;r++){ const cc=RC[(Math.floor((from+(h-from)*r/NR)/0.32)+x+y)&3], ct=r===NR-1?[0.72,0.74,0.8]:cc; for(let u=0;u<NC;u++){ const p0=P(u/NC,r), p1=P((u+1)/NC,r), p2=P((u+1)/NC,r+1), p3=P(u/NC,r+1); tri(p0,p1,p2,cc,cc,ct); tri(p0,p2,p3,cc,ct,ct); } }
+        if(typeof LOOK2!=='undefined'&&LOOK2&&inCP(x,y)&&!inHG(x,y)&&h-from>0.5){   // V208: Crystalpeak's drops are living rock — a face that leans out to a foot of scree, cracked and bulging, streaked down its height, the turf of the ledge above hanging over its lip
+          const tx=-dy, ty=dx, cont=sgn=>{ const m2=same(q,x+tx*sgn,y+ty*sgn); if(!m2) return 0; const lo=at(x+tx*sgn+dx,y+ty*sgn+dy); return (lo?lo.top:m2.bot)<h-0.5?1:0; };
+          const ea=cont(1), eb=cont(-1);
+          const NR=Math.max(2,Math.round((h-from)/0.55)), NC=3, Hh=h-from, lean=Math.min(0.42,0.16+Hh*0.07);
+          const nz3=(X,Y,Z)=>Math.sin(X*2.3+Y*1.1+Math.sin(Z*1.7)*1.3)*0.5+Math.sin(Z*2.9-Y*1.9+Math.sin(X*1.3)*1.1)*0.35+Math.sin((X+Z)*4.7+Y*2.3)*0.15;
+          const P=(u,r)=>{ const X=a[0]+(b[0]-a[0])*u, Z=a[1]+(b[1]-a[1])*u, t=r/NR, Y=from+Hh*t, end=Math.min(1,(u<0.5?(ea?1:u*3):(eb?1:(1-u)*3))), n=nz3(X,Y,Z);
+            const push=end*((1-t)*(1-t)*lean*(0.7+0.5*hsh(Math.round(X*3)+x*0,Math.round(Z*3)))+(t>0&&t<1?n*0.13:t===0?Math.abs(n)*0.1:0)); return [X+dx*push,Y+(t>0&&t<1?n*0.07:0),Z+dy*push]; };
+          const top=q.c, rock=(X,Z,Y)=>{ const v=0.5+0.5*Math.sin(X*5.3+Math.sin(Z*4.1)*2.0+Z*3.7), g=0.47+0.1*v+0.05*hsh(Math.round(X*2),Math.round(Z*2)), warm=0.5+0.5*Math.sin(X*0.9+Z*0.7); return [g*(1.0+0.05*warm),g*0.985,g*(1.04-0.06*warm)]; };
+          for(let r=0;r<NR;r++) for(let u=0;u<NC;u++){ const p0=P(u/NC,r), p1=P((u+1)/NC,r), p2=P((u+1)/NC,r+1), p3=P(u/NC,r+1);
+            const cf=(p,rr)=>{ const c=rock(p[0],p[2],p[1]), t=rr/NR; if(rr===NR) return mixc(c,top,0.85); if(rr===NR-1&&NR>2) return mixc(c,top,0.2); return [c[0]*(0.84+0.16*t),c[1]*(0.84+0.16*t),c[2]*(0.86+0.14*t)]; };
+            if((r+u)&1){ tri(p0,p1,p2,cf(p0,r),cf(p1,r),cf(p2,r+1)); tri(p0,p2,p3,cf(p0,r),cf(p2,r+1),cf(p3,r+1)); } else { tri(p0,p1,p3,cf(p0,r),cf(p1,r),cf(p3,r+1)); tri(p1,p2,p3,cf(p1,r),cf(p2,r+1),cf(p3,r+1)); } }
           continue; }
         q.segs.forEach(sg=>{ const y0=Math.max(sg[0],from), y1=Math.min(sg[1],h); if(y1-y0<0.002) return; _gd.setHex(sg[2]); if(sg[3]) _gd.offsetHSL(0,0,sg[3]); const lip=y1>=h-0.001;
           const cl=[_gd.r*0.9,_gd.g*0.9,_gd.b*0.9], ct=lip?[_gd.r,_gd.g,_gd.b]:cl;
@@ -1512,7 +1521,7 @@ function buildWorld(WD,opt){
   //  ground and is cut away around the knight, where the chunks stand.
   const FAR=(()=>{ if(!OW||opt.land) return null; const S2=W>500?3:2, NX=Math.floor(W/S2)+1, NZ=Math.floor(H/S2)+1, pos=new Float32Array(NX*NZ*3), col=new Float32Array(NX*NZ*3), C=new THREE.Color();
     for(let j=0;j<NZ;j++) for(let i=0;i<NX;i++){ const x=Math.min(W-1,i*S2), y=Math.min(H-1,j*S2), k=y*W+x, t=T(x,y), v=(j*NX+i)*3; let h, hex;
-      if(RK[k]){ h=reliefV(x*2+1,y*2+1); const hm=h-RB(x,y)-roll(x+0.5,y+0.5); const sn=!BIO||bio(x,y)===4||bio(x,y)===7&&hm>8; hex=RK[k]===1?(hm>5&&sn?0xdfe6ee:0x7a7468):hm>7&&sn?0xdfe6ee:hm>4.5?0x6a7458:0x2f5a34; if(inCP(x,y)) hex=h>4?0xe8eef4:0x8e8a84; }
+      if(RK[k]){ h=reliefV(x*2+1,y*2+1); const hm=h-RB(x,y)-roll(x+0.5,y+0.5); const sn=!BIO||bio(x,y)===4||bio(x,y)===7&&hm>8; hex=RK[k]===1?(hm>5&&sn?0xdfe6ee:0x7a7468):hm>7&&sn?0xdfe6ee:hm>4.5?0x6a7458:0x2f5a34; if(inCP(x,y)) hex=inHG(x,y)?(h>50?0xe8eef4:0x7d776e):h>17?0xe8eef4:h>8?0x8e8a84:0x7fa868; }
       else if(t===3||t===21||t===29){ h=-0.32; hex=0x2f6f9c; } else if(t===20){ h=-0.08; hex=0x5fb0c8; }
       else { const r=roll(x+0.5,y+0.5); h=EH(x,y)+0.02+r; hex=bAt.has(k)?0x8a5a3a:t===19||desert(x,y)?0xc8aa78:t===2||t===12?0xb09060:t===5||t===6?0x9a958c:t===22?0xeef2f6:t===25||t===28?0x4a4440:BGR&&(t===0||t===4||t===1||t===15)?(t===1?new THREE.Color(grassOf(x,y)).multiplyScalar(0.8).getHex():grassOf(x,y)):r>6?0x7c8a5c:0x5e9a4a; }
       pos[v]=i*S2+0.5; pos[v+1]=h-0.45; pos[v+2]=j*S2+0.5; C.setHex(hex).offsetHSL(0,0,(hsh(i,j)-0.5)*0.05); col[v]=C.r; col[v+1]=C.g; col[v+2]=C.b; }
@@ -1540,12 +1549,13 @@ function buildWorld(WD,opt){
      rolled ground under their feet. Only ever raised: folk on a bridge, a deck or a stair keep their height. */
   if(ROLL){ let gT=0; lv.anim.push((t,dt)=>{ gT+=dt||0.016; if(gT<0.5) return; gT=0; if(ENGINE.level!==lv) return;
     for(const f of lv.folk){ const pa=f.g&&f.g.parent; if(!pa||(pa!==scene&&(pa.parent!==scene||pa.position.lengthSq()>0.01))) continue; const gy=lv.ground(f.x,f.z)+0.02; if(f.y<gy-0.03){ f.y=gy; if(f.still&&f.g) f.g.position.y=gy; } } }); }
-  lv.follow=p=>{ const G=lv.gfx; if(FAR){ FAR.U.uC.value.set(p.x,p.z); scene.fog.near=G.fogN; scene.fog.far=G.fogF; } if(typeof DAYNIGHT!=='undefined'){ const L=DAYNIGHT.state().light; const SD=G.sunD||34; sun.position.set(p.x+L.x*SD,p.y+L.y*SD,p.z+L.z*SD); } else sun.position.set(p.x-12,p.y+30,p.z+14); sun.target.position.set(p.x,p.y,p.z);
+  lv.follow=p=>{ const G=lv.gfx; const VIEW0=VIEW, VIEWX=(HGB&&VIEW0>=56&&p.x>HGB[0]-20&&p.x<HGB[2]+20&&p.z>HGB[1]-10&&p.z<HGB[3]+30)?VIEW0+34:VIEW0;   /* V208: the great city is seen whole from its gate — the near land is drawn further out round Hellgate */
+    if(FAR){ FAR.U.uR.value=Math.max(18,VIEWX-16); FAR.U.uC.value.set(p.x,p.z); scene.fog.near=G.fogN; scene.fog.far=G.fogF; } if(typeof DAYNIGHT!=='undefined'){ const L=DAYNIGHT.state().light; const SD=G.sunD||34; sun.position.set(p.x+L.x*SD,p.y+L.y*SD,p.z+L.z*SD); } else sun.position.set(p.x-12,p.y+30,p.z+14); sun.target.position.set(p.x,p.y,p.z);
     const cam=ENGINE.cam; cam.updateMatrixWorld(); PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); frus.setFromProjectionMatrix(PM);
     const heavy=(tick++%6)===0;
     chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z);
-      if(heavy&&!ch.built&&d<VIEW+10&&lv._builds<2){ buildChunk(ch); lv._builds++; }
-      const show=d<VIEW+12; ch.g.visible=show&&ch.built; if(!ch.g.visible) return;
+      if(heavy&&!ch.built&&d<VIEWX+10&&lv._builds<2){ buildChunk(ch); lv._builds++; }
+      const show=d<VIEWX+12; ch.g.visible=show&&ch.built; if(!ch.g.visible) return;
       const inView=frus.intersectsSphere(ch.sphere), near=d<G.shR; ch.ims.forEach(im=>{ const tu=im.material===tuftMat; im.visible=inView&&(!tu||d<G.tuftR); im.castShadow=!tu&&(near&&im.material!==boxMat&&im.material!==groundMat||near&&d<G.shR*0.7); }); });
     lv._builds=0;
   // redraw the ground of an area in place (the tiles only — people, buildings and decorations stay)

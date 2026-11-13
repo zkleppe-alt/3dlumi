@@ -68,7 +68,7 @@ function detailify(mat,o){ o=Object.assign({amp:0.16,strata:0.1,grit:0.1,mode:'a
           else if(up>0.5&&grey>0.5){ vec2 r=q*vec2(1.6,2.1); r.x+=step(1.0,mod(floor(r.y),2.0))*0.5; vec2 f=fract(r), id=floor(r);                    // flagstones, each its own shade, mortar between
             float edge=min(min(f.x,1.0-f.x)*1.6,min(f.y,1.0-f.y)*2.1); k=(0.92+_dh(id)*0.14)*(1.0-0.22*(1.0-smoothstep(0.02,0.07,edge)))+m*uDAmp; }
           else { float g=_dh(floor(q*9.0))-0.5, peb=step(0.955,_dh(floor(q*7.0+11.0))); k=1.0+m*uDAmp*2.0+g*uDGrit-peb*0.12; }                 // earth, sand, timber, rock: mottled grit and a pebble or two
-          if(uDMode==0&&up<0.5){ float c=abs(fract(vDWP.y*2.2)-0.5); k*=1.0-uDStr*smoothstep(0.42,0.5,c); k*=0.86+0.14*smoothstep(-0.3,0.7,fract(vDWP.y)); }  // courses on the sides, a touch darker low in each
+          if(uDMode==0&&up<0.1){ float c=abs(fract(vDWP.y*2.2)-0.5); k*=1.0-uDStr*smoothstep(0.42,0.5,c); k*=0.86+0.14*smoothstep(-0.3,0.7,fract(vDWP.y)); }  // courses on the sides, a touch darker low in each
           diffuseColor.rgb*=clamp(k,0.6,1.3); }`); };
   mat.customProgramCacheKey=()=>'detail'+o.amp+'_'+o.strata+'_'+o.grit+'_'+o.mode; return mat; }
 // a building material: flat-shaded like the rest, with a surface (roof shingles, dressed stone, plaster, planks)

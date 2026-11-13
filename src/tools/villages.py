@@ -818,6 +818,24 @@ sign(468,260,'CRYSTALPEAK\nThe town on the mountain'); sign(477,253,'THE HOT SPR
 HC=['Have you heard the singing behind the falls? Ask Pilgrim Silas — he sits by the falls most days.','The cathedral’s been barred from inside fifteen years. The falls have run backwards ever since — warm in winter, frozen in summer.']
 if isinstance(SQ['hints'],list): SQ['hints'][5]['out']=HC
 else: SQ['hints']['5']['out']=HC
+# V208: the mountain is a mountain. Only the town's saddle, its three green terraces, the stair-road, the spring ledge
+# and the summit are ground you walk; every other ledge of the cone becomes mountainside (unwalked ground with a level,
+# which the engine draws as one skin of rock, scree and snow running from ledge to ledge).
+_core=set()
+for y in range(BY0,BY1+1):
+    for x in range(BX0,BX1+1):
+        e=E5(x,y); t=T(x,y)
+        if e==0: continue
+        d=((abs(x+0.5-TX)/TRX)**4+(abs(y+0.5-TY)/TRY)**4)**0.25; sv=saddle(x,y)
+        if t in (2,6,10,11,12,24,9,16,8,25) or (d<=1.02 and y>=247) or (sv>=7 and e==int(sv)) or e>=13 or (e==11 and 455<=x<=466 and 247<=y<=255): _core.add((x,y))
+for v_ in WD['villagers']:
+    if inB5(v_): _core.add((v_['x'],v_['y']))
+_keep={(x+a,y+b) for x,y in _core for a in (-1,0,1) for b in (-1,0,1)}
+_rocked=0
+for y in range(BY0,BY1+1):
+    for x in range(BX0,BX1+1):
+        if E5(x,y)>0 and (x,y) not in _keep and T(x,y) in (0,18,4,19) and (raw[N+y*W+x]>>4)&1: put(x,y,0,False,None); _rocked+=1
+print('crystalpeak: mountainside tiles',_rocked)
 for t_ in WD['towns']:
     if t_[0]=='Crystalpeak': t_[1],t_[2]=463,258
 X0,Y0,X1,Y1=440,224,486,300; ins5=lambda o: X0<=o['x']<=X1 and Y0<=o['y']<=Y1

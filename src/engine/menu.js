@@ -88,6 +88,7 @@ const MENU=(function(){
             const lab={auto:`✨ Auto <span class="ds">chosen for this device — now ${act[0].toUpperCase()+act.slice(1)}</span>`,low:'Low <span class="ds">older phones: short view, plain light</span>',medium:'Medium <span class="ds">phones and tablets</span>',high:'High <span class="ds">computers: soft wide shadows, long views, glow and colour grading</span>',ultra:'Ultra <span class="ds">a strong graphics card: the longest views, the sharpest shadows</span>'}[t];
             return `<button class="gm-item ${cur===t?'worn':''}" data-act="gfx:${t}"><span>${lab}</span>${cur===t?'<i>✓</i>':''}</button>`; }).join('')
           +`<button class="gm-item" data-act="mocap"><span>🏃 Knight’s movement: ${ENGINE.K&&ENGINE.K.mocapOff?'classic (hand-keyed)':'motion-captured (new)'} <span class="ds">tap to switch</span></span></button>`
+          +`<button class="gm-item" data-act="artstyle"><span>🎨 Art style: ${typeof ART!=='undefined'&&ART.on?'painted (test)':'classic'} <span class="ds">tap to switch · reloads the page</span></span></button>`
           +`<button class="gm-item" data-act="look2"><span>🌄 World look: ${typeof LOOK2!=='undefined'&&LOOK2?'rolling meadows (new)':'classic flat ground'} <span class="ds">tap to switch · reloads the page</span></span></button>`
           +`<button class="gm-item" data-act="pad"><span>🎮 Controller Controls <span class="ds">choose the button for every action · swap sticks · invert look</span></span></button>`
         +sec('Save Profiles')+`<button class="gm-item" data-act="save"><span>💾 Save Game <span class="ds">write your progress to Slot ${slot}</span></span></button>`;
@@ -185,6 +186,7 @@ const MENU=(function(){
     else if(k==='gfx'){ if(typeof HUD!=='undefined') HUD.setTier(v); note='Graphics: '+v; render(true); return; }
     else if(k==='vol'&&typeof SFX!=='undefined'){ SFX.stepVol(v); SFX.play('menu',true); render(true); return; }
     else if(k==='mocap'){ const K=ENGINE.K; K.mocapOff=!K.mocapOff; try{ localStorage.setItem('klk3d_mocap',K.mocapOff?'0':'1'); }catch(e){} render(true); return; }
+    else if(k==='artstyle'){ GAME.save&&GAME.save(); if(typeof ART!=='undefined') ART.set(ART.on?'classic':'painted'); return; }
     else if(k==='look2'){ try{ localStorage.setItem('klk3d_look2',(typeof LOOK2!=='undefined'&&LOOK2)?'0':'1'); }catch(e){} GAME.save&&GAME.save(); location.reload(); return; }
     else if(k==='journal'){ toggle(false); if(typeof JOURNAL!=='undefined') JOURNAL.open(); return; }
     else if(k==='pad'){ toggle(false); if(typeof PAD!=='undefined') PAD.open(); return; }
