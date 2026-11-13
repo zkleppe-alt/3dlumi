@@ -1119,13 +1119,15 @@ for k in range(1,6):
                 setE(x,y,top-1-i if i<2 else lvl(k)+1); put(x,y,10,True,None)
     BR.append(dict(a=[CX+0.5,yW+0.9],b=[CX+0.5,yT+0.15],w=2.6,stone=1))
 WD['treetops'].setdefault('bridges',[]).extend(BR)
+HGSIGN=[]
 # stairs up onto each wall-walk from its street, a few places round each circle
 for k in range(0,6):
-    for sx in (-14,14,-30,30):
+    for sx in (-9,9,-30,30):                                               # V210: the near pair close by the middle tower, so the straight way up is short
         x=CX+sx; ys=[y for y in range(CY,HY1+1) if ring(x,y)==k]
         yb=[y for y in ys if band(x,y)]
-        if not yb or E5(x,min(yb)-1)!=lvl(k): continue
+        if not yb or E5(x,min(yb)-1)!=lvl(k) or T(x,min(yb)-1) not in (0,6): continue
         y=min(yb); put(x,y-1,10,True,None); put(x,y,10,True,None)
+        if abs(sx)==9 and T(x+(1 if sx>0 else -1),y-2) in (0,6): HGSIGN.append((x+(1 if sx>0 else -1),y-2,k))
 def cavein(id,name,k,xc,w=4,who=None):
     ys=[]
     for x in range(xc,xc+w):
@@ -1224,6 +1226,12 @@ def hgBFS(sx,sy):
             if E5(X,Y)!=E5(x,y) and not (abs(E5(X,Y)-E5(x,y))==1 and (st(x,y) or st(X,Y))): continue
             seen.add((X,Y)); q.append((X,Y))
     return seen
+NAMES=['first','second','third','fourth','fifth','sixth']
+for x_,y_,k_ in HGSIGN:
+    if k_==0:
+        if T(x_,y_) in (0,6): sign(x_,y_,'THE FIRST CIRCLE\nThe next gate is round to the EAST. From the second circle the towers and bridges climb straight up the middle, all the way to the citadel.')
+        continue
+    if T(x_,y_) in (0,6): sign(x_,y_,'THE %s CIRCLE\nThe straight way up: this stair onto the wall, along it to the middle tower, and over the bridge.\nThe long way: the next gate is round to the %s.'%(NAMES[k_].upper(),'EAST' if GATES[k_+1][1]>0 else 'WEST'))
 _S=hgBFS(CX-1,HY1-1)
 print('hellgate: lane cleared',len(cut),'| reach max e',max(E5(x,y) for x,y in _S),'| keep door',(CX-3,CY+2) in _S,'| ossuary',(CX-9,yG-1) in _S)
 print('hellgate: ruined fronts',fronts,'bridges',len(BR))

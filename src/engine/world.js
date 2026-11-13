@@ -1069,7 +1069,7 @@ function buildWorld(WD,opt){
   function reliefV0(vx,vy){ const tx=[], X=vx>>1, Y=vy>>1, ox=vx&1, oy=vy&1; const ts=[]; for(const a of (ox?[X]:[X-1,X])) for(const b of (oy?[Y]:[Y-1,Y])) ts.push([a,b]);
     let open=-1e9, sum=0, base=1e9, k3=false, ah=0; for(const [a,b] of ts){ if(!inB(a,b)) return 0; const k=b*W+a; if(!RK[k]){ open=Math.max(open,RB(a,b)); continue; } sum+=RS[k]; base=Math.min(base,RB(a,b)); if(RK[k]===3){ k3=true; ah+=AH[k]; } else ah+=RB(a,b)+RS[k]; }
     if(open>-1e8) return open;                                                                                  // where it meets walkable ground: that ground's height (the higher, between two ledges)
-    if(k3) return ah/ts.length+(hsh(vx*3+17,vy*5+11)-0.5)*0.7;   // a rough face, not a ramp
+    if(k3) return ah/ts.length+(hsh(vx*3+17,vy*5+11)-0.5)*0.35;   // a rough face, not a ramp
     const h=sum/ts.length; return base+h+(hsh(vx*3+17,vy*5+11)-0.5)*0.16*Math.min(h,3); }
   const reliefMat=detailify(new THREE.MeshLambertMaterial({vertexColors:true}),{amp:0.2,strata:0.04,grit:0.16});
   function reliefMesh(ch,list){ if(!list.length) return; const pos=[], col=[], C=new THREE.Color();
@@ -1088,7 +1088,7 @@ function buildWorld(WD,opt){
     // V113 (LOOK2): CRYSTALPEAK as a real mountain — its rock between the trails is cut finer (a quarter-tile skin), roughened
     //  inside each tile, and carved into bands: steep cliff faces with ledges between them where the snow lies; smooth-shaded,
     //  so it reads as one massif rather than facets. Where it meets the trails it meets them exactly, as before.
-    const SMOOTH=[], SS=TIER*CPL/3, band=h=>{ const q=h/SS, f=q-Math.floor(q), e=f<0.42?f*0.25:f<0.88?0.105+(f-0.42)/0.46*0.88:0.985+(f-0.88)*0.125; return h+(Math.floor(q)*SS+e*SS-h)*0.75; };
+    const SMOOTH=[], SS=TIER*CPL/3, band=h=>{ const q=h/SS, f=q-Math.floor(q), e=f<0.42?f*0.25:f<0.88?0.105+(f-0.42)/0.46*0.88:0.985+(f-0.88)*0.125; return h+(Math.floor(q)*SS+e*SS-h)*0.22; };   /* V210: was 0.75 — a slope with a hint of ledges, not a staircase */
     const fbm=(X,Z)=>Math.sin(X*2.1+Math.sin(Z*1.3)*1.7)*0.5+Math.sin(Z*2.7+X*0.9)*0.3+Math.sin((X-Z)*4.3)*0.2;
     list.forEach(([x,y])=>{ const k=y*W+x, kind=RK[k]; if(kind===3&&L2&&inCP(x,y)){ const HG=[]; for(let j=0;j<3;j++){ HG[j]=[]; for(let i=0;i<3;i++) HG[j][i]=reliefV(x*2+i,y*2+j); }
         const P4=(u,v)=>{ const fx=u/2, fz=v/2, i0=Math.min(1,Math.floor(fx)), j0=Math.min(1,Math.floor(fz)), tx=fx-i0, tz=fz-j0, h0=HG[j0][i0]*(1-tx)+HG[j0][i0+1]*tx, h1=HG[j0+1][i0]*(1-tx)+HG[j0+1][i0+1]*tx;
@@ -1214,7 +1214,7 @@ function buildWorld(WD,opt){
         if(typeof LOOK2!=='undefined'&&LOOK2&&inCP(x,y)&&!inHG(x,y)&&h-from>0.5){   // V208: Crystalpeak's drops are living rock — a face that leans out to a foot of scree, cracked and bulging, streaked down its height, the turf of the ledge above hanging over its lip
           const tx=-dy, ty=dx, cont=sgn=>{ const m2=same(q,x+tx*sgn,y+ty*sgn); if(!m2) return 0; const lo=at(x+tx*sgn+dx,y+ty*sgn+dy); return (lo?lo.top:m2.bot)<h-0.5?1:0; };
           const ea=cont(1), eb=cont(-1);
-          const NR=Math.max(2,Math.round((h-from)/0.55)), NC=3, Hh=h-from, lean=Math.min(0.42,0.16+Hh*0.07);
+          const NR=Math.max(2,Math.round((h-from)/0.55)), NC=3, Hh=h-from, lean=STAIRS.has(T(x+dx,y+dy))||T(x+dx,y+dy)===2?0.04:Math.min(0.42,0.16+Hh*0.07);
           const nz3=(X,Y,Z)=>Math.sin(X*2.3+Y*1.1+Math.sin(Z*1.7)*1.3)*0.5+Math.sin(Z*2.9-Y*1.9+Math.sin(X*1.3)*1.1)*0.35+Math.sin((X+Z)*4.7+Y*2.3)*0.15;
           const P=(u,r)=>{ const X=a[0]+(b[0]-a[0])*u, Z=a[1]+(b[1]-a[1])*u, t=r/NR, Y=from+Hh*t, end=Math.min(1,(u<0.5?(ea?1:u*3):(eb?1:(1-u)*3))), n=nz3(X,Y,Z);
             const push=end*((1-t)*(1-t)*lean*(0.7+0.5*hsh(Math.round(X*3)+x*0,Math.round(Z*3)))+(t>0&&t<1?n*0.13:t===0?Math.abs(n)*0.1:0)); return [X+dx*push,Y+(t>0&&t<1?n*0.07:0),Z+dy*push]; };
@@ -1298,7 +1298,8 @@ function buildWorld(WD,opt){
         [[0,-1],[0,1],[-1,0],[1,0]].forEach(([a,b],i)=>{ if(sp(a,b)) return; const rx=a?cx+a*0.42:cx, rz=b?cz+b*0.42:cz; box(rx,rz,top-0.3,0.46,i%2?0xb8c2ce:0xd0d8e2,a?0.18:1.04,a?1.04:0.18,0,(hsh(x+i,y)-0.5)*0.05);
           if(hsh(x*3+i,y*7)<0.45) crystals.push({x:rx+(b?(hsh(y,x+i)-0.5)*0.6:0),z:rz+(a?(hsh(x,y+i)-0.5)*0.6:0),y:top+0.05,h:0.5+hsh(x+i*3,y)*0.6,sx:0.16,sz:0.16,ry:hsh(x,y+i)*3,c:i%2?0x9adcf0:0xc8f0ff}); });
         continue; }
-      if(RK[k]===3&&!MG&&!tilesOnly){ const r=hsh(x*5,y*9); if(r<0.32) rocks.push({x:cx+(hsh(y,x*3)-0.5)*0.5,z:cz+(r-0.16)*0.8,y:AH[k]-1.1-r,h:1.6+r*2.2,sx:1.1+r*1.2,sz:0.55+hsh(x,y)*0.4,ry:r*19,c:AH[k]>7?0x8a929e:0x6e6458,l:(r-0.16)*0.1}); }   // crags breaking out of the mountainside
+      if(RK[k]===3&&!MG&&!tilesOnly){ const r=hsh(x*5,y*9); let nearW=false; for(let b=-2;b<=2&&!nearW;b++) for(let a=-2;a<=2;a++) if(WK(x+a,y+b)){ nearW=true; break; }   /* V210: no crag overhangs a trail or a stair */
+        if(r<0.14&&!nearW) rocks.push({x:cx+(hsh(y,x*3)-0.5)*0.5,z:cz+(r-0.16)*0.8,y:AH[k]-1.1-r,h:1.6+r*2.2,sx:1.1+r*1.2,sz:0.55+hsh(x,y)*0.4,ry:r*19,c:AH[k]>7?0x8a929e:0x6e6458,l:(r-0.16)*0.1}); }   // crags breaking out of the mountainside
       if(RK[k]===3&&!MG&&t===1&&!tilesOnly&&AH[k]<9){ const sc=0.8+hsh(x,y)*0.3; (trees.snow=trees.snow||[]).push({x:cx,z:cz,y:reliefV(x*2+1,y*2+1)-0.05,h:sc,sx:sc,sz:sc,ry:hsh(x,y)*6,rv:1}); }   // firs on the mountainside
       if(!MG&&!tilesOnly&&inCP(x,y)&&WK(x,y)&&!RK[k]&&!SD.has(k)){ const dn=[[1,0],[-1,0],[0,1],[0,-1]].find(([a,b])=>RK[(y+b)*W+x+a]===3&&AH[(y+b)*W+x+a]<top-0.3);   // the trail's edge: a marker pole now and then, a red rag on it
         if(dn&&hsh(x*11,y*13)<0.16){ const px=cx+dn[0]*0.4, pz=cz+dn[1]*0.4; box(px,pz,top,1.15,0x5a4028,0.07,0.07); box(px+0.11,pz,top+0.95,0.16,0xc84a3a,0.2,0.03); } }
@@ -1370,7 +1371,7 @@ function buildWorld(WD,opt){
       if(t===32&&!e&&[[0,1],[0,-1],[1,0],[-1,0]].some(([a,b])=>[3,12,20,21].includes(T(x+a,y+b)))){ box(cx,cz,-0.45,0.4,0x5fb0c8,1,1,0,jit); continue; }
       if(t===32&&MS[k]){ const th=typeof opt.thawed==='function'?!!opt.thawed(x,y):!!opt.thawed; box(cx,cz,top-0.4,0.4,th?0x7a7064:0x9aa4b0,1,1,0,jit); continue; }   // V124: a band of crag in Tabor's one slope
       if(t===32){ box(cx,cz,top-0.4,0.4,0x9a7a58,1,1,0,jit); box(cx,cz,top,0.45,0xa8845e,0.9,0.9,hsh(x,y),jit); continue; }
-      if(L2&&inCP(x,y)&&WK(x,y)&&!tilesOnly&&!STAIRS.has(t)) for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const X=x+a, Y=y+b; if(!WK(X,Y)||STAIRS.has(T(X,Y))||bAt.has(Y*W+X)||dAt.has(Y*W+X)||NEARSIGN(X,Y)) continue; const dh=EH(x,y)-EH(X,Y); if(dh<0.9) continue;   // V113: the drop from one trail to the next broken by boulders and fallen rock at its foot
+      if(L2&&inCP(x,y)&&!inHG(x,y)&&WK(x,y)&&!tilesOnly&&!STAIRS.has(t)) for(const [a,b] of [[1,0],[-1,0],[0,1],[0,-1]]){ const X=x+a, Y=y+b; if(!WK(X,Y)||STAIRS.has(T(X,Y))||[2,6,12,9].includes(T(X,Y))||[[1,0],[-1,0],[0,1],[0,-1]].some(([c,d])=>STAIRS.has(T(X+c,Y+d)))||   /* V210: never on a road or beside a stair */ bAt.has(Y*W+X)||dAt.has(Y*W+X)||NEARSIGN(X,Y)) continue; const dh=EH(x,y)-EH(X,Y); if(dh<0.9) continue;   // V113: the drop from one trail to the next broken by boulders and fallen rock at its foot
         const gy=EH(X,Y)+0.02; for(let i=0;i<3;i++){ const r=hsh(x*7+i+a*3,y*5+i*2+b*3), along=(i-1)*0.34+(r-0.5)*0.1, out=0.04+r*0.12; rocks.push({x:cx+a*(0.5+out)+(b?along:0),z:cz+b*(0.5+out)+(a?along:0),y:gy-0.12,h:Math.min(1.4,dh*(0.3+r*0.35)),sx:0.42+r*0.28,sz:0.36+r*0.2,ry:r*6.3,c:[0x8a8e9c,0x7a7e8a,0x9a9eaa][i%3],l:(r-0.5)*0.06}); }
         const r2=hsh(x*3+a,y*11+b); if(r2<0.5) rocks.push({x:cx+a*(0.5+0.32)+(b?(r2-0.25)*1.2:0),z:cz+b*(0.5+0.32)+(a?(r2-0.25)*1.2:0),y:gy-0.04,h:0.14,sx:0.22,sz:0.18,ry:r2*9,c:0x9a9eaa}); }
       let c, y1=top;

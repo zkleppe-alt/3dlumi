@@ -361,3 +361,8 @@ After Oceanside harbour, as a beachfront town:
 
 ## V209 — the painted look is the default
 - engine/style.js: `painted` unless classic is chosen (☰ → System → 🎨 Art style). Smoke run in painted: clean.
+
+## V210 — clean-up: smoother mountainside, no stray rocks on stairs, Hellgate way-finding
+- world.js: mountainside skin runs in slopes (ledge banding 0.75→0.22, vertex jitter halved); crags only deep in the rock and fewer; cliff-foot boulders never on roads, beside stairs, or in Hellgate; rock faces do not lean over a stair or path.
+- villages.py Hellgate: wall stairs moved to 9 tiles either side of the middle tower; a sign by each explains the straight way up (wall stair → middle tower → bridges tower to tower to the citadel) and which way the next gate lies.
+- To do: feet sinking into the ground (asked for later); town clean-up passes in story order; lawn green in painted mode.
