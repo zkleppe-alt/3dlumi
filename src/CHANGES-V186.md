@@ -366,3 +366,9 @@ After Oceanside harbour, as a beachfront town:
 - world.js: mountainside skin runs in slopes (ledge banding 0.75→0.22, vertex jitter halved); crags only deep in the rock and fewer; cliff-foot boulders never on roads, beside stairs, or in Hellgate; rock faces do not lean over a stair or path.
 - villages.py Hellgate: wall stairs moved to 9 tiles either side of the middle tower; a sign by each explains the straight way up (wall stair → middle tower → bridges tower to tower to the citadel) and which way the next gate lies.
 - To do: feet sinking into the ground (asked for later); town clean-up passes in story order; lawn green in painted mode.
+
+## V211 — feet on the ground
+- body3.js: the fitted body is lifted ~0.05 (pelvis anchor +0.106 in rig units) — the fit aimed the feet at the ball-of-foot bone, which is inside the boot, so the soles stood 0.05 under every floor. Measured lowest sole vertex standing: -0.047 → 0.000.
+- world.js ground(): on a stair tile you stand on the step itself (same step count as city.js stairBoxes), not on a ramp through the treads.
+- core.js: the knight follows the ground 3× faster (48 up / 24 down, was 16/10), so climbing he no longer trails under it.
+- Not measured: soles mid-stride while walking (the headless test could not drive the walk cycle).

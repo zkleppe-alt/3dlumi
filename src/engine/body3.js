@@ -122,7 +122,7 @@ const BODY3=(function(){
     const PQ=(m)=>{ const a=kq(m[0],K,Qn()); if(m.length<3) return a; return a.slerp(kq(m[1],K,Qn()),m[2]); };
     const bq=n=>{ const t=Qn(); B[n].getWorldQuaternion(t); const Kq=Qn(); K.getWorldQuaternion(Kq); return Kq.invert().multiply(t); };
     const off={}; Object.keys(M).forEach((n,ii)=>{ const bn=names[ii]; if(!B[bn]) return; off[bn]={m:M[n],q:PQ(M[n]).invert().multiply(bq(bn))}; });
-    const pelP=r.hips.worldToLocal(B.pelvis.getWorldPosition(V())), pelParInv=new THREE.Matrix4().copy(B.pelvis.parent.matrixWorld).invert().multiply(K.matrixWorld);
+    const pelP=r.hips.worldToLocal(B.pelvis.getWorldPosition(V())).add(new THREE.Vector3(0,0.106,0)),   /* V211 (in the rig's own units, ~0.05 in the world): the whole body up — the fit aims the feet at the ball-of-foot bone, inside the boot, so the soles stood 0.05 under every floor */ pelParInv=new THREE.Matrix4().copy(B.pelvis.parent.matrixWorld).invert().multiply(K.matrixWorld);
     piv.forEach((p,i)=>{ p.quaternion.copy(save[i][0]); p.position.copy(save[i][1]); });
     // the bones in hierarchy order, each with its parent's index (so the K-space turns chain without touching matrices)
     const depth=b=>{ let d=0; for(let p=b.parent;p;p=p.parent) d++; return d; };

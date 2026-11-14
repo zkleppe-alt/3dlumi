@@ -1034,7 +1034,8 @@ function buildWorld(WD,opt){
   function ground(fx,fz){ const x=Math.floor(fx), y=Math.floor(fz); if(!inB(x,y)) return -0.35; const t=T(x,y), e=E(x,y);
     if(t===3) return -0.35; if(t===20||t===21) return -0.05; if(t===24&&!opt.land) return e*TIER*LIFT(x,y)-0.4;   // waist-deep in the hot spring
     const d=SD.get(y*W+x), TL=TIER*LIFT(x,y); if(!d||MS[y*W+x]) return e*TL+0.02;   // (on Tabor the stairs are part of the one slope)
-    const u=fx-x, v=fz-y, s=d.dx>0?u:d.dx<0?1-u:d.dy>0?v:1-v; return e*TL+0.02+TL*(d.lo+(d.hi-d.lo)*s); }
+    const u=fx-x, v=fz-y, s0=d.dx>0?u:d.dx<0?1-u:d.dy>0?v:1-v, rise=TL*Math.abs(d.hi-d.lo), n=Math.max(3,Math.min(10,Math.round(rise/0.16))), s=(Math.min(n-1,Math.max(0,Math.floor(s0*n)))+0.5)/n;   /* V211: you stand on the step itself (city.js stairBoxes cuts the same steps), not on the ramp through them — no more feet sunk in the treads */
+    return e*TL+0.02+TL*(d.lo+(d.hi-d.lo)*s); }
   lv.ground=ROLL?(fx,fz)=>ground(fx,fz)+roll(fx,fz):ground;
   lv.canMove=(fx,fz,tx,tz)=>{ const ax=Math.floor(fx),ay=Math.floor(fz),bx=Math.floor(tx),by=Math.floor(tz);
     if(!WK(bx,by)) return false; if(ax===bx&&ay===by) return true;
