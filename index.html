@@ -19731,12 +19731,12 @@ const WEATHER=(function(){
   const CLIMATE={Hearthvale:'rain',Homestead:'rain',Ironhold:'rain',Thornwood:'rain',Saltmere:'rain',Stormgate:'storm',Dusthaven:'sand',Crystalpeak:'snow',Ashfield:'ash',Shadowmere:'mist',Hellgate:'snow'};
   // chance a watch has weather, the fog it brings (near, far, colour), how much it dims the sun
   const KIND={
-    rain:{p:0.28,near:16,far:85,col:0x9aa4b0,dim:0.32,msg:'🌧 Rain sets in, soft and steady.'},
-    storm:{p:0.45,near:10,far:58,col:0x6a7482,dim:0.58,msg:'⛈ A storm comes in off the sea.'},
-    snow:{p:0.6,near:8,far:52,col:0xd8e0ea,dim:0.3,msg:'❄ Snow begins to fall.'},
-    sand:{p:0.45,near:3,far:32,col:0xc8a878,dim:0.35,msg:'🌪 The wind lifts the sand.'},
-    ash:{p:0.7,near:10,far:58,col:0x8a7a70,dim:0.4,msg:'🌫 Ash drifts down from a grey sky.'},
-    mist:{p:0.7,near:2,far:30,col:0xb8c0c4,dim:0.25,msg:'🌫 Mist rises off the mere.'}};
+    rain:{p:0.28,near:30,far:120,col:0x9aa4b0,dim:0.18,msg:'🌧 Rain sets in, soft and steady.'},
+    storm:{p:0.45,near:20,far:90,col:0x6a7482,dim:0.36,msg:'⛈ A storm comes in off the sea.'},
+    snow:{p:0.6,near:22,far:95,col:0xd8e0ea,dim:0.16,msg:'❄ Snow begins to fall.'},
+    sand:{p:0.45,near:14,far:70,col:0xc8a878,dim:0.2,msg:'🌪 The wind lifts the sand.'},
+    ash:{p:0.7,near:20,far:90,col:0x8a7a70,dim:0.24,msg:'🌫 Ash drifts down from a grey sky.'},
+    mist:{p:0.7,near:10,far:60,col:0xb8c0c4,dim:0.14,msg:'🌫 Mist rises off the mere.'}};
   const hsh=(a,b)=>{ let h=Math.imul(a|0,374761393)^Math.imul(b|0,668265263); h=Math.imul(h^(h>>>13),1274126177); return ((h^(h>>>16))>>>0)/4294967296; };
   function attach(world){
     const scene=world.scene, TOWNS=world.towns||[];
@@ -19773,19 +19773,19 @@ const WEATHER=(function(){
       const C=ENGINE.cam.position, sc=Math.max(0.22,Math.min(1,Math.hypot(C.x-P.x,C.y-P.y,C.z-P.z)/7)), lite=(typeof HUD!=='undefined'&&HUD.quality>=2)?0.5:1;
       const isRain=cur==='rain'||cur==='storm', isPts=cur==='snow'||cur==='sand'||cur==='ash'||cur==='mist';
       rain.visible=isRain&&amt>0.02; pts.visible=isPts&&amt>0.02;
-      if(rain.visible){ const n=Math.floor(NR*lite*Math.min(1,amt*1.2)*(cur==='storm'?0.7:0.4)),   /* V156: a thinner rain */ sp=cur==='storm'?24:18, wx=cur==='storm'?5:1.5, L=cur==='storm'?1.3:1.0;
+      if(rain.visible){ const n=Math.floor(NR*lite*Math.min(1,amt*1.2)*(cur==='storm'?0.4:0.22)),   /* V212: thinner still (was 0.7 / 0.4) */ sp=cur==='storm'?24:18, wx=cur==='storm'?5:1.5, L=cur==='storm'?1.3:1.0;
         for(let i=0;i<n;i++){ let y=seedR[i*3+1]-sp*dt; if(y<0) y+=HT; seedR[i*3+1]=y; seedR[i*3]=wrap(seedR[i*3]+wx*dt);
           const x=P.x+seedR[i*3]*sc, yy=P.y+(y-1)*sc, z=P.z+seedR[i*3+2]*sc, k=i*6;
           rainPos[k]=x; rainPos[k+1]=yy; rainPos[k+2]=z; rainPos[k+3]=x-wx*L/sp*sc; rainPos[k+4]=yy+L*sc; rainPos[k+5]=z; }
-        rainG.setDrawRange(0,n*2); rainG.attributes.position.needsUpdate=true; rainM.opacity=(cur==='storm'?0.65:0.45)*Math.min(1,amt*1.3); rainM.color.setHex(0xdce6f2).multiplyScalar(1-0.55*nightK()); }
-      if(pts.visible){ const n=Math.floor(NP*lite*Math.min(1,amt*1.2)*(cur==='mist'?0.35:1));
+        rainG.setDrawRange(0,n*2); rainG.attributes.position.needsUpdate=true; rainM.opacity=(cur==='storm'?0.38:0.26)*Math.min(1,amt*1.3); rainM.color.setHex(0xdce6f2).multiplyScalar(1-0.55*nightK()); }
+      if(pts.visible){ const n=Math.floor(NP*lite*Math.min(1,amt*1.2)*(cur==='mist'?0.2:cur==='sand'?0.35:0.45));   /* V212: about half as many flakes and grains */
         const fall=cur==='snow'?1.4:cur==='ash'?0.6:cur==='mist'?-0.15:0.3, wx=cur==='sand'?11:cur==='snow'?0.8:cur==='ash'?0.5:0.3, low=cur==='sand'?0.3:cur==='mist'?0.4:0.7;
         for(let i=0;i<n;i++){ const k4=i*4; let y=seedP[k4+1]-fall*dt; if(y<0) y+=HT; if(y>HT) y-=HT; seedP[k4+1]=y;
           seedP[k4]=wrap(seedP[k4]+wx*dt+Math.sin(t*0.8+seedP[k4+3])*0.4*dt); seedP[k4+2]=wrap(seedP[k4+2]+Math.cos(t*0.7+seedP[k4+3])*0.3*dt);
           ptPos[i*3]=P.x+seedP[k4]*sc; ptPos[i*3+1]=P.y+(y*low-0.5)*sc; ptPos[i*3+2]=P.z+seedP[k4+2]*sc; }
         ptG.setDrawRange(0,n); ptG.attributes.position.needsUpdate=true;
-        ptM.color.setHex(cur==='snow'?0xffffff:cur==='sand'?0xc0905a:cur==='ash'?0x5a524c:0xe8ecee); ptM.size=(cur==='snow'?0.24:cur==='sand'?0.13:cur==='ash'?0.18:1.4)*Math.max(0.45,sc);
-        ptM.opacity=(cur==='mist'?0.22:0.95)*Math.min(1,amt*1.3); ptM.color.multiplyScalar(1-0.6*nightK()); }
+        ptM.color.setHex(cur==='snow'?0xffffff:cur==='sand'?0xc0905a:cur==='ash'?0x5a524c:0xe8ecee); ptM.size=(cur==='snow'?0.17:cur==='sand'?0.09:cur==='ash'?0.13:1.1)*Math.max(0.45,sc);
+        ptM.opacity=(cur==='mist'?0.12:cur==='sand'?0.5:0.7)*Math.min(1,amt*1.3); ptM.color.multiplyScalar(1-0.6*nightK()); }
       // a storm: lightning far out, now and then
       if(cur==='storm'&&amt>0.5){ if(t>nextBolt){ nextBolt=t+6+Math.random()*12; flash=1; } } flash=Math.max(0,flash-dt*3.2);
     });
@@ -19795,11 +19795,11 @@ const WEATHER=(function(){
       if(f.near!==wN||f.far!==wF){ bN=f.near; bF=f.far; }
       const K=cur&&KIND[cur], a=K?Math.min(1,amt):0;
       if(a>0.001){ col.setHex(K.col); const night=(typeof DAYNIGHT!=='undefined')?DAYNIGHT.state().night||0:0; tmpC.copy(col).multiplyScalar(1-0.75*night);
-        f.color.lerp(tmpC,a*0.75); if(scene.background&&scene.background.isColor) scene.background.lerp(tmpC,a*0.6);
+        f.color.lerp(tmpC,a*0.5); if(scene.background&&scene.background.isColor) scene.background.lerp(tmpC,a*0.35);
         f.near=bN+(K.near-bN)*a; f.far=bF+(K.far-bF)*a;
         if(world.sunShadow) world.sunShadow.intensity*=1-K.dim*a; if(world.hemi) world.hemi.intensity*=1-K.dim*0.4*a; }
       else { f.near=bN; f.far=bF; }
-      if(flash>0&&world.hemi){ world.hemi.intensity+=flash*1.4; if(scene.background&&scene.background.isColor) scene.background.lerp(tmpC.setHex(0xe8ecff),flash*0.5); }
+      if(flash>0&&world.hemi){ world.hemi.intensity+=flash*0.7; if(scene.background&&scene.background.isColor) scene.background.lerp(tmpC.setHex(0xe8ecff),flash*0.25); }
       wN=f.near; wF=f.far; };
     // ── V134: weather that asks something of you ──
     //  · CALM THE STORM: in a storm on the Stormgate coast, stand at the water's edge and pray — "Peace, be still" (Mark 4:39) —

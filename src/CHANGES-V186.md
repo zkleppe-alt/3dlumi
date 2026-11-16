@@ -372,3 +372,6 @@ After Oceanside harbour, as a beachfront town:
 - world.js ground(): on a stair tile you stand on the step itself (same step count as city.js stairBoxes), not on a ramp through the treads.
 - core.js: the knight follows the ground 3× faster (48 up / 24 down, was 16/10), so climbing he no longer trails under it.
 - Not measured: soles mid-stride while walking (the headless test could not drive the walk cycle).
+
+## V212 — gentler weather
+- engine/weather.js: fog from every weather starts much further out (e.g. sand near 3→14, far 32→70; snow 8/52→22/95) and tints the world and sky less (0.75→0.5, 0.6→0.35); the sun dims about 40% less; about half as many snowflakes, sand grains and ash flakes, smaller and fainter; rain thinner and lighter; lightning half as bright.
