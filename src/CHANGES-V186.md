@@ -444,3 +444,11 @@ After Oceanside harbour, as a beachfront town:
 - engine/knight.js: K._bow overlay holds the 'shoot' clip at full draw (u up to 0.7) while drawing, then plays the release (0.72 → 1).
 - engine/lyre.js, engine/lyrebook.js: the lyre is owned unless a brand-new knight is still in Tobias's first lessons. Saves from before the tutorial record existed now show 🎵.
 - Note: Space is Jump; strike/draw is J (rebindable in ☰ System → Keyboard Controls).
+
+## V225 — the tall woods
+- engine/world.js: overworld forests are walkable. Giants stand on a loose, jittered lattice (about one per 2×2 of forest, scale 1.7–2.7). New tall shapes: oakT (umbrella crown on a long bole with reaching boughs), pineT (lowest tier clears your head) and birchT. The floor between them has ferns and the odd bush. A lone tree or short row (hedges, village oaks) keeps one per tile, grown a little. Only trunks block (lv.trunkAt, r about 0.1×scale).
+- The wood's gentle rise is also walkable. Relief forest within 4 tiles of open ground and under 2.9 high (FWB) gets ground() from the relief skin (reliefV0, bilinear), and a slope rule applies on forest floor (up ≤ 1.0 per unit; step down anywhere). Deep wooded ranges stay hills. About 91% of forest tiles are now walkable.
+- lv.WK and lv.walkTile use FWK (forest included), so riders and demons can enter too. Drawing still uses WK. camBlock lets the camera sit under the canopy (forest tile top+0.3).
+- Canopy fade (canopyFade, the tree material's shader): anything of a tree between the camera and the knight dissolves in a dither. A narrow tube at his shoulders widens toward the lens, and leaves within about 2.5 of the camera fade too, the way BotW handles it. Shadows are untouched.
+- engine/forest.js: gridLevel o.tall. The Forest of Disillusionment (tall 2.1) has oaks most of all (70%), 2.1× taller with crowns grown 1.45–1.85× wide over the trail (randomly turned), and firs tall and narrow. The same canopy fade applies, with the camera pitch lowered to 0.44.
+- Not touched: portal worlds (opt.land), the mountainside firs, Eldan's Glade and other tree-walled levels.

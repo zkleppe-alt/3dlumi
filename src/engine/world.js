@@ -67,6 +67,19 @@ if(typeof LOOK2!=='undefined'&&LOOK2){
   TREE_GEO.pine=()=>{ const P=trunk(0.9,0.15,0.09,0x5b3a1f); [[0.78,0.9,0.95,0x2a5e34],[0.64,0.85,1.45,0x2e6838],[0.5,0.78,1.9,0x34703e],[0.36,0.7,2.3,0x3a7a44],[0.2,0.5,2.65,0x428448]].forEach(([r,h,y,c],i)=>{
       const g=new THREE.ConeGeometry(r,h,11,2); const pa=g.attributes.position; for(let k=0;k<pa.count;k++){ const yy=pa.getY(k); if(yy<-h/2+0.01){ const a=Math.atan2(pa.getZ(k),pa.getX(k)); pa.setY(k,yy-0.06*Math.abs(Math.sin(a*5.5))); } }   // the skirt droops in soft scallops
       g.rotateY(i*0.5); P.push([_tg(g,0,y,0),c,0.45]); }); return mergeColoured(P); };
+  // V225: the giants of the tall woods — a long clean bole you walk past, boughs that reach out, and a broad, layered crown
+  //  held high (a camphor-tree umbrella for the broadleaf, a tall fir whose lowest tier clears your head)
+  TREE_GEO.oakT=()=>{ const P=trunk(2.05,0.115,0.065,0x5e3e24);
+    [[0.55,0.62,1.95,-0.9,0],[0.5,-0.6,2.0,0.8,1.6],[0.5,0.1,2.05,0.85,3.3],[0.45,-0.15,1.98,-0.8,4.6]].forEach(([l,dx,y,tz,ry])=>{ const g=new THREE.CylinderGeometry(0.03,0.06,l*1.6,5); g.translate(0,l*0.8,0); g.rotateZ(tz); g.rotateY(ry); P.push([_tg(g,0,y-0.25,0),0x5e3e24]); });
+    [[0.78,0,2.75,0,0x478e44],[0.62,0.85,2.45,0.2,0x3f8640],[0.62,-0.82,2.5,-0.15,0x4c9448],[0.58,0.2,2.5,0.88,0x418a42],[0.58,-0.12,2.46,-0.86,0x3c823f],[0.5,0.62,2.42,-0.66,0x438c43],[0.5,-0.6,2.44,0.66,0x4a9246],
+     [0.5,0.4,3.05,-0.2,0x58a24f],[0.5,-0.4,3.0,0.3,0x55a04e],[0.42,0,3.35,0,0x62aa56]].forEach(([r,x,y,z,c])=>P.push(clump(r,x,y,z,c,0.7)));
+    return mergeColoured(P); };
+  TREE_GEO.pineT=()=>{ const P=trunk(1.75,0.1,0.055,0x5b3a1f); [[0.72,0.8,1.98,0x2a5e34],[0.6,0.75,2.38,0x2e6838],[0.48,0.7,2.74,0x34703e],[0.34,0.6,3.06,0x3a7a44],[0.19,0.45,3.34,0x428448]].forEach(([r,h,y,c],i)=>{
+      const g=new THREE.ConeGeometry(r,h,11,2); const pa=g.attributes.position; for(let k=0;k<pa.count;k++){ const yy=pa.getY(k); if(yy<-h/2+0.01){ const a=Math.atan2(pa.getZ(k),pa.getX(k)); pa.setY(k,yy-0.06*Math.abs(Math.sin(a*5.5))); } }
+      g.rotateY(i*0.5); P.push([_tg(g,0,y,0),c,0.45]); }); return mergeColoured(P); };
+  TREE_GEO.birchT=()=>{ const P=[[_tg(new THREE.CylinderGeometry(0.06,0.1,2.7,7),0,1.35,0),0xe8e4da,0.15]]; for(let i=0;i<7;i++) P.push([_tg(new THREE.CylinderGeometry(0.1-i*0.004,0.1-i*0.004,0.05,7),0,0.3+i*0.33,0),0x3a3430]);
+    [[0.5,0,2.85,0,0x8ab84e],[0.42,0.42,2.6,0.1,0x7eb046],[0.42,-0.4,2.65,-0.1,0x92c054],[0.38,0.05,3.2,-0.05,0x9ac85a],[0.38,-0.1,2.55,0.42,0x86b44a],[0.36,0.15,2.6,-0.42,0x8cba50]].forEach(([r,x,y,z,c])=>P.push(clump(r,x,y,z,c,0.9)));
+    return mergeColoured(P); };
   TREE_GEO.palm=()=>{ const P=[]; for(let i=0;i<6;i++){ const g=new THREE.CylinderGeometry(0.08+0.01*(5-i),0.09+0.01*(5-i),0.38,7); P.push([_tg(g,0.05*i*i*0.05,0.19+i*0.36,0,0,-0.03*i),i%2?0x9a7a48:0x8a6a3a]); }
     for(let i=0;i<7;i++){ const a=i/7*Math.PI*2, g=new THREE.BoxGeometry(0.9,0.03,0.24); g.translate(0.45,0,0); g.rotateZ(-0.35); g.rotateY(a); P.push([_tg(g,0.1,2.2,0),i%2?0x3f8a4e:0x4a9a56]); }
     P.push([_tg(new THREE.IcosahedronGeometry(0.16,0),0.12,2.12,0.08),0x6a4a2a]); return mergeColoured(P); };
@@ -79,6 +92,22 @@ const FLOWER_GEO=col=>{ const parts=[[_tg(new THREE.CylinderGeometry(0.008,0.012
 // the wind: crowns and grass sway — higher points more — in a slow, gusting breeze that moves across the land
 /* V135: how lush the sward is, by the graphics tier chosen (read once, as the realm is built: a change shows after a reload) */
 const GRASS_K=(()=>{ try{ const p=localStorage.getItem('klk3d_gfx'); const t=p&&p!=='auto'?p:(matchMedia('(any-pointer: coarse)').matches?'medium':'high'); return t==='ultra'?2.6:t==='high'?2:t==='low'?0.6:1; }catch(e){ return 1; } })();
+// V225: THE CANOPY GIVES WAY — whatever of a tree stands between the camera and the knight (a crown, a bough, a trunk) is
+//  dissolved in a soft dither, a narrow tube at his shoulders widening toward the lens, so you never lose him under the
+//  tall woods. U: {p: the knight's chest, c: the camera, on}. The shadows are untouched (their own depth pass).
+function canopyFade(mat,U){ const prev=mat.onBeforeCompile; mat.onBeforeCompile=(sh,r)=>{ if(prev) prev(sh,r); sh.uniforms.uCfP=U.p; sh.uniforms.uCfC=U.c; sh.uniforms.uCfOn=U.on;
+    sh.vertexShader='varying vec3 vCfW;\n'+sh.vertexShader.replace('#include <project_vertex>',`vec4 cfw=vec4(transformed,1.0);
+      #ifdef USE_INSTANCING
+      cfw=instanceMatrix*cfw;
+      #endif
+      vCfW=(modelMatrix*cfw).xyz;
+      #include <project_vertex>`);
+    sh.fragmentShader='varying vec3 vCfW; uniform vec3 uCfP; uniform vec3 uCfC; uniform float uCfOn;\n'+sh.fragmentShader.replace('#include <clipping_planes_fragment>',`#include <clipping_planes_fragment>
+      if(uCfOn>0.5){ vec3 ab=uCfC-uCfP; float ll=max(dot(ab,ab),1e-4); float tr=dot(vCfW-uCfP,ab)/ll; float tt=clamp(tr,0.0,1.0); float dd=length(vCfW-(uCfP+ab*tt)); float rad=mix(0.5,1.7,tt);
+        float kf=max((1.0-smoothstep(rad*0.6,rad,dd))*smoothstep(0.0,0.08,tr),1.0-smoothstep(1.6,2.8,length(vCfW-uCfC)));
+        float bn=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(0.06711056,0.00583715))));
+        if(kf*0.88>bn) discard; }`); };
+  return mat; }
 function windSway(mat,amt){ const prev=mat.onBeforeCompile; mat.onBeforeCompile=(sh,r)=>{ if(prev) prev(sh,r); sh.uniforms.uWind={value:0}; sh.uniforms.uWind=DETAIL_TIME;
     sh.vertexShader='uniform float uWind;\n'+sh.vertexShader.replace('#include <begin_vertex>',`#include <begin_vertex>
       #ifdef USE_INSTANCING
@@ -776,6 +805,19 @@ function buildWorld(WD,opt){
     LIFT=(x,y)=>SGB&&x>=SGB[0]&&x<SGB[2]&&y>=SGB[1]&&y<SGB[3]?1.8:inCP(x,y)?CPL:1, EH=(x,y)=>E(x,y)*TIER*LIFT(x,y);
   const scene=new THREE.Scene(), sky=0x9cc4e4; scene.background=new THREE.Color(sky); scene.fog=new THREE.Fog(sky,26,58);
   const lv={id:opt.id,name:opt.name,scene,folk:[],spots:[],anim:[],cam:{pitch:0.62,dist:10,min:5,max:19},T,E,WK,W,H};
+  // V225: THE TALL WOODS — in the overworld a forest is no longer a wall. The trees stand as giants on a loose lattice (about
+  //  one to every two-by-two of forest, jittered), their crowns high and wide enough to meet overhead, and you walk the
+  //  floor beneath them; only the trunks stop you. A lone tree or a short row (a hedge, a village's oak) keeps one to a tile,
+  //  a little grown. FWK is the walkable map the player, the riders and the demons go by (lv.WK); the drawing keeps WK.
+  const TALLW=!opt.land&&typeof LOOK2!=='undefined'&&!!LOOK2, FDN=new Int8Array(W*H).fill(-1), TRK=new Map();
+  const fdens=(x,y)=>{ const k=y*W+x; if(FDN[k]>=0) return FDN[k]; let n=0; for(let b=-2;b<=2;b++) for(let a=-2;a<=2;a++) if(T(x+a,y+b)===1) n++; return FDN[k]=n; };
+  function trunkAt(x,y){ if(!TALLW||!inB(x,y)||T(x,y)!==1||(RK[y*W+x]&&!FWB(y*W+x))) return null; const k=y*W+x; let v=TRK.get(k); if(v!==undefined) return v; const d=fdens(x,y); let on, s;
+    if(d<9){ on=true; s=1.05+hsh(x,y)*0.3; }
+    else { const bx=x>>1, by=y>>1, ax=2*bx+(hsh(bx*7+3,by*5+1)<0.5?0:1), ay=2*by+(hsh(by*3+11,bx*9+2)<0.5?0:1); on=ax===x&&ay===y; s=(d>=18?2.15:1.7)+hsh(y*3,x)*0.55; }
+    v=on?{x:x+0.5+(hsh(y,x)-0.5)*0.5, z:y+0.5+(hsh(x*5+1,y*3)-0.5)*0.5, s, r:(s>1.5?0.1:0.16)*s}:null; TRK.set(k,v); return v; }
+  const FWB=k=>RK[k]===2&&D&&D[k]<=4&&RS[k]<2.9;   // the wood's gentle rise (a few tiles in from its edge): walkable; the deep wooded ranges beyond stay hills
+  const FWK=TALLW?(x,y)=>WK(x,y)||(inB(x,y)&&T(x,y)===1&&(!RK[y*W+x]||FWB(y*W+x))):WK;
+  lv.WK=FWK; lv.trunkAt=trunkAt;
   const hemi=new THREE.HemisphereLight(0xd8e8ff,0x4a5a3a,0.55); scene.add(hemi);   // a little less fill and a little more sun: the shapes model instead of flattening
   const sun=new THREE.DirectionalLight(0xfff0d8,0.95); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
   Object.assign(sun.shadow.camera,{left:-20,right:20,top:20,bottom:-20,near:1,far:80}); sun.shadow.bias=-0.0006; scene.add(sun,sun.target);
@@ -1034,18 +1076,23 @@ function buildWorld(WD,opt){
   const SD=stairMap(W,H,T,E,(x,y)=>WK(x,y)&&T(x,y)!==5);
   function ground(fx,fz){ const x=Math.floor(fx), y=Math.floor(fz); if(!inB(x,y)) return -0.35; const t=T(x,y), e=E(x,y);
     if(t===3) return -0.35; if(t===20||t===21) return -0.05; if(t===24&&!opt.land) return e*TIER*LIFT(x,y)-0.4;   // waist-deep in the hot spring
+    if(TALLW&&t===1&&RK[y*W+x]&&FWB(y*W+x)){ const gx=fx*2, gz=fz*2, i=Math.floor(gx), j=Math.floor(gz), u=gx-i, v=gz-j;   // V225: on the wood's rise, the relief's own skin
+      return (reliefV0(i,j)*(1-u)+reliefV0(i+1,j)*u)*(1-v)+(reliefV0(i,j+1)*(1-u)+reliefV0(i+1,j+1)*u)*v; }
     const d=SD.get(y*W+x), TL=TIER*LIFT(x,y); if(!d||MS[y*W+x]) return e*TL+0.02;   // (on Tabor the stairs are part of the one slope)
     const u=fx-x, v=fz-y, s0=d.dx>0?u:d.dx<0?1-u:d.dy>0?v:1-v, rise=TL*Math.abs(d.hi-d.lo), n=Math.max(3,Math.min(10,Math.round(rise/0.16))), s=(Math.min(n-1,Math.max(0,Math.floor(s0*n)))+0.5)/n;   /* V211: you stand on the step itself (city.js stairBoxes cuts the same steps), not on the ramp through them — no more feet sunk in the treads */
     return e*TL+0.02+TL*(d.lo+(d.hi-d.lo)*s); }
   lv.ground=ROLL?(fx,fz)=>ground(fx,fz)+roll(fx,fz):ground;
   lv.canMove=(fx,fz,tx,tz)=>{ const ax=Math.floor(fx),ay=Math.floor(fz),bx=Math.floor(tx),by=Math.floor(tz);
-    if(!WK(bx,by)) return false; if(ax===bx&&ay===by) return true;
+    if(!FWK(bx,by)) return false;
+    if(TALLW) for(let j=-1;j<=1;j++) for(let i=-1;i<=1;i++){ const tr=trunkAt(bx+i,by+j); if(tr){ const d1=Math.hypot(tx-tr.x,tz-tr.z); if(d1<tr.r+0.1&&d1<Math.hypot(fx-tr.x,fz-tr.z)) return false; } }   // V225: a trunk
+    if(ax===bx&&ay===by) return true;
+    if(TALLW&&(T(bx,by)===1||T(ax,ay)===1)&&lv.barrierAt(bx,by)<0){ const up=lv.ground(tx,tz)-lv.ground(fx,fz), dd=Math.hypot(tx-fx,tz-fz)||1; if(!STAIRS.has(T(bx,by))&&!STAIRS.has(T(ax,ay))) return up/dd<=1.0||up<0.06; }   // V225: the forest floor: walk any slope you could climb, step down anywhere
     if(lv.barrierAt(bx,by)>=0){ if(opt.onBarrier) opt.onBarrier(lv.barrierAt(bx,by)); return false; }
     const hf=E(ax,ay),ht=E(bx,by),tf=T(ax,ay),tt=T(bx,by);
     if(SOFTZ&&SOFT[ay*W+ax]&&SOFT[by*W+bx]&&hf!==ht){ const up=(ground(tx,tz)+roll(tx,tz))-(ground(fx,fz)+roll(fx,fz)), dd=Math.hypot(tx-fx,tz-fz)||1; return up/dd<=0.9||up<0.05; }   // V123: up the slope between two terraces
     if(ROLL&&!(lv.flying&&lv.flying())){ const up=roll(tx,tz)-roll(fx,fz), dd=Math.hypot(tx-fx,tz-fz)||1; if(up/dd>0.62&&up>0.02) return false; }   // V120: a crag too steep to climb (down is fine)
     if(hf===ht) return true; if(Math.abs(hf-ht)===1&&(STAIRS.has(tf)||STAIRS.has(tt))) return true; return ht<hf&&(tt===32||tf===32); };
-  lv.walkTile=(x,y)=>WK(x,y)&&lv.barrierAt(x,y)<0;     // what a demon may stand on (the game's walkable())
+  lv.walkTile=(x,y)=>FWK(x,y)&&lv.barrierAt(x,y)<0;     // what a demon may stand on (the game's walkable())
   // how tall the walls and the mountains stand: a curtain wall of 2.3 (the knight is 1.5); rock rises with the rock around it,
   // so a lone boulder stays low and the heart of a range climbs to a snowy crag of nearly five
   // ── the high ground ── the hearts of the rock and the big woods rise into real relief: a range climbs with its distance
@@ -1128,7 +1175,7 @@ function buildWorld(WD,opt){
       if(b.style==='chapel'&&ax<0.95&&Math.abs(fz-(b.y+b.h-0.75))<0.95) return y<top+8.0;                                                     // the bell tower
       if(b.style==='keep') return y<top+(Math.min(fx-b.x,b.x+b.w-fx,fz-b.y,b.y+b.h-fz)<0.9?7.0:top2);                                       // its corner towers and walls
       return y<top+eave+(top2-eave)*Math.max(0,1-ax/hw); }                                                                                     // the roof: eaves along the sides, the ridge down the middle
-    if(t===5){ const tw=TWALL[LIFT(x,z)>1?'stormgate':region(x,z)]; return y<top+(tw?tw.h+0.6:WALL_H+0.3); } if(t===1) return y<top+2.2; if(t===33) return y<top+rockH(x,z)*0.85; if(t===98||t===69||t===70||t===71||t===77) return y<top+2.0; return y<top-0.05; };
+    if(t===5){ const tw=TWALL[LIFT(x,z)>1?'stormgate':region(x,z)]; return y<top+(tw?tw.h+0.6:WALL_H+0.3); } if(t===1) return y<top+(TALLW?0.3:2.2); if(t===33) return y<top+rockH(x,z)*0.85; if(t===98||t===69||t===70||t===71||t===77) return y<top+2.0; return y<top-0.05; };
 
   // ── chunks ──
   const NCX=Math.ceil(W/CHUNK), NCY=Math.ceil(H/CHUNK), chunks=[];
@@ -1139,6 +1186,8 @@ function buildWorld(WD,opt){
   const tuftMat=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}), boxMat=detailify(new THREE.MeshLambertMaterial()), vcMat=detailify(new THREE.MeshLambertMaterial({vertexColors:true}),{amp:0.12,strata:0,grit:0.06}), geos={};
   const geo=k=>geos[k]||(geos[k]=(TREE_GEO[k]||(k==='bush'?(L2?BUSH_GEO2:BUSH_GEO):k==='tuft'?TUFT_GEO:(L2?FENCE_GEO2:FENCE_GEO)))());
   const treeMat=L2?windSway(detailify(new THREE.MeshLambertMaterial({vertexColors:true}),{amp:0.08,strata:0,grit:0.04}),[0.045,1.2]):vcMat;
+  const CANO={p:{value:new THREE.Vector3()},c:{value:new THREE.Vector3()},on:{value:0}};
+  if(L2&&TALLW){ canopyFade(treeMat,CANO); lv.anim.push(()=>{ const on=typeof ENGINE!=='undefined'&&ENGINE.level===lv&&!!ENGINE.cam; CANO.on.value=on?1:0; if(!on) return; const P=ENGINE.P; CANO.p.value.set(P.x,P.y+0.45,P.z); CANO.c.value.copy(ENGINE.cam.position); }); }
   if(L2) windSway(tuftMat,[0.35,0.0]);
   const flowerMat=L2?windSway(new THREE.MeshLambertMaterial({vertexColors:true}),[0.25,0.05]):null;
   const Q=new THREE.Quaternion(), V=new THREE.Vector3(), S3=new THREE.Vector3(), Y=new THREE.Vector3(0,1,0), Cc=new THREE.Color();
@@ -1305,6 +1354,10 @@ function buildWorld(WD,opt){
       if(RK[k]===3&&!MG&&t===1&&!tilesOnly&&AH[k]<9){ const sc=0.8+hsh(x,y)*0.3; (trees.snow=trees.snow||[]).push({x:cx,z:cz,y:reliefV(x*2+1,y*2+1)-0.05,h:sc,sx:sc,sz:sc,ry:hsh(x,y)*6,rv:1}); }   // firs on the mountainside
       if(!MG&&!tilesOnly&&inCP(x,y)&&WK(x,y)&&!RK[k]&&!SD.has(k)){ const dn=[[1,0],[-1,0],[0,1],[0,-1]].find(([a,b])=>RK[(y+b)*W+x+a]===3&&AH[(y+b)*W+x+a]<top-0.3);   // the trail's edge: a marker pole now and then, a red rag on it
         if(dn&&hsh(x*11,y*13)<0.16){ const px=cx+dn[0]*0.4, pz=cz+dn[1]*0.4; box(px,pz,top,1.15,0x5a4028,0.07,0.07); box(px+0.11,pz,top+0.95,0.16,0xc84a3a,0.2,0.03); } }
+      if(RK[k]&&TALLW&&t===1&&FWB(k)){ if(!MG){ relief.push([x,y]); const tr=trunkAt(x,y), gy=(a2,b2)=>ground(a2,b2);   /* trees ride the roll themselves (rv); the rest are lifted onto it below */   // V225: the wood's rise — giants on the slope, ferns between
+          if(tr&&!tilesOnly){ let kk=treeKind(x,y); const big=tr.s>1.5&&TREE_GEO[kk+'T']; if(big) kk+='T'; const sq=big?1:1.05; (trees[kk]=trees[kk]||[]).push({x:tr.x,z:tr.z,y:lv.ground(tr.x,tr.z)-0.08,h:big?tr.s*0.92:tr.s,sx:tr.s*sq,sz:tr.s*sq,ry:hsh(x,y)*6,rv:1}); }
+          else if(!tilesOnly){ for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y*7), hz=hsh(y*5+i,x*3), px=x+0.12+hx*0.76, pz=y+0.12+hz*0.76; tufts.push({x:px,z:pz,y:gy(px,pz)-0.03,h:0.45+hz*0.4,sx:1+hx*0.6,sz:1+hz*0.6,ry:hx*6.28,c:[0x3f7a3a,0x4a8a40,0x2f6a34][(i+x+y)%3],l:0}); }
+            if(hsh(x*13,y*17)<0.14){ const px=x+0.3+hsh(y,x*5)*0.4, pz=y+0.3+hsh(x,y*5)*0.4; bush.push({x:px,z:pz,y:gy(px,pz)-0.03,h:0.7+hsh(x,y)*0.3,sx:1,sz:1,ry:hsh(x,y)*6}); } } } continue; }
       if(RK[k]){ if(!MG){ relief.push([x,y]); if(RK[k]===2&&!tilesOnly&&RH[k]<(region(x,y)==='crystalpeak'?3.2:5.8)-hsh(y,x*3)*0.8){ const hi=RH[k]>3.4, kk=hi?'snow':treeKind(x,y), sc=(0.85+hsh(x,y)*0.35)*(hi?0.8:1), hy=reliefV(x*2+1,y*2+1); (trees[kk]=trees[kk]||[]).push({x:cx+(hsh(y,x)-0.5)*0.2,z:cz,y:hy-0.05,h:sc,sx:sc,sz:sc,ry:hsh(x,y)*6,rv:1}); } } continue; }   // the high ground is its own mesh
       if(e) box(cx,cz,-0.4,top-0.12+0.4,0x9a958c,1,1,0,(hsh(y,x)-0.5)*0.08);
       if(bAt.has(k)){ box(cx,cz,top-0.4,0.4,0x6e6458,1,1,0,jit); continue; }
@@ -1394,7 +1447,11 @@ function buildWorld(WD,opt){
       if(t===91&&!tilesOnly) for(let i=0;i<4;i++){ const hx=hsh(x*3+i,y), hz=hsh(y*5+i,x); tufts.push({x:x+0.15+hx*0.7,z:y+0.15+hz*0.7,y:y1,h:0.32+hz*0.2,sx:0.9+hx*0.4,sz:0.9+hz*0.4,ry:hx*6.28,c:[0xb07ab0,0x9a62a0,0xc890c8][(i+x)%3],l:0}); }   // heather in flower, in clumps
       if(t===4&&L2&&!tilesOnly&&!MG) for(let i=0;i<5;i++){ const hx=hsh(x*3+i,y), hz=hsh(y*5+i,x); flowers.push({x:x+0.12+hx*0.76,z:y+0.12+hz*0.76,y:y1,h:0.9+hz*0.5,sx:1.3+hx*0.5,sz:1.3+hx*0.5,ry:hx*6.28,k:(i+x*3+y)%5}); }
       else if(t===4) for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y), hz=hsh(y*5+i,x); box(x+0.15+hx*0.7,y+0.15+hz*0.7,y1,0.1,[0xf4f4f4,0xf0c040,0xe04a6a,0xa06ae0][(i+x+y)%4],0.1,0.1); }
-      if(t===1){ const kk=treeKind(x,y), s=(0.85+hsh(x,y)*0.35)*(opt.land&&[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>WK(x+a,y+b))?0.68:1); (trees[kk]=trees[kk]||[]).push({x:cx+(hsh(y,x)-0.5)*0.2,z:cz,y:y1,h:s,sx:s,sz:s,ry:hsh(x,y)*6}); }
+      if(t===1&&TALLW){ const tr=trunkAt(x,y);   // V225: a giant of the tall woods, or the floor between them
+        if(tr){ let kk=treeKind(x,y); const big=tr.s>1.5&&TREE_GEO[kk+'T']; if(big) kk+='T'; const sq=big?1:kk==='pine'||kk==='snow'?0.9:1.08, h=big?tr.s*0.92:tr.s; (trees[kk]=trees[kk]||[]).push({x:tr.x,z:tr.z,y:y1,h,sx:tr.s*sq,sz:tr.s*sq,ry:hsh(x,y)*6}); }
+        else { for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y*7), hz=hsh(y*5+i,x*3); tufts.push({x:x+0.12+hx*0.76,z:y+0.12+hz*0.76,y:y1,h:0.45+hz*0.4,sx:1+hx*0.6,sz:1+hz*0.6,ry:hx*6.28,c:[0x3f7a3a,0x4a8a40,0x2f6a34][(i+x+y)%3],l:0}); }
+          if(hsh(x*13,y*17)<0.14) bush.push({x:x+0.3+hsh(y,x*5)*0.4,z:y+0.3+hsh(x,y*5)*0.4,y:y1,h:0.7+hsh(x,y)*0.3,sx:1,sz:1,ry:hsh(x,y)*6}); } }
+      else if(t===1){ const kk=treeKind(x,y), s=(0.85+hsh(x,y)*0.35)*(opt.land&&[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>WK(x+a,y+b))?0.68:1); (trees[kk]=trees[kk]||[]).push({x:cx+(hsh(y,x)-0.5)*0.2,z:cz,y:y1,h:s,sx:s,sz:s,ry:hsh(x,y)*6}); }
       if(t===15) bush.push({x:cx,z:cz,y:y1,h:0.8+hsh(x,y)*0.3,sx:1,sz:1,ry:hsh(x,y)*6});
       if(t===14&&PALISADE.has(region(x,y))&&rimQ(x,y)>0.45){ const F=q=>T(q[0],q[1])===14, run=F([x-1,y])||F([x+1,y]), col=F([x,y-1])||F([x,y+1]), corner=run&&col,   // a village's ring fence, raised to a palisade of sharpened logs
           end=(run&&!col&&(!F([x-1,y])||!F([x+1,y])))||(col&&!run&&(!F([x,y-1])||!F([x,y+1]))), wood=0x7a5a3a, dk=0x5a4028;
