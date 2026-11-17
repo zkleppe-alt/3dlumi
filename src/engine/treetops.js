@@ -76,7 +76,7 @@ const TREETOPS=(function(){
       if(!ch){ make(false); return; }
       const lit=make(false), dark=make(true); world.anim.push(()=>{ const on=!!(world.chapelLit&&world.chapelLit(b)); lit.visible=on; dark.visible=!on; }); }
     // ── the rope bridges: planks on a sagging line, rope hand-lines and hangers, posts at both ends; they sway ──
-    bridges.forEach((b,bi)=>{ if(!b.stone) return; const mx=(b.a[0]+b.b[0])/2, mz=(b.a[1]+b.b[1])/2, g=group(mx,0,mz,scene); g.rotation.y=Math.atan2(-b.dz,b.dx);   /* V207: a stone bridge — the deck, its parapets, the arch under it, white stone of the old kingdom */
+    bridges.forEach((b,bi)=>{ if(!b.stone||b.log) return; const mx=(b.a[0]+b.b[0])/2, mz=(b.a[1]+b.b[1])/2, g=group(mx,0,mz,scene); g.rotation.y=Math.atan2(-b.dz,b.dx);   /* V207: a stone bridge — the deck, its parapets, the arch under it, white stone of the old kingdom */
       const L=b.L+0.4, w=b.w, ST=[0xe2ded2,0xd4d0c4,0xc8c4b8], n=Math.max(6,Math.round(L/0.5));
       for(let i=0;i<n;i++){ const u=(i+0.5)/n, x=(u-0.5)*L, y=b.ya+(b.yb-b.ya)*u; B(L/n+0.01,0.32,w,ST[i%3],x,y-0.32,0,g);
         const dep=0.35+2.2*Math.pow(Math.abs(u-0.5)*2,2.4); B(L/n+0.01,dep,w-0.1,ST[(i+1)%3],x,y-0.32-dep,0,g);

@@ -91,7 +91,7 @@ const LYRE=(function(){
     btn.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); set(!on); }); }
 
   // ── out and away ──
-  const has=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||(S.tutorial&&S.tutorial.done))); }catch(e){ return false; } };   // V217: your grandfather Tobias gives it to you when his lessons are done (a knight already on the road has it)
+  const has=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||!(S.tutorial&&!S.tutorial.done))); }catch(e){ return false; } };   /* V224: older saves have no tutorial record at all — they have the lyre */   // V217: your grandfather Tobias gives it to you when his lessons are done (a knight already on the road has it)
   const canPlay=()=>{ const L=ENGINE.level; if(!has()) return 'You have no lyre yet.'; if(!L||ENGINE.busy) return 'Not just now.'; if(L.riding&&(L.riding.mounted||L.riding.moving)) return 'Dismount first.'; if(L._sailing&&L._sailing.boating) return 'Not while sailing.';
     if(typeof COMBAT!=='undefined'&&COMBAT.pl&&(COMBAT.pl.swing>0||COMBAT.pl.dashing>0)) return 'Not in the middle of a fight.'; return ''; };
   function tick(){ if(!on) return; raf=requestAnimationFrame(tick); const K=ENGINE.K; if(K) K._lyreT=(performance.now()-strumAt)/1000; if(ENGINE.busy){ return; } const mc=K&&K.mocap&&!K.mocapOff&&K.mocap.actions&&K.mocap.actions.lyre; if(K) K._lyreOn=!!mc; ENGINE.hold(0.25,mc?null:'lyre');   /* the playing clip where the animation library has loaded; the hand-set pose where it hasn't */ if(mesh&&!mesh.visible) mesh.visible=true; }

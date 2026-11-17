@@ -121,7 +121,7 @@ const LYREBOOK=(function(){
       const rep=bard(lv.id); if(!rep.length){ gigStop(); return; } const nx=rep[(rep.indexOf(id)+1)%rep.length]; g.wait=setTimeout(()=>{ if(gig===g&&ENGINE.level===lv) perform(lv,nx,true); else gigStop(); },5200); }});
     if(!ok){ gig=null; return false; } sway(); if(!auto&&typeof UI!=='undefined') UI.toast('🎵 The bard plays “'+s.title+'”.',1800); return true; }
   const bard=id=>(db.bards[id]||[]).filter(x=>get(x));
-  const owned=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||(S.tutorial&&S.tutorial.done))); }catch(e){ return false; } };
+  const owned=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||!(S.tutorial&&!S.tutorial.done))); }catch(e){ return false; } };
   function bardMenu(lv,hymn){ if(typeof UI==='undefined'||!UI.sheet){ hymn&&hymn(); return; } const id=lv.id, rep=bard(id), has=owned(), mine=db.songs.filter(x=>!rep.includes(x.id));
     let h='<p class="gm-intro">'+(has?(rep.length?'“I know '+rep.length+' of yours now. Shall I play one — or have you another to teach me?”':'“You carry a lyre! Teach me one of your songs, and this room will hear it long after you have gone.”'):'“A hymn for the road, friend?”')+'</p>';
     if(gig&&gig.lv===lv) h+='<button class="gm-item" data-act="stop"><span>■ Enough for now</span></button>';

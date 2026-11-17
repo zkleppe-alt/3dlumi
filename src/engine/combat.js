@@ -192,7 +192,23 @@ const COMBAT=(function(){
   function weaponType(){ const e=SYS.EQUIP[S().equip.weapon]; return e&&e.type==='heavy'?'heavy':'light'; }
   const bowOn=()=>{ const a=SYS.WEAPON_ART&&SYS.WEAPON_ART[S().equip.weapon]; return !!a&&a.fam==='bow'; };
   // V90: a press in the last part of a swing (or a dodge) is kept and thrown the moment you're free — so combos flow
-  function attack(){ const c=A(); if(!c) return; if(pl.swing>0||pl.dashing>0){ if(pl.swing<=Math.max(10,pl.swingDur*0.6)||pl.dashing>0) pl.buf=20; return; }
+  // V224: THE BOW — DRAW AND AIM. Press to raise the bow and draw; hold to draw it fuller (the arrow flies further, faster and
+  //  harder); while drawn you turn to the nearest foe within reach and a faint line on the ground shows where the arrow will go;
+  //  let go to loose. A tap still shoots — the draw is never shorter than a third of a second.
+  const DRAW={min:0.32,full:0.85}; let aimLine=null;
+  function drawStart(){ if(pl.draw||pl.dashing>0) return; pl.draw={t0:now(),rel:false}; ENGINE.K._bow={ph:'draw',t:0}; if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
+  function drawK(){ return pl.draw?Math.min(1,((pl.draw.rel||now())-pl.draw.t0)/1000/DRAW.full):0; }
+  function loose(){ const c=A(), d=pl.draw; if(!d) return; const k=Math.max(0.25,drawK()); pl.draw=null; ENGINE.K._bow={ph:'loose',t:0}; if(aimLine) aimLine.visible=false; if(!c) return;
+    const f=fv(), p=P(), m=arrowMesh(); c.fx.add(m); const sp=(2.2+1.6*k)*PX, life=Math.round(14+16*k);
+    c.arrows.push({x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*sp,vz:f.z*sp,t:life,t0:life,m,pow:0.7+0.6*k}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
+  function drawTick(){ const c=A(); if(!pl.draw){ if(aimLine) aimLine.visible=false; return; } if(!c||!bowOn()){ pl.draw=null; ENGINE.K._bow=null; return; }
+    const b=aim(9), p=P(); if(b) p.face=Math.atan2(b.x-p.x,b.z-p.z);
+    const k=drawK(), len=(2.2+1.6*k)*PX*(14+16*k)*(Math.max(0.25,k)>0?1:1), f=fv();
+    if(!aimLine){ aimLine=new THREE.Mesh(new THREE.PlaneGeometry(0.06,1),new THREE.MeshBasicMaterial({color:0xfff0b0,transparent:true,opacity:0.35,depthWrite:false,side:THREE.DoubleSide})); aimLine.rotation.order='YXZ'; }
+    if(aimLine.parent!==c.fx) c.fx.add(aimLine); aimLine.visible=(now()-pl.draw.t0)>120; aimLine.scale.y=len; aimLine.material.opacity=0.18+0.3*k; aimLine.rotation.set(-Math.PI/2,0,0); aimLine.rotation.y=Math.atan2(f.x,f.z); aimLine.rotateX(0);
+    aimLine.position.set(p.x+f.x*(0.4+len/2),ENGINE.level.ground(p.x,p.z)+0.04,p.z+f.z*(0.4+len/2));
+    if(pl.draw.rel&&(now()-pl.draw.t0)/1000>=DRAW.min) loose(); }
+  function attack(){ const c=A(); if(!c) return; if(bowOn()){ if(!pl.draw&&pl.dashing<=0) drawStart(); return; } if(pl.swing>0||pl.dashing>0){ if(pl.swing<=Math.max(10,pl.swingDur*0.6)||pl.dashing>0) pl.buf=20; return; }
     if(pl.comboT<=0) pl.combo=0; pl.combo++; pl.comboT=60; if(c.cfg.onSwing) c.cfg.onSwing();
     if(pl.combo>=3){ pl.combo=0; special(); return; }
     // V92: the blow lands when the blade actually arrives (the arm's strike, ~30-36% through the cut), and the next swing
@@ -207,7 +223,7 @@ const COMBAT=(function(){
   // ── the Spin Attack (Ocarina's): hold the swing — the blade gathers light at your feet — and let go to cut all the way round ──
   const SPIN={reach:2.25,mult:2.0,knock:10,hold:0.42,full:1.0}; const charge={on:false,t0:0,k:0,ready:false,ring:null};
   function chargeStart(){ const c=A(); if(!c||bowOn()) return; charge.on=true; charge.t0=now(); charge.k=0; charge.ready=false; }
-  function chargeRelease(){ const was=charge.on&&charge.ready; charge.on=false; charge.k=0; charge.ready=false; ENGINE.K.charge=0; if(charge.ring) charge.ring.visible=false; if(was&&A()) spin(); }
+  function chargeRelease(){ if(pl.draw){ if(!pl.draw.rel) pl.draw.rel=now(); return; } const was=charge.on&&charge.ready; charge.on=false; charge.k=0; charge.ready=false; ENGINE.K.charge=0; if(charge.ring) charge.ring.visible=false; if(was&&A()) spin(); }
   function chargeTick(dt){ const c=A(); if(!charge.on||!c){ ENGINE.K.charge=0; if(charge.ring) charge.ring.visible=false; return; }
     const held=(now()-charge.t0)/1000; if(held<SPIN.hold||pl.dashing>0){ return; }
     const k=Math.min(1,(held-SPIN.hold)/(SPIN.full-SPIN.hold)); charge.k=k; ENGINE.K.charge=Math.max(0.15,k);
@@ -363,7 +379,7 @@ const COMBAT=(function(){
     c.adds=c.adds.filter(a=>{ if(a.alive) return true; if(a.g&&a.g.parent) a.g.parent.remove(a.g); return false; });
     c.arrows.forEach(s=>{ s.x+=s.vx; s.z+=s.vz; s.t--; if(!walk(s.x,s.z)) s.t=0; if(s.t<=0) return;
       for(const d of c.foes){ if(!d.alive) continue; const vx=d.x-s.x, vz=d.z-s.z, dist=Math.hypot(vx,vz); if(dist>0.56+(d.boss?0.3:0)) continue;
-        let dmg=Math.max(1,Math.round(S().atk)+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
+        let dmg=Math.max(1,Math.round(S().atk*(s.pow||1))+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
         dmg=bossHitGate(d,dmg); s.t=0; if(dmg<0){ d.hurt=3; return; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; return; } });
     c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; c.fx.remove(s.m); return false; });
     if(cfg.tick) cfg.tick(); }
@@ -510,7 +526,7 @@ const COMBAT=(function(){
   function frame(dt,paused){ const c=A(); guardB.hidden=!c; potB.hidden=!c; if(c){ const inv=GAME.S.inventory, n=(inv.potion||0)+(inv.greaterPotion||0)+(inv.elixir||0); const t='🧪'+n; if(potB.textContent!==t) potB.textContent=t; } if(!c){ bossBar.hidden=true; return; }
     shake=Math.max(0,shake-dt*2.2); if(paused) shake=0;
     if(!paused){ if(hitStop>0){ hitStop-=dt; } else { acc=Math.min(acc+dt,0.1); while(acc>=STEP){ acc-=STEP; step(); } } }   // a blow that lands holds the world still for a blink
-    chargeTick(dt); letterbox(!!lock&&!!c);
+    chargeTick(dt); drawTick(); letterbox(!!lock&&!!c);
     ENGINE.K.alert=!!(c&&c.foes.some(d=>d.alive&&!d.asleep&&Math.hypot(d.x-ENGINE.P.x,d.z-ENGINE.P.z)<6));   /* foes close: keep the blade out (and draw it) */
     ENGINE.K.guarding=pl.blocking; ENGINE.K.dash=pl.dashing>0?Math.min(1,pl.dashing/4):Math.max(0,(ENGINE.K.dash||0)-0.15); ENGINE.K.air=pl.jumpY||0; ENGINE.K.raise=pl.leap&&pl.leapT<12?1:0; drawLock(ENGINE.level);
     const lv=ENGINE.level, cam=ENGINE.cam, t=now()/1000; let boss=null;
@@ -548,7 +564,7 @@ const COMBAT=(function(){
     drawPops(dt); }
   function reset(){ pl.buf=0; pl.lungeT=0; lock=null; charge.on=false; charge.ready=false; if(charge.ring) charge.ring.visible=false; if(typeof letterbox==='function') letterbox(false); ENGINE.K.charge=0; ENGINE.K.spinT=-1; hitStop=0; shake=0; pl.leap=0; pl.jumpY=0; if(reticle) reticle.visible=false; meter(null); tintV.style.opacity=0; pl.iframes=0; pl.swing=0; pl.combo=0; pl.comboT=0; pl.blocking=false; pl.bDown=false; pl.dashing=0; later.length=0; ENGINE.K.visible=true; bossBar.hidden=true; guardB.hidden=true; potB.hidden=true; }
   // how fast you can walk just now: a swing roots you (you can still turn and edge), a guard or a charging blade slows you
-  function moveMul(){ return pl.swing>0?(pl.swing>pl.swingDur*0.35?0.25:0.6):pl.blocking?0.6:charge.on&&charge.k>0?0.55:1; }
+  function moveMul(){ if(pl.draw) return 0.3; return pl.swing>0?(pl.swing>pl.swingDur*0.35?0.25:0.6):pl.blocking?0.6:charge.on&&charge.k>0?0.55:1; }
   return { moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hitBy:(d,dmg,fx,fz)=>hitBy(d,dmg,fx,fz), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
     if(pl.iframes>0) return; let inc=Math.max(1,Math.round((8+tl*0.5)-S().def*0.4)); if(pl.blocking) inc=Math.max(1,Math.ceil(inc*0.4)); pl.iframes=18; takeHit(inc); } };
 })();

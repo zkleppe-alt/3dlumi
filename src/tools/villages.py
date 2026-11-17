@@ -1236,6 +1236,102 @@ _S=hgBFS(CX-1,HY1-1)
 print('hellgate: lane cleared',len(cut),'| reach max e',max(E5(x,y) for x,y in _S),'| keep door',(CX-3,CY+2) in _S,'| ossuary',(CX-9,yG-1) in _S)
 print('hellgate: ruined fronts',fronts,'bridges',len(BR))
 
+# ═════════ WILDWAYS (V222) — hidden islets across the realm, each reached by a mossy log or by stepping stones to jump,
+#  each holding a standing stone with a verse, a mossy place to sit, and an old chest with a keepsake ═════════
+from collections import deque as _dq
+WILD={'logs':[],'hops':[],'nooks':[]}
+_WATER=(3,20,21)
+_wk=lambda x,y:(raw[N+y*W+x]>>4)&1
+_E=lambda x,y: raw[N+y*W+x]&15
+ISLES=[ # centroid, name, verse, reference, keepsake
+  ((417,321),'the Reed Isle','When thou passest through the waters, I will be with thee; and through the rivers, they shall not overflow thee.','Isaiah 43:2','a reed pipe, cut and tuned by someone who sat here a long time'),
+  ((635,161),'the Heron Stones','Come unto me, all ye that labour and are heavy laden, and I will give you rest.','Matthew 11:28','a heron’s grey feather, tied with red thread'),
+  ((395,364),'the Willow Islet','It is of the LORD’s mercies that we are not consumed, because his compassions fail not. They are new every morning.','Lamentations 3:22–23','a child’s carved boat with a scrap of sail'),
+  ((680,685),'the Drowned Garden','I will lift up mine eyes unto the hills, from whence cometh my help. My help cometh from the LORD.','Psalm 121:1–2','a garden key, green with age, to a gate that is long gone'),
+  ((425,123),'the Lonely Skerry','They that wait upon the LORD shall renew their strength; they shall mount up with wings as eagles.','Isaiah 40:31','an eagle’s feather, longer than your hand'),
+  ((738,752),'the Far Islet','Truly my soul waiteth upon God: from him cometh my salvation. He only is my rock.','Psalm 62:1–2','a smooth white stone with a cross scratched in it')]
+def _comp(x0,y0,lim=600):
+    if not _wk(x0,y0) or T(x0,y0) in _WATER: 
+        best=None
+        for r_ in range(1,6):
+            for b_ in range(-r_,r_+1):
+                for a_ in range(-r_,r_+1):
+                    X,Y=x0+a_,y0+b_
+                    if 0<=X<W and 0<=Y<WD["H"] and _wk(X,Y) and T(X,Y) not in _WATER: best=(X,Y); break
+                if best: break
+            if best: break
+        if not best: return set()
+        x0,y0=best
+    seen={(x0,y0)}; q=_dq([(x0,y0)])
+    while q and len(seen)<lim:
+        x,y=q.popleft()
+        for a_,b_ in ((1,0),(-1,0),(0,1),(0,-1)):
+            X,Y=x+a_,y+b_
+            if (X,Y) not in seen and _wk(X,Y) and T(X,Y) not in _WATER: seen.add((X,Y)); q.append((X,Y))
+    return seen
+def _reach(start,goal,box):
+    x0,y0,x1,y1=box; seen={start}; q=_dq([start])
+    while q:
+        x,y=q.popleft()
+        if (x,y) in goal: return True
+        for a_,b_ in ((1,0),(-1,0),(0,1),(0,-1)):
+            X,Y=x+a_,y+b_
+            if x0<=X<=x1 and y0<=Y<=y1 and (X,Y) not in seen and _wk(X,Y): seen.add((X,Y)); q.append((X,Y))
+    return False
+for (c,name,verse,ref,keep) in ISLES:
+    isl=_comp(*c)
+    if not (8<=len(isl)<600): print('wildways: no isle at',c,len(isl)); continue
+    # a moat: every shallow within 4 of the isle that is water becomes deep water — it is an islet now, not a ford
+    near=set()
+    for (x,y) in isl:
+        for b_ in range(-4,5):
+            for a_ in range(-4,5):
+                X,Y=x+a_,y+b_
+                if 0<=X<W and 0<=Y<WD["H"] and T(X,Y) in (20,21): near.add((X,Y))
+    for (X,Y) in near: put(X,Y,3,False,0)
+    # the crossing: the shortest straight run of water from the isle's edge to the mainland
+    best=None
+    for (x,y) in isl:
+        for dx,dy in ((1,0),(-1,0),(0,1),(0,-1)):
+            n=0; X,Y=x+dx,y+dy
+            while 0<=X<W and 0<=Y<WD["H"] and T(X,Y) in _WATER and n<8: n+=1; X+=dx; Y+=dy
+            if 2<=n<=6 and _wk(X,Y) and (X,Y) not in isl and T(X,Y) not in _WATER and T(X+dx,Y+dy) not in _WATER and _wk(X+dx,Y+dy):
+                if not best or n<best[0]: best=(n,(x,y),(X,Y),(dx,dy))
+    if not best: print('wildways: no crossing for',name); continue
+    n,(ix,iy),(mx,my),(dx,dy)=best; e0=_E(mx,my)
+    for k_ in range(1,n+1): put(ix+dx*k_,iy+dy*k_,3,False,0)
+    put(ix,iy,T(ix,iy) if T(ix,iy) not in (1,7,5) else 0,True,_E(ix,iy)); put(mx,my,T(mx,my) if T(mx,my) not in (1,7,5) else 0,True,e0)
+    if n<=2 or _E(ix,iy)!=e0:
+        WD['treetops']['bridges'].append(dict(a=[mx+0.5,my+0.5],b=[ix+0.5,iy+0.5],w=1.1,stone=1,log=1)); WILD['logs'].append({'a':[mx,my],'b':[ix,iy],'name':name}); kind='log'
+    else:
+        run=[(mx-dx*k_,my-dy*k_) for k_ in range(1,n+1)]   # from the mainland side, outward
+        stones=[1,3] if n==4 else list(range(1,n-1,2))
+        stones=[run[i] for i in stones]; gaps=[p for p in run if p not in stones]
+        for (X,Y) in stones: put(X,Y,25,True,e0)
+        WILD['hops'].append({'stones':[list(p) for p in stones],'gaps':[list(p) for p in gaps],'e':e0,'name':name}); kind='hop'
+    # the nook: three clear tiles near the isle's middle
+    cx=sum(p[0] for p in isl)/len(isl); cy=sum(p[1] for p in isl)/len(isl)
+    free=sorted([p for p in isl if all((p[0]+a_,p[1]+b_) in isl for a_ in (-1,0,1) for b_ in (-1,0,1))],key=lambda p:(p[0]-cx)**2+(p[1]-cy)**2)
+    free=free+sorted([p for p in isl if p not in free],key=lambda p:(p[0]-cx)**2+(p[1]-cy)**2)   # the open middle first, then the rest of the isle
+    pick=[]
+    for p in free:
+        if all(abs(p[0]-q_[0])+abs(p[1]-q_[1])>=2 for q_ in pick): pick.append(p)
+        if len(pick)==3: break
+    if len(pick)<3: print('wildways: cramped',name); continue
+    WD['decor']=[d for d in WD['decor'] if not any(abs(d['x']-p[0])<=1 and abs(d['y']-p[1])<=1 for p in pick)]
+    for p in pick:
+        for b_ in (-1,0,1):
+            for a_ in (-1,0,1):
+                if (p[0]+a_,p[1]+b_) in isl and T(p[0]+a_,p[1]+b_) in (1,7,5): put(p[0]+a_,p[1]+b_,0,True,_E(p[0]+a_,p[1]+b_))
+    WILD['nooks'].append({'name':name,'verse':verse,'ref':ref,'keep':keep,'stone':list(pick[0]),'seat':list(pick[1]),'chest':list(pick[2]),'kind':kind,'way':[mx,my]})
+    if PT.get('fishSpots'):
+        for X in range(min(ix,mx)-1,max(ix,mx)+2):
+            for Y in range(min(iy,my)-1,max(iy,my)+2): PT['fishSpots'].pop(f'{X},{Y}',None)
+    box=(min(p[0] for p in isl)-12,min(p[1] for p in isl)-12,max(p[0] for p in isl)+12,max(p[1] for p in isl)+12)
+    shut=not _reach((mx,my),isl,box)
+    print('wildways:',name,kind,'water',n,'from',(mx,my),'isle',len(isl),'| shut off on foot:',shut)
+WD['wildways']=WILD
+
 WD['raw']=base64.b64encode(bytes(raw)).decode()
 new=src
 for n in sorted(CON,key=lambda n:-CON[n][0]):

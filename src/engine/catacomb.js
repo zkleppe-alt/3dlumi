@@ -1759,7 +1759,7 @@ const CATACOMB=(function(){
     let tideY=0; const tideWant=()=>WZ&&!clean()&&tideSt()==='hi'?WZ.hi:0, deep=()=>tideY>0.45;
     const hG=(x,y)=>inWater(x,y)&&at(x,y)==='D'?tideY+0.25:hAt(x,y);   /* the ground you stand on: a crate rides the water */
     const rootK=(x,y)=>{ let bx=x,by=y; while(at(bx-1,by)==='r') bx--; while(at(bx,by-1)==='r') by--; return bx+','+by; };
-    const fl=[], wl=[], pit=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(c==='#'){ let face=false; for(let dy=-1;dy<=1&&!face;dy++) for(let dx=-1;dx<=1;dx++){ const q=at(x+dx,y+dy); if(q!==undefined&&q!=='#'){ face=true; break; } } if(face) wl.push([x,y]); } else if(c==='X'||c==='K') pit.push([x,y]); if(c!=='#'&&c!=='X'&&c!=='K'&&c!=='='&&c!=='V') fl.push([x,y]); }
+    const fl=[], wl=[], pit=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y); if(c==='#'){ let face=false; for(let dy=-1;dy<=1&&!face;dy++) for(let dx=-1;dx<=1;dx++){ const q=at(x+dx,y+dy); if(q!==undefined&&q!=='#'){ face=true; break; } } if(face) wl.push([x,y]); } else if(c==='X'||c==='K'||c==='^'||c==='+') pit.push([x,y]); if(c!=='#'&&c!=='X'&&c!=='K'&&c!=='='&&c!=='V'&&c!=='^'&&c!=='+') fl.push([x,y]); }   /* V223: '^' a gap to jump, '+' a narrow beam over the drop */
     inst(fl,UNIT,detailify(new THREE.MeshLambertMaterial(),{mode:'stone'}),([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1+(at(x,y)==='%'?0:hAt(x,y)),y+0.5); cc.setHex((x+y)%2?pal.fA:pal.fB).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
     inst(wl,UNIT,bmat(0xffffff,'brick'),([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx,WH(x,y),q.sz); m.setPosition(q.cx,0,q.cz); cc.setHex(pal.wall).offsetHSL(0,0,(hsh(x,y)-0.5)*0.07); },room);
     inst(wl,UNIT,null,([x,y],m,cc)=>{ const q=WI.box(x,y); m.makeScale(q.sx+0.05,0.28,q.sz+0.05); m.setPosition(q.cx,0,q.cz); cc.setHex(dk(pal.wall,0.62)); },room);   // the plinth course
@@ -1770,7 +1770,7 @@ const CATACOMB=(function(){
         rc.forEach(([x,y])=>[[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const nc=at(x+a,y+b); if(nc===undefined||nc==='#'||hAt(x+a,y+b)>=RH(x,y)-0.1) return; const h=RH(x,y);
           B(a?0.12:1.02,0.12,a?1.02:0.12,dk(pal.stone,0.8),x+0.5+a*0.46,h,y+0.5+b*0.46,room); B(a?0.16:1.04,0.2,a?1.04:0.16,0x4a3220,x+0.5+a*0.5,h-0.34,y+0.5+b*0.5,room); })); } }
     // the chasms (and under the thin floor, the drop): a long fall into the dark, its sides cut stone
-    const pitAt=(x,y)=>at(x,y)==='X'||at(x,y)==='K';
+    const pitAt=(x,y)=>at(x,y)==='X'||at(x,y)==='K'||at(x,y)==='^'||at(x,y)==='+';
     pit.forEach(([x,y])=>{ const deep=(regionAt(x,y)||{}).deep; B(1,0.2,1,0x020103,x+0.5,deep?-14.2:-6.2,y+0.5,room); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ if(pitAt(x+a,y+b)) return; B(a?0.08:1,1.2,a?1:0.08,dk(pal.wall,0.32),x+0.5+a*0.5,-1.2,y+0.5+b*0.5,room); B(a?0.08:1,4.9,a?1:0.08,0x0a0708,x+0.5+a*0.5,-6.1,y+0.5+b*0.5,room); if(at(x,y)==='X') B(a?0.14:1,0.06,a?1:0.14,pal.stone,x+0.5+a*0.47,-0.06,y+0.5+b*0.47,room); }); });
     // the thin floor: cracked flags over the drop, until it gives
     { const ks=pit.filter(([x,y])=>at(x,y)==='K'); if(ks.length){ const g=group(0,0,0,room); dyn.crack={g,tiles:[]}; ks.forEach(([x,y])=>{ const tg=group(x+0.5,0,y+0.5,g); B(0.98,0.1,0.98,(x+y)%2?pal.fA:pal.fB,0,-0.1,0,tg); for(let i=0;i<2;i++){ const c=B(0.45+hsh(x,y+i)*0.35,0.006,0.014,0x241a12,(hsh(x+i,y)-0.5)*0.3,0,(hsh(y,x+i)-0.5)*0.5,tg); c.rotation.y=hsh(i,x*y)*3; } dyn.crack.tiles.push({g:tg,vy:0}); }); } }
@@ -1996,7 +1996,7 @@ const CATACOMB=(function(){
     /* V161: ROOTS — a tangle 'r' burns with the lantern (or withers, if it grew from the heart, when the heart burns); the heart 'j' burns once */
     const rootGone=(x,y)=>{ const k=rootK(x,y), R=(D.roots||{})[k]||{}; return clean()||!!s().heart||(!R.wither&&!!s().burnt[n+':'+k]); };
     const heartGone=()=>clean()||!!s().heart;
-    const ok=(x,y)=>{ const c=at(x,y); if(c==='W') return smashed(x+','+y); if(c==='i') return idolGone(x+','+y); if(c==='a') return driftGone(x,y); if(c==='r') return rootGone(x,y); if(c==='j') return false; if(c!=='D'&&inWater(x,y)&&deep()) return false; if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='K') return !fell(); if(c==='L'||c==='G'||/[1-9]/.test(c)){ const k=doorKey(x,y); return isOpen(k)&&dyn.doors[k].u>0.85; } if(blockAt(x,y)) return false; return true; };
+    const ok=(x,y)=>{ const c=at(x,y); if(c==='W') return smashed(x+','+y); if(c==='i') return idolGone(x+','+y); if(c==='a') return driftGone(x,y); if(c==='r') return rootGone(x,y); if(c==='j') return false; if(c==='^') return (ENGINE.airH||0)>0.04; if(c!=='D'&&inWater(x,y)&&deep()) return false; if(c===undefined||SOLID.has(c)&&c!=='B') return false; if(c==='K') return !fell(); if(c==='L'||c==='G'||/[1-9]/.test(c)){ const k=doorKey(x,y); return isOpen(k)&&dyn.doors[k].u>0.85; } if(blockAt(x,y)) return false; return true; };
     const okAt=(px,pz)=>{ const x=Math.floor(px), y=Math.floor(pz); return ok(x,y)||(wallC(x,y)&&WI.free(px,pz)&&(()=>{ const u=px-x, v=pz-y; return (u<WI.m&&ok(x-1,y))||(u>1-WI.m&&ok(x+1,y))||(v<WI.m&&ok(x,y-1))||(v>1-WI.m&&ok(x,y+1)); })()); };
     lv._dyn=dyn; lv._ok=(x,y)=>ok(x,y); lv._sc=SC;
     lv.canMove=(fx,fz,tx,tz)=>{ if(climb) return false; const hf=hG(Math.floor(fx),Math.floor(fz))+(ENGINE.airH||0); for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]){ if(!okAt(tx+ox,tz+oz)) return false; if(hG(Math.floor(tx+ox),Math.floor(tz+oz))-hf>0.42&&!(hG(Math.floor(fx+ox),Math.floor(fz+oz))-hf>0.42)) return false; }   /* no walking up a ledge: climb its ladder (V157: but standing hard against its face, you can always walk along it or away) */ for(const b of BLK){ const d=Math.hypot(tx-b.x,tz-b.z); if(d<b.r+0.24&&d<=Math.hypot(fx-b.x,fz-b.z)) return false; }
@@ -2415,9 +2415,52 @@ const CATACOMB=(function(){
     let folked=false; function folkIn(){ if(folked||typeof addPerson!=='function') return; folked=true; const sp=lv.spawn;
       try{ addPerson(lv,scene,'monk',sp.x+1.6,sp.z-1.2,0,CF.folk.name,[n===0?CF.folk.first:CF.folk.rest,'“I am the resurrection, and the life: he that believeth in me, though he were dead, yet shall he live.” — John 11:25'],{rest:Math.PI}); }catch(e){} }
     if(typeof SIDEQ!=='undefined') SIDEQ.cata(lv,t,n,{scene,room,an,hAt,at});   /* V173: the villagers' errands below */
+    /* V223: THE BROTHERS' CROSSING — a side chamber off the first level: a narrow beam over the drop, then pillars to jump between,
+       their lips worn pale, and beyond them a quiet cell: a verse cut in the wall, a bench, and an old chest. A short jump catches
+       the far lip; a fall into the dark puts you back at the beam's head. */
+    if(D._nook){ const NK=D._nook, PALE=0xe6e0d0, cS=()=>{ const S0=s(); S0.nook=S0.nook||{}; return S0.nook; };
+      for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const c=at(x,y);
+        if(c==='+'){ const g=group(x+0.5,0,y+0.5,room), ax=(at(x-1,y)==='+'||at(x+1,y)==='+'||at(x-1,y)==='.'&&at(x+1,y)!=='.')?'x':'z'; const hz=(at(x,y-1)==='+'||at(x,y+1)==='+'); B(hz?0.34:1.02,0.16,hz?1.02:0.34,pal.wood,0,-0.16,0,g); B(hz?0.42:1.02,0.05,hz?1.02:0.42,dk(pal.wood,0.7),0,-0.3,0,g); }
+        if(c==='^') [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const q=at(x+a,y+b); if(q==='.') B(a?0.08:0.9,0.03,a?0.9:0.08,PALE,x+0.5+a*0.46,0.0,y+0.5+b*0.46,room); }); }
+      NK.pillars.forEach(([x,y])=>{ const g=group(x+0.5,0,y+0.5,room); Cy(0.46,0.5,6.2,8,dk(pal.stone,0.85),0,-6.2,0,g); B(0.96,0.06,0.96,dk(pal.stone,1.05),0,-0.05,0,g); });
+      const [vx,vy]=NK.verse, [qx,qy]=NK.seat, [kx,ky]=NK.chest, ch=NOOKV[t%NOOKV.length];
+      { const g=group(vx+0.5,0,vy+0.5,room); B(0.7,1.0,0.12,dk(pal.stone,1.1),0,0.3,0,g); for(let i=0;i<4;i++) B(0.44,0.03,0.02,0x3a3028,0,0.5+i*0.17,0.065,g); const L2=group(0.5,0.9,0.1,g); Cy(0.04,0.05,0.16,6,0xf0e8d0,0,0,0,L2); themeFlame(0,0.24,0,L2,an,1.0,T); }
+      { const g=group(qx+0.5,0,qy+0.5,room); B(0.9,0.36,0.4,dk(pal.stone,0.95),0,0,0,g); }
+      let lid=null; { const g=group(kx+0.5,0,ky+0.5,room); B(0.62,0.34,0.42,0x6a4526,0,0,0,g); lid=Cy(0.21,0.21,0.62,8,0x7a5230,0,0,0,g); lid.rotation.z=Math.PI/2; lid.position.set(0,0.34,0); [-0.24,0.24].forEach(q=>B(0.05,0.36,0.44,0xc8a050,q,0,0,g)); if(cS()['k'+t]) lid.rotation.x=-1.1; }
+      { const pl=new THREE.PointLight(0xffd8a0,1.0,6,1.6); pl.position.set((vx+qx+kx)/3+0.5,1.6,(vy+qy+ky)/3+0.5); scene.add(pl); }
+      lv.spots.push({x:vx+0.5,z:vy+0.5,r:1.4,label:'Read',who:'Words cut in the wall',action:()=>ENGINE.speak('Words cut in the wall',ch,null,()=>{ if(!cS()['v'+t]){ cS()['v'+t]=1; GAME.save(); if(typeof JOURNAL!=='undefined') JOURNAL.write('Past the brothers’ crossing under '+td.name+' I found words cut in the wall: '+ch[0],{}); } })});
+      let resting=0; lv.spots.push({x:qx+0.5,z:qy+0.5,r:1.3,label:'Rest',who:'A stone bench',action:()=>{ if(resting) return; resting=1; const P=ENGINE.P; P.x=qx+0.5; P.z=qy+0.5; ENGINE.hold(4,'sit'); UI.toast('🕯 You sit in the brothers’ cell. It is very quiet down here.',2200); setTimeout(()=>{ resting=0; const S0=GAME.S; S0.hp=S0.maxHp; ENGINE.hud(); ENGINE.speak('A quiet cell',['A candle someone keeps lit. The dead are all round you, and not one of them is afraid.','(Rested: your strength is full.)']); },4000); }});
+      lv.spots.push({x:kx+0.5,z:ky+0.5,r:1.3,label:'Open',who:'An old chest',hide:()=>!!cS()['k'+t],action:()=>{ if(cS()['k'+t]) return; cS()['k'+t]=1; const g=Math.round((150+t*15)*(GAME.S.goldMult||1)); GAME.addGold(g); GAME.save(); if(lid) lid.rotation.x=-1.1; if(typeof SFX!=='undefined') try{ SFX.play('chest'); }catch(e){}
+        ENGINE.speak('An old chest',['📦 '+g+' gold!','And under it, a brother’s prayer beads, worn smooth.']); if(typeof JOURNAL!=='undefined') JOURNAL.write('In a chest past the brothers’ crossing under '+td.name+': a brother’s prayer beads, worn smooth.',{}); }});
+      let safe=null; an.push(()=>{ if(ENGINE.level!==lv) return; const P=ENGINE.P, x=Math.floor(P.x), y=Math.floor(P.z), c=at(x,y), air=ENGINE.airH||0;
+        if(c==='^'){ if(air<0.03){ const fx=Math.sin(P.face), fz=Math.cos(P.face), ax=P.x+fx*0.75, az=P.z+fz*0.75, ca=at(Math.floor(ax),Math.floor(az));
+            if(ca==='.'){ P.x=Math.floor(ax)+0.5-fx*0.3; P.z=Math.floor(az)+0.5-fz*0.3; ENGINE.hold(0.35); }
+            else { P.x=NK.start[0]+0.5; P.z=NK.start[1]+0.5; ENGINE.hold(0.8); UI.toast('You lose your footing — and catch yourself at the head of the beam.',2000); } } }
+        else if(air<0.03&&c==='.') safe=[P.x,P.z]; }); }
     return lv; }
   // ── the churchyard: a mausoleum beside the chapel, its gate standing open on a stair going down ──
+  const NOOKV=[['“Yea, though I walk through the valley of the shadow of death, I will fear no evil: for thou art with me.”','— Psalm 23:4'],['“The LORD is my light and my salvation; whom shall I fear?”','— Psalm 27:1'],['“The eternal God is thy refuge, and underneath are the everlasting arms.”','— Deuteronomy 33:27'],['“He giveth power to the faint; and to them that have no might he increaseth strength.”','— Isaiah 40:29'],['“I will both lay me down in peace, and sleep: for thou, LORD, only makest me dwell in safety.”','— Psalm 4:8'],['“The light shineth in darkness; and the darkness comprehended it not.”','— John 1:5'],['“My grace is sufficient for thee: for my strength is made perfect in weakness.”','— 2 Corinthians 12:9'],['“O death, where is thy sting? O grave, where is thy victory?”','— 1 Corinthians 15:55'],['“He hath made every thing beautiful in his time.”','— Ecclesiastes 3:11'],['“Behold, I make all things new.”','— Revelation 21:5']];
+  // V223: find solid rock beside a room on the first level, and cut the brothers' crossing into it:
+  //   [wall breach] . + + + . ^ . ^ . . . . .   (the middle row; the rows either side over the drop are chasm, the cell 5×5)
+  function carveNook(D,t){ const R=D.rows.map(r=>[...r]), H=R.length, W=R[0].length, at=(x,y)=>R[y]&&R[y][x];
+    const LEN=15, HALF=2;   // along: 0 breach, 1 ., 2-4 +, 5 . (pillar), 6 ^, 7 . (pillar), 8 ^, 9-13 the cell, 14 rock
+    const rockAll=(cells)=>cells.every(([x,y])=>at(x,y)==='#');
+    const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+    for(let y=2;y<H-2;y++) for(let x=2;x<W-2;x++){ if(at(x,y)!=='.') continue;
+      for(const [dx,dy] of dirs){ const px=-dy, py=dx, cells=[];   // perpendicular
+        for(let k=1;k<=LEN+1;k++) for(let w=-(HALF+1);w<=HALF+1;w++) cells.push([x+dx*k+px*w,y+dy*k+py*w]);
+        if(!rockAll(cells)) continue;
+        // the room side must be ordinary floor round the breach (no doors, stairs or things)
+        let okR=true; for(let w=-1;w<=1;w++){ const c=at(x+px*w,y+py*w); if(c!=='.') okR=false; } if(!okR) continue;
+        const put=(k,w,c)=>{ R[y+dy*k+py*w][x+dx*k+px*w]=c; };
+        for(let k=2;k<=8;k++) for(let w=-HALF;w<=HALF;w++) put(k,w,'X');
+        put(1,0,'.'); put(2,0,'+'); put(3,0,'+'); put(4,0,'+'); put(5,0,'.'); put(6,0,'^'); put(7,0,'.'); put(8,0,'^');
+        for(let k=9;k<=13;k++) for(let w=-HALF;w<=HALF;w++) put(k,w,'.');
+        const P=(k,w)=>[x+dx*k+px*w,y+dy*k+py*w];
+        D.rows=R.map(r=>r.join('')); D._nook={start:P(1,0),pillars:[P(5,0),P(7,0)],verse:P(13,0),seat:P(11,-2),chest:P(11,2)}; return true; } }
+    D._nook=false; return false; }
   function attach(world,o){ o=o||{}; const t=o.town, td=o.td; if(!LV[t]) return null; OPTS[t]=o; const b=o.door; if(!b) return null; const CF=CFG[t]||CFG[0];
+    if(LV[t][0]&&!LV[t][0]._nook) carveNook(LV[t][0],t);   /* V223 */
     LV[t].forEach((D,n)=>ENGINE.add({id:'cata'+t+':'+n,lazy:()=>build(t,n,D,td)}));
     const ds=world.doorStep(b.id); let fx=Math.sin(ds.face), fz=Math.cos(ds.face);   // the way the chapel faces
     const bx=b.x+b.w/2, by=b.y+b.h/2, open=(x,y)=>{ for(let dy=-1;dy<=1;dy++) for(let dx=-1;dx<=1;dx++){ const xx=x+dx, yy=y+dy; if(!world.walkTile(xx,yy)) return false; if(xx>=b.x-1&&xx<=b.x+b.w&&yy>=b.y-1&&yy<=b.y+b.h) return false; } return true; };
@@ -2603,3 +2646,4 @@ const CATACOMB=(function(){
   const tools=()=>({staff:hasCrook(),hammer:hasHammer(),bell:hasBell(),lantern:hasLantern(),mirror:hasMirror(),rope:hasRope(),horn:hasHorn(),shield:hasShield()});   /* V175: for the wilds */
   return { attach, get mouth(){ return MOUTH[0]; }, mouthOf:t=>MOUTH[t], naveAt, cfg:t=>CFG[t]||CFG[0], LV, has:t=>!!LV[t], tools };
 })();
+try{ window.CATACOMB=CATACOMB; }catch(e){}
