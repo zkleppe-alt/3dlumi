@@ -133,5 +133,5 @@ vec3 artGrade(vec3 c){ vec2 q=vArtW.xz+vArtW.y*vec2(0.37,0.61);
   let last=performance.now();
   (function loop(){ const n=performance.now(); T.value+=(n-last)/1000; last=n; try{ const L=ENGINE.level; if(L&&L.artGrass) L.artGrass.userData.update(); }catch(e){} requestAnimationFrame(loop); })();
   setInterval(()=>{ try{ sweep(); }catch(e){} },300);
-  return { on, mode, set(m){ try{ localStorage.setItem('klk3d_art',m); }catch(e){} location.reload(); }, sweep, mergeSoft };
+  return { on, mode, set(m){ try{ localStorage.setItem('klk3d_art',m); }catch(e){} location.reload(); }, sweep, mergeSoft, BLADE, grassMat };   // V220: the blade and its wind, for other places to grow grass
 })();

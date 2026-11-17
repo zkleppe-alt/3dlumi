@@ -420,3 +420,7 @@ After Oceanside harbour, as a beachfront town:
 
 ## V219 — the stepping rocks can be made
 - A full run-up jump only just cleared a one-tile gap (driven test: launched at 55.72, came down at 56.6, inside the gap, and was sent back). Now if you come down in a gap facing a standing tile within 0.75, you catch its rim and pull up onto it (hold 0.35 s); only a jump the wrong way or from too far sends you back. Driven test: first gap crossed onto the rocks, second jump launched (the headless frame rate ran the clock out there).
+
+## V220 — the forest grows an undergrowth (painted look)
+- forest.js: grass blades (ART.BLADE with the overworld wind, ART.grassMat — now exported by style.js) over every clearing, 7 a tile at the trees’ feet, 5 near them, 2 on the open trail; ferns (a hand-built 7-frond mesh) at the trail edges; moss cushions; small white flowers in the open; up to 40 soft additive light shafts where the trail opens. The floor no longer checkers: gridLevel soft drifts its colour in broad patches. Classic look unchanged.
+- Seen: three shots (upper trail with a demon, the pond glade); reads much lusher. Not measured: frame rate on a phone (~13k extra instances in one draw for the grass).

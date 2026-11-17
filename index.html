@@ -8481,7 +8481,7 @@ vec3 artGrade(vec3 c){ vec2 q=vArtW.xz+vArtW.y*vec2(0.37,0.61);
   let last=performance.now();
   (function loop(){ const n=performance.now(); T.value+=(n-last)/1000; last=n; try{ const L=ENGINE.level; if(L&&L.artGrass) L.artGrass.userData.update(); }catch(e){} requestAnimationFrame(loop); })();
   setInterval(()=>{ try{ sweep(); }catch(e){} },300);
-  return { on, mode, set(m){ try{ localStorage.setItem('klk3d_art',m); }catch(e){} location.reload(); }, sweep, mergeSoft };
+  return { on, mode, set(m){ try{ localStorage.setItem('klk3d_art',m); }catch(e){} location.reload(); }, sweep, mergeSoft, BLADE, grassMat };   // V220: the blade and its wind, for other places to grow grass
 })();
 
 // ── engine/bosses3d.js ──
@@ -14673,7 +14673,7 @@ function forestLevels(D,spec){
     const lamp=new THREE.PointLight(0xffe0b0,o.lamp||0.9,9,1.4); scene.add(lamp); if(o.sun){ const s=new THREE.DirectionalLight(0xfff4d0,o.sun); s.position.set(W*0.3,14,H*0.4); s.target.position.set(W/2,0,H/2); scene.add(s,s.target); }
     const room=group(0,0,0,scene), an=lv.anim, solid=o.solid;
     const fl=[], wl=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=g0[y][x]; if(t===1||t===78) wl.push([x,y]); else if(!(o.noFloor&&o.noFloor.has(t))) fl.push([x,y]); }   /* V218: no floor laid over a drop */
-    inst(fl,UNIT,null,([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((o.floorCol&&o.floorCol(g0[y][x]))||((x+y)%2?o.fA:o.fB)).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
+    inst(fl,UNIT,null,([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((o.floorCol&&o.floorCol(g0[y][x]))||(o.soft?o.fA:((x+y)%2?o.fA:o.fB))); if(o.soft){ const n=Math.sin(x*0.37+Math.sin(y*0.21)*1.7)*0.5+Math.sin(y*0.29-x*0.13)*0.5; cc.offsetHSL(0.01*n,0.03*n,0.035*n+(hsh(x,y)-0.5)*0.015); } else cc.offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);   /* V220: soft: no checkerboard — the floor drifts in broad patches, as a painted forest floor does */
     if(o.close) inst(wl,UNIT,null,([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((x+y)%2?o.fA:o.fB).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);   // ground under the drawn-back edges
     if(o.borderOnly){ const k=wl.filter(([x,y])=>x===0||y===0||x===W-1||y===H-1); wl.length=0; wl.push(...k); }
     if(o.open){ const near=([x,y])=>{ for(let dy=-2;dy<=2;dy++) for(let dx=-2;dx<=2;dx++){ const t=g0[y+dy]&&g0[y+dy][x+dx]; if(t!==undefined&&t!==1&&t!==78) return true; } return false; }; const k=wl.filter(near); wl.length=0; wl.push(...k); }   // the wood two trees deep from every trail: the rest is never seen
@@ -14909,6 +14909,28 @@ function forestLevels(D,spec){
         if(resting<=0){ resting=0; restY=null; K.rotation.z=0; const P=ENGINE.P; P.x=hx2; P.z=hz2+1.2; P.y=0; const S0=GAME.S; S0.hp=S0.maxHp; ENGINE.hud(); const first=!FW().hammock; FW().hammock=true; GAME.save();
           ENGINE.speak('The hammock',['You sleep — properly, deeply, the way you slept as a child at the homestead — and wake with leaf-light moving on your face and nothing at all to fear.','“I will both lay me down in peace, and sleep: for thou, LORD, only makest me dwell in safety.” — Psalm 4:8','(Rested: your strength is full.)']);
           if(first&&typeof JOURNAL!=='undefined') JOURNAL.write('Across the north-west ravine in the Forest of Disillusionment there is a hidden grove with a hammock strung between two trees — the hermit\'s brother put it there. I swung in it and slept like a child. "Come ye yourselves apart... and rest a while." (Mark 6:31)',{}); } }); }
+    // ── V220: THE UNDERGROWTH (the painted look) — the forest floor is no longer bare: grass in every clearing, thick at the
+    //  feet of the trees and thin on the trodden middle of the trail, ferns crowding the edges, moss cushions and fallen
+    //  needles, little white flowers where light comes down, and long shafts of light through the canopy here and there.
+    if(typeof ART!=='undefined'&&ART.on&&ART.BLADE){ const FLOOR=new Set([0,115,114,6,2,8]), TREE=(x,y)=>{ const t=at(x,y); return t===1||t===78||t===undefined; };
+      const edge=(x,y)=>{ let n=0; for(let b=-1;b<=1;b++) for(let a=-1;a<=1;a++) if((a||b)&&TREE(x+a,y+b)) n++; return n; };
+      const blades=[], ferns=[], moss=[], flw=[]; for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++){ const t=D.forest[y][x]; if(!FLOOR.has(t)) continue; const e=edge(x,y), k=e>=3?7:e>=1?5:2;
+        for(let i=0;i<k;i++){ const u=hsh(x*3+i,y*7+i*2), v=hsh(y*5+i,x*11+i); blades.push([x+u,y+v,0.85+e*0.12+hsh(x+i,y-i)*0.4]); }
+        if(e>=2&&hsh(x*9,y*5)<0.55) ferns.push([x+0.15+hsh(x,y*3)*0.7,y+0.15+hsh(y,x*3)*0.7,0.8+hsh(x*2,y)*0.6]);
+        if(hsh(x*13,y*17)<0.08) moss.push([x+hsh(x,y*9),y+hsh(y,x*9)]); if(e<=1&&hsh(x*7,y*19)<0.05) flw.push([x+hsh(x*5,y),y+hsh(y*5,x)]); }
+      const im=inst(blades,ART.BLADE,ART.grassMat,([x,z,sc],m,cc)=>{ const r=hsh(x*31,z*17)*6.28; m.makeRotationY(r); m.scale(new THREE.Vector3(sc,sc*(0.9+hsh(z,x)*0.5),sc)); m.setPosition(x,-0.02,z); const g=0.85+hsh(x*7,z*3)*0.3; cc.setRGB(0.3*g,0.52*g,0.22*g); },room); im.castShadow=false;
+      const FERN=(()=>{ const pos=[],col=[]; for(let i=0;i<7;i++){ const a=i/7*Math.PI*2+i*0.4, ca=Math.cos(a), sa=Math.sin(a), L=0.5+(i%3)*0.1, W=0.09;
+          for(let j=0;j<5;j++){ const t0=j/5, t1=(j+1)/5, r0=L*t0, r1=L*t1, h0=0.34*Math.sin(t0*2.4), h1=0.34*Math.sin(t1*2.4), w0=W*Math.sin(t0*3.0+0.15), w1=W*Math.sin(t1*3.0+0.15);
+            const P0=[ca*r0-sa*w0,h0,sa*r0+ca*w0], P1=[ca*r0+sa*w0,h0,sa*r0-ca*w0], P2=[ca*r1-sa*w1,h1,sa*r1+ca*w1], P3=[ca*r1+sa*w1,h1,sa*r1-ca*w1];
+            pos.push(...P0,...P1,...P2,...P1,...P3,...P2); const s0=0.5+t0*0.5, s1=0.5+t1*0.5; for(const s2 of [s0,s0,s1,s0,s1,s1]) col.push(0.22*s2,0.42*s2,0.16*s2); } }
+        const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); geo.computeVertexNormals(); return geo; })();
+      const fm=new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}); const fi=inst(ferns,FERN,fm,([x,z,sc],m)=>{ m.makeRotationY(hsh(x,z)*6.28); m.scale(new THREE.Vector3(sc,sc,sc)); m.setPosition(x,0,z); },room,true); fi.castShadow=false;
+      inst(moss,new THREE.SphereGeometry(0.3,7,5),null,([x,z],m,cc)=>{ m.makeScale(1+hsh(x,z)*0.6,0.28,0.8+hsh(z,x)*0.5); m.setPosition(x,-0.02,z); cc.setHex(0x4f7a32).offsetHSL(0,0,(hsh(x*3,z)-0.5)*0.08); },room);
+      inst(flw,new THREE.SphereGeometry(0.045,5,4),new THREE.MeshBasicMaterial({color:0xf6f2e8}),([x,z],m)=>{ m.makeTranslation(x,0.2+hsh(x,z)*0.1,z); },room,true);
+      // shafts of light: a few, where the trail opens
+      const open=[]; for(let y=4;y<Hd-4;y+=3) for(let x=4;x<Wd-4;x+=3){ if(D.forest[y][x]===0&&edge(x,y)===0&&hsh(x*29,y*31)<0.22) open.push([x+0.5,y+0.5]); }
+      const SH=new THREE.MeshBasicMaterial({color:0xfff1c8,transparent:true,opacity:0.06,depthWrite:false,side:THREE.DoubleSide,fog:false,blending:THREE.AdditiveBlending});
+      open.slice(0,40).forEach(([x,z],i)=>{ const c=new THREE.Mesh(new THREE.CylinderGeometry(0.5,1.5,8,8,1,true),SH); c.position.set(x+1.4,3.6,z+0.7); c.rotation.set(0.18,0,-0.2); room.add(c); const k=i*1.7; an.push(t=>{ c.material.opacity; c.scale.x=c.scale.z=1+Math.sin(t*0.4+k)*0.06; }); }); }
     // ── on the way in: put things as they are ──
     const enter1=lv.onEnter; lv.onEnter=sp=>{ enter1(sp); climb=null; swing=null; restY=null; inMouth=true; ENGINE.K.rotation.z=0;
       clusters.forEach(c=>c.models.forEach((g,i)=>g.visible=!smashed(c.cells[i][0]+','+c.cells[i][1]))); axeG.visible=FW().axe<2;
@@ -14979,7 +15001,7 @@ function forestLevels(D,spec){
     return {faces:[['the seven of hearts',mk('7','♥',1)],['the king of diamonds',mk('K','♦',1)],['the three of clubs',mk('3','♣')],['the queen of hearts',mk('Q','♥',1)],['the jack of spades',mk('J','♠')],['the nine of diamonds',mk('9','♦',1)]],back:bk,ace:mk('A','♠')}; })());
   function openRobby(knock){ const P=ENGINE.P; run.robbyFrom={x:P.x,z:P.z,face:P.face};
     UI.toast(knock?'✊ You knock. From inside, a voice: “It’s open. It’s a tree.”':'🕳 The tree is hollow. There is a television on inside.',2400); setTimeout(()=>ENGINE.go('robbycave'),knock?900:350); }
-  ENGINE.add({id:'forest',lazy:()=>{ const F=gridLevel({ id:'forest', name:'The Forest of Disillusionment', grid:D.forest, cam:{dist:6.2,min:3.5,max:10,pitch:0.52,lookH:0.3}, treeH:1.45, open:true, bg:0x1c2620, fog:[13,30], hemi:0.42, lamp:0.8, walls:'trees', fA:0x2f4a2a, fB:0x2a4426, noFloor:new Set([103,119,120,121]), solid:SOLID_F, fight:true, zone:'A cold fog drinks the light', mapCell:4, mapReveal:4, floorCol:D.hand?FLOORCOL:null,
+  ENGINE.add({id:'forest',lazy:()=>{ const F=gridLevel({ id:'forest', name:'The Forest of Disillusionment', grid:D.forest, cam:{dist:6.2,min:3.5,max:10,pitch:0.52,lookH:0.3}, treeH:1.45, open:true, bg:0x1c2620, fog:[13,30], hemi:0.42, lamp:0.8, walls:'trees', fA:0x2f4a2a, fB:0x2a4426, noFloor:new Set([103,119,120,121]), soft:typeof ART!=='undefined'&&ART.on, solid:SOLID_F, fight:true, zone:'A cold fog drinks the light', mapCell:4, mapReveal:4, floorCol:D.hand?FLOORCOL:null,
       onDeath:()=>{ spec.exit(run.mouth,true); },
       onSwing:()=>{ const P=ENGINE.P, x=Math.floor(P.x+Math.sin(P.face)*0.9), y=Math.floor(P.z+Math.cos(P.face)*0.9); if(F.at(x,y)!==78) return; setTimeout(()=>openRobby(false),0); } });
     const {lv,room,an,spot,at,ok}=F;
