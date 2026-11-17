@@ -487,9 +487,14 @@ function buildKnight(){
       AL.sh.rotation.set(-0.3-1.2*st-0.2*f,0,0.25+1.0*fl); AL.el.rotation.x=-0.3-0.4*f; AR.sh.rotation.set(-0.3-1.2*st-0.2*f,0,-0.25-1.0*fl); AR.el.rotation.x=-0.3-0.4*f; capeP.rotation.x=0.4*st+0.05; }
     K._kmode=mode==='knock';
     // V156: climbing a ladder — facing the rungs, hands up over the head reaching rung over rung, knees lifting in turn
-    if(mode==='climb'){ const c=Math.sin(t*7), c2=Math.cos(t*7); hips.position.set(0,K.hipY-0.02,0.02); hips.rotation.set(0,0,0);
-      L.hip.rotation.set(-0.55-0.55*Math.max(0,c),0,0.04); L.knee.rotation.x=0.7+0.8*Math.max(0,c); R.hip.rotation.set(-0.55-0.55*Math.max(0,-c),0,-0.04); R.knee.rotation.x=0.7+0.8*Math.max(0,-c);
-      torso.rotation.set(-0.08,0,0); head.rotation.set(-0.35,0,0); AL.sh.rotation.set(-2.55-0.35*c2,0,0.12); AL.el.rotation.x=-0.55+0.35*c2; AR.sh.rotation.set(-2.55+0.35*c2,0,-0.12); AR.el.rotation.x=-0.55-0.35*c2; capeP.rotation.x=0.12; }
+    if(mode==='climb'){   // V213: hand over hand — one arm reaches high while the other pulls down past the shoulder, the opposite knee drives up, and the body
+      //  rises on each pull and settles between, leaning into the ladder and rocking a little side to side; he looks up to where he's going
+      const ph=t*6.2, c=Math.sin(ph), c2=Math.cos(ph), up=Math.max(0,c), dn=Math.max(0,-c), pull=Math.abs(Math.sin(ph));
+      hips.position.set(c*0.035,K.hipY-0.05+pull*0.06,0.05); hips.rotation.set(0.1,c*0.07,-c*0.06);
+      L.hip.rotation.set(-0.45-0.95*up,0,0.07); L.knee.rotation.x=0.55+1.15*up; R.hip.rotation.set(-0.45-0.95*dn,0,-0.07); R.knee.rotation.x=0.55+1.15*dn;
+      torso.rotation.set(-0.16,-c*0.1,c*0.05); head.rotation.set(-0.5,c*0.08,0);
+      AL.sh.rotation.set(-2.05-0.95*dn,0,0.16); AL.el.rotation.x=-0.25-0.95*up; AR.sh.rotation.set(-2.05-0.95*up,0,-0.16); AR.el.rotation.x=-0.25-0.95*dn;
+      capeP.rotation.x=0.14+pull*0.05; }
     // V129: fishing — sat on the bank, knees drawn up, the rod held out in both hands over the water; slow breaths, the head
     //  following the float; when a fish takes, the rod bows and he leans back to it
     pole.visible=mode==='fish';

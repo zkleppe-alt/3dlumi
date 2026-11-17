@@ -375,3 +375,9 @@ After Oceanside harbour, as a beachfront town:
 
 ## V212 — gentler weather
 - engine/weather.js: fog from every weather starts much further out (e.g. sand near 3→14, far 32→70; snow 8/52→22/95) and tints the world and sky less (0.75→0.5, 0.6→0.35); the sun dims about 40% less; about half as many snowflakes, sand grains and ash flakes, smaller and fainter; rain thinner and lighter; lightning half as bright.
+
+## V213 — movement pass 1: bow and climbing
+- combat.js: with a bow he no longer lunges like a swordsman — he turns to the nearest mark within 9 and stands; the shot is a real arrow (arrowMesh: shaft, head, three feathers, pale streak) flying a shallow arc, nose rising then dropping, spinning.
+- knight.js climb pose: hand over hand, opposite knee driving, body rising on each pull, looking up.
+- Not verified in motion: the headless harness could not be slowed (a virtual clock via performance.now/rAF did not slow the engine) — stills only. Mount/dismount (riding.js transit, V184) unchanged so far.
+- Lyre design agreed (not built): four-note chords on buttons, played in any order; bumpers/keys shift the key up or down; free play; songs learned through challenges or composed; no powers; Sir Josh gives it in Ironhold — it was your father’s.

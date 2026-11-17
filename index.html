@@ -2467,9 +2467,14 @@ function buildKnight(){
       AL.sh.rotation.set(-0.3-1.2*st-0.2*f,0,0.25+1.0*fl); AL.el.rotation.x=-0.3-0.4*f; AR.sh.rotation.set(-0.3-1.2*st-0.2*f,0,-0.25-1.0*fl); AR.el.rotation.x=-0.3-0.4*f; capeP.rotation.x=0.4*st+0.05; }
     K._kmode=mode==='knock';
     // V156: climbing a ladder — facing the rungs, hands up over the head reaching rung over rung, knees lifting in turn
-    if(mode==='climb'){ const c=Math.sin(t*7), c2=Math.cos(t*7); hips.position.set(0,K.hipY-0.02,0.02); hips.rotation.set(0,0,0);
-      L.hip.rotation.set(-0.55-0.55*Math.max(0,c),0,0.04); L.knee.rotation.x=0.7+0.8*Math.max(0,c); R.hip.rotation.set(-0.55-0.55*Math.max(0,-c),0,-0.04); R.knee.rotation.x=0.7+0.8*Math.max(0,-c);
-      torso.rotation.set(-0.08,0,0); head.rotation.set(-0.35,0,0); AL.sh.rotation.set(-2.55-0.35*c2,0,0.12); AL.el.rotation.x=-0.55+0.35*c2; AR.sh.rotation.set(-2.55+0.35*c2,0,-0.12); AR.el.rotation.x=-0.55-0.35*c2; capeP.rotation.x=0.12; }
+    if(mode==='climb'){   // V213: hand over hand — one arm reaches high while the other pulls down past the shoulder, the opposite knee drives up, and the body
+      //  rises on each pull and settles between, leaning into the ladder and rocking a little side to side; he looks up to where he's going
+      const ph=t*6.2, c=Math.sin(ph), c2=Math.cos(ph), up=Math.max(0,c), dn=Math.max(0,-c), pull=Math.abs(Math.sin(ph));
+      hips.position.set(c*0.035,K.hipY-0.05+pull*0.06,0.05); hips.rotation.set(0.1,c*0.07,-c*0.06);
+      L.hip.rotation.set(-0.45-0.95*up,0,0.07); L.knee.rotation.x=0.55+1.15*up; R.hip.rotation.set(-0.45-0.95*dn,0,-0.07); R.knee.rotation.x=0.55+1.15*dn;
+      torso.rotation.set(-0.16,-c*0.1,c*0.05); head.rotation.set(-0.5,c*0.08,0);
+      AL.sh.rotation.set(-2.05-0.95*dn,0,0.16); AL.el.rotation.x=-0.25-0.95*up; AR.sh.rotation.set(-2.05-0.95*up,0,-0.16); AR.el.rotation.x=-0.25-0.95*dn;
+      capeP.rotation.x=0.14+pull*0.05; }
     // V129: fishing — sat on the bank, knees drawn up, the rod held out in both hands over the water; slow breaths, the head
     //  following the float; when a fish takes, the rod bows and he leans back to it
     pole.visible=mode==='fish';
@@ -9053,6 +9058,13 @@ const COMBAT=(function(){
   function deathBurst(d){ const c=A(); if(!c) return; spark(d,true); spark(d,false); dust(d.x,d.z); const gy=ENGINE.level.ground(d.x,d.z), ps=Math.max(0.5,VIEWMODE.ps(ENGINE.level));
     for(let i=0;i<(d.boss?16:7);i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.07+Math.random()*0.06,6,4),glow(i%3?0xe8d8ff:0xffffff)); m.position.set(d.x+(Math.random()-0.5)*0.4,gy+0.6*ps,d.z+(Math.random()-0.5)*0.4); c.fx.add(m);
       c.rings.push({m,t:0,max:0,bit:{vx:(Math.random()-0.5)*0.8,vy:2.2+Math.random()*1.8,vz:(Math.random()-0.5)*0.8}}); } }
+  // V213: an arrow you can see — ash shaft, iron head, three goose feathers, and a pale streak of its flight (all along +z)
+  let ARROW=null; function arrowMesh(){ if(!ARROW){ const L=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{}));
+      const g=new THREE.Group(), sh=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,0.72,5),L(0xc9a26b)); sh.rotation.x=Math.PI/2; g.add(sh);
+      const hd=new THREE.Mesh(new THREE.ConeGeometry(0.034,0.11,4),L(0x8a9099)); hd.rotation.x=Math.PI/2; hd.position.z=0.41; g.add(hd);
+      for(let i=0;i<3;i++){ const fl=new THREE.Mesh(new THREE.PlaneGeometry(0.07,0.16),L(0xf2efe6,{side:THREE.DoubleSide})); fl.position.z=-0.28; fl.rotation.set(0,Math.PI/2,0); const h=new THREE.Group(); h.rotation.z=i*Math.PI*2/3; fl.position.y=0.04; h.add(fl); g.add(h); }
+      const tr=new THREE.Mesh(new THREE.PlaneGeometry(0.035,1.5),new THREE.MeshBasicMaterial({color:0xfff6d8,transparent:true,opacity:0.32,depthWrite:false,side:THREE.DoubleSide,fog:false})); tr.rotation.x=Math.PI/2; tr.position.z=-1.1; g.add(tr);
+      ARROW=g; } return ARROW.clone(); }
   function weaponType(){ const e=SYS.EQUIP[S().equip.weapon]; return e&&e.type==='heavy'?'heavy':'light'; }
   const bowOn=()=>{ const a=SYS.WEAPON_ART&&SYS.WEAPON_ART[S().equip.weapon]; return !!a&&a.fam==='bow'; };
   // V90: a press in the last part of a swing (or a dodge) is kept and thrown the moment you're free — so combos flow
@@ -9062,10 +9074,10 @@ const COMBAT=(function(){
     // V92: the blow lands when the blade actually arrives (the arm's strike, ~30-36% through the cut), and the next swing
     //  waits for this one to all but finish, so a combo flows from one cut into the next instead of snapping back
     const type=weaponType(), w=SWING[type], anim=(w.windup+w.dur)/60*1.8, hitAt=Math.max(w.windup,Math.round(anim*60*(type==='heavy'?0.43:0.4)));
-    pl.swing=Math.round(anim*60*0.9); pl.swingDur=pl.swing; ENGINE.K.swing(type==='heavy'?0:pl.combo===2?2:1,anim); lunge(aim(w.reach+1.6),w,type,hitAt);
+    pl.swing=Math.round(anim*60*0.9); pl.swingDur=pl.swing; ENGINE.K.swing(type==='heavy'?0:pl.combo===2?2:1,anim); if(bowOn()){ const b=aim(9); if(b){ const p=P(); p.face=Math.atan2(b.x-p.x,b.z-p.z); } }   /* V213: an archer turns to his mark and stands his ground */ else lunge(aim(w.reach+1.6),w,type,hitAt);
     if(airH()>0.3&&!pl.plunge){ pl.airSwingH=airH(); pl.airSwingT=hitAt+6; pl.plunge=true; later.push([hitAt+3,()=>{ if(ENGINE.plunge) ENGINE.plunge(); }]); }   // V113: struck in the air — the blade reaches higher, then down you come in a plunge
-    if(bowOn()) later.push([hitAt,()=>{ const f=fv(), p=P(); const m=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,0.5),glow(0xfff0b0)); c.fx.add(m);
-      c.arrows.push({x:p.x,z:p.z,vx:f.x*3.2*PX,vz:f.z*3.2*PX,t:26,m}); SFX.play('swing','light'); }]);
+    if(bowOn()) later.push([hitAt,()=>{ const f=fv(), p=P(); const m=arrowMesh(); c.fx.add(m);
+      c.arrows.push({x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*3.2*PX,vz:f.z*3.2*PX,t:26,t0:26,m}); SFX.play('swing','light'); }]);
     else later.push([Math.max(1,hitAt-2),()=>SFX.play('swing',type)],[hitAt,()=>{ slash(type); resolve(type); }]); }
   // ── the Spin Attack (Ocarina's): hold the swing — the blade gathers light at your feet — and let go to cut all the way round ──
   const SPIN={reach:2.25,mult:2.0,knock:10,hold:0.42,full:1.0}; const charge={on:false,t0:0,k:0,ready:false,ring:null};
@@ -9400,7 +9412,7 @@ const COMBAT=(function(){
       else if(d.boss){ d.tel.visible=false; d.slamM.visible=false; if(d.bandM) d.bandM.visible=false; if(d.markM) d.markM.visible=false; if(d.shadowM) d.shadowM.visible=false; } });
     c.adds.forEach(a=>{ a.g.position.set(a.x,lv.ground(a.x,a.z),a.z); if(a.g.animate){ a.g.animate(dt,a.moving||a.walking?'walk':'idle',1); a.g.rotation.y=a.walking?Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z):ENGINE.P.face; } else a.g.rotation.y=Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z); });
     c.shots.forEach(s=>s.m.position.set(s.x,lv.ground(s.x,s.z)+0.9,s.z));
-    c.arrows.forEach(s=>{ s.m.position.set(s.x,lv.ground(s.x,s.z)+1.0,s.z); s.m.rotation.y=Math.atan2(s.vx,s.vz); });
+    c.arrows.forEach(s=>{ const u=s.t0?1-s.t/s.t0:0.5, ps=Math.max(0.5,VIEWMODE.ps(lv)); s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz); s.m.rotation.x=-0.12+0.42*u; s.m.rotation.z+=0.5; });   /* V213: a shallow arc, nose rising then dropping, the shaft spinning */
     c.rings=c.rings.filter(r=>{ r.t+=dt;
       if(r.bit){ const b=r.bit; r.m.position.x+=b.vx*dt; r.m.position.z+=b.vz*dt; r.m.position.y+=b.vy*dt; b.vy-=9*dt; r.m.rotation.x+=dt*8; const life=b.dust?0.55:0.35; r.m.scale.setScalar(Math.max(0.05,1-r.t/life)); if(r.t>=life){ c.fx.remove(r.m); return false; } return true; }
       if(r.slash){ const k=r.t/0.16; r.m.material.opacity=(r.m.userData.op||0.75)*(1-k); if(k>=1){ c.fx.remove(r.m); return false; } return true; }
