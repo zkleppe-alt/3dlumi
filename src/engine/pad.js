@@ -29,7 +29,7 @@ const PAD=(function(){
   const dz=(v,d)=>Math.abs(v)<d?0:(v-Math.sign(v)*d)/(1-d);
   const vis=el=>{ if(!el||el.hidden||!el.getClientRects().length) return false; const cs=getComputedStyle(el); return cs.visibility!=='hidden'&&cs.display!=='none'; };   // (fixed panels have no offsetParent)
   // ── a menu or a panel open: move a highlight between its buttons ──
-  function panel(){ const sh=document.getElementById('sheet'), gm=document.getElementById('gm'); if(vis(sh)) return sh; if(vis(gm)) return gm; return null; }
+  function panel(){ const sh=document.getElementById('sheet'), gm=document.getElementById('gm'), lb=document.getElementById('lyreBook'); if(vis(lb)) return lb;   /* V216: the songbook is a panel like any other — the stick moves, Ⓐ presses, Ⓑ closes */ if(vis(sh)) return sh; if(vis(gm)) return gm; return null; }
   function buttons(root){ return [...root.querySelectorAll('button,[data-act],a[href]')].filter(b=>vis(b)&&!b.disabled); }
   function setFocus(b){ if(focusEl) focusEl.classList.remove('padfocus'); focusEl=b; if(b){ b.classList.add('padfocus'); try{ b.scrollIntoView({block:'nearest'}); }catch(e){} } }
   function nav(root,dx,dy){ const list=buttons(root); if(!list.length) return; if(!focusEl||!list.includes(focusEl)){ setFocus(list.find(b=>!b.classList.contains('x'))||list[0]); return; }

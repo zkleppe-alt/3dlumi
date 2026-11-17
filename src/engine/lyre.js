@@ -52,7 +52,7 @@ const LYRE=(function(){
   function hush(){ const c=ctxOf(); live.forEach(v=>{ try{ if(c){ v.g.gain.cancelScheduledValues(c.currentTime); v.g.gain.setTargetAtTime(0.0001,c.currentTime,0.03); } v.parts.forEach(o=>o.stop((c?c.currentTime:0)+0.15)); }catch(e){} }); live.clear(); }
 
   // ── harmony ──
-  const tones=s=>{ let r=48+key+s.deg; while(r>58) r-=12; while(r<50) r+=12; return [r,r+7,r+12,r+12+(s.min?3:4)]; };   // four notes, laid open as a lyre's are: root, fifth, octave, and the third above it — kept in the instrument's own range
+  const tones=(s,k)=>{ let r=48+(k==null?key:k)+s.deg; while(r>58) r-=12; while(r<50) r+=12; return [r,r+7,r+12,r+12+(s.min?3:4)]; };   // four notes, laid open as a lyre's are: root, fifth, octave, and the third above it — kept in the instrument's own range
   const chordName=s=>NAMES[((key+s.deg)%12+12)%12]+(s.min?'m':'');
   function strum(i,vel){ const c=ctxOf(), s=SLOTS[i]; if(!s) return; last=i; const t=c?c.currentTime:0; const up=vel&&vel<1&&(upNext=!upNext), ns=tones(s); (up?ns.slice().reverse():ns).forEach((m,k)=>pluck(m,t+k*0.045+Math.random()*0.006,(vel||1)*(up?0.8:1)*(1-k*0.05))); strumAt=performance.now(); paint(i); }   // rolled like a harp; a repeat strum (RT / Space) goes back up the strings, then down again
   function string(n){ const c=ctxOf(); pluck(62+key+SCALE[n],c?c.currentTime:0,0.9); strumAt=performance.now(); paint(-1,n); }
@@ -70,7 +70,7 @@ const LYRE=(function(){
 
   // ── the prompt ──
   function paint(hit,strN){ if(!ui) return; const kn=NAMES[((key%12)+12)%12];
-    ui.innerHTML=`<div class="ly-top"><span>🎵 <b>Key of ${kn}</b></span><span class="ly-dim">LB / Q ◂ key ▸ RB / E</span><button data-ly="away" aria-label="Put the lyre away">✕</button></div>`
+    ui.innerHTML=`<div class="ly-top"><span>🎵 <b>Key of ${kn}</b></span><span class="ly-dim">LB/Q ◂ key ▸ RB/E</span><button data-ly="book" aria-label="Songbook" style="width:auto;padding:0 8px">📖 Songs</button><button data-ly="away" aria-label="Put the lyre away">✕</button></div>`
       +`<div class="ly-ch">`+SLOTS.map((s,i)=>`<button data-ly="c${i}" class="${hit===i?'hit':i===last?'cur':''}"><i>${GLYPH[s.id]} ${s.key}</i><b>${chordName(s)}</b></button>`).join('')+`</div>`
       +`<div class="ly-st">`+SCALE.map((_,n)=>`<button data-ly="s${n}" class="${strN===n?'hit':''}" aria-label="String ${n+1}"></button>`).join('')+`</div>`
       +`<div class="ly-dim">RT / Space strums again · Start / L puts it away</div>`; }
@@ -85,7 +85,7 @@ const LYRE=(function(){
 #lyreBtn{position:fixed;left:calc(26px + env(safe-area-inset-left,0px));bottom:calc(264px + env(safe-area-inset-bottom,0px));width:56px;height:56px;border-radius:50%;border:1px solid rgba(242,193,78,.8);background:rgba(22,32,46,.6);color:#f2e2b0;font:700 24px var(--f-body,system-ui);cursor:pointer;z-index:30}`;
     document.head.appendChild(st);
     ui=document.createElement('div'); ui.id='lyre'; ui.hidden=true; document.body.appendChild(ui);
-    ui.addEventListener('pointerdown',e=>{ const b=e.target.closest('[data-ly]'); if(!b) return; e.preventDefault(); e.stopPropagation(); const a=b.dataset.ly; if(a==='away') set(false); else if(a[0]==='c') strum(+a.slice(1)); else if(a[0]==='s') string(+a.slice(1)); });
+    ui.addEventListener('pointerdown',e=>{ const b=e.target.closest('[data-ly]'); if(!b) return; e.preventDefault(); e.stopPropagation(); const a=b.dataset.ly; if(a==='book'){ if(typeof LYREBOOK!=='undefined') LYREBOOK.open(); } else if(a==='away') set(false); else if(a[0]==='c') strum(+a.slice(1)); else if(a[0]==='s') string(+a.slice(1)); });
     btn=document.createElement('button'); btn.id='lyreBtn'; btn.className='act'; btn.textContent='🎵'; btn.setAttribute('aria-label','Take out or put away the lyre'); document.body.appendChild(btn);
     btn.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); set(!on); }); }
 
@@ -97,11 +97,11 @@ const LYRE=(function(){
     if(v){ const why=canPlay(); if(why){ if(typeof UI!=='undefined') UI.toast('🎵 '+why,1400); return; } if(ENGINE.K&&ENGINE.K.sheathe) try{ ENGINE.K.sheathe(); }catch(e){}
       if(typeof AUDIO2D!=='undefined') try{ AUDIO2D.audioUnlock(); }catch(e){}
       on=true; show(true); ui.hidden=false; paint(); tick(); }
-    else { on=false; cancelAnimationFrame(raf); hush(); show(false); ui.hidden=true; if(ENGINE.K) ENGINE.K._lyreOn=false; ENGINE.hold(0.05,null); } }
+    else { on=false; cancelAnimationFrame(raf); try{ LYREBOOK.close(); }catch(e){} hush(); show(false); ui.hidden=true; if(ENGINE.K) ENGINE.K._lyreOn=false; ENGINE.hold(0.05,null); } }
 
   // ── keys (stopped before the game sees them, only while the lyre is out) ──
   const STR='zxcvbnm,';
-  addEventListener('keydown',e=>{ if(e._pad) return; const t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA') return; const k=(e.key||'').toLowerCase();
+  addEventListener('keydown',e=>{ if(e._pad) return; if(LYREBOOK.isOpen) return;   /* the book has the keys while it is open */ const t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA') return; const k=(e.key||'').toLowerCase();
     if(!on){ if(k==='l'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&typeof ENGINE!=='undefined'&&ENGINE.level&&typeof GAME!=='undefined'&&GAME.S){ const p=document.getElementById('sheet'), g=document.getElementById('gm'); if((p&&!p.hidden&&p.getClientRects().length)||(g&&!g.hidden&&g.getClientRects().length)) return; e.stopImmediatePropagation(); set(true); } return; }
     let used=true; if(e.repeat){ e.stopImmediatePropagation(); e.preventDefault(); return; }
     const ci=SLOTS.findIndex(s=>s.key===k), si=STR.indexOf(k);
@@ -109,10 +109,14 @@ const LYRE=(function(){
     if(used){ e.stopImmediatePropagation(); e.preventDefault(); } },true);
   // ── the controller: pad.js hands every button here while the lyre is out ──
   function pad(now,was){ const down=i=>now[i]&&!was[i]; SLOTS.forEach((s,i)=>{ if(down(s.pad)) strum(i); }); if(down(7)) strum(last,0.9); if(down(4)) shift(-1); if(down(5)) shift(1);
-    [[12,0],[14,2],[15,4],[13,7]].forEach(([b,n])=>{ if(down(b)) string(n); }); if(down(9)||down(8)) set(false); }
+    [[12,0],[14,2],[15,4],[13,7]].forEach(([b,n])=>{ if(down(b)) string(n); }); if(down(8)&&typeof LYREBOOK!=='undefined') LYREBOOK.open(); else if(down(9)) set(false); }
   // put away on leaving a place; show the button once the game is running
   function attachUI(){ mount(); btn.hidden=!(typeof GAME!=='undefined'&&GAME.S); }
   setInterval(()=>{ try{ if(typeof ENGINE==='undefined') return; if(!btn) { if(ENGINE.level&&typeof GAME!=='undefined'&&GAME.S) attachUI(); return; } const vis=id=>{ const e=document.getElementById(id); return !!e&&!e.hidden&&e.getClientRects().length>0; }, menu=vis('gm')||vis('sheet'); btn.hidden=!ENGINE.level||menu||on||!!ENGINE.busy; if(ui) ui.hidden=!on||menu; if(on&&LYRE._lv&&LYRE._lv!==ENGINE.level) set(false); LYRE._lv=ENGINE.level; }catch(e){} },500);
-  return { get on(){ return on; }, set, pad, strum, string, shift, pluck, hush, get key(){ return key; }, chordName:i=>chordName(SLOTS[i]), _lv:null };
+  // for the songwriter and the bards: the same strings and the same chords, at a time on the audio clock, in any key
+  const chordAt=(i,k,when,vel)=>{ const s=SLOTS[i]; if(!s) return; tones(s,k).forEach((m,j)=>pluck(m,when+j*0.04,(vel||0.9)*(1-j*0.05))); };
+  const noteAt=(n,k,when,vel)=>pluck(62+k+SCALE[n],when,vel||0.85);
+  const slotName=(i,k)=>NAMES[(((k+SLOTS[i].deg)%12)+12)%12]+(SLOTS[i].min?'m':'');
+  return { chordAt, noteAt, slotName, keyName:k=>NAMES[((k%12)+12)%12], ctx:ctxOf, roles:SLOTS.map(s=>s.role), get on(){ return on; }, set, pad, strum, string, shift, pluck, hush, get key(){ return key; }, chordName:i=>chordName(SLOTS[i]), _lv:null };
 })();
 try{ window.LYRE=LYRE; }catch(e){}

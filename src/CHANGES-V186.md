@@ -394,3 +394,11 @@ After Oceanside harbour, as a beachfront town:
 - combat.js: a bow shot lasts 0.95 s and the arrow leaves at 0.78 of it, with the clip’s loose. knight.js: lyre overlay; shoot overlay weight 0.95.
 - engine/arms.js (new): the flag of Luminar after Zak’s shield patch — crown and cross, wheel, thorns, three drops, ΧΡΙCΤΟC ΒΑCΙΛΕΥC on an arc (first-century hand: capitals, lunate sigma) — one canvas per town in its colours; on banner2/sf_banner, ty_flag/regatta, the Stormgate keep banners and each town’s donjon flag (TWALL[k].key). The King named is Christ.
 - Seen: flag sheet for all towns; a Shadowmere banner in the world; bow pose; lyre clip plays. Not heard: the new voice (no audio in the test browser).
+
+## V216 — the songwriter and the songbook (lyre brief stage 3)
+- New engine/lyrebook.js (second in the build, after lyre.js): 16-step grid — four chord rows (one chord a step) and eight string rows; title, key, tempo 60–160, four moods (cozy folk 84, adventure 112, sacred 66, playful folk 126 with swing), play/stop, loop, save, clear (confirm). Songbook: play, edit, favourite, copy, export to a .lyre.json file (and the clipboard), import (file ≤200 KB, every field checked and clamped, markup stripped, never executed), delete (confirm).
+- Playback queues steps 0.25 s ahead on AudioContext.currentTime through LYRE.chordAt/noteAt; stop() hushes at once; a stalled page resumes from now.
+- Storage: localStorage restfulKnight.lyre.v1 = {v:1, songs, bards} — the game’s save is not touched. LYREBOOK.teach/bard/forget are ready for the bards.
+- lyre.js: 📖 Songs on the prompt, View on the pad; API chordAt/noteAt/slotName/keyName/ctx. pad.js: #lyreBook counts as a panel (stick moves, Ⓐ presses, Ⓑ → Esc → back).
+- Tested headless: compose, title cleaned, save, copy, favourite, Esc closes the book and leaves the lyre out, game keys do not leak, hostile stored data is cleaned or dropped after reload. The headless audio clock runs ~16× real time, so playback timing and the moving playhead were NOT observed — check by ear.
+- Next: an inn bard (teach a song / ask to hear one, remembers it), then Sir Joshua’s gift scene in Ironhold; lyre looks; melody polish.
