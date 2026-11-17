@@ -18,6 +18,7 @@ const TWALL={ stormgate:{h:4.4,tower:1,stone:0xb3b4b8,dark:0x8a8c94,roof:0x2c4c9
   shadowmere:{h:3.1,tower:0.9,stone:0x6e6a80,dark:0x524e62,roof:0x3a2e5a,flag:0xb89ae0},
   hellgate:{h:3.5,tower:1,stone:0x3e3844,dark:0x2a2630,roof:0x2a1a22,flag:0x8a1a1a,slit:0x6a1a10},
   homestead:{h:2.4,tower:0.7,stone:0xa89c84,dark:0x857a66,roof:0x8e4a36,flag:0xf4eede,every:10} };
+Object.keys(TWALL).forEach(k=>{ TWALL[k].key=k; });
 const PALISADE=new Set(['hearthvale','thornwood','saltmere']);   // the walled-by-a-fence villages, whose ring fences rise to palisades
 const TOWN_KEYS=['hearthvale','ironhold','saltmere','thornwood','dusthaven','crystalpeak','ashfield','stormgate','shadowmere','hellgate'];
 const TOWN_PREFIX=[['home_','homestead'],['ih_','ironhold'],['sm_','saltmere'],['tw_','thornwood'],['dh_','dusthaven'],['cp_','crystalpeak'],['af_','ashfield'],['sg_','stormgate'],['sh_','shadowmere'],['hg_','hellgate']];
@@ -317,7 +318,7 @@ function _keep2(b,g,c){ const w=b.w-0.2, d=b.h-0.2, H=3.2, stone=c.stone||0xa8a4
     [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz])=>{ for(let y=H,i=0;y<H+DH-0.1;y+=0.32,i++){ const big=i%2===0; ST(big?0.36:0.22,0.3,big?0.22:0.36,sL,sx*(dw/2-(big?0.14:0.07)+0.03),y,dz+sz*(dd/2-(big?0.07:0.14)+0.03)); } });
     ST(dw+0.2,0.12,dd+0.2,sL,0,H+DH,dz); const r=prism(dw+0.5,1.25,dd+0.2,softMat(roof)); r.position.set(0,H+DH+0.12,dz); r.rotation.y=Math.PI/2*(dw<dd?1:0); g.add(r);
     [-1,1].forEach(sz=>{ const gb=prism(dw+0.1,1.2,0.1,softMat(stone)); gb.position.set(0,H+DH+0.12,dz+sz*(dd/2+0.06)); g.add(gb); });
-    ST(0.06,1.5,0.06,0x3a2a1a,0,H+DH+1.2,dz); const fl=ST(0.62,0.4,0.03,c.flag||roof,0.33,H+DH+2.2,dz); fl.rotation.y=-0.25;
+    ST(0.06,1.5,0.06,0x3a2a1a,0,H+DH+1.2,dz); const fl=ST(0.62,0.4,0.03,c.flag||roof,0.33,H+DH+2.2,dz); fl.rotation.y=-0.25; if(typeof ARMS!=='undefined'&&c.key) ARMS.on(fl,c.key,0.3,0.375,'z',0.018);   /* V215 */
     for(const x of [-dw/4,dw/4]){ ST(0.3,0.46,0.06,0x2a2a30,x,H+0.8,dz+dd/2+0.02); ST(0.22,0.36,0.02,glow(0xf2d27a),x,H+0.85,dz+dd/2+0.05); ST(0.36,0.06,0.12,sL,x,H+0.76,dz+dd/2+0.05); } }
   // the round towers
   [[-1,-1],[1,-1],[-1,1],[1,1]].forEach(([sx,sz],ti)=>{ const tx=sx*(w/2-0.3), tz=sz*(d/2-0.3), R=0.7, TH=4.5, sm=v=>softMat(v);

@@ -198,9 +198,10 @@ const COMBAT=(function(){
     // V92: the blow lands when the blade actually arrives (the arm's strike, ~30-36% through the cut), and the next swing
     //  waits for this one to all but finish, so a combo flows from one cut into the next instead of snapping back
     const type=weaponType(), w=SWING[type], anim=(w.windup+w.dur)/60*1.8, hitAt=Math.max(w.windup,Math.round(anim*60*(type==='heavy'?0.43:0.4)));
-    pl.swing=Math.round(anim*60*0.9); pl.swingDur=pl.swing; ENGINE.K.swing(type==='heavy'?0:pl.combo===2?2:1,anim); if(bowOn()){ const b=aim(9); if(b){ const p=P(); p.face=Math.atan2(b.x-p.x,b.z-p.z); } }   /* V213: an archer turns to his mark and stands his ground */ else lunge(aim(w.reach+1.6),w,type,hitAt);
+    const bowA=bowOn()?0.95:0;   /* V215: a bow shot takes its time — raise, draw, loose (the clip's loose is at 0.78) */
+    pl.swing=Math.round((bowA||anim)*60*0.9); pl.swingDur=pl.swing; ENGINE.K.swing(type==='heavy'?0:pl.combo===2?2:1,bowA||anim); if(bowOn()){ const b=aim(9); if(b){ const p=P(); p.face=Math.atan2(b.x-p.x,b.z-p.z); } }   /* V213: an archer turns to his mark and stands his ground */ else lunge(aim(w.reach+1.6),w,type,hitAt);
     if(airH()>0.3&&!pl.plunge){ pl.airSwingH=airH(); pl.airSwingT=hitAt+6; pl.plunge=true; later.push([hitAt+3,()=>{ if(ENGINE.plunge) ENGINE.plunge(); }]); }   // V113: struck in the air — the blade reaches higher, then down you come in a plunge
-    if(bowOn()) later.push([hitAt,()=>{ const f=fv(), p=P(); const m=arrowMesh(); c.fx.add(m);
+    if(bowOn()) later.push([Math.round(bowA*60*0.78),()=>{ const f=fv(), p=P(); const m=arrowMesh(); c.fx.add(m);
       c.arrows.push({x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*3.2*PX,vz:f.z*3.2*PX,t:26,t0:26,m}); SFX.play('swing','light'); }]);
     else later.push([Math.max(1,hitAt-2),()=>SFX.play('swing',type)],[hitAt,()=>{ slash(type); resolve(type); }]); }
   // ── the Spin Attack (Ocarina's): hold the swing — the blade gathers light at your feet — and let go to cut all the way round ──

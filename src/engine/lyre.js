@@ -22,25 +22,40 @@ const LYRE=(function(){
   // the four slots: scale-degree role and quality (I, IV, V, vi) — the player can re-assign them later
   const SLOTS=[{id:'Y',pad:3,key:'1',deg:0,min:false,role:'I'},{id:'X',pad:2,key:'2',deg:5,min:false,role:'IV'},{id:'B',pad:1,key:'3',deg:7,min:false,role:'V'},{id:'A',pad:0,key:'4',deg:9,min:true,role:'vi'}];
   const GLYPH={Y:'Ⓨ',X:'Ⓧ',B:'Ⓑ',A:'Ⓐ'};
-  let on=false, key=0, last=0, vol=0.8, ui=null, btn=null, mesh=null, raf=0, strumAt=-9;
+  let on=false, key=0, last=0, vol=0.8, upNext=false, ui=null, btn=null, mesh=null, raf=0, strumAt=-9;
   const live=new Set();                                              // sounding voices, so they can all be stopped at once
 
   // ── the voice: a plucked string — a bright attack that mellows as it rings ──
   const ctxOf=()=>{ try{ return typeof AUDIO2D!=='undefined'?AUDIO2D.A():null; }catch(e){ return null; } };
   const outOf=c=>(typeof AUDIO2D!=='undefined'&&AUDIO2D.audio&&AUDIO2D.audio.sfxBus)||c.destination;
   const hz=m=>440*Math.pow(2,(m-69)/12);
-  function pluck(midi,when,vel){ const c=ctxOf(); if(!c) return; const t=Math.max(c.currentTime,when||0), f=hz(midi), v=(vel==null?1:vel)*vol*0.34, dur=2.6;
-    const g=c.createGain(), lp=c.createBiquadFilter(); lp.type='lowpass'; lp.Q.value=0.6; lp.frequency.setValueAtTime(Math.min(9000,f*9),t); lp.frequency.exponentialRampToValueAtTime(Math.max(500,f*2.2),t+0.9);
-    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v,t+0.006); g.gain.exponentialRampToValueAtTime(v*0.42,t+0.22); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-    const parts=[['triangle',1,1],['sine',2,0.32],['sine',3,0.12],['sine',4.01,0.05]].map(([type,mul,amp])=>{ const o=c.createOscillator(), a=c.createGain(); o.type=type; o.frequency.value=f*mul; o.detune.value=(Math.random()-0.5)*6; a.gain.value=amp; o.connect(a); a.connect(lp); o.start(t); o.stop(t+dur+0.05); return o; });
-    lp.connect(g); g.connect(outOf(c)); const voice={g,parts}; live.add(voice); parts[0].onended=()=>{ live.delete(voice); try{ g.disconnect(); }catch(e){} }; }
+  // V215: a medieval lyre, not a keyboard — each note is a real plucked string (Karplus–Strong: a burst of noise going round
+  //  a delay the length of the string, losing its brightness each lap, as a gut string does), plucked a fifth of the way
+  //  along, and heard through a small wooden box (two body resonances, the top rolled off). Built once per pitch and kept.
+  const KS={}; function stringBuf(c,midi){ const k=midi+'@'+c.sampleRate; if(KS[k]) return KS[k]; const sr=c.sampleRate, f=hz(midi), N=Math.max(8,Math.round(sr/f)), len=Math.floor(sr*2.4), buf=c.createBuffer(1,len,sr), out=buf.getChannelData(0), line=new Float32Array(N);
+    let lp=0, seed=midi*7919+17; const rnd=()=>{ seed=(seed*1664525+1013904223)>>>0; return seed/4294967296*2-1; };
+    for(let i=0;i<N;i++){ lp+=(rnd()-lp)*0.55; line[i]=lp; } const pk=Math.max(1,Math.round(N*0.2)), tmp=line.slice(); for(let i=0;i<N;i++) line[i]=tmp[i]-0.7*tmp[(i+N-pk)%N];   // the finger a fifth of the way along the string
+    let mx=0; for(let i=0;i<N;i++) mx=Math.max(mx,Math.abs(line[i])); for(let i=0;i<N;i++) line[i]/=mx||1;
+    const T60=Math.max(1.1,2.3-(midi-48)*0.03), d=Math.pow(10,-3/(f*T60)); let idx=0;
+    for(let i=0;i<len;i++){ const cur=line[idx], nx=line[(idx+1)%N]; out[i]=cur; line[idx]=d*(0.56*cur+0.44*nx); idx=(idx+1)%N; }
+    return KS[k]={buf,rate:f/(sr/N)}; }
+  function pluck(midi,when,vel){ const c=ctxOf(); if(!c) return; const t=Math.max(c.currentTime,when||0), v=(vel==null?1:vel)*vol*0.5, S=stringBuf(c,midi);
+    live.forEach(o=>{ if(o.midi===midi){ try{ o.g.gain.cancelScheduledValues(t); o.g.gain.setTargetAtTime(0.0001,t,0.012); o.parts[0].stop(t+0.1); }catch(e){} live.delete(o); } });   // the same string plucked again: the old ring is stopped by the finger
+    if(live.size>28){ const o=live.values().next().value; try{ o.g.gain.setTargetAtTime(0.0001,t,0.03); o.parts[0].stop(t+0.2); }catch(e){} live.delete(o); }
+    const src=c.createBufferSource(); src.buffer=S.buf; src.playbackRate.value=S.rate*(1+(Math.random()-0.5)*0.0012);
+    const b1=c.createBiquadFilter(); b1.type='peaking'; b1.frequency.value=310; b1.Q.value=1.1; b1.gain.value=5;
+    const b2=c.createBiquadFilter(); b2.type='peaking'; b2.frequency.value=1150; b2.Q.value=1.6; b2.gain.value=3.5;
+    const hs=c.createBiquadFilter(); hs.type='highshelf'; hs.frequency.value=5200; hs.gain.value=-7;
+    const g=c.createGain(); g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(v,t+0.003); g.gain.setTargetAtTime(v*0.85,t+0.02,0.4);
+    src.connect(b1); b1.connect(b2); b2.connect(hs); hs.connect(g); g.connect(outOf(c)); src.start(t);
+    const voice={g,parts:[src],midi}; live.add(voice); src.onended=()=>{ live.delete(voice); try{ g.disconnect(); }catch(e){} }; }
   function hush(){ const c=ctxOf(); live.forEach(v=>{ try{ if(c){ v.g.gain.cancelScheduledValues(c.currentTime); v.g.gain.setTargetAtTime(0.0001,c.currentTime,0.03); } v.parts.forEach(o=>o.stop((c?c.currentTime:0)+0.15)); }catch(e){} }); live.clear(); }
 
   // ── harmony ──
-  const tones=s=>{ const root=48+key+s.deg, r=root>55+key?root-12:root; return [r,r+(s.min?3:4),r+7,r+12]; };   // four notes: root, third, fifth, octave
+  const tones=s=>{ let r=48+key+s.deg; while(r>58) r-=12; while(r<50) r+=12; return [r,r+7,r+12,r+12+(s.min?3:4)]; };   // four notes, laid open as a lyre's are: root, fifth, octave, and the third above it — kept in the instrument's own range
   const chordName=s=>NAMES[((key+s.deg)%12+12)%12]+(s.min?'m':'');
-  function strum(i,vel){ const c=ctxOf(), s=SLOTS[i]; if(!s) return; last=i; const t=c?c.currentTime:0; tones(s).forEach((m,k)=>pluck(m,t+k*0.032,(vel||1)*(1-k*0.06))); strumAt=performance.now(); paint(i); }
-  function string(n){ const c=ctxOf(); pluck(60+key+SCALE[n],c?c.currentTime:0,0.9); strumAt=performance.now(); paint(-1,n); }
+  function strum(i,vel){ const c=ctxOf(), s=SLOTS[i]; if(!s) return; last=i; const t=c?c.currentTime:0; const up=vel&&vel<1&&(upNext=!upNext), ns=tones(s); (up?ns.slice().reverse():ns).forEach((m,k)=>pluck(m,t+k*0.045+Math.random()*0.006,(vel||1)*(up?0.8:1)*(1-k*0.05))); strumAt=performance.now(); paint(i); }   // rolled like a harp; a repeat strum (RT / Space) goes back up the strings, then down again
+  function string(n){ const c=ctxOf(); pluck(62+key+SCALE[n],c?c.currentTime:0,0.9); strumAt=performance.now(); paint(-1,n); }
   function shift(d){ key=Math.max(-6,Math.min(6,key+d)); paint(); }
 
   // ── the instrument: a small curved lyre of warm wood, eight strings ──
@@ -77,12 +92,12 @@ const LYRE=(function(){
   // ── out and away ──
   const canPlay=()=>{ const L=ENGINE.level; if(!L||ENGINE.busy) return 'Not just now.'; if(L.riding&&(L.riding.mounted||L.riding.moving)) return 'Dismount first.'; if(L._sailing&&L._sailing.boating) return 'Not while sailing.';
     if(typeof COMBAT!=='undefined'&&COMBAT.pl&&(COMBAT.pl.swing>0||COMBAT.pl.dashing>0)) return 'Not in the middle of a fight.'; return ''; };
-  function tick(){ if(!on) return; raf=requestAnimationFrame(tick); const K=ENGINE.K; if(K) K._lyreT=(performance.now()-strumAt)/1000; if(ENGINE.busy){ return; } ENGINE.hold(0.25,'lyre'); if(mesh&&!mesh.visible) mesh.visible=true; }
+  function tick(){ if(!on) return; raf=requestAnimationFrame(tick); const K=ENGINE.K; if(K) K._lyreT=(performance.now()-strumAt)/1000; if(ENGINE.busy){ return; } const mc=K&&K.mocap&&!K.mocapOff&&K.mocap.actions&&K.mocap.actions.lyre; if(K) K._lyreOn=!!mc; ENGINE.hold(0.25,mc?null:'lyre');   /* the playing clip where the animation library has loaded; the hand-set pose where it hasn't */ if(mesh&&!mesh.visible) mesh.visible=true; }
   function set(v){ v=!!v; if(v===on) return; mount();
     if(v){ const why=canPlay(); if(why){ if(typeof UI!=='undefined') UI.toast('🎵 '+why,1400); return; } if(ENGINE.K&&ENGINE.K.sheathe) try{ ENGINE.K.sheathe(); }catch(e){}
       if(typeof AUDIO2D!=='undefined') try{ AUDIO2D.audioUnlock(); }catch(e){}
       on=true; show(true); ui.hidden=false; paint(); tick(); }
-    else { on=false; cancelAnimationFrame(raf); hush(); show(false); ui.hidden=true; ENGINE.hold(0.05,null); } }
+    else { on=false; cancelAnimationFrame(raf); hush(); show(false); ui.hidden=true; if(ENGINE.K) ENGINE.K._lyreOn=false; ENGINE.hold(0.05,null); } }
 
   // ── keys (stopped before the game sees them, only while the lyre is out) ──
   const STR='zxcvbnm,';

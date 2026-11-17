@@ -398,7 +398,8 @@ function buildKnight(){
         if(K._st!==K._st0){ if(K._st==='drawn'&&K._st0==='sheathed'&&!K._act) K._act=K._carry==='back'?{n:'drawBack',t:0,dur:0.7,w:0.6,arms:false}:{n:'draw',t:0,dur:0.45,w:0.6,arms:false};   /* V144: from the hip, or over the shoulder for the big ones */ K._st0=K._st; }
         const A0=K._act;
         if(A0) ov={n:A0.n,u:(A0.u0||0)+((A0.u1===undefined?1:A0.u1)-(A0.u0||0))*Math.min(1,A0.t/A0.dur),w:A0.w,fade:A0.fade||10};
-        else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.85}:{n:sk===0?'atk3':sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8,fade:16};   /* a quick cut takes less of the clip's lunge */
+        else if(K._lyreOn&&K.mocap.actions.lyre){ K._lyreClk=(K._lyreClk||0)+dt; const ld=K.mocap.dur.lyre||7.5; ov={n:'lyre',u:(K._lyreClk%ld)/ld,w:0.97,fade:7}; }   /* V215: the lyre in his hands — Zak's playing clip, looping */
+        else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.95,fade:14}:{n:sk===0?'atk3':sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8,fade:16};   /* a quick cut takes less of the clip's lunge */
         else if(K.falling>0&&!(K.raise>0)) ov={n:'fall',t:0.35+K.falling*1.15,w:Math.min(0.92,0.45+K.falling*3),fade:9};   /* V165: off a ledge, the falling clip from the first moment — arms up and out, legs reaching for the ground */
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
         else if(K._st==='sheathing') ov={n:K._carry==='back'?'sheath':'sheathHip',u:Math.min(1,K._shT||0),w:0.7};

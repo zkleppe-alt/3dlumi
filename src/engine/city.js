@@ -88,7 +88,7 @@ const BUILDING_STYLES={
       Co(1.05,2.6,14,rf,x,6.75,z,g); B(0.05,0.8,0.05,0x3a2a1a,x,9.3,z,g); B(0.42,0.26,0.03,GOLD,x+0.22,9.75,z,g);
       for(const y of [2.4,4.4]) B(0.1,0.5,0.1,0x24262c,x,y,z+sz*0.8,g); });
     for(let i=-2;i<=2;i++){ if(i===0) continue; const x=i*(w/5.2); B(0.12,0.9,0.12,0x24262c,x,2.7,d/2+0.01,g); B(0.12,0.9,0.12,0x24262c,x,6.0,dd/2-0.19,g); }   // tall windows, two storeys
-    for(const x of [-1.1,1.1]){ B(0.62,2.4,0.04,R,x,1.6,d/2+0.03,g); B(0.62,0.08,0.05,GOLD,x,4.0,d/2+0.03,g); B(0.18,0.18,0.05,GOLD,x,2.9,d/2+0.05,g); }   // the realm's banners hung either side of the door
+    for(const x of [-1.1,1.1]){ const bn=B(0.62,2.4,0.04,R,x,1.6,d/2+0.03,g); B(0.62,0.08,0.05,GOLD,x,4.0,d/2+0.03,g); if(typeof ARMS!=='undefined') ARMS.on(bn,'stormgate',0.6,0.75,'z',0.025,0.7); else B(0.18,0.18,0.05,GOLD,x,2.9,d/2+0.05,g); }   // the realm's banners hung either side of the door
     B(1.3,0.14,0.5,sd,0,1.62,d/2+0.2,g); },
   chapel(b,g,c){ const w=b.w-0.6,d=b.h-0.3, roof=0x4f5f84, wc=bmat(0xe4ddcc,'brick'), rf=bmat(roof,'roof'), tz=d/2-0.6;
     if(b.id!=='sg_cathedral'){ B(w,2.0,d,wc,0,0,0,g); const r=prism(w+0.4,1.9,d+0.2,rf); r.position.y=2.0; g.add(r);
@@ -126,7 +126,7 @@ const DECOR_KINDS={
     Cy(0.18,0.24,1.1,8,STONE,0,0.4,0,g); Cy(0.6,0.3,0.25,8,STONE,0,1.3,0,g); Cy(0.12,0.16,0.45,8,STONE,0,1.55,0,g);
     const jet=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.6,8),new THREE.MeshPhongMaterial({color:0xbfe6f7,transparent:true,opacity:0.75})); jet.position.y=2.25; g.add(jet); an.push(t=>{ jet.scale.y=1+Math.sin(t*6)*0.12; }); },
   lantern(d,g){ Cy(0.05,0.07,1.5,6,0x2e2a26,0,0,0,g); const L=B(0.24,0.3,0.24,glow(0xffd27a),0,1.5,0,g); B(0.32,0.08,0.32,0x2e2a26,0,1.8,0,g); if(typeof DAYNIGHT!=='undefined'&&L&&L.isObject3D) DAYNIGHT.lamp(L,1.7); },
-  banner2(d,g,an){ Cy(0.05,0.05,2.6,6,0x5a3c20,0,0,0,g); const f=B(0.06,1.2,0.62,ROYAL,0,1.25,0.32,g); B(0.07,0.12,0.62,GOLD,0,1.25,0.32,g); B(0.07,0.6,0.12,GOLD,0,1.55,0.32,g); an.push(t=>{ f.rotation.y=Math.sin(t*1.7+d.x)*0.12; }); },
+  banner2(d,g,an){ Cy(0.05,0.05,2.6,6,0x5a3c20,0,0,0,g); const f=B(0.06,1.2,0.62,ROYAL,0,1.25,0.32,g); if(typeof ARMS!=='undefined') ARMS.on(f,ARMS.keyAt(d.x,d.y),0.62,0.78,'x',0.034,0.16);   /* V215: the flag of Luminar in the town's colours */ else { B(0.07,0.12,0.62,GOLD,0,1.25,0.32,g); B(0.07,0.6,0.12,GOLD,0,1.55,0.32,g); } an.push(t=>{ f.rotation.y=Math.sin(t*1.7+d.x)*0.12; }); },
   sg_cannon(d,g){ const br=Cy(0.13,0.18,1.2,8,0x34383e,0,0,0,g); br.rotation.x=Math.PI/2-0.25; br.position.set(0,0.48,0); B(0.5,0.28,0.7,0x6b4a2e,0,0.08,0,g);
     [-0.3,0.3].forEach(x=>{ const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.22,0.22,0.08,8),flat(0x4a3220)); wh.rotation.z=Math.PI/2; wh.position.set(x,0.22,0.1); g.add(wh); }); },
   sg_light(d,g){ Cy(0.45,0.6,3.2,8,0xece4d2,0,0,0,g); [0.8,1.8,2.7].forEach(y=>Cy(0.5,0.5,0.18,8,0xb8402e,0,y,0,g)); B(0.6,0.5,0.6,glow(0xfff0a8),0,3.2,0,g); Co(0.55,0.6,8,0xb8402e,0,3.7,0,g); },
@@ -135,7 +135,7 @@ const DECOR_KINDS={
     B(1,0.06,0.25,d.x%2?ROYAL:0xf3ead6,0,0.38,0.2,g); B(1,0.06,0.25,d.x%2?0xf3ead6:ROYAL,0,0.73,-0.1,g); },
   ty_pavilion(d,g,an){ g.position.x+=0.5; Cy(0.95,1.0,1.2,10,0xf3ead6,0,0,0,g); Co(1.15,1.0,10,0xb8402e,0,1.2,0,g); Cy(0.03,0.03,0.6,4,0x5a3c20,0,2.1,0,g); const p=B(0.02,0.18,0.4,GOLD,0,2.45,0.2,g); an.push(t=>{ p.rotation.y=Math.sin(t*2+d.x)*0.3; }); },
   ty_rack(d,g){ B(0.9,0.08,0.12,0x6b4a2e,0,0.8,0,g); B(0.08,0.9,0.08,0x6b4a2e,-0.4,0,0,g); B(0.08,0.9,0.08,0x6b4a2e,0.4,0,0,g); [-0.25,0,0.25].forEach(x=>{ B(0.04,1.5,0.04,0xb8b0a0,x,0,0.06,g).rotation.x=-0.12; }); },
-  ty_flag(d,g,an){ Cy(0.05,0.05,3.6,6,0x5a3c20,0,0,0,g); const f=B(0.03,0.5,0.9,ROYAL,0,3.0,0.45,g); an.push(t=>{ f.rotation.y=Math.sin(t*2.3+d.x)*0.25; }); }
+  ty_flag(d,g,an){ Cy(0.05,0.05,3.6,6,0x5a3c20,0,0,0,g); const f=B(0.03,0.5,0.9,ROYAL,0,3.0,0.45,g); if(typeof ARMS!=='undefined') ARMS.on(f,ARMS.keyAt(d.x,d.y),0.38,0.47,'x',0.02); an.push(t=>{ f.rotation.y=Math.sin(t*2.3+d.x)*0.25; }); }
 };
 const CAP_COLOURS={0:0x5fa860,1:0x3f7a44,2:0xbd9a66,4:0x6cb065,6:0xb3ada2,7:0x3f7a44,8:0xbd9a5e,9:0x8a7d6a,10:0xa89c88,12:0x8a6a42,14:0x5fa860,15:0x5fa860,16:0x5fa860,18:0x5b9e5c,19:0xe0cf9c,20:0x5fb0c8,32:0xa8774e};
 
