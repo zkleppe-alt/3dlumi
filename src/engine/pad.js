@@ -62,8 +62,10 @@ const PAD=(function(){
     binds[L.id][L.slot]=i; save(); msg=`${bname(i)} → ${ACTIONS.find(a=>a.id===L.id).label}${moved?` (taken from ${moved})`:''}`; draw(); }
   // ── the poll, every frame ──
   const actPrev={};
+  let lyreWas=false;
   function poll(){ requestAnimationFrame(poll); const pads=navigator.getGamepads?navigator.getGamepads():[]; let gp=idx!==null?pads[idx]:null;
     if(!gp){ for(const p of pads) if(p&&p.connected){ gp=p; idx=p.index; if(open) draw(); break; } } if(!gp){ return; }
+    if(typeof LYRE!=='undefined'&&LYRE.on&&!listen&&!panel()){ if(!lyreWas){ zero(); lyreWas=true; } const bb=gp.buttons.map(x=>x.pressed||x.value>0.5); LYRE.pad(bb,prev); prev=bb; return; } lyreWas=false;   // V214: while the lyre is out, the buttons are its strings
     const b=i=>{ const x=gp.buttons[i]; return !!x&&(x.pressed||x.value>0.5); }, was=i=>!!prev[i], down=i=>b(i)&&!was(i);
     // a slot waiting for its button: wait until everything is let go (the Ⓐ that chose the slot), then take the next press
     if(listen){ const any=gp.buttons.some((x,i)=>b(i)); if(!listen.armed){ if(!any) listen.armed=true; } else { for(let i=0;i<gp.buttons.length;i++) if(down(i)){ assign(i); break; } }

@@ -466,6 +466,11 @@ function buildKnight(){
       hips.position.y-=0.14*d; L.hip.rotation.x-=0.55*d; R.hip.rotation.x-=0.5*d; L.knee.rotation.x+=0.95*d; R.knee.rotation.x+=0.9*d; torso.rotation.x+=0.3*d; head.rotation.x-=0.15*d; capeP.rotation.x+=0.25*d; } }
     // in the air (the leap of the Ground Pound): legs tucked, knees up
     if(K.air>0.02&&!(K.mocap&&!K.mocapOff&&K._mw>0.5&&!(K.raise>0))){ const u=Math.min(1,K.air*1.6); L.hip.rotation.x=-1.0*u; R.hip.rotation.x=-0.55*u; L.knee.rotation.x=1.5*u; R.knee.rotation.x=1.1*u; torso.rotation.x+=0.12*u; capeP.rotation.x=0.6*u+0.1; AL.sh.rotation.x-=0.3*u*(1-gk); }
+    if(mode==='lyre'){   // V214: the lyre cradled in the left arm against the chest, the right hand across the strings — it flicks on each strum, and he sways a little with the tune
+      const lt=K._lyreT==null?9:K._lyreT, fl=Math.exp(-lt*7)*Math.cos(lt*26), sw=Math.sin(t*1.1)*0.03;
+      hips.position.set(0,K.hipY,0); hips.rotation.set(0,sw,sw*0.5); torso.rotation.set(0.05,-0.12+sw,0); head.rotation.set(0.16,0.2,sw);
+      L.hip.rotation.set(0,0,0.05); R.hip.rotation.set(0,0,-0.05); L.knee.rotation.x=R.knee.rotation.x=0.04;
+      AL.sh.rotation.set(-0.7,0,0.3); AL.el.rotation.x=-1.5; AR.sh.rotation.set(-0.72,0,-0.1); AR.el.rotation.x=-1.42-fl*0.28; }
     if(mode==='sit'){ L.hip.rotation.x=R.hip.rotation.x=-1.45; L.knee.rotation.x=R.knee.rotation.x=1.45; hips.position.set(0,K.hipY-0.2,0); hips.rotation.set(0,0,0); L.hip.rotation.z=R.hip.rotation.z=0; torso.rotation.set(-0.08,0,0); head.rotation.set(0,0,0);   // seated: thighs level, shins down
       AL.sh.rotation.x=AR.sh.rotation.x=-0.55; AR.sh.rotation.y=0; AL.el.rotation.x=AR.el.rotation.x=-0.7; capeP.rotation.x=0.05; }
     // V151: kneeling — before a tomb, before a general's blessing: one knee to the floor, the other foot planted, head bowed
@@ -533,7 +538,7 @@ function buildKnight(){
         _dq.setFromEuler(_de.set(Math.PI/2,0,0)).premultiply(_hq).slerp(_sq,w1); sword.quaternion.copy(_hq.invert()).multiply(_dq);
         _hp.lerp(_pre,w1); sword.position.copy(AR.hand.worldToLocal(_hp)); }
       if(u>=(K._carry==='hip'?0.74:0.5)&&sword.parent===AR.hand) stow(); if(u>=1) K._st='sheathed'; }
-    const pick=(o,v)=>{ o.v*=0.5; o.x=v; }, rAbs=swing>=0||K.raise>0||K.charge>0||K.spinT>=0||mode==='sit', lAbs=gk>0.02||mode==='sit';
+    const pick=(o,v)=>{ o.v*=0.5; o.x=v; }, rAbs=swing>=0||K.raise>0||K.charge>0||K.spinT>=0||mode==='sit'||mode==='lyre', lAbs=gk>0.02||mode==='sit'||mode==='lyre';
     if(rAbs){ pick(sArmR.x,AR.sh.rotation.x); pick(sArmR.y,AR.sh.rotation.y); pick(sArmR.z,AR.sh.rotation.z); pick(sArmR.e,AR.el.rotation.x); pick(sHandR,AR.hand.rotation.x); }
     if(lAbs){ pick(sArmL.x,AL.sh.rotation.x); pick(sArmL.e,AL.el.rotation.x); pick(sArmL.z,AL.sh.rotation.z); pick(sArmL.y,AL.sh.rotation.y); }
     // V141: FEET ON THE HILLS — each foot is set on the ground beneath it: the pelvis drops for the lower foot, and the other

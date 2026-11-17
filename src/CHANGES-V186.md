@@ -381,3 +381,9 @@ After Oceanside harbour, as a beachfront town:
 - knight.js climb pose: hand over hand, opposite knee driving, body rising on each pull, looking up.
 - Not verified in motion: the headless harness could not be slowed (a virtual clock via performance.now/rAF did not slow the engine) — stills only. Mount/dismount (riding.js transit, V184) unchanged so far.
 - Lyre design agreed (not built): four-note chords on buttons, played in any order; bumpers/keys shift the key up or down; free play; songs learned through challenges or composed; no powers; Sir Josh gives it in Ironhold — it was your father’s.
+
+## V214 — the Lyre, first playable (brief stages 1–2)
+- New engine/lyre.js (built first so its key listener precedes the game’s; nothing else rewritten): plucked-string voice on AUDIO2D’s graph (audio-clock scheduled, hush() stops everything), four chord slots of four notes (I IV V vi → Ⓨ Ⓧ Ⓑ Ⓐ / keys 1–4), played in any order; LB/RB or Q/E move the whole harmony a semitone (−6..+6); RT/Space strums again; eight open strings (Z X C V B N M , / ✚); 🎵 button or L takes it out, Start/L/Esc/✕ puts it away. Standing still while it is out (ENGINE.hold … lyre); swing/guard cannot fire.
+- pad.js: one line hands the buttons to LYRE.pad while it is out. knight.js: pose mode lyre. build.py: lyre.js first.
+- Tested headless: chords name correctly in C and after transposing, keys do not reach the game, no walking while out, walking again after, no errors. NOT verified: the sound itself by ear (no audio in the test browser), the playing pose and lyre model on screen, a real controller.
+- Not yet built: songwriter grid and songbook (restfulKnight.lyre.v1), bards, lyre looks and moods, the gift scene (Sir Joshua, Ironhold — it was your father’s). For now the lyre is simply in your pack.
