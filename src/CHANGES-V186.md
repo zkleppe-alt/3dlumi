@@ -424,3 +424,7 @@ After Oceanside harbour, as a beachfront town:
 ## V220 — the forest grows an undergrowth (painted look)
 - forest.js: grass blades (ART.BLADE with the overworld wind, ART.grassMat — now exported by style.js) over every clearing, 7 a tile at the trees’ feet, 5 near them, 2 on the open trail; ferns (a hand-built 7-frond mesh) at the trail edges; moss cushions; small white flowers in the open; up to 40 soft additive light shafts where the trail opens. The floor no longer checkers: gridLevel soft drifts its colour in broad patches. Classic look unchanged.
 - Seen: three shots (upper trail with a demon, the pond glade); reads much lusher. Not measured: frame rate on a phone (~13k extra instances in one draw for the grass).
+
+## V221 — mount and dismount polish
+- riding.js transit: mount lasts 1.5 s (was 1.15): the steed comes up (0–0.5), he crouches and leans toward it (0.4–0.64), springs with the jump clip on his arms and a puff of dust where he left the ground (0.64–1.22), lands in the saddle with a second puff, and the saddle gives a little under him (1.22–1.5). Dismount lasts 0.2 s longer: he lands with the landing clip, a puff of dust, bent knees, then straightens. puff(): nine soft motes that spread and fade in 0.65 s.
+- Filmed: in the air over the steed, seated, and down beside it; the crouch and the dust are too quick for the test camera to catch.

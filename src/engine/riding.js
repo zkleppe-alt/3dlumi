@@ -27,13 +27,13 @@ function riding(world){
       // V184: THE DISMOUNT — the steed settles (a flyer comes down first), he swings a leg over and drops to the ground at its
       //  left shoulder while it steps aside, and it is your companion at your heels again
       const y0=model?model.position.y:P.y; mounted=false; P.y=baseGround(P.x,P.z); flyY=null;
-      if(model&&ENGINE.level===world&&!window.NO_MOUNT_ANIM){ const drop=Math.max(0,y0-P.y), land=Math.min(0.9,drop*0.22); tr={k:'off',t:0,land,dur:land+0.75,y0,face:P.face,x:P.x,z:P.z}; ENGINE.hold(tr.dur,'idle'); }
+      if(model&&ENGINE.level===world&&!window.NO_MOUNT_ANIM){ const drop=Math.max(0,y0-P.y), land=Math.min(0.9,drop*0.22); tr={k:'off',t:0,land,dur:land+0.95,y0,face:P.face,x:P.x,z:P.z}; ENGINE.hold(tr.dur,'idle'); }
       UI.toast('🚶 You dismount.',1000); }
     else { if(busy()) return; if(typeof SFX!=='undefined') SFX.play('mount'); const f=SYS.PETS[S().pet.id].forms[S().pet.form]; build();
       // V184: THE MOUNT — your companion trots up to your side, growing to its full size; you take a step, vault, swing a leg
       //  over and settle in the saddle as it takes your weight
       if(model&&!window.NO_MOUNT_ANIM){ const a=(typeof PETS3D!=='undefined'&&PETS3D.at&&PETS3D.at())||null, vs=VIEWMODE.ps(world);
-        tr={k:'on',t:0,dur:1.15,face:P.face,x:P.x,z:P.z,fx:a?a.x:P.x-Math.sin(P.face)*1.2*vs,fz:a?a.z:P.z-Math.cos(P.face)*1.2*vs,ff:a?a.face:P.face,fs:a?a.scale:0.5*vs}; ENGINE.hold(tr.dur,'idle'); }
+        tr={k:'on',t:0,dur:1.5,face:P.face,x:P.x,z:P.z,fx:a?a.x:P.x-Math.sin(P.face)*1.2*vs,fz:a?a.z:P.z-Math.cos(P.face)*1.2*vs,ff:a?a.face:P.face,fs:a?a.scale:0.5*vs}; ENGINE.hold(tr.dur,'idle'); }
       else mounted=true;
       UI.toast(`${f.emoji} You mount your ${f.name}! ${ab==='ride'?'Gallop — double speed.':ab==='fly'?'Soar over trees, water, and cliffs.':'Swim across water.'} Tap ${f.emoji} again to dismount.`,2400); }
     sync(); }
@@ -83,18 +83,24 @@ function riding(world){
     K.rotation.order='YXZ'; K.position.set(P.x,model.position.y+(seat+by)*sc,P.z); K.rotation.set(bp*0.7,P.face,bz*0.8); });
   // ── V184: the mount and the dismount, played out ──
   const ez=u=>{ u=Math.max(0,Math.min(1,u)); return u*u*(3-2*u); };
+  // V221: a puff of dust where feet leave the ground and where they land
+  const PUFF=new THREE.MeshLambertMaterial({color:0xd8c8a8,transparent:true,opacity:0.5,depthWrite:false});
+  function puff(x,y,z,vs){ const sc=world.scene; if(!sc) return; const bits=[]; for(let i=0;i<9;i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.09*vs,6,4),PUFF.clone()); const a=i/9*Math.PI*2; m.position.set(x+Math.cos(a)*0.15*vs,y+0.05,z+Math.sin(a)*0.15*vs); m.userData.v=[Math.cos(a)*0.9*vs,0.35*vs,Math.sin(a)*0.9*vs]; sc.add(m); bits.push(m); }
+    let t0=performance.now(); const tick=()=>{ const u=(performance.now()-t0)/650; if(u>=1){ bits.forEach(m=>{ sc.remove(m); m.geometry.dispose(); m.material.dispose(); }); return; } bits.forEach(m=>{ const v=m.userData.v; m.position.x+=v[0]*0.016*(1-u); m.position.y+=v[1]*0.016*(1-u); m.position.z+=v[2]*0.016*(1-u); m.scale.setScalar(1+u*1.8); m.material.opacity=0.5*(1-u); }); requestAnimationFrame(tick); }; tick(); }
   function transit(t,dt){ tr.t+=dt; const vs=VIEWMODE.ps(world), full=0.85*vs, U=model.userData, seat=U.seat||1.12, g0=baseGround(tr.x,tr.z), ab=ability();
     const rx=Math.cos(tr.face), rz=-Math.sin(tr.face), SIDE=0.62*vs;   // his right hand; he mounts from the steed's left
     model.visible=true; K.rotation.order='YXZ'; P.face=tr.face;
-    if(tr.k==='on'){ const a=ez(tr.t/0.5), v=Math.max(0,Math.min(1,(tr.t-0.5)/0.6)), e=ez(v);
+    if(tr.k==='on'){ const a=ez(tr.t/0.5), v=Math.max(0,Math.min(1,(tr.t-0.64)/0.58)), e=ez(v), cr=ez((tr.t-0.4)/0.22)*(1-ez((tr.t-0.64)/0.08)), st=Math.max(0,Math.min(1,(tr.t-1.22)/0.28)), bo=st>0&&st<1?Math.sin(st*Math.PI)*0.05:0;   // V221: he crouches before the spring, and the saddle gives a little as he lands in it
       // the steed comes from where your companion stood to stand under where you'll sit, turning to face your way
       let df=tr.face-tr.ff; df=Math.atan2(Math.sin(df),Math.cos(df)); const sc=tr.fs+(full-tr.fs)*a;
       model.scale.setScalar(sc); model.position.set(tr.fx+(tr.x-tr.fx)*a,g0,tr.fz+(tr.z-tr.fz)*a); model.rotation.y=tr.ff+df*a; U.gallop(t,a<1?0.4:0,0,0);
-      const dip=v>0.72?Math.sin((v-0.72)/0.28*Math.PI)*0.07*sc:0; if(U.body) U.body.position.y-=dip;   // it takes his weight
+      const dip=(v>0.72&&v<1?Math.sin((v-0.72)/0.28*Math.PI)*0.07*sc:0)+bo*sc; if(U.body) U.body.position.y-=dip;   // it takes his weight
+      if(tr.t>=0.64&&!tr.sprung){ tr.sprung=1; puff(tr.x-rx*SIDE,g0,tr.z-rz*SIDE,vs); if(K.act) K.act('jump',0.55,{arms:true,u0:0.12,u1:0.5,w:0.75}); if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('step'); }catch(_){} }
+      if(v>=1&&!tr.sat){ tr.sat=1; puff(tr.x,g0,tr.z,vs*0.7); }
       // he steps aside to make room, then springs: up and over in an arc, leaning in, the far leg swinging across
       const off=SIDE*(a*(1-e)), sy=g0+(seat*sc-dip)*e+Math.sin(v*Math.PI)*0.42*vs;
       tr.pose=v>0.55?'ride':'idle'; K.ride={speed:0,run:0,bob:0,bank:0,pitch:0,wide:(U.kind==='dove'?0.62:U.kind==='dragon'?0.6:0.55)+0.5*(1-ez((v-0.55)/0.45))};
-      K.position.set(tr.x-rx*off,v>0?sy:g0,tr.z-rz*off); K.rotation.set(-Math.sin(v*Math.PI)*0.25,tr.face+(a-e)*0.5,-Math.sin(v*Math.PI)*0.45);
+      K.position.set(tr.x-rx*off,v>0?sy:g0-cr*0.09*vs,tr.z-rz*off); K.rotation.set(-Math.sin(v*Math.PI)*0.25+cr*0.18,tr.face+(a-e)*0.5,-Math.sin(v*Math.PI)*0.45-cr*0.12);
       if(tr.t>=tr.dur){ tr=null; mounted=true; spS=0; lf=P.face; lagY=0; lx=P.x; lz=P.z; sync(); } }
     else { const d=tr.land>0?ez(tr.t/tr.land):1, v=Math.max(0,Math.min(1,(tr.t-tr.land)/0.5)), e=ez(v), w=ez((tr.t-tr.land-0.4)/0.35);
       // a flyer settles to the ground with its wings still beating; then the steed steps away to his right as he swings down
@@ -103,7 +109,8 @@ function riding(world){
       const rise=v<0.3?Math.sin(v/0.3*Math.PI)*0.06*full:0; if(U.body) U.body.position.y+=rise;
       tr.pose=v<0.4?'ride':'idle'; K.ride={speed:0,run:0,bob:0,bank:0,pitch:0,wide:0.55+0.5*ez(v/0.4)};
       const ky=my+seat*full*(1-e)+Math.sin(v*Math.PI)*0.22*vs; K.position.set(tr.x,Math.max(g0,ky),tr.z); K.rotation.set(Math.sin(v*Math.PI)*0.18,tr.face-Math.sin(v*Math.PI)*0.35,Math.sin(v*Math.PI)*0.4);
-      if(v>=1&&!tr.thud){ tr.thud=1; if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('step'); }catch(_){} }
+      if(v>=1&&!tr.thud){ tr.thud=1; puff(tr.x,g0,tr.z,vs); if(K.act) K.act('land',0.55,{arms:true,u0:0.12,u1:0.62,w:0.6}); if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('step'); }catch(_){} }
+      if(v>=1){ const kb=Math.max(0,Math.min(1,(tr.t-tr.land-0.5)/0.35)); K.position.y-=Math.sin(kb*Math.PI)*0.08*vs; }   // V221: he lands with bent knees and straightens
       if(tr.t>=tr.dur){ if(typeof PETS3D!=='undefined'&&PETS3D.setAt) PETS3D.setAt(sx,sz,tr.face); tr=null; K.rotation.set(0,P.face,0); model.visible=false; sync(); } } }
   let spS=0, lf=0, yawR=0, lagY=0;
   const kAnim=K.animate; K.animate=function(dt,mode,sp){ const on=(mounted||(tr&&tr.pose==='ride'))&&ENGINE.level===world; if(!on&&!tr&&K.rotation.x){ K.rotation.x=0; K.rotation.z=0; }
