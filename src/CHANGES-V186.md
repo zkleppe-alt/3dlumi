@@ -417,3 +417,6 @@ After Oceanside harbour, as a beachfront town:
 - Every drop in the forest (ravines too) is now a real drop: no floor laid over it (gridLevel noFloor), dark far below, rock faces under each lip.
 - Tested headless: the span walks end to end and is blocked off the log; the gaps block on foot; the stone, chest and flags work. NOT tested: the jumps in motion (jump air time 0.58 s; at the slowest walking pace that clears about 1.2 tiles against a 1-tile gap — tight; say if it needs widening), the rest spot, the Stepping Rocks by eye.
 - Agreed direction: this style of exploration (log and beam balancing, gaps to jump, painted marks; rewards: quiet places, chests and keepsakes, scripture stones), Ghibli × Breath of the Wild art; ledge shimmy and vine climbing were not chosen for the first slice.
+
+## V219 — the stepping rocks can be made
+- A full run-up jump only just cleared a one-tile gap (driven test: launched at 55.72, came down at 56.6, inside the gap, and was sent back). Now if you come down in a gap facing a standing tile within 0.75, you catch its rim and pull up onto it (hold 0.35 s); only a jump the wrong way or from too far sends you back. Driven test: first gap crossed onto the rocks, second jump launched (the headless frame rate ran the clock out there).

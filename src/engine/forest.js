@@ -150,7 +150,9 @@ function forestLevels(D,spec){
         const [lx,ly]=N.look; for(let i=0;i<3;i++){ const m=Cy(0.1+i*0.02,0.13+i*0.02,0.1,6,PALE,lx-5.4+i*0.5+0.5,0,ly+0.5+(i%2?0.34:-0.3),room); m.rotation.y=i; } });
       // a missed jump: you catch the lip and scramble back to where you last stood
       let safe=null; an.push(()=>{ if(ENGINE.level!==lv||climb||swing) return; const P=ENGINE.P, t=at(Math.floor(P.x),Math.floor(P.z)), air=(ENGINE.airH||0);
-        if(t===120){ if(air<0.03&&safe){ P.x=safe[0]; P.z=safe[1]; ENGINE.hold(0.7); UI.toast('You miss your footing — catch the edge — and scramble back up.',1800); if(typeof SFX!=='undefined') try{ SFX.play('step'); }catch(e){} } }
+        if(t===120){ const fx=Math.sin(P.face), fz=Math.cos(P.face), ax=P.x+fx*0.75, az=P.z+fz*0.75, ta=at(Math.floor(ax),Math.floor(az));
+          if(air<0.03&&ta!==undefined&&ta!==120&&!SOLID_F.has(ta)&&!(ta===103)){ P.x=Math.floor(ax)+0.5-fx*0.3; P.z=Math.floor(az)+0.5-fz*0.3; ENGINE.hold(0.35); if(typeof SFX!=='undefined') try{ SFX.play('step'); }catch(e){} }   /* V219: short of the far side — catch its rim and pull up onto it */
+          else if(air<0.03&&safe){ P.x=safe[0]; P.z=safe[1]; ENGINE.hold(0.7); UI.toast('You miss your footing — catch the edge — and scramble back up.',1800); if(typeof SFX!=='undefined') try{ SFX.play('step'); }catch(e){} } }
         else if(air<0.03&&t!==undefined&&!SOLID_F.has(t)) safe=[P.x,P.z]; }); }
     // ── rock, cave mouths ──
     const rocks=[]; for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++) if(D.forest[y][x]===107) rocks.push([x,y]);
