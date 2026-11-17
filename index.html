@@ -14672,7 +14672,7 @@ function forestLevels(D,spec){
     const hemi=new THREE.HemisphereLight(o.sky||0xc8e0c0,0x2a3020,o.hemi||0.6); scene.add(hemi);
     const lamp=new THREE.PointLight(0xffe0b0,o.lamp||0.9,9,1.4); scene.add(lamp); if(o.sun){ const s=new THREE.DirectionalLight(0xfff4d0,o.sun); s.position.set(W*0.3,14,H*0.4); s.target.position.set(W/2,0,H/2); scene.add(s,s.target); }
     const room=group(0,0,0,scene), an=lv.anim, solid=o.solid;
-    const fl=[], wl=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=g0[y][x]; if(t===1||t===78) wl.push([x,y]); else fl.push([x,y]); }
+    const fl=[], wl=[]; for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=g0[y][x]; if(t===1||t===78) wl.push([x,y]); else if(!(o.noFloor&&o.noFloor.has(t))) fl.push([x,y]); }   /* V218: no floor laid over a drop */
     inst(fl,UNIT,null,([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((o.floorCol&&o.floorCol(g0[y][x]))||((x+y)%2?o.fA:o.fB)).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);
     if(o.close) inst(wl,UNIT,null,([x,y],m,cc)=>{ m.makeScale(1,0.1,1); m.setPosition(x+0.5,-0.1,y+0.5); cc.setHex((x+y)%2?o.fA:o.fB).offsetHSL(0,0,(hsh(x,y)-0.5)*0.06); },room);   // ground under the drawn-back edges
     if(o.borderOnly){ const k=wl.filter(([x,y])=>x===0||y===0||x===W-1||y===H-1); wl.length=0; wl.push(...k); }
@@ -14716,7 +14716,22 @@ function forestLevels(D,spec){
   //   log-pile Miriam's hammer breaks; and, across the north-west ravine, a grove with a hammock in it.
   //   The trail through is always open; the tools open shortcuts, caves and the grove.
   // ════════════════════════════════════════════════════════════════
-  const HCH={'.':0,'#':1,'S':2,'N':8,'C':5,'d':6,'E':35,'R':78,'~':100,'=':101,'o':102,'X':103,'r':104,'B':105,'L':106,'^':107,'M':108,'h':109,'f':110,'T':111,'l':112,'H':113,',':114,'*':115,'a':116,'s':117,'w':118};
+  const HCH={'.':0,'#':1,'S':2,'N':8,'C':5,'d':6,'E':35,'R':78,'~':100,'=':101,'o':102,'X':103,'r':104,'B':105,'L':106,'^':107,'M':108,'h':109,'f':110,'T':111,'l':112,'H':113,',':114,'*':115,'a':116,'s':117,'w':118,'G':119,'g':120,'P':121,'V':122,'Q':123,'K':124};   /* V218: G a mossy log over a drop · g a gap to jump · P a rock pillar · V a scripture stone · Q a resting stone · K a keepsake chest */
+  // V218: THE HIDDEN PLACES — two nooks cut into the deep wood, off the main trail, each reached a different way and each
+  //  holding the same three things: a stone with a verse cut in it, a place to sit (and a good place for the lyre), a keepsake.
+  //   · the Mossy Span (east of the upper trail): a ravine with a great fallen log across it, green with moss — walk it
+  //   · the Stepping Rocks (east of the lower glade): a gorge with two rock stacks standing in it — jump from one to the next;
+  //     their rims are worn pale by the feet that went before you. Miss, and you catch the edge and scramble back.
+  if(D.hand&&!D.forestOpen&&!D.hand.nooks){ const rows=D.hand.rows.map(r=>[...r]), put=(x,y,c)=>{ if(rows[y]&&rows[y][x]!==undefined) rows[y][x]=c; }, disc=(cx,cy,rx,ry)=>{ for(let y=cy-ry;y<=cy+ry;y++) for(let x=cx-rx;x<=cx+rx;x++){ const u=(x-cx)/(rx+0.4), v=(y-cy)/(ry+0.4); if(u*u+v*v<=1) put(x,y,'.'); } };
+    // the Mossy Span
+    for(let x=49;x<=54;x++) put(x,24,'.'); for(let x=52;x<=54;x++){ put(x,23,'.'); put(x,25,'.'); }
+    for(let y=21;y<=27;y++) for(let x=55;x<=57;x++) put(x,y,'X'); for(let x=55;x<=57;x++) put(x,24,'G');
+    disc(61,24,3,3); put(58,24,'.'); put(61,21,'V'); put(63,23,'Q'); put(60,27,'K');
+    // the Stepping Rocks
+    for(let x=53;x<=55;x++) put(x,129,'.'); for(let x=54;x<=55;x++){ put(x,128,'.'); put(x,130,'.'); }
+    for(let y=126;y<=132;y++) for(let x=56;x<=62;x++) put(x,y,'X'); [[56,'g'],[57,'P'],[58,'P'],[59,'g'],[60,'P'],[61,'P'],[62,'g']].forEach(([x,c])=>put(x,129,c));
+    disc(66,129,3,3); put(63,129,'.'); put(66,126,'V'); put(68,128,'Q'); put(65,132,'K');
+    D.hand.rows=rows.map(r=>r.join('')); D.hand.nooks={span:{stone:[61,21],seat:[63,23],chest:[60,27],look:[56,24]},rocks:{stone:[66,126],seat:[68,128],chest:[65,132],look:[59,129]}}; }
   if(D.hand&&!D.forestOpen){ D.forest=D.hand.rows.map(r=>[...r].map(c=>HCH[c]!==undefined?HCH[c]:0)); D.forestOpen=true; D.gates=null; }
   const FW=()=>{ const s=GAME.S; s.forestW=s.forestW||{smashed:{},axe:0,rock:0,pil:0,hammock:false,sat:false}; return s.forestW; };
   const hasCrookF=()=>{ const c=GAME.S.cata&&GAME.S.cata[0]; return !!(c&&c.staff)||(GAME.S.chapels||0)>=1; };
@@ -14740,8 +14755,43 @@ function forestLevels(D,spec){
       shade(g); }
     for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++) if(D.forest[y][x]===102){ const st=Cy(0.32+hsh(x,y)*0.08,0.36,0.16,8,0x8a8478,x+0.5+(hsh(y,x)-0.5)*0.2,0,y+0.5+(hsh(x+1,y)-0.5)*0.2,room); st.castShadow=true; }
     // ── the ravines: a long drop into the dark, its lips broken rock ──
-    for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++) if(D.forest[y][x]===103){ B(1.0,4,1.0,0x020202,x+0.5,-4.2,y+0.5,room);
+    // V218: a drop is a real drop — dark far below, with a face of rock under every lip
+    const DROP=new Set([103,119,120,121]), deepVoid=(x,y)=>{ B(1.0,1,1.0,0x020303,x+0.5,-4.6,y+0.5,room); [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const t2=at(x+a,y+b); if(t2!==undefined&&!DROP.has(t2)){ const w=B(a?0.12:1.0,3.7,a?1.0:0.12,(x+y+a)%2?0x4c4a46:0x45433f,x+0.5+a*0.5,-3.75,y+0.5+b*0.5,room); w.receiveShadow=true; } }); };
+    for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++) if(D.forest[y][x]===103){ deepVoid(x,y);
       [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const t2=at(x+a,y+b); if(t2===0||t2===115||t2===104){ const r=new THREE.Mesh(ROCKY_U,mt(0x5a5650)); r.scale.set(0.5,0.35,0.5); r.position.set(x+0.5+a*0.45,-0.05,y+0.5+b*0.45); room.add(r); } }); }
+    // ── V218: the hidden places — drops, the mossy log, the rock stacks with their worn rims, and what waits beyond ──
+    { const MOSS=0x5f8f3a, MOSS2=0x7aa848, PALE=0xe6e0d0, ROCK=0x6b6862, void_=deepVoid;
+      const fern=(x,z,sc)=>{ const g=group(x,0,z,room); for(let i=0;i<5;i++){ const f=Co(0.07*sc,0.55*sc,4,i%2?MOSS:MOSS2,0,0,0,g); f.rotation.set(0.9,i*1.26,0); f.position.y=0.12*sc; } return g; };
+      const lipMark=(x,y)=>{ [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ const t2=at(x+a,y+b); if(t2===0||t2===121||t2===115){ const m=B(a?0.1:0.9,0.035,a?0.9:0.1,PALE,x+0.5+a*0.56,0.0,y+0.5+b*0.56,room); m.rotation.y=(hsh(x+a,y+b)-0.5)*0.06; } }); };
+      for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++){ const t=D.forest[y][x];
+        if(t===119){ void_(x,y); const g=group(x+0.5,0,y+0.5,room), ax=(at(x-1,y)===119||at(x+1,y)===119)?'x':'z', first=ax==='x'?at(x-1,y)!==119:at(x,y-1)!==119, last=ax==='x'?at(x+1,y)!==119:at(x,y+1)!==119;
+          const lg=Cy(0.44,0.48,first||last?1.5:1.04,10,0x4e3a26,0,0,0,g); lg.rotation.set(ax==='x'?0:Math.PI/2,0,ax==='x'?Math.PI/2:0); lg.position.set(ax==='x'?(first?-0.22:last?0.22:0):0,-0.42,ax==='z'?(first?-0.22:last?0.22:0):0);
+          const top=B(ax==='x'?1.04:0.7,0.07,ax==='x'?0.7:1.04,MOSS,0,-0.02,0,g); for(let i=0;i<4;i++){ const tu=B(0.16,0.06,0.16,i%2?MOSS2:MOSS,(hsh(x*3+i,y)-0.5)*(ax==='x'?0.9:0.5),0.03,(hsh(y*3+i,x)-0.5)*(ax==='x'?0.5:0.9),g); tu.rotation.y=i; }
+          if(hsh(x,y*7)<0.6) fern(x+0.5+(ax==='x'?0:0.36),y+0.5+(ax==='x'?0.36:0),0.55).position.y=-0.05; shade(g); }
+        else if(t===120){ void_(x,y); lipMark(x,y); }
+        else if(t===121){ void_(x,y); const g=group(x+0.5,0,y+0.5,room); const st=Cy(0.52,0.62,4.0,7,ROCK,0,-4.02,0,g); st.rotation.y=hsh(x,y)*3; B(0.98,0.05,0.98,0x74806a,0,-0.04,0,g);
+          [[1,0],[-1,0],[0,1],[0,-1]].forEach(([a,b])=>{ if(at(x+a,y+b)===120||at(x+a,y+b)===103) B(a?0.1:0.96,0.04,a?0.96:0.1,PALE,a*0.46,0.0,b*0.46,g); }); if(hsh(y,x)<0.5) B(0.3,0.05,0.26,MOSS,(hsh(x,y+2)-0.5)*0.4,0.0,(hsh(x+2,y)-0.5)*0.4,g); shade(g); }
+        else if(t===122){ const g=group(x+0.5,0,y+0.5,room); const sl=B(0.78,1.35,0.24,0x8d8a82,0,0,0,g); sl.rotation.x=-0.06; B(0.84,0.12,0.3,0x7a776f,0,1.33,0,g); B(0.9,0.14,0.36,0x6f6c66,0,0,0,g); for(let i=0;i<5;i++) B(0.5-(i%2)*0.12,0.03,0.02,0x55524c,0,0.42+i*0.17,0.125,g); B(0.5,0.3,0.3,MOSS,-0.2,0,0.02,g); fern(x+1.0,y+0.75,0.8); fern(x-0.05,y+0.8,0.6); shade(g); }
+        else if(t===123){ const g=group(x+0.5,0,y+0.5,room); const st=Cy(0.44,0.5,0.42,8,0x8a867c,0,0,0,g); st.scale.z=0.8; B(0.6,0.04,0.45,MOSS,0.05,0.42,0,g); shade(g); }
+        else if(t===124){ const g=group(x+0.5,0,y+0.5,room); B(0.62,0.34,0.42,0x6a4526,0,0,0,g); const lid=Cy(0.21,0.21,0.62,8,0x7a5230,0,0,0,g); lid.rotation.z=Math.PI/2; lid.position.set(0,0.34,0); lid.scale.set(1,1,1); [-0.24,0.24].forEach(q=>B(0.05,0.36,0.44,0xc8a050,q,0,0,g)); B(0.1,0.1,0.04,0xe8c766,0,0.22,0.22,g); shade(g); } }
+      // light through the leaves, and flowers, in each place
+      const NK=HD.nooks||{}; Object.keys(NK).forEach((k,ki)=>{ const N=NK[k], [vx,vy]=N.stone, [qx,qy]=N.seat, [cx,cy]=N.chest, mx=(vx+qx+cx)/3+0.5, mz=(vy+qy+cy)/3+0.5;
+        const beam=new THREE.Mesh(new THREE.ConeGeometry(2.4,7,10,1,true),new THREE.MeshBasicMaterial({color:0xfff2c4,transparent:true,opacity:0.07,depthWrite:false,side:THREE.DoubleSide,fog:false})); beam.position.set(mx,3.4,mz); room.add(beam); const pl=new THREE.PointLight(0xffe6b0,0.9,9,1.6); pl.position.set(mx,2.6,mz); scene.add(pl);
+        for(let i=0;i<14;i++){ const a=hsh(i*7+ki,i)*6.28, r=0.8+hsh(i,i*3+ki)*2.2, fx=mx+Math.cos(a)*r, fz=mz+Math.sin(a)*r; if(at(Math.floor(fx),Math.floor(fz))!==0) continue; const st=Cy(0.012,0.012,0.22,4,0x4a7a34,fx,0,fz,room); const fl=new THREE.Mesh(new THREE.SphereGeometry(0.05,6,4),mt([0xfff4f0,0xf2c14e,0xc8a0e8][i%3])); fl.position.set(fx,0.24,fz); room.add(fl); }
+        const NS=()=>{ const s0=GAME.S; s0.forestNooks=s0.forestNooks||{}; return s0.forestNooks; };
+        const VERSE=k==='span'?['“He maketh me to lie down in green pastures: he leadeth me beside the still waters. He restoreth my soul.”','— Psalm 23:2–3, cut deep, the letters soft with moss.']:['“Thy word is a lamp unto my feet, and a light unto my path.”','— Psalm 119:105, cut by someone who had just crossed the same rocks you did.'];
+        const NAME=k==='span'?'the Mossy Span':'the Stepping Rocks';
+        lv.spots.push({x:vx+0.5,z:vy+0.5,r:1.5,label:'Read',who:'A standing stone',action:()=>ENGINE.speak('A standing stone',VERSE,null,()=>{ const n=NS(); if(!n[k+'V']){ n[k+'V']=1; GAME.save(); if(typeof JOURNAL!=='undefined') JOURNAL.write('Beyond '+NAME+' in the Forest of Disillusionment I found a standing stone with a verse cut in it: '+VERSE[0],{}); } })});
+        let resting=0; lv.spots.push({x:qx+0.5,z:qy+0.5,r:1.3,label:'Rest',who:'A mossy stone',action:()=>{ if(resting) return; const P=ENGINE.P; resting=1; P.x=qx+0.5; P.z=qy+0.5+0.55; P.face=Math.atan2(mx-P.x,mz-P.z); if(ENGINE.K.sheathe) ENGINE.K.sheathe(); ENGINE.hold(5,'sit'); UI.toast('🌿 You sit a while. The fog does not come in here.',2400);
+          setTimeout(()=>{ resting=0; const S0=GAME.S; S0.hp=S0.maxHp; ENGINE.hud(); const n=NS(), first=!n[k+'Q']; n[k+'Q']=1; GAME.save(); ENGINE.speak('A quiet place',['Light comes down through the leaves and lies on the moss. Nothing is asked of you here.','(Rested: your strength is full.'+((typeof LYREBOOK!=='undefined'&&LYREBOOK.owned())?' A good place for the lyre — 🎵.)':')')]); if(first&&typeof JOURNAL!=='undefined') JOURNAL.write('I rested beyond '+NAME+', where the fog of the Forest of Disillusionment does not come.',{}); },5000); }});
+        lv.spots.push({x:cx+0.5,z:cy+0.5,r:1.4,label:'Open',who:'An old chest',hide:()=>!!NS()[k+'K'],action:()=>{ const n=NS(); if(n[k+'K']) return; n[k+'K']=1; const msg=give(k==='span'?[['gold',140]]:[['gold',180]]); GAME.save(); if(typeof SFX!=='undefined') try{ SFX.play('chest'); }catch(e){}
+          ENGINE.speak('An old chest',[msg,k==='span'?'And under the coins, a pressed flower between two squares of bark — someone’s keepsake, left for whoever came next.':'And under the coins, a child’s wooden whistle. It still sounds.']); if(typeof JOURNAL!=='undefined') JOURNAL.write(k==='span'?'In a chest beyond the Mossy Span: a pressed flower between two squares of bark.':'In a chest beyond the Stepping Rocks: a child\'s wooden whistle. It still sounds.',{}); }});
+        // the way in is marked the way such ways are: stones worn pale, set by the trail
+        const [lx,ly]=N.look; for(let i=0;i<3;i++){ const m=Cy(0.1+i*0.02,0.13+i*0.02,0.1,6,PALE,lx-5.4+i*0.5+0.5,0,ly+0.5+(i%2?0.34:-0.3),room); m.rotation.y=i; } });
+      // a missed jump: you catch the lip and scramble back to where you last stood
+      let safe=null; an.push(()=>{ if(ENGINE.level!==lv||climb||swing) return; const P=ENGINE.P, t=at(Math.floor(P.x),Math.floor(P.z)), air=(ENGINE.airH||0);
+        if(t===120){ if(air<0.03&&safe){ P.x=safe[0]; P.z=safe[1]; ENGINE.hold(0.7); UI.toast('You miss your footing — catch the edge — and scramble back up.',1800); if(typeof SFX!=='undefined') try{ SFX.play('step'); }catch(e){} } }
+        else if(air<0.03&&t!==undefined&&!SOLID_F.has(t)) safe=[P.x,P.z]; }); }
     // ── rock, cave mouths ──
     const rocks=[]; for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++) if(D.forest[y][x]===107) rocks.push([x,y]);
     inst(rocks,ROCKY_U,null,([x,y],m,cc)=>{ const r=hsh(x*3,y); m.makeRotationY(r*6); m.scale(new THREE.Vector3(1.5,1.6+r*1.4,1.5)); m.setPosition(x+0.5,0,y+0.5); cc.setHex(0x6a665e).offsetHSL(0,0,(r-0.5)*0.1); },room);
@@ -14779,11 +14829,11 @@ function forestLevels(D,spec){
     an.push((t2,dt)=>{ if(!climb) return; dt=dt||0.016; climb.u=Math.min(1,climb.u+dt/climb.dur); climb.y=climb.y0+(climb.y1-climb.y0)*climb.u; const P=ENGINE.P; if(climb.u>=1){ const c0=climb; climb=null; if(c0.up){ P.x=c0.tx; P.z=c0.tz; } else { P.x=c0.bx; P.z=c0.bz; } P.y=c0.y1; } });
     // ── what you can walk on: the rockfall and the log-pile until the hammer breaks them; no walking up the bluff ──
     const SOL=SOLID_F, smashed=k=>!!FW().smashed[k];
-    const ok2=(x,y)=>{ const t=at(x,y); if(t===undefined) return false; if(t===105||t===106) return smashed(x+','+y); return !SOL.has(t); };
+    const ok2=(x,y)=>{ const t=at(x,y); if(t===undefined) return false; if(t===105||t===106) return smashed(x+','+y); if(t===120) return (ENGINE.airH||0)>0.04;   /* V218: a gap is crossed in the air or not at all */ return !SOL.has(t); };
     let restY=null;
     lv.ground=(x,z)=>climb?climb.y:swing?swing.y:restY!==null?restY:hR(Math.floor(x),Math.floor(z));
     lv.canMove=(fx,fz,tx,tz)=>{ if(climb||swing||restY!==null) return false; const hf=hR(Math.floor(fx),Math.floor(fz))+(ENGINE.airH||0);
-      for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]){ const X=Math.floor(tx+ox), Y=Math.floor(tz+oz); if(!ok2(X,Y)) return false; if(hR(X,Y)-hf>0.42&&!(hR(Math.floor(fx+ox),Math.floor(fz+oz))-hf>0.42)) return false; } return true; };
+      for(const [ox,oz] of [[0,0],[0.22,0],[-0.22,0],[0,0.22],[0,-0.22]]){ const X=Math.floor(tx+ox), Y=Math.floor(tz+oz); if((ox||oz)&&at(X,Y)===120) continue;   /* a gap is judged by where your feet are, not your shoulders — the jump is a kind one */ if(!ok2(X,Y)) return false; if(hR(X,Y)-hf>0.42&&!(hR(Math.floor(fx+ox),Math.floor(fz+oz))-hf>0.42)) return false; } return true; };
     const cb=lv.camBlock; lv.camBlock=(fx,fz,y)=>{ const x=Math.floor(fx), z=Math.floor(fz), t=at(x,z); if(y<hR(x,z)+0.05) return true; if((t===107||t===108)&&y<2.4) return true; return cb?cb(fx,fz,y):false; };
     // ── Miriam's hammer: the rockfall over the woodcutters' track, the log-pile on the east loop ──
     const clusters=[]; { const seen=new Set(); for(let y=0;y<Hd;y++) for(let x=0;x<Wd;x++){ const t=D.forest[y][x]; if((t===105||t===106)&&!seen.has(x+','+y)){ const c={t,cells:[]}, q=[[x,y]]; seen.add(x+','+y);
@@ -14879,7 +14929,7 @@ function forestLevels(D,spec){
       return lv; }}); }
   if(D.hand){ caveLevel('A','The Rockfall Cave'); caveLevel('B','The Glow-worm Cave'); caveLevel('C','The Fox Hole'); }
   // ── the wood ──
-  const SOLID_F=new Set([1,78,5,77,100,103,104,105,106,107,109,110,111,112,117,118]);
+  const SOLID_F=new Set([1,78,5,77,100,103,104,105,106,107,109,110,111,112,117,118,120,122,123,124]);
   if(typeof DGEN!=='undefined'&&!D.forestOpen) DGEN.forest(D,9137);   // glades on broad trails, not a maze (dungeon_gen.js)
   // the two arches: the Ironhold road always at the head of the wood, the Saltmere road always at its foot. Each is the one way
   // through a wall of trees (77: the arch's piers), with the road running on out beyond it; the hollow gets a temple porch
@@ -14927,7 +14977,7 @@ function forestLevels(D,spec){
     return {faces:[['the seven of hearts',mk('7','♥',1)],['the king of diamonds',mk('K','♦',1)],['the three of clubs',mk('3','♣')],['the queen of hearts',mk('Q','♥',1)],['the jack of spades',mk('J','♠')],['the nine of diamonds',mk('9','♦',1)]],back:bk,ace:mk('A','♠')}; })());
   function openRobby(knock){ const P=ENGINE.P; run.robbyFrom={x:P.x,z:P.z,face:P.face};
     UI.toast(knock?'✊ You knock. From inside, a voice: “It’s open. It’s a tree.”':'🕳 The tree is hollow. There is a television on inside.',2400); setTimeout(()=>ENGINE.go('robbycave'),knock?900:350); }
-  ENGINE.add({id:'forest',lazy:()=>{ const F=gridLevel({ id:'forest', name:'The Forest of Disillusionment', grid:D.forest, cam:{dist:6.2,min:3.5,max:10,pitch:0.52,lookH:0.3}, treeH:1.45, open:true, bg:0x1c2620, fog:[13,30], hemi:0.42, lamp:0.8, walls:'trees', fA:0x2f4a2a, fB:0x2a4426, solid:SOLID_F, fight:true, zone:'A cold fog drinks the light', mapCell:4, mapReveal:4, floorCol:D.hand?FLOORCOL:null,
+  ENGINE.add({id:'forest',lazy:()=>{ const F=gridLevel({ id:'forest', name:'The Forest of Disillusionment', grid:D.forest, cam:{dist:6.2,min:3.5,max:10,pitch:0.52,lookH:0.3}, treeH:1.45, open:true, bg:0x1c2620, fog:[13,30], hemi:0.42, lamp:0.8, walls:'trees', fA:0x2f4a2a, fB:0x2a4426, noFloor:new Set([103,119,120,121]), solid:SOLID_F, fight:true, zone:'A cold fog drinks the light', mapCell:4, mapReveal:4, floorCol:D.hand?FLOORCOL:null,
       onDeath:()=>{ spec.exit(run.mouth,true); },
       onSwing:()=>{ const P=ENGINE.P, x=Math.floor(P.x+Math.sin(P.face)*0.9), y=Math.floor(P.z+Math.cos(P.face)*0.9); if(F.at(x,y)!==78) return; setTimeout(()=>openRobby(false),0); } });
     const {lv,room,an,spot,at,ok}=F;
