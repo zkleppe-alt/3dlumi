@@ -1472,15 +1472,24 @@ function buildWorld(WD,opt){
     instList(ch,bush,geo('bush'),vcMat,true); if(tufts.length) instList(ch,tufts,geo('tuft'),tuftMat,false); instList(ch,fence,geo('fence'),vcMat,true);
     instList(ch,lava,UNIT,glow(0xff6a1a));
     if(tilesOnly) return;
-    // the chunk's buildings, decorations, signs and ships
-    WD.buildings.forEach(b=>{ if(b.deck===undefined&&!b.cave&&!b.inca&&chunkAt(b.x+b.w/2,b.y+b.h/2)===ch) buildHouse(b,ch.g); });   /* (the treetops draw their own) */
-    WD.decor.forEach(d=>{ if(chunkAt(d.x,d.y)!==ch) return; const fn=DECOR_KINDS[d.kind]; if(!fn) return; const g=new THREE.Group(); fn(d,g,lv.anim); if(PERSON_SIZED.has(d.kind)) g.scale.setScalar(VIEWMODE.ps(lv));
+    dressChunk(ch); }
+  /* V226: A CHUNK'S DRESSING — its buildings, decorations, signs and ships — is built when you come near and let go again once
+     you are well away (undressChunk, from lv.follow): a house is hundreds of stones, straws and timbers, and kept for every
+     chunk ever seen they ran a long journey up past what a browser tab can hold. The ground and its trees stay (they are
+     light). Whatever the dressing animates runs from ch.anims, so a chunk built again never doubles its animations. */
+  function dressChunk(ch){ const before=new Set(ch.g.children), AN=ch.anims=[];
+    WD.buildings.forEach(b=>{ if(b.deck===undefined&&!b.cave&&!b.inca&&chunkAt(b.x+b.w/2,b.y+b.h/2)===ch) buildHouse(b,ch.g,AN); });   /* (the treetops draw their own) */
+    WD.decor.forEach(d=>{ if(chunkAt(d.x,d.y)!==ch) return; const fn=DECOR_KINDS[d.kind]; if(!fn) return; const g=new THREE.Group(); fn(d,g,AN); if(PERSON_SIZED.has(d.kind)) g.scale.setScalar(VIEWMODE.ps(lv));
       g.position.x+=d.x+(d.w===2?1:0.5); g.position.z+=d.y+(d.w===2?1:0.5); g.position.y=EH(d.x,d.y)+0.02+(ROLL?roll(d.x+(d.w===2?1:0.5),d.y+(d.w===2?1:0.5)):0); if(d.kind==='lighthouse'&&LIFT(d.x,d.y)>1) g.scale.multiplyScalar(1.7); if(typeof LOOK2!=='undefined'&&LOOK2){ soften(g); g.traverse(o=>{ if(o.isMesh&&o.geometry&&o.geometry.type==='IcosahedronGeometry'&&o.material&&o.material.userData.soft){ const gg=o.geometry.parameters; o.geometry=new THREE.SphereGeometry(gg.radius,14,10); } }); const r=ROLL?roll(d.x+(d.w===2?1:0.5),d.y+(d.w===2?1:0.5)):0; g.position.y+=r; } ch.g.add(shade(g)); });   // the capital's harbour lights stand tall
     signs.forEach(s=>{ if(chunkAt(s.x,s.y)!==ch) return; const g=group(s.wx,EH(Math.floor(s.wx),Math.floor(s.wz))+0.02,s.wz,ch.g);
       if(TOWN_SIGN.test(s.v.split('\n')[0].trim())){ townSign(g,s); shade(g); return; }
       Cy(0.05,0.05,0.9,6,0x5b3a1f,0,0,0,g); B(0.8,0.45,0.07,0xcaa56a,0,0.75,0,g); B(0.8,0.06,0.075,0xe0c089,0,1.17,0,g); shade(g); });
-    ships.forEach(s=>{ if(chunkAt(s.x,s.y)===ch) buildShip(s,ch.g); });
-  }
+    ships.forEach(s=>{ if(chunkAt(s.x,s.y)===ch) buildShip(s,ch.g,AN); });
+    ch.dress=ch.g.children.filter(o=>!before.has(o)); ch.dressed=true; }
+  function undressChunk(ch){ if(!ch.dressed) return; (ch.dress||[]).forEach(o=>{ ch.g.remove(o); o.traverse(q=>{ if(q.geometry) q.geometry.dispose(); if(q.isInstancedMesh&&q.dispose) q.dispose(); }); });
+    WD.buildings.forEach(b=>{ if(hingeOf[b.id]&&b.deck===undefined&&chunkAt(b.x+b.w/2,b.y+b.h/2)===ch) hingeOf[b.id].length=0; });   // its doors' hinges go with it (the door spots keep the same list)
+    ch.dress=null; ch.anims=null; ch.dressed=false; }
+  lv.anim.push((t,dt)=>{ for(const ch of chunks) if(ch.anims&&ch.g.visible) for(const f of ch.anims) f(t,dt); });
   // ── buildings, by town ──
   function colours(b){ const key=themeOf(b.id), th=(WD.themes[key]||{}), p=th.pal||{}, n=(s,d)=>s?hexn(s):d;
     const dark=(b.style==='chapel')&&!opt.chapelLight(b);
@@ -1503,21 +1512,21 @@ function buildWorld(WD,opt){
       if(ok){ FACE[b.id]={dir:d,tx,ty}; return; } } });
   lv.facing=FACE;
   const hingeOf={}; WD.buildings.forEach(b=>hingeOf[b.id]=[]); lv._hingeOf=hingeOf; lv._buildings=WD.buildings;
-  const SMOKES=[]; if(typeof LOOK2!=='undefined'&&LOOK2&&typeof LIFE!=='undefined') LIFE.attach(lv,scene,SMOKES);   // V111: chimney smoke, birds, butterflies, fireflies, windows lit at night
-  function buildHouse(b,par){ const e=E(b.door.x,b.door.y), key=themeOf(b.id);
+  const SMOKES=[], SMK=new Set(); if(typeof LOOK2!=='undefined'&&LOOK2&&typeof LIFE!=='undefined') LIFE.attach(lv,scene,SMOKES);   // V111: chimney smoke, birds, butterflies, fireflies, windows lit at night
+  function buildHouse(b,par,AN){ const e=E(b.door.x,b.door.y), key=themeOf(b.id);
     const F=FACE[b.id], side=F&&(F.dir==='E'||F.dir==='W');
     const dx=!F?(b.door.x+0.5)-(b.x+b.w/2):F.dir==='N'?-((F.tx+0.5)-(b.x+b.w/2)):F.dir==='E'?-((F.ty+0.5)-(b.y+b.h/2)):(F.ty+0.5)-(b.y+b.h/2);
     const bm=Object.assign({},b,side?{w:b.h,h:b.w}:{},{_dx:dx});   // turned east or west, it's built the other way round to fill the same footprint; _dx: where its door sits
     const make=c=>{ const TID={ironhold:'iron',saltmere:'salt',thornwood:'wood',dusthaven:'sand',crystalpeak:'frost',stormgate:'grand',ashfield:'ash',shadowmere:'mere'}; if(typeof LOOK2!=='undefined'&&LOOK2&&TID[key]) c=Object.assign({},c,{[TID[key]]:true},key==='stormgate'?{stone:0xb3b4b8,roof:0x2c4c9e,flag:0xf2c14e}:{}); if(typeof LOOK2!=='undefined'&&LOOK2&&(key==='hearthvale'||key==='homestead')&&(b.style==='house'||b.style==='cottage'||b.style==='shop'||!WSTYLE[b.style])) c=Object.assign({},c,{thatch:true}); const g=new THREE.Group(); if(key==='stormgate'&&BUILDING_STYLES[b.style]&&!c.dark&&!(c.grand&&(b.style==='house'||b.style==='shop'||b.style==='inn'||b.style==='keep'))) BUILDING_STYLES[b.style](bm,g,{roof:c.roof}); else (WSTYLE[b.style]||WSTYLE.house)(bm,g,c);
       if(!(b.id==='home_barn'&&typeof LOOK2!=='undefined'&&LOOK2)) (hingeOf[b.id]=hingeOf[b.id]||[]).push(doorFace(g,dx,b.id==='sg_cathedral'?bm.h+0.5:b.style==='chapel'?bm.h+0.18:bm.h-0.2,b.style==='chapel'?1.4:b.id==='sg_keep'?1.5:1.0));
       g.rotation.y=!F?0:F.dir==='N'?Math.PI:F.dir==='E'?Math.PI/2:-Math.PI/2;
-      g.position.set(b.x+b.w/2,e*TIER*LIFT(b.door.x,b.door.y)+0.02,b.y+b.h/2); if(typeof LOOK2!=='undefined'&&LOOK2){ g.updateMatrixWorld(true); const v=new THREE.Vector3(); g.traverse(o=>{ if(o.userData.smoke){ o.getWorldPosition(v); SMOKES.push({x:v.x,y:v.y,z:v.z,dark:o.userData.smoke===2}); } }); soften(g); } const M0=mergeStatic(shade(g)); par.add(M0);
+      g.position.set(b.x+b.w/2,e*TIER*LIFT(b.door.x,b.door.y)+0.02,b.y+b.h/2); if(typeof LOOK2!=='undefined'&&LOOK2){ g.updateMatrixWorld(true); const v=new THREE.Vector3(); g.traverse(o=>{ if(o.userData.smoke){ o.getWorldPosition(v); const sk=Math.round(v.x*20)+','+Math.round(v.z*20)+','+Math.round(v.y*20); if(!SMK.has(sk)){ SMK.add(sk); SMOKES.push({x:v.x,y:v.y,z:v.z,dark:o.userData.smoke===2}); } } }); soften(g); } const M0=mergeStatic(shade(g)); par.add(M0);
       if(typeof VILLAGE3!=='undefined') VILLAGE3.swap(M0,par,g,b,bm,c,key);   // V194: the village kit's house takes its place once the pieces have loaded
       return g; };
     if(b.style!=='chapel'){ make(colours(b)); return; }
     // a chapel is drawn both ways — dark while its general is bound, bright once the town is cleansed
     const c=colours(b), lit=make(Object.assign({},c,{dark:false})), dark=make(Object.assign({},c,{dark:true}));
-    lv.anim.push(()=>{ const on=!!opt.chapelLight(b); lit.visible=on; dark.visible=!on; }); }
+    (AN||lv.anim).push(()=>{ const on=!!opt.chapelLight(b); lit.visible=on; dark.visible=!on; }); }
   const doorAt=b=>{ const F=FACE[b.id]; if(!F) return {x:b.door.x+0.5,z:b.door.y+1.2,auto:[0,-1],sx:b.door.x+0.5,sz:b.door.y+1.6,face:0};
     if(F.dir==='N') return {x:F.tx+0.5,z:b.y-0.2,auto:[0,1],sx:F.tx+0.5,sz:b.y-0.6,face:Math.PI};
     if(F.dir==='E') return {x:b.x+b.w+0.2,z:F.ty+0.5,auto:[-1,0],sx:b.x+b.w+0.6,sz:F.ty+0.5,face:Math.PI/2};
@@ -1532,8 +1541,8 @@ function buildWorld(WD,opt){
   // ── ships: one hull per run of bow(36) / deck(37) / stern(38) tiles ──
   const ships=[]; for(let y=0;y<H;y++){ let x=0; while(x<W){ const t=T(x,y); if(t===36||t===38){ let x2=x; while(x2+1<W&&T(x2+1,y)>=36&&T(x2+1,y)<=38) x2++;
       const wide=T(x,y+1)>=36&&T(x,y+1)<=38, above=T(x,y-1)>=36&&T(x,y-1)<=38; if(!above) ships.push({x,y,len:x2-x+1,wide,bowEast:T(x2,y)===36}); x=x2+1; } else x++; } }
-  function buildShip(s,par){ const g=shipModel(s.len,s.wide); if(!s.bowEast) g.rotation.y=Math.PI; g.position.set(s.x+s.len/2,0,s.y+(s.wide?1:0.5)); par.add(g); const k=s.x;
-    lv.anim.push(t=>{ g.position.y=Math.sin(t*0.9+k)*0.05; g.rotation.z=Math.sin(t*0.7+k)*0.02; g.rotation.x=Math.sin(t*0.53+k)*0.012; }); }
+  function buildShip(s,par,AN){ const g=shipModel(s.len,s.wide); if(!s.bowEast) g.rotation.y=Math.PI; g.position.set(s.x+s.len/2,0,s.y+(s.wide?1:0.5)); par.add(g); const k=s.x;
+    (AN||lv.anim).push(t=>{ g.position.y=Math.sin(t*0.9+k)*0.05; g.rotation.z=Math.sin(t*0.7+k)*0.02; g.rotation.x=Math.sin(t*0.53+k)*0.012; }); }
   // V106: each town's own sign, where the road comes in — a big painted board on two posts under a little shingled roof, the town's
   //  name and motto lettered on both faces, turned to face the road out (so it greets you arriving and sees you off), a lantern
   const TOWN_SIGN=/^(THE HOMESTEAD|HEARTHVALE|IRONHOLD|SALTMERE|THORNWOOD|CRYSTALPEAK|DUSTHAVEN|ASHFIELD|STORMGATE|SHADOWMERE|HELLGATE CITADEL)$/;
@@ -1615,13 +1624,15 @@ function buildWorld(WD,opt){
     const heavy=(tick++%6)===0;
     chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z);
       if(heavy&&!ch.built&&d<VIEWX+10&&lv._builds<2){ buildChunk(ch); lv._builds++; }
+      else if(heavy&&ch.built&&!ch.dressed&&d<VIEWX+10&&lv._builds<2){ dressChunk(ch); lv._builds++; }
+      else if(ch.dressed&&d>VIEWX+26&&(lv._freed||0)<4){ undressChunk(ch); lv._freed=(lv._freed||0)+1; }
       const show=d<VIEWX+12; ch.g.visible=show&&ch.built; if(!ch.g.visible) return;
       const inView=frus.intersectsSphere(ch.sphere), near=d<G.shR; ch.ims.forEach(im=>{ const tu=im.material===tuftMat; im.visible=inView&&(!tu||d<G.tuftR); im.castShadow=!tu&&(near&&im.material!==boxMat&&im.material!==groundMat||near&&d<G.shR*0.7); }); });
-    lv._builds=0;
+    lv._builds=0; lv._freed=0;
   // redraw the ground of an area in place (the tiles only — people, buildings and decorations stay)
   lv.retile=(x0,y0,x1,y1)=>chunks.forEach(ch=>{ if(!ch.built) return; const cx0=ch.cx*CHUNK, cy0=ch.cy*CHUNK; if(cx0>x1||cy0>y1||cx0+CHUNK<x0||cy0+CHUNK<y0) return; ch.ims.forEach(im=>ch.g.remove(im)); ch.ims=[]; buildChunk(ch,true); }); };
   lv._builds=0;
-  lv.chunks=chunks; lv.prime=p=>{ chunks.forEach(ch=>{ if(!ch.built&&Math.hypot(ch.x-p.x,ch.z-p.z)<VIEW*0.7) buildChunk(ch); }); };
+  lv.chunks=chunks; lv.prime=p=>{ chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z); if(d<VIEW*0.7){ if(!ch.built) buildChunk(ch); else if(!ch.dressed) dressChunk(ch); } }); };
   lv.onEnter=sp=>lv.prime(sp);
   lv.zone=p=>{ const x=Math.floor(p.x), y=Math.floor(p.z); let best=null, bd=1e9; (WD.towns||[]).forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-y); if(d<bd){ bd=d; best=n; } });
     const z=(WD.zones||[]).find(q=>x>=q.x0&&x<q.x1&&y>=q.y0&&y<q.y1); const BN=['The open country','The Greenwood','The Dust Sea','The Ashlands','The Frostfells','The Fens','The Sea Meadows','The Iron Hills','The Burning Marches','The Vale'], where=bd<20?best:T(x,y)===7?'The deep wood':BIO?BN[bio(x,y)]||BN[0]:desert(x,y)?'The Dust Road':ashland(x,y)?'The Ashlands':'The open country';

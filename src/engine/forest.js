@@ -44,8 +44,13 @@ function forestLevels(D,spec){
       const TL=o.tall||0, PF=TL?0.3:0.6;
       if(TL&&typeof canopyFade==='function'){ const U={p:{value:new THREE.Vector3()},c:{value:new THREE.Vector3()},on:{value:0}}; canopyFade(mat,U);
         lv.anim.push(()=>{ const on=typeof ENGINE!=='undefined'&&ENGINE.level===lv; U.on.value=on?1:0; if(!on) return; const P=ENGINE.P; U.p.value.set(P.x,P.y+0.9,P.z); U.c.value.copy(ENGINE.cam.position); }); }
-      inst(wl.filter(([x,y])=>hsh(x,y)<PF),pine,mat,([x,y],m)=>{ const s=1.05+hsh(y,x)*0.35, q=WI?WI.box(x,y):{cx:x+0.5,cz:y+0.5,sx:1,sz:1}, n=WI?Math.min(q.sx,q.sz)*0.9+0.1:1; m.makeScale(s*n*(TL?1.15:1),s*(o.treeH||1.15)*(TL?TL*1.1:1),s*n*(TL?1.15:1)); m.setPosition(q.cx,0,q.cz); },room,true);
-      inst(wl.filter(([x,y])=>hsh(x,y)>=PF),oak,mat,([x,y],m)=>{ const s=1.0+hsh(y,x)*0.3, q=WI?WI.box(x,y):{cx:x+0.5,cz:y+0.5,sx:1,sz:1}, n=WI?Math.min(q.sx,q.sz)*0.9+0.1:1, w=TL?1.45+hsh(x*7,y*3)*0.4:1; m.makeScale(s*n*w,s*(o.treeH?o.treeH/1.15:1)*(TL||1),s*n*w); if(TL) m.premultiply(new THREE.Matrix4().makeRotationY(hsh(x,y*5)*6.28)); m.setPosition(q.cx,0,q.cz); },room,true);
+      if(TL&&TREE_GEO.oakT){   /* V226: the tall shapes — a slim bole that keeps to its own tile, the crown held high and reaching out over the trail */
+        const pT=TREE_GEO.pineT(), oT=TREE_GEO.oakT();
+        inst(wl.filter(([x,y])=>hsh(x,y)<PF),pT,mat,([x,y],m)=>{ const s=1.25+hsh(y,x)*0.3; m.makeScale(s*0.95,s,s*0.95); m.premultiply(new THREE.Matrix4().makeRotationY(hsh(x,y*3)*6.28)); m.setPosition(x+0.5,0,y+0.5); },room,true);
+        inst(wl.filter(([x,y])=>hsh(x,y)>=PF),oT,mat,([x,y],m)=>{ const s=1.15+hsh(y,x)*0.3, w=1.1+hsh(x*7,y*3)*0.3; m.makeScale(s*w,s,s*w); m.premultiply(new THREE.Matrix4().makeRotationY(hsh(x,y*5)*6.28)); m.setPosition(x+0.5,0,y+0.5); },room,true); }
+      else {
+      inst(wl.filter(([x,y])=>hsh(x,y)<PF),pine,mat,([x,y],m)=>{ const s=1.05+hsh(y,x)*0.35, q=WI?WI.box(x,y):{cx:x+0.5,cz:y+0.5,sx:1,sz:1}, n=WI?Math.min(q.sx,q.sz)*0.9+0.1:1; m.makeScale(s*n,s*(o.treeH||1.15),s*n); m.setPosition(q.cx,0,q.cz); },room,true);
+      inst(wl.filter(([x,y])=>hsh(x,y)>=PF),oak,mat,([x,y],m)=>{ const s=1.0+hsh(y,x)*0.3, q=WI?WI.box(x,y):{cx:x+0.5,cz:y+0.5,sx:1,sz:1}, n=WI?Math.min(q.sx,q.sz)*0.9+0.1:1; m.makeScale(s*n,s*(o.treeH?o.treeH/1.15:1),s*n); m.setPosition(q.cx,0,q.cz); },room,true); }
       inst(wl,UNIT,null,([x,y],m,cc)=>{ const q=WI?WI.box(x,y):{cx:x+0.5,cz:y+0.5,sx:1,sz:1}; m.makeScale(q.sx,0.35,q.sz); m.setPosition(q.cx,0,q.cz); cc.setHex(0x24361f).offsetHSL(0,0,(hsh(x,y)-0.5)*0.05); },room); }
     else { inst(wl,UNIT,null,([x,y],m,cc)=>{ const q=WI?WI.box(x,y):{cx:x+0.5,cz:y+0.5,sx:1,sz:1}; m.makeScale(q.sx,(o.close?2.4:1.2)+hsh(x,y)*0.4,q.sz); m.setPosition(q.cx,0,q.cz); cc.setHex(o.wall).offsetHSL(0,0,(hsh(x,y)-0.5)*0.08); },room);
       if(o.close&&o.walls==='rock') inst(wl.filter(([x,y])=>hsh(y,x)<0.5),ROCKY_U,null,([x,y],m,cc)=>{ const r=hsh(x*3,y); m.makeRotationY(r*6); m.scale(new THREE.Vector3(0.9,0.7+r*0.5,0.9)); m.setPosition(x+0.5+(r-0.5)*0.3,2.0+r*0.5,y+0.5); cc.setHex(o.wall).offsetHSL(0,0,(r-0.5)*0.1); },room); }   // the cave's ragged roof-line

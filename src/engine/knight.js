@@ -506,7 +506,7 @@ function buildKnight(){
     //  following the float; when a fish takes, the rod bows and he leans back to it
     pole.visible=mode==='fish';
     if(mode==='fish'){ const fb=K.fishBend||0, br=Math.sin(t*0.9)*0.5+0.5;
-      if(sword.parent===AR.hand&&K._carry!=='none') stow();
+      if((sword.parent===AR.hand||sword.parent===AL.hand)&&K._carry!=='none') stow();
       L.hip.rotation.x=R.hip.rotation.x=-1.22; L.knee.rotation.x=1.25; R.knee.rotation.x=1.05; L.hip.rotation.z=0.12; R.hip.rotation.z=-0.1;
       hips.position.set(0,0.2,-0.05); hips.rotation.set(0,0,0); torso.rotation.set(0.14-0.22*fb+0.02*br,0,0); head.rotation.set(0.18-0.12*fb+0.03*Math.sin(t*0.4),Math.sin(t*0.23)*0.12,0);
       AR.sh.rotation.set(-0.95-0.5*fb,0.25,-0.05); AR.el.rotation.x=-0.75+0.35*fb; AR.hand.rotation.x=0.1;
@@ -525,7 +525,7 @@ function buildKnight(){
       capeP.rotation.x=0.18+0.9*sp+Math.sin(t*(6+8*sp))*0.06*sp; }
     // the sheath: after a few quiet seconds the blade goes home — to the scabbard at his left hip, or across his back for the
     //  big ones (greatswords, hammers, staves, bows); a blow, the guard, a wind-up, or foes drawing near bring it back to hand
-    const armBusy=swing>=0||K.raise>0||K.guarding||K.alert||K.charge>0||K.spinT>=0;
+    const armBusy=swing>=0||K.raise>0||K.guarding||K.alert||K.charge>0||K.spinT>=0||!!K._bow;   /* V226: drawing a bow brings it to hand */
     if(armBusy){ K._idle=0; if(K._st!=='drawn') drawNow(); }
     else if(K._carry!=='none'&&K._st==='drawn'&&(K._idle=(K._idle||0)+dt)>4&&mode!=='sit'){ K._st='sheathing'; K._shT=0; }
     if(K._st==='sheathing'){ K._shT+=dt/(K._carry==='hip'?1.25:0.6); const u=Math.min(1,K._shT), e=Math.sin(u*Math.PI);
@@ -539,7 +539,7 @@ function buildKnight(){
         _ax.set(0,1,0).applyQuaternion(_sq); _pre.copy(_sp).addScaledVector(_ax,-(K._scabLen||0.7)*0.42*(1-w2));
         _dq.setFromEuler(_de.set(Math.PI/2,0,0)).premultiply(_hq).slerp(_sq,w1); sword.quaternion.copy(_hq.invert()).multiply(_dq);
         _hp.lerp(_pre,w1); sword.position.copy(AR.hand.worldToLocal(_hp)); }
-      if(u>=(K._carry==='hip'?0.74:0.5)&&sword.parent===AR.hand) stow(); if(u>=1) K._st='sheathed'; }
+      if(u>=(K._carry==='hip'?0.74:0.5)&&(sword.parent===AR.hand||sword.parent===AL.hand)) stow(); if(u>=1) K._st='sheathed'; }
     const pick=(o,v)=>{ o.v*=0.5; o.x=v; }, rAbs=swing>=0||K.raise>0||K.charge>0||K.spinT>=0||mode==='sit'||mode==='lyre', lAbs=gk>0.02||mode==='sit'||mode==='lyre';
     if(rAbs){ pick(sArmR.x,AR.sh.rotation.x); pick(sArmR.y,AR.sh.rotation.y); pick(sArmR.z,AR.sh.rotation.z); pick(sArmR.e,AR.el.rotation.x); pick(sHandR,AR.hand.rotation.x); }
     if(lAbs){ pick(sArmL.x,AL.sh.rotation.x); pick(sArmL.e,AL.el.rotation.x); pick(sArmL.z,AL.sh.rotation.z); pick(sArmL.y,AL.sh.rotation.y); }
@@ -565,8 +565,8 @@ function buildKnight(){
     add(new THREE.CylinderGeometry(0.036,0.034,0.04,10),SG,0,0.085,0,scab).scale.z=0.6;                       // the throat
     add(new THREE.ConeGeometry(0.026,0.07,10),SG,0,0.075+len+0.02,0,scab).rotation.x=Math.PI;                 // the chape
     add(new THREE.CylinderGeometry(0.033,0.033,0.02,10),SG,0,0.075+len*0.45,0,scab).scale.z=0.6; }           // a band
-  function stow(){ (K._carry==='hip'?sheathP:backP).add(sword); sword.position.set(0,0,0); sword.rotation.set(0,0,0); }
-  function drawNow(){ AR.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); K._st='drawn'; K._idle=0; }
+  function stow(){ (K._carry==='hip'?sheathP:backP).add(sword); sword.position.set(0,0,0); sword.rotation.set(0,0,0); shM.visible=true; }   /* V226: the shield comes back to the arm once the bow is put away */
+  function drawNow(){ if(K._fam==='bow'){ AL.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); shM.visible=false; } else { AR.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); shM.visible=true; } K._st='drawn'; K._idle=0; }   /* V226: a bow is held in the left fist, as the archer's clip holds it; the right hand draws the string */
   const _setW=K.setWeapon; K.setWeapon=function(art,id){ _setW(art,id); const f=art?art.fam:'light'; K._fam=f;
     K._carry=f==='fist'?'none':f==='light'||f==='radiant'?'hip':'back'; scab.visible=K._carry==='hip';
     scabbard(art&&(f==='light'||f==='radiant')?0.3+(art.len||12)*0.034+0.12:0.74);

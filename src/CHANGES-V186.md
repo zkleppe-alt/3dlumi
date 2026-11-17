@@ -452,3 +452,16 @@ After Oceanside harbour, as a beachfront town:
 - Canopy fade (canopyFade, the tree material's shader): anything of a tree between the camera and the knight dissolves in a dither. A narrow tube at his shoulders widens toward the lens, and leaves within about 2.5 of the camera fade too, the way BotW handles it. Shadows are untouched.
 - engine/forest.js: gridLevel o.tall. The Forest of Disillusionment (tall 2.1) has oaks most of all (70%), 2.1× taller with crowns grown 1.45–1.85× wide over the trail (randomly turned), and firs tall and narrow. The same canopy fade applies, with the camera pitch lowered to 0.44.
 - Not touched: portal worlds (opt.land), the mountainside firs, Eldan's Glade and other tree-walled levels.
+
+## V226 — lag and freezes, the bow in hand, clear forest trails
+- engine/world.js — memory: each overworld chunk's dressing (buildings, decor, signs, ships) is now let go once you're well away (more than VIEWX+26 tiles; up to 4 per frame) and built again when you come near (dressChunk / undressChunk; lv.prime does the same).
+  - Before, every chunk ever visited kept its buildings: about 5.8MB of geometry a chunk, roughly 190MB for the 33 round the start, growing without limit as you travelled. That's the browser freezing and crashing.
+  - Measured on a 10-stop tour across 307 chunks: about 30 stay dressed and the heap holds at about 540–640MB (before: rising with every new area).
+  - Dressing animations run from ch.anims, and only while the chunk is shown, so a rebuilt chunk never doubles them. Chapel lit/dark, ship bobbing and decor all moved there. Door hinges are cleared with the chunk, and chimney smoke sources are deduplicated.
+- Measured, not changed: the tall woods (V225) draw fewer triangles than before (1.6–1.75M vs 1.9–1.95M at the same forest spots). The remaining startup heap is mostly the 147 villagers (about 98MB, each a full rig) plus the terrain of every chunk seen.
+- engine/knight.js — the bow:
+  - Drawing a bow counts as busy arms (K._bow), so the bow comes off the back.
+  - It's held in the LEFT fist, as the archer's clip holds it (drawNow: AL.hand, rotation π/2,0,0, found by testing the 24 orientations).
+  - The shield is hidden while the bow is in hand and comes back when it's stowed.
+  - stow() and fishing also release from the left hand.
+- engine/forest.js — the Forest of Disillusionment uses the tall shapes (oakT/pineT): slim trunks on their own tiles, crowns high over the trail. The widened old oaks' root flares had spilled into the paths.
