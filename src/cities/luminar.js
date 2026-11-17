@@ -234,8 +234,11 @@
       return lv; }; } }
   // Tobias by his own fire: the two lessons first (TOBIAS_LESSONS, tutorial.step), then whatever the story has him say
   { const R=ENGINE.levels['in:tobias:0']; const T=DIALOGUE.tobias; if(R&&R.lazy&&T){ const lz=R.lazy; R.lazy=()=>{ const lv=lz(); const f=lv.folk.find(q=>q.who==='Tobias');
+      // V217: when the lessons are done, your grandfather gives you the lyre — your father's, kept in his chest all these years
+      const gift=()=>{ const s=S(); if(s.lyreGift) return; ENGINE.speak('Tobias',['One thing more, before the road takes you. Wait here.','…There. This was your father’s lyre. He played it in this very room the night before he rode out, and I have kept it in the chest ever since.','It will win you no fights, and it is not meant to. When the darkness lay heavy on Saul, David took his lyre and played — and Saul was refreshed, and was well.','Play when you are weary. Make songs of your own. And when you meet a bard at an inn, teach him one, and let the realm hear it.'],f,()=>{ s.lyreGift=true; s.lyre=true; GAME.save(); UI.toast('🎵 Your father’s lyre is yours. Tap 🎵 or press L to play.',3200); }); };
       if(f){ f.lines=null; f.action=()=>{ const s=S(); s.tutorial=s.tutorial||{step:0,done:false};
-        if(!s.tutorial.done){ const i=Math.min(s.tutorial.step,T.lessons.length-1); ENGINE.speak('Tobias',T.lessons[i],f,()=>{ s.tutorial.step++; if(s.tutorial.step>=T.steps) s.tutorial.done=true; GAME.save(); }); return; }
+        if(!s.tutorial.done){ const i=Math.min(s.tutorial.step,T.lessons.length-1); ENGINE.speak('Tobias',T.lessons[i],f,()=>{ s.tutorial.step++; if(s.tutorial.step>=T.steps) s.tutorial.done=true; GAME.save(); if(s.tutorial.done&&!s.lyreGift) setTimeout(gift,350); }); return; }
+        if(!s.lyreGift){ gift(); return; }
         const d=DIALOGUE.lines(f.key), st=DIALOGUE.stage();
         const after=s.abaddonWon?["Look at you. The realm's champion, sitting at my hearth like a boy again.","Go on home. They have waited long enough."]:st==='c10'?["Every chapel cleansed. Every one. I never thought I'd live to say it.","Hellgate, then. Keep that shield up."]:T.after[(s.tutorial.after=(s.tutorial.after|0)+1)%T.after.length];
         ENGINE.speak('Tobias',after||(d&&d.lines)||['…'],f); }; } return lv; }; } }

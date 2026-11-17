@@ -18,7 +18,7 @@ const LYREBOOK=(function(){
     s.title=String(o.title==null?'Untitled':o.title).replace(/[\u0000-\u001f<>]/g,'').slice(0,48)||'Untitled'; s.key=clampI(o.key,-6,6,0); s.tempo=clampI(o.tempo,60,160,90); s.mood=MOODS[o.mood]?o.mood:'cozy'; s.fav=!!o.fav;
     if(typeof o.id==='string'&&/^[a-z0-9]{4,24}$/i.test(o.id)) s.id=o.id; if(isFinite(o.created)) s.created=+o.created; if(isFinite(o.modified)) s.modified=+o.modified;
     for(let i=0;i<STEPS;i++){ const st=o.steps[i]||{}; s.steps[i].c=clampI(st.c,-1,3,-1); if(Array.isArray(st.m)) for(let n=0;n<NS;n++) s.steps[i].m[n]=!!st.m[n]; } return s; }
-  function load(){ try{ const o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o&&o.v===1){ db.songs=(Array.isArray(o.songs)?o.songs:[]).map(clean).filter(Boolean).slice(0,200); db.bards={}; if(o.bards&&typeof o.bards==='object') for(const k in o.bards){ if(/^[\w-]{1,40}$/.test(k)&&Array.isArray(o.bards[k])) db.bards[k]=o.bards[k].filter(x=>typeof x==='string').slice(0,40); } } }catch(e){} }
+  function load(){ try{ const o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o&&o.v===1){ db.songs=(Array.isArray(o.songs)?o.songs:[]).map(clean).filter(Boolean).slice(0,200); db.bards={}; if(o.bards&&typeof o.bards==='object') for(const k in o.bards){ if(/^[\w:.-]{1,60}$/.test(k)&&Array.isArray(o.bards[k])) db.bards[k]=o.bards[k].filter(x=>typeof x==='string').slice(0,40); } } }catch(e){} }
   function save(){ try{ localStorage.setItem(KEY,JSON.stringify(db)); return true; }catch(e){ return false; } }
   load();
   const get=id=>db.songs.find(s=>s.id===id)||null;
@@ -109,6 +109,32 @@ const LYREBOOK=(function(){
   // keys: nothing typed in the book reaches the game; Esc (or Ⓑ on the pad) steps back
   addEventListener('keydown',e=>{ if(!el||el.hidden) return; const k=(e.key||'').toLowerCase(); e.stopImmediatePropagation(); if(k==='escape'){ e.preventDefault(); if(view==='edit') act('back'); else close(); } },true);
   addEventListener('keyup',e=>{ if(el&&!el.hidden) e.stopImmediatePropagation(); },true);
-  return { open, close, play, stop, get, songs:()=>db.songs.slice(), get isOpen(){ return !!el&&!el.hidden; }, get playing(){ return P?P.song:null; }, bard:id=>(db.bards[id]||[]).slice(), teach(id,songId){ if(!get(songId)) return false; const r=db.bards[id]=db.bards[id]||[]; if(!r.includes(songId)) r.push(songId); return save(); }, forget(id,songId){ if(db.bards[id]) db.bards[id]=db.bards[id].filter(x=>x!==songId); save(); }, MOODS };
+  // ── V217: the bards. An inn's bard knows only what you have taught him (kept with the songs, by the inn's own id).
+  //  Ask, and he plays it on these same strings, swaying as he plays; left alone he goes on through what he knows, a
+  //  short rest between songs, for as long as you stay in the room. Leave, or ask him to stop, and the music stops at once.
+  let gig=null;
+  const bardOf=lv=>lv&&lv.folk&&lv.folk.find(f=>f.who==='Bard');
+  function gigStop(){ if(!gig) return; const g=gig; gig=null; clearTimeout(g.wait); cancelAnimationFrame(g.raf); if(g.f&&g.f.g){ g.f.g.rotation.z=0; g.f.g.position.y=g.y0; } stop(); }
+  function perform(lv,id,auto){ const s=get(id); if(!s) return false; gigStop(); const f=bardOf(lv), g=gig={lv,f,y0:f&&f.g?f.g.position.y:0,wait:0,raf:0};
+    const sway=()=>{ if(gig!==g) return; g.raf=requestAnimationFrame(sway); if(typeof ENGINE!=='undefined'&&ENGINE.level!==lv){ gigStop(); return; } if(f&&f.g&&P){ const t=performance.now()/1000, b=60/s.tempo; f.g.rotation.z=Math.sin(t*Math.PI/b)*0.05; f.g.position.y=g.y0+Math.abs(Math.sin(t*Math.PI/b))*0.02; } };
+    const ok=play(s,{onEnd:done=>{ if(gig!==g) return; if(f&&f.g){ f.g.rotation.z=0; f.g.position.y=g.y0; } if(!done){ gig=null; cancelAnimationFrame(g.raf); return; }
+      const rep=bard(lv.id); if(!rep.length){ gigStop(); return; } const nx=rep[(rep.indexOf(id)+1)%rep.length]; g.wait=setTimeout(()=>{ if(gig===g&&ENGINE.level===lv) perform(lv,nx,true); else gigStop(); },5200); }});
+    if(!ok){ gig=null; return false; } sway(); if(!auto&&typeof UI!=='undefined') UI.toast('🎵 The bard plays “'+s.title+'”.',1800); return true; }
+  const bard=id=>(db.bards[id]||[]).filter(x=>get(x));
+  const owned=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||(S.tutorial&&S.tutorial.done))); }catch(e){ return false; } };
+  function bardMenu(lv,hymn){ if(typeof UI==='undefined'||!UI.sheet){ hymn&&hymn(); return; } const id=lv.id, rep=bard(id), has=owned(), mine=db.songs.filter(x=>!rep.includes(x.id));
+    let h='<p class="gm-intro">'+(has?(rep.length?'“I know '+rep.length+' of yours now. Shall I play one — or have you another to teach me?”':'“You carry a lyre! Teach me one of your songs, and this room will hear it long after you have gone.”'):'“A hymn for the road, friend?”')+'</p>';
+    if(gig&&gig.lv===lv) h+='<button class="gm-item" data-act="stop"><span>■ Enough for now</span></button>';
+    h+='<button class="gm-item" data-act="hymn"><span>🎶 Sing a hymn</span></button>';
+    if(has){ if(rep.length){ h+='<div class="gm-sec">Ask to hear a song</div>'; rep.forEach(x=>{ const s=get(x); h+='<button class="gm-item" data-act="hear:'+x+'"><span>▶ '+esc(s.title)+' <span class="ds">'+LYRE.keyName(s.key)+' · '+MOODS[s.mood].name+'</span></span></button>'; }); }
+      h+='<div class="gm-sec">Teach a song</div>'; if(!db.songs.length) h+='<p class="gm-hint">You have written no songs yet. Take out the lyre (🎵) and open 📖 Songs to write one.</p>'; else if(!mine.length) h+='<p class="gm-hint">He knows every song in your book.</p>';
+      mine.forEach(s=>{ h+='<button class="gm-item" data-act="teach:'+s.id+'"><span>📜 '+esc(s.title)+'</span></button>'; });
+      if(rep.length){ h+='<div class="gm-sec">Ask him to forget one</div>'; rep.forEach(x=>{ h+='<button class="gm-item" data-act="forget:'+x+'"><span>✕ '+esc(get(x).title)+'</span></button>'; }); } }
+    UI.sheet({title:'🎵 The bard',html:h,act:a=>{ const [k,x]=a.split(':');
+      if(k==='hymn'){ gigStop(); UI.close(); hymn&&hymn(); } else if(k==='stop'){ gigStop(); UI.close(); }
+      else if(k==='hear'){ UI.close(); perform(lv,x); }
+      else if(k==='teach'){ const r=db.bards[id]=db.bards[id]||[]; if(get(x)&&!r.includes(x)) r.push(x); save(); UI.toast('🎵 “'+get(x).title+'” — he has it by heart.',1800); bardMenu(lv,hymn); }
+      else if(k==='forget'){ if(db.bards[id]) db.bards[id]=db.bards[id].filter(y=>y!==x); save(); if(P&&P.song.id===x) gigStop(); bardMenu(lv,hymn); } }}); }
+  return { bardMenu, perform, gigStop, owned, open, close, play, stop, get, songs:()=>db.songs.slice(), get isOpen(){ return !!el&&!el.hidden; }, get playing(){ return P?P.song:null; }, bard, teach(id,songId){ if(!get(songId)) return false; const r=db.bards[id]=db.bards[id]||[]; if(!r.includes(songId)) r.push(songId); return save(); }, forget(id,songId){ if(db.bards[id]) db.bards[id]=db.bards[id].filter(x=>x!==songId); save(); }, MOODS };
 })();
 try{ window.LYREBOOK=LYREBOOK; }catch(e){}

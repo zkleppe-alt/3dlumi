@@ -1602,6 +1602,7 @@ const KNIGHT_MODEL={"src":"assets/knight_oot_stylized.glb","scale":0.518,"pivots
 //  LYRE (V214) — your father's lyre: take it out anywhere, and play. For rest, not for power: nothing it does wins a
 //  fight or changes the world; it is only music. (David played for Saul, and he was refreshed — 1 Samuel 16:23.)
 //
+//  It comes from your grandfather Tobias, at the end of his lessons in Hearthvale: it was your father's.
 //  Stage 1–2 of the brief: one plucked-string voice on the game's own audio graph (AUDIO2D), four chords of four notes
 //  on four buttons, played in any order, the whole harmony moved up or down a semitone at a time, eight open strings,
 //  a playing pose (knight.js mode 'lyre'), and a small prompt. Songwriter, songbook, bards and the gift scene come after.
@@ -1690,7 +1691,8 @@ const LYRE=(function(){
     btn.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); set(!on); }); }
 
   // ── out and away ──
-  const canPlay=()=>{ const L=ENGINE.level; if(!L||ENGINE.busy) return 'Not just now.'; if(L.riding&&(L.riding.mounted||L.riding.moving)) return 'Dismount first.'; if(L._sailing&&L._sailing.boating) return 'Not while sailing.';
+  const has=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||(S.tutorial&&S.tutorial.done))); }catch(e){ return false; } };   // V217: your grandfather Tobias gives it to you when his lessons are done (a knight already on the road has it)
+  const canPlay=()=>{ const L=ENGINE.level; if(!has()) return 'You have no lyre yet.'; if(!L||ENGINE.busy) return 'Not just now.'; if(L.riding&&(L.riding.mounted||L.riding.moving)) return 'Dismount first.'; if(L._sailing&&L._sailing.boating) return 'Not while sailing.';
     if(typeof COMBAT!=='undefined'&&COMBAT.pl&&(COMBAT.pl.swing>0||COMBAT.pl.dashing>0)) return 'Not in the middle of a fight.'; return ''; };
   function tick(){ if(!on) return; raf=requestAnimationFrame(tick); const K=ENGINE.K; if(K) K._lyreT=(performance.now()-strumAt)/1000; if(ENGINE.busy){ return; } const mc=K&&K.mocap&&!K.mocapOff&&K.mocap.actions&&K.mocap.actions.lyre; if(K) K._lyreOn=!!mc; ENGINE.hold(0.25,mc?null:'lyre');   /* the playing clip where the animation library has loaded; the hand-set pose where it hasn't */ if(mesh&&!mesh.visible) mesh.visible=true; }
   function set(v){ v=!!v; if(v===on) return; mount();
@@ -1702,7 +1704,7 @@ const LYRE=(function(){
   // ── keys (stopped before the game sees them, only while the lyre is out) ──
   const STR='zxcvbnm,';
   addEventListener('keydown',e=>{ if(e._pad) return; if(LYREBOOK.isOpen) return;   /* the book has the keys while it is open */ const t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA') return; const k=(e.key||'').toLowerCase();
-    if(!on){ if(k==='l'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&typeof ENGINE!=='undefined'&&ENGINE.level&&typeof GAME!=='undefined'&&GAME.S){ const p=document.getElementById('sheet'), g=document.getElementById('gm'); if((p&&!p.hidden&&p.getClientRects().length)||(g&&!g.hidden&&g.getClientRects().length)) return; e.stopImmediatePropagation(); set(true); } return; }
+    if(!on){ if(k==='l'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&typeof ENGINE!=='undefined'&&ENGINE.level&&typeof GAME!=='undefined'&&GAME.S&&has()){ const p=document.getElementById('sheet'), g=document.getElementById('gm'); if((p&&!p.hidden&&p.getClientRects().length)||(g&&!g.hidden&&g.getClientRects().length)) return; e.stopImmediatePropagation(); set(true); } return; }
     let used=true; if(e.repeat){ e.stopImmediatePropagation(); e.preventDefault(); return; }
     const ci=SLOTS.findIndex(s=>s.key===k), si=STR.indexOf(k);
     if(ci>=0) strum(ci); else if(k===' ') strum(last,0.9); else if(k==='q') shift(-1); else if(k==='e') shift(1); else if(si>=0&&k) string(si); else if(k==='l'||k==='escape') set(false); else used=false;
@@ -1712,7 +1714,7 @@ const LYRE=(function(){
     [[12,0],[14,2],[15,4],[13,7]].forEach(([b,n])=>{ if(down(b)) string(n); }); if(down(8)&&typeof LYREBOOK!=='undefined') LYREBOOK.open(); else if(down(9)) set(false); }
   // put away on leaving a place; show the button once the game is running
   function attachUI(){ mount(); btn.hidden=!(typeof GAME!=='undefined'&&GAME.S); }
-  setInterval(()=>{ try{ if(typeof ENGINE==='undefined') return; if(!btn) { if(ENGINE.level&&typeof GAME!=='undefined'&&GAME.S) attachUI(); return; } const vis=id=>{ const e=document.getElementById(id); return !!e&&!e.hidden&&e.getClientRects().length>0; }, menu=vis('gm')||vis('sheet'); btn.hidden=!ENGINE.level||menu||on||!!ENGINE.busy; if(ui) ui.hidden=!on||menu; if(on&&LYRE._lv&&LYRE._lv!==ENGINE.level) set(false); LYRE._lv=ENGINE.level; }catch(e){} },500);
+  setInterval(()=>{ try{ if(typeof ENGINE==='undefined') return; if(!btn) { if(ENGINE.level&&typeof GAME!=='undefined'&&GAME.S) attachUI(); return; } const vis=id=>{ const e=document.getElementById(id); return !!e&&!e.hidden&&e.getClientRects().length>0; }, menu=vis('gm')||vis('sheet'); btn.hidden=!ENGINE.level||menu||on||!!ENGINE.busy||!has(); if(ui) ui.hidden=!on||menu; if(on&&LYRE._lv&&LYRE._lv!==ENGINE.level) set(false); LYRE._lv=ENGINE.level; }catch(e){} },500);
   // for the songwriter and the bards: the same strings and the same chords, at a time on the audio clock, in any key
   const chordAt=(i,k,when,vel)=>{ const s=SLOTS[i]; if(!s) return; tones(s,k).forEach((m,j)=>pluck(m,when+j*0.04,(vel||0.9)*(1-j*0.05))); };
   const noteAt=(n,k,when,vel)=>pluck(62+k+SCALE[n],when,vel||0.85);
@@ -1742,7 +1744,7 @@ const LYREBOOK=(function(){
     s.title=String(o.title==null?'Untitled':o.title).replace(/[\u0000-\u001f<>]/g,'').slice(0,48)||'Untitled'; s.key=clampI(o.key,-6,6,0); s.tempo=clampI(o.tempo,60,160,90); s.mood=MOODS[o.mood]?o.mood:'cozy'; s.fav=!!o.fav;
     if(typeof o.id==='string'&&/^[a-z0-9]{4,24}$/i.test(o.id)) s.id=o.id; if(isFinite(o.created)) s.created=+o.created; if(isFinite(o.modified)) s.modified=+o.modified;
     for(let i=0;i<STEPS;i++){ const st=o.steps[i]||{}; s.steps[i].c=clampI(st.c,-1,3,-1); if(Array.isArray(st.m)) for(let n=0;n<NS;n++) s.steps[i].m[n]=!!st.m[n]; } return s; }
-  function load(){ try{ const o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o&&o.v===1){ db.songs=(Array.isArray(o.songs)?o.songs:[]).map(clean).filter(Boolean).slice(0,200); db.bards={}; if(o.bards&&typeof o.bards==='object') for(const k in o.bards){ if(/^[\w-]{1,40}$/.test(k)&&Array.isArray(o.bards[k])) db.bards[k]=o.bards[k].filter(x=>typeof x==='string').slice(0,40); } } }catch(e){} }
+  function load(){ try{ const o=JSON.parse(localStorage.getItem(KEY)||'null'); if(o&&o.v===1){ db.songs=(Array.isArray(o.songs)?o.songs:[]).map(clean).filter(Boolean).slice(0,200); db.bards={}; if(o.bards&&typeof o.bards==='object') for(const k in o.bards){ if(/^[\w:.-]{1,60}$/.test(k)&&Array.isArray(o.bards[k])) db.bards[k]=o.bards[k].filter(x=>typeof x==='string').slice(0,40); } } }catch(e){} }
   function save(){ try{ localStorage.setItem(KEY,JSON.stringify(db)); return true; }catch(e){ return false; } }
   load();
   const get=id=>db.songs.find(s=>s.id===id)||null;
@@ -1833,7 +1835,33 @@ const LYREBOOK=(function(){
   // keys: nothing typed in the book reaches the game; Esc (or Ⓑ on the pad) steps back
   addEventListener('keydown',e=>{ if(!el||el.hidden) return; const k=(e.key||'').toLowerCase(); e.stopImmediatePropagation(); if(k==='escape'){ e.preventDefault(); if(view==='edit') act('back'); else close(); } },true);
   addEventListener('keyup',e=>{ if(el&&!el.hidden) e.stopImmediatePropagation(); },true);
-  return { open, close, play, stop, get, songs:()=>db.songs.slice(), get isOpen(){ return !!el&&!el.hidden; }, get playing(){ return P?P.song:null; }, bard:id=>(db.bards[id]||[]).slice(), teach(id,songId){ if(!get(songId)) return false; const r=db.bards[id]=db.bards[id]||[]; if(!r.includes(songId)) r.push(songId); return save(); }, forget(id,songId){ if(db.bards[id]) db.bards[id]=db.bards[id].filter(x=>x!==songId); save(); }, MOODS };
+  // ── V217: the bards. An inn's bard knows only what you have taught him (kept with the songs, by the inn's own id).
+  //  Ask, and he plays it on these same strings, swaying as he plays; left alone he goes on through what he knows, a
+  //  short rest between songs, for as long as you stay in the room. Leave, or ask him to stop, and the music stops at once.
+  let gig=null;
+  const bardOf=lv=>lv&&lv.folk&&lv.folk.find(f=>f.who==='Bard');
+  function gigStop(){ if(!gig) return; const g=gig; gig=null; clearTimeout(g.wait); cancelAnimationFrame(g.raf); if(g.f&&g.f.g){ g.f.g.rotation.z=0; g.f.g.position.y=g.y0; } stop(); }
+  function perform(lv,id,auto){ const s=get(id); if(!s) return false; gigStop(); const f=bardOf(lv), g=gig={lv,f,y0:f&&f.g?f.g.position.y:0,wait:0,raf:0};
+    const sway=()=>{ if(gig!==g) return; g.raf=requestAnimationFrame(sway); if(typeof ENGINE!=='undefined'&&ENGINE.level!==lv){ gigStop(); return; } if(f&&f.g&&P){ const t=performance.now()/1000, b=60/s.tempo; f.g.rotation.z=Math.sin(t*Math.PI/b)*0.05; f.g.position.y=g.y0+Math.abs(Math.sin(t*Math.PI/b))*0.02; } };
+    const ok=play(s,{onEnd:done=>{ if(gig!==g) return; if(f&&f.g){ f.g.rotation.z=0; f.g.position.y=g.y0; } if(!done){ gig=null; cancelAnimationFrame(g.raf); return; }
+      const rep=bard(lv.id); if(!rep.length){ gigStop(); return; } const nx=rep[(rep.indexOf(id)+1)%rep.length]; g.wait=setTimeout(()=>{ if(gig===g&&ENGINE.level===lv) perform(lv,nx,true); else gigStop(); },5200); }});
+    if(!ok){ gig=null; return false; } sway(); if(!auto&&typeof UI!=='undefined') UI.toast('🎵 The bard plays “'+s.title+'”.',1800); return true; }
+  const bard=id=>(db.bards[id]||[]).filter(x=>get(x));
+  const owned=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||(S.tutorial&&S.tutorial.done))); }catch(e){ return false; } };
+  function bardMenu(lv,hymn){ if(typeof UI==='undefined'||!UI.sheet){ hymn&&hymn(); return; } const id=lv.id, rep=bard(id), has=owned(), mine=db.songs.filter(x=>!rep.includes(x.id));
+    let h='<p class="gm-intro">'+(has?(rep.length?'“I know '+rep.length+' of yours now. Shall I play one — or have you another to teach me?”':'“You carry a lyre! Teach me one of your songs, and this room will hear it long after you have gone.”'):'“A hymn for the road, friend?”')+'</p>';
+    if(gig&&gig.lv===lv) h+='<button class="gm-item" data-act="stop"><span>■ Enough for now</span></button>';
+    h+='<button class="gm-item" data-act="hymn"><span>🎶 Sing a hymn</span></button>';
+    if(has){ if(rep.length){ h+='<div class="gm-sec">Ask to hear a song</div>'; rep.forEach(x=>{ const s=get(x); h+='<button class="gm-item" data-act="hear:'+x+'"><span>▶ '+esc(s.title)+' <span class="ds">'+LYRE.keyName(s.key)+' · '+MOODS[s.mood].name+'</span></span></button>'; }); }
+      h+='<div class="gm-sec">Teach a song</div>'; if(!db.songs.length) h+='<p class="gm-hint">You have written no songs yet. Take out the lyre (🎵) and open 📖 Songs to write one.</p>'; else if(!mine.length) h+='<p class="gm-hint">He knows every song in your book.</p>';
+      mine.forEach(s=>{ h+='<button class="gm-item" data-act="teach:'+s.id+'"><span>📜 '+esc(s.title)+'</span></button>'; });
+      if(rep.length){ h+='<div class="gm-sec">Ask him to forget one</div>'; rep.forEach(x=>{ h+='<button class="gm-item" data-act="forget:'+x+'"><span>✕ '+esc(get(x).title)+'</span></button>'; }); } }
+    UI.sheet({title:'🎵 The bard',html:h,act:a=>{ const [k,x]=a.split(':');
+      if(k==='hymn'){ gigStop(); UI.close(); hymn&&hymn(); } else if(k==='stop'){ gigStop(); UI.close(); }
+      else if(k==='hear'){ UI.close(); perform(lv,x); }
+      else if(k==='teach'){ const r=db.bards[id]=db.bards[id]||[]; if(get(x)&&!r.includes(x)) r.push(x); save(); UI.toast('🎵 “'+get(x).title+'” — he has it by heart.',1800); bardMenu(lv,hymn); }
+      else if(k==='forget'){ if(db.bards[id]) db.bards[id]=db.bards[id].filter(y=>y!==x); save(); if(P&&P.song.id===x) gigStop(); bardMenu(lv,hymn); } }}); }
+  return { bardMenu, perform, gigStop, owned, open, close, play, stop, get, songs:()=>db.songs.slice(), get isOpen(){ return !!el&&!el.hidden; }, get playing(){ return P?P.song:null; }, bard, teach(id,songId){ if(!get(songId)) return false; const r=db.bards[id]=db.bards[id]||[]; if(!r.includes(songId)) r.push(songId); return save(); }, forget(id,songId){ if(db.bards[id]) db.bards[id]=db.bards[id].filter(x=>x!==songId); save(); }, MOODS };
 })();
 try{ window.LYREBOOK=LYREBOOK; }catch(e){}
 
@@ -6310,7 +6338,7 @@ const ROOMLIFE=(function(){
         spot(x,z,'Water','A potted plant',()=>{ if(wat[sk]===day()){ UI.toast('🌱 Already watered today — it looks happy.',1200); return; } wat[sk]=day(); fl.forEach(f=>f.visible=true); GAME.changed(); UI.toast('💧 You give it a drink. By the time you look again, it has flowered.',1800); },0.9); }
       else if(k==='rack'||k==='armour') spot(x,z,'Admire',k==='rack'?'A weapon rack':'An armour stand',()=>UI.toast(k==='rack'?'⚔ Good steel, oiled and kept. Someone here was a soldier once.':'🛡 Old plate, dented at the shoulder — and polished all the same.',1800));
       else if(k==='anvil'||k==='grind') spot(x,z,k==='anvil'?'Strike':'Sharpen',k==='anvil'?'The anvil':'The grindstone',()=>{ AMBI.clang(); sparks(x,0.75,z); if(k==='grind') UI.toast('✨ You put an edge back on your blade. It sings.',1500); });
-      else if(k==='bard') spot(x,z,'Listen','The bard',()=>{ const h=HYMNS[Math.floor(Math.random()*HYMNS.length)]; ENGINE.speak('The bard sings',['🎵 '+h[0],'🎵 '+h[1]]); },1.4);
+      else if(k==='bard') spot(x,z,'Listen','The bard',()=>{ const hymn=()=>{ const h=HYMNS[Math.floor(Math.random()*HYMNS.length)]; ENGINE.speak('The bard sings',['🎵 '+h[0],'🎵 '+h[1]]); }; if(typeof LYREBOOK!=='undefined'&&LYREBOOK.bardMenu) LYREBOOK.bardMenu(lv,hymn);   /* V217: teach him your songs, or ask to hear one */ else hymn(); },1.4);
       else if(k==='bed'){ if(home&&spec.homeFloor===1) spot(x,z,'Look',x<4?'Mara’s bed':'Tobiah’s bed',()=>UI.toast(x<4?'🛏 The rose quilt, and under the pillow a wooden sword she thinks no one knows about.':'🛏 The blue quilt, and a row of carved soldiers keeping watch along the headboard.',2200),1.3); else if(home) spot(x,z,'Sleep','Your bed',()=>sleepSheet(),1.3); else if(inn) spot(x,z,'Sleep','A made-up bed',()=>SERVICES.openInn?SERVICES.openInn('Innkeeper'):UI.toast('Ask at the counter downstairs.',1400),1.3); }
       else if(k==='spin') spot(x,z,'Look','Mother’s spinning wheel',()=>UI.toast('🧶 A skein half spun, the wool soft as breath. The wheel still turns a little from her hand.',2200));
       else if(k==='portrait') spot(x,z,'Look','The family portrait',()=>ENGINE.speak('The family portrait',['Mother and Father with the twins in their arms, newborn — and you at three, trying hard not to smile. It was painted the spring before Father rode out.','“As for me and my house, we will serve the LORD.” — Joshua 24:15']));
@@ -23124,8 +23152,11 @@ const VILLAGE3=(function(){
       return lv; }; } }
   // Tobias by his own fire: the two lessons first (TOBIAS_LESSONS, tutorial.step), then whatever the story has him say
   { const R=ENGINE.levels['in:tobias:0']; const T=DIALOGUE.tobias; if(R&&R.lazy&&T){ const lz=R.lazy; R.lazy=()=>{ const lv=lz(); const f=lv.folk.find(q=>q.who==='Tobias');
+      // V217: when the lessons are done, your grandfather gives you the lyre — your father's, kept in his chest all these years
+      const gift=()=>{ const s=S(); if(s.lyreGift) return; ENGINE.speak('Tobias',['One thing more, before the road takes you. Wait here.','…There. This was your father’s lyre. He played it in this very room the night before he rode out, and I have kept it in the chest ever since.','It will win you no fights, and it is not meant to. When the darkness lay heavy on Saul, David took his lyre and played — and Saul was refreshed, and was well.','Play when you are weary. Make songs of your own. And when you meet a bard at an inn, teach him one, and let the realm hear it.'],f,()=>{ s.lyreGift=true; s.lyre=true; GAME.save(); UI.toast('🎵 Your father’s lyre is yours. Tap 🎵 or press L to play.',3200); }); };
       if(f){ f.lines=null; f.action=()=>{ const s=S(); s.tutorial=s.tutorial||{step:0,done:false};
-        if(!s.tutorial.done){ const i=Math.min(s.tutorial.step,T.lessons.length-1); ENGINE.speak('Tobias',T.lessons[i],f,()=>{ s.tutorial.step++; if(s.tutorial.step>=T.steps) s.tutorial.done=true; GAME.save(); }); return; }
+        if(!s.tutorial.done){ const i=Math.min(s.tutorial.step,T.lessons.length-1); ENGINE.speak('Tobias',T.lessons[i],f,()=>{ s.tutorial.step++; if(s.tutorial.step>=T.steps) s.tutorial.done=true; GAME.save(); if(s.tutorial.done&&!s.lyreGift) setTimeout(gift,350); }); return; }
+        if(!s.lyreGift){ gift(); return; }
         const d=DIALOGUE.lines(f.key), st=DIALOGUE.stage();
         const after=s.abaddonWon?["Look at you. The realm's champion, sitting at my hearth like a boy again.","Go on home. They have waited long enough."]:st==='c10'?["Every chapel cleansed. Every one. I never thought I'd live to say it.","Hellgate, then. Keep that shield up."]:T.after[(s.tutorial.after=(s.tutorial.after|0)+1)%T.after.length];
         ENGINE.speak('Tobias',after||(d&&d.lines)||['…'],f); }; } return lv; }; } }

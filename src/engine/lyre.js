@@ -2,6 +2,7 @@
 //  LYRE (V214) — your father's lyre: take it out anywhere, and play. For rest, not for power: nothing it does wins a
 //  fight or changes the world; it is only music. (David played for Saul, and he was refreshed — 1 Samuel 16:23.)
 //
+//  It comes from your grandfather Tobias, at the end of his lessons in Hearthvale: it was your father's.
 //  Stage 1–2 of the brief: one plucked-string voice on the game's own audio graph (AUDIO2D), four chords of four notes
 //  on four buttons, played in any order, the whole harmony moved up or down a semitone at a time, eight open strings,
 //  a playing pose (knight.js mode 'lyre'), and a small prompt. Songwriter, songbook, bards and the gift scene come after.
@@ -90,7 +91,8 @@ const LYRE=(function(){
     btn.addEventListener('pointerdown',e=>{ e.preventDefault(); e.stopPropagation(); set(!on); }); }
 
   // ── out and away ──
-  const canPlay=()=>{ const L=ENGINE.level; if(!L||ENGINE.busy) return 'Not just now.'; if(L.riding&&(L.riding.mounted||L.riding.moving)) return 'Dismount first.'; if(L._sailing&&L._sailing.boating) return 'Not while sailing.';
+  const has=()=>{ try{ const S=GAME.S; return !!(S&&(S.lyre||(S.tutorial&&S.tutorial.done))); }catch(e){ return false; } };   // V217: your grandfather Tobias gives it to you when his lessons are done (a knight already on the road has it)
+  const canPlay=()=>{ const L=ENGINE.level; if(!has()) return 'You have no lyre yet.'; if(!L||ENGINE.busy) return 'Not just now.'; if(L.riding&&(L.riding.mounted||L.riding.moving)) return 'Dismount first.'; if(L._sailing&&L._sailing.boating) return 'Not while sailing.';
     if(typeof COMBAT!=='undefined'&&COMBAT.pl&&(COMBAT.pl.swing>0||COMBAT.pl.dashing>0)) return 'Not in the middle of a fight.'; return ''; };
   function tick(){ if(!on) return; raf=requestAnimationFrame(tick); const K=ENGINE.K; if(K) K._lyreT=(performance.now()-strumAt)/1000; if(ENGINE.busy){ return; } const mc=K&&K.mocap&&!K.mocapOff&&K.mocap.actions&&K.mocap.actions.lyre; if(K) K._lyreOn=!!mc; ENGINE.hold(0.25,mc?null:'lyre');   /* the playing clip where the animation library has loaded; the hand-set pose where it hasn't */ if(mesh&&!mesh.visible) mesh.visible=true; }
   function set(v){ v=!!v; if(v===on) return; mount();
@@ -102,7 +104,7 @@ const LYRE=(function(){
   // ── keys (stopped before the game sees them, only while the lyre is out) ──
   const STR='zxcvbnm,';
   addEventListener('keydown',e=>{ if(e._pad) return; if(LYREBOOK.isOpen) return;   /* the book has the keys while it is open */ const t=e.target&&e.target.tagName; if(t==='INPUT'||t==='TEXTAREA') return; const k=(e.key||'').toLowerCase();
-    if(!on){ if(k==='l'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&typeof ENGINE!=='undefined'&&ENGINE.level&&typeof GAME!=='undefined'&&GAME.S){ const p=document.getElementById('sheet'), g=document.getElementById('gm'); if((p&&!p.hidden&&p.getClientRects().length)||(g&&!g.hidden&&g.getClientRects().length)) return; e.stopImmediatePropagation(); set(true); } return; }
+    if(!on){ if(k==='l'&&!e.repeat&&!e.ctrlKey&&!e.metaKey&&typeof ENGINE!=='undefined'&&ENGINE.level&&typeof GAME!=='undefined'&&GAME.S&&has()){ const p=document.getElementById('sheet'), g=document.getElementById('gm'); if((p&&!p.hidden&&p.getClientRects().length)||(g&&!g.hidden&&g.getClientRects().length)) return; e.stopImmediatePropagation(); set(true); } return; }
     let used=true; if(e.repeat){ e.stopImmediatePropagation(); e.preventDefault(); return; }
     const ci=SLOTS.findIndex(s=>s.key===k), si=STR.indexOf(k);
     if(ci>=0) strum(ci); else if(k===' ') strum(last,0.9); else if(k==='q') shift(-1); else if(k==='e') shift(1); else if(si>=0&&k) string(si); else if(k==='l'||k==='escape') set(false); else used=false;
@@ -112,7 +114,7 @@ const LYRE=(function(){
     [[12,0],[14,2],[15,4],[13,7]].forEach(([b,n])=>{ if(down(b)) string(n); }); if(down(8)&&typeof LYREBOOK!=='undefined') LYREBOOK.open(); else if(down(9)) set(false); }
   // put away on leaving a place; show the button once the game is running
   function attachUI(){ mount(); btn.hidden=!(typeof GAME!=='undefined'&&GAME.S); }
-  setInterval(()=>{ try{ if(typeof ENGINE==='undefined') return; if(!btn) { if(ENGINE.level&&typeof GAME!=='undefined'&&GAME.S) attachUI(); return; } const vis=id=>{ const e=document.getElementById(id); return !!e&&!e.hidden&&e.getClientRects().length>0; }, menu=vis('gm')||vis('sheet'); btn.hidden=!ENGINE.level||menu||on||!!ENGINE.busy; if(ui) ui.hidden=!on||menu; if(on&&LYRE._lv&&LYRE._lv!==ENGINE.level) set(false); LYRE._lv=ENGINE.level; }catch(e){} },500);
+  setInterval(()=>{ try{ if(typeof ENGINE==='undefined') return; if(!btn) { if(ENGINE.level&&typeof GAME!=='undefined'&&GAME.S) attachUI(); return; } const vis=id=>{ const e=document.getElementById(id); return !!e&&!e.hidden&&e.getClientRects().length>0; }, menu=vis('gm')||vis('sheet'); btn.hidden=!ENGINE.level||menu||on||!!ENGINE.busy||!has(); if(ui) ui.hidden=!on||menu; if(on&&LYRE._lv&&LYRE._lv!==ENGINE.level) set(false); LYRE._lv=ENGINE.level; }catch(e){} },500);
   // for the songwriter and the bards: the same strings and the same chords, at a time on the audio clock, in any key
   const chordAt=(i,k,when,vel)=>{ const s=SLOTS[i]; if(!s) return; tones(s,k).forEach((m,j)=>pluck(m,when+j*0.04,(vel||0.9)*(1-j*0.05))); };
   const noteAt=(n,k,when,vel)=>pluck(62+k+SCALE[n],when,vel||0.85);
