@@ -112,6 +112,7 @@
   if(typeof RIG!=='undefined'&&RIG.ok){ try{ ENGINE.K.mocap=RIG.make(); ENGINE.K.footIK=true; ENGINE.K.mocapOff=localStorage.getItem('klk3d_mocap')==='0'; }catch(e){ console.warn('rig',e); } }
   if(typeof WEATHER!=='undefined') world.weather=WEATHER.attach(world);
   if(typeof ROADLIFE!=='undefined') world.roadlife=ROADLIFE.attach(world);
+  if(typeof WOODLIFE!=='undefined') world.woodlife=WOODLIFE.attach(world);   // V230: the living woods
   if(typeof SNEAK!=='undefined') world.sneak=SNEAK.attach(world);
   if(typeof CATACOMB!=='undefined') Object.keys(CATACOMB.LV).map(Number).forEach(t=>{ if(CHAPELS[t]){ const r=CATACOMB.attach(world,{town:t,door:chapelDoor(t),near:t===4?WD.buildings.find(b=>b.id==='dh_bazaar'):t===7?WD.buildings.find(b=>b.id==='sg_keep'):null,td:CHAPELS[t].td,C:CHAPELS[t],tint:WD.generalTints[t],cleansed:q=>cleansed(q),nave:()=>chapel(t).enterTop()}); if(t===0) world.cata=r; } });
   if(typeof SIDEQ!=='undefined') SIDEQ.world(world,{cleansed:q=>cleansed(q)});

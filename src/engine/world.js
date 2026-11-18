@@ -89,6 +89,20 @@ const BUSH_GEO2=()=>mergeColoured([[_tg(new THREE.IcosahedronGeometry(0.42,2).sc
 // a flower: a stem, five petals and a golden heart (tinted per flower)
 const FLOWER_GEO=col=>{ const parts=[[_tg(new THREE.CylinderGeometry(0.008,0.012,0.12,4),0,0.06,0),0x5a9a3a],[_tg(new THREE.SphereGeometry(0.03,5,3).scale(1.6,0.35,0.7),0.03,0.03,0),0x4f8f36]]; for(let i=0;i<5;i++){ const a=i/5*Math.PI*2, g=new THREE.SphereGeometry(0.04,6,4); g.scale(1,0.35,0.62); g.translate(0.04,0,0); g.rotateY(a); parts.push([_tg(g,0,0.13,0),col]); }
   parts.push([_tg(new THREE.SphereGeometry(0.024,6,4),0,0.135,0),0xf2c03a]); return mergeColoured(parts); };
+// V230: THE FOREST FLOOR — a fern (seven fronds arching out, darker at the stem), a cluster of toadstools, a fallen log furred
+//  with moss along its top, a moss cushion, and a shaft of light coming down through the canopy
+const FERN_GEO=()=>{ const pos=[],col=[]; for(let i=0;i<7;i++){ const a=i/7*Math.PI*2+i*0.4, ca=Math.cos(a), sa=Math.sin(a), L=0.5+(i%3)*0.1, W=0.09;
+    for(let j=0;j<5;j++){ const t0=j/5, t1=(j+1)/5, r0=L*t0, r1=L*t1, h0=0.34*Math.sin(t0*2.4), h1=0.34*Math.sin(t1*2.4), w0=W*Math.sin(t0*3.0+0.15), w1=W*Math.sin(t1*3.0+0.15);
+      const P0=[ca*r0-sa*w0,h0,sa*r0+ca*w0], P1=[ca*r0+sa*w0,h0,sa*r0-ca*w0], P2=[ca*r1-sa*w1,h1,sa*r1+ca*w1], P3=[ca*r1+sa*w1,h1,sa*r1-ca*w1];
+      pos.push(...P0,...P1,...P2,...P1,...P3,...P2); const s0=0.55+t0*0.45, s1=0.55+t1*0.45; for(const s2 of [s0,s0,s1,s0,s1,s1]) col.push(0.26*s2,0.46*s2,0.18*s2); } }
+  const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.computeVertexNormals(); return g; };
+const MUSH_GEO=()=>{ const P=[]; [[0,0,0,1],[0.09,0.03,0.6,0.75],[-0.07,-0.06,1.2,0.6]].forEach(([x,z,r,k],i)=>{ P.push([_tg(new THREE.CylinderGeometry(0.018*k,0.024*k,0.12*k,6),x,0.06*k,z),0xeee6d6]);
+    const c=new THREE.SphereGeometry(0.065*k,8,5,0,Math.PI*2,0,Math.PI/2); P.push([_tg(c,x,0.11*k,z),i===1?0xa8743e:0xc8402e,0.3]); P.push([_tg(new THREE.SphereGeometry(0.012*k,4,3),x+0.03*k,0.15*k,z+0.02*k),0xf8f2e4]); }); return mergeColoured(P); };
+const LOG_GEO=()=>{ const P=[[_tg(new THREE.CylinderGeometry(0.17,0.2,1.7,9),0,0.16,0,0,Math.PI/2),0x5a4430,0.25],[_tg(new THREE.CylinderGeometry(0.15,0.15,0.02,9),0.86,0.16,0,0,Math.PI/2),0xb89a70],[_tg(new THREE.CylinderGeometry(0.13,0.13,0.02,9),-0.86,0.16,0,0,Math.PI/2),0xb89a70]];
+  for(let i=0;i<5;i++){ const g=new THREE.IcosahedronGeometry(0.13,1); g.scale(1.6,0.45,1); P.push([_tg(g,-0.6+i*0.3,0.33,(i%2?0.03:-0.03)),i%2?0x5f8f3a:0x6f9f44,0.3]); }
+  P.push([_tg(new THREE.CylinderGeometry(0.03,0.05,0.4,5),0.3,0.3,0.12,0.9,0.5),0x5a4430]); return mergeColoured(P); };
+const MOSS_GEO=()=>{ const g=new THREE.IcosahedronGeometry(0.32,1); g.scale(1,0.32,0.85); return mergeColoured([[g,0x4f7a32,0.35]]); };
+const SHAFT_GEO=()=>{ const g=new THREE.CylinderGeometry(0.35,1.0,7,8,1,true); g.translate(0,3.5,0); g.rotateZ(0.16); return g; };
 // the wind: crowns and grass sway — higher points more — in a slow, gusting breeze that moves across the land
 /* V135: how lush the sward is, by the graphics tier chosen (read once, as the realm is built: a change shows after a reload) */
 const GRASS_K=(()=>{ try{ const p=localStorage.getItem('klk3d_gfx'); const t=p&&p!=='auto'?p:(matchMedia('(any-pointer: coarse)').matches?'medium':'high'); return t==='ultra'?2.6:t==='high'?2:t==='low'?0.6:1; }catch(e){ return 1; } })();
@@ -817,7 +831,7 @@ function buildWorld(WD,opt){
     v=on?{x:x+0.5+(hsh(y,x)-0.5)*0.5, z:y+0.5+(hsh(x*5+1,y*3)-0.5)*0.5, s, r:(s>1.5?0.1:0.16)*s}:null; TRK.set(k,v); return v; }
   const FWB=k=>RK[k]===2&&D&&D[k]<=4&&RS[k]<2.9;   // the wood's gentle rise (a few tiles in from its edge): walkable; the deep wooded ranges beyond stay hills
   const FWK=TALLW?(x,y)=>WK(x,y)||(inB(x,y)&&T(x,y)===1&&(!RK[y*W+x]||FWB(y*W+x))):WK;
-  lv.WK=FWK; lv.trunkAt=trunkAt;
+  lv.WK=FWK; lv.trunkAt=trunkAt; lv.tileAt=(x,y)=>inB(x,y)?T(x,y):-1; lv.fdens=(x,y)=>inB(x,y)?fdens(x,y):0;
   const hemi=new THREE.HemisphereLight(0xd8e8ff,0x4a5a3a,0.55); scene.add(hemi);   // a little less fill and a little more sun: the shapes model instead of flattening
   const sun=new THREE.DirectionalLight(0xfff0d8,0.95); sun.castShadow=true; sun.shadow.mapSize.set(1024,1024);
   Object.assign(sun.shadow.camera,{left:-20,right:20,top:20,bottom:-20,near:1,far:80}); sun.shadow.bias=-0.0006; scene.add(sun,sun.target);
@@ -1189,6 +1203,9 @@ function buildWorld(WD,opt){
   const CANO={p:{value:new THREE.Vector3()},c:{value:new THREE.Vector3()},on:{value:0}};
   if(L2&&TALLW){ canopyFade(treeMat,CANO); lv.anim.push(()=>{ const on=typeof ENGINE!=='undefined'&&ENGINE.level===lv&&!!ENGINE.cam; CANO.on.value=on?1:0; if(!on) return; const P=ENGINE.P; CANO.p.value.set(P.x,P.y+0.45,P.z); CANO.c.value.copy(ENGINE.cam.position); }); }
   if(L2) windSway(tuftMat,[0.35,0.0]);
+  const fernMat=L2?windSway(new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}),[0.06,0.05]):tuftMat;   // V230
+  const shaftMat=new THREE.MeshBasicMaterial({color:0xfff0c4,transparent:true,opacity:0.05,depthWrite:false,side:THREE.DoubleSide,blending:THREE.AdditiveBlending});
+  lv.anim.push(()=>{ shaftMat.opacity=Math.max(0,Math.min(0.065,(sun.intensity-0.35)*0.1)); });   // the light comes down only while the sun is high
   const flowerMat=L2?windSway(new THREE.MeshLambertMaterial({vertexColors:true}),[0.25,0.05]):null;
   const Q=new THREE.Quaternion(), V=new THREE.Vector3(), S3=new THREE.Vector3(), Y=new THREE.Vector3(0,1,0), Cc=new THREE.Color();
   function instList(ch,list,g,mat,cast){ if(!list.length) return; const im=new THREE.InstancedMesh(g,mat,list.length);
@@ -1279,12 +1296,20 @@ function buildWorld(WD,opt){
           quad([a[0],y0,a[1]],[b[0],y0,b[1]],[b[0],y1,b[1]],[a[0],y1,a[1]],cl,cl,ct,ct,N); }); } });
     const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('normal',new THREE.Float32BufferAttribute(nrm,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
     g.computeBoundingSphere(); const me=new THREE.Mesh(g,groundMat); me.receiveShadow=true; me.castShadow=true; ch.g.add(me); ch.ims.push(me); }
+  /* V230: dress one tile of forest floor between the giants: ferns crowding the shade, moss, toadstools, now and then a fallen
+     log, and under the thickest canopy a shaft of light. gy(x,z): the floor's height (rolled later, as everything else is) */
+  function floorDress(x,y,gy,L){ const h=k=>hsh(x*k+3,y*(k+7)+1); if(TRK.get(y*W+x)) return;
+    if(h(7)<0.5){ const px=x+0.15+h(11)*0.7, pz=y+0.15+h(13)*0.7; L.ferns.push({x:px,z:pz,y:gy(px,pz)-0.02,h:0.8+h(17)*0.6,sx:0.8+h(19)*0.6,sz:0.8+h(23)*0.6,ry:h(29)*6.28}); }
+    if(h(31)<0.08){ const px=x+0.2+h(37)*0.6, pz=y+0.2+h(41)*0.6; L.moss.push({x:px,z:pz,y:gy(px,pz)-0.03,h:0.8+h(43)*0.5,sx:0.8+h(47)*0.7,sz:0.8+h(53)*0.6,ry:h(59)*6.28}); }
+    if(h(61)<0.045){ const px=x+0.2+h(67)*0.6, pz=y+0.2+h(71)*0.6; L.fl2.push({x:px,z:pz,y:gy(px,pz)-0.01,h:1,sx:1,sz:1,ry:h(73)*6.28}); }
+    if(h(79)<0.022){ const px=x+0.5, pz=y+0.5, a=h(83)*6.28; if(!trunkAt(x+1,y)&&!trunkAt(x-1,y)&&!trunkAt(x,y+1)&&!trunkAt(x,y-1)) L.logs.push({x:px,z:pz,y:gy(px,pz)-0.06,h:1,sx:0.8+h(89)*0.5,sz:1,ry:a}); }
+    if(h(97)<0.014&&fdens(x,y)>=16){ const px=x+0.5, pz=y+0.5; L.shafts.push({x:px,z:pz,y:gy(px,pz),h:0.9+h(101)*0.4,sx:0.8+h(103)*0.6,sz:0.8+h(107)*0.6,ry:h(109)*6.28}); } }
   function buildChunk(ch,tilesOnly){ ch.built=true; const boxes=[], trees={}, bush=[], fence=[], lava=[], x0=ch.cx*CHUNK, y0=ch.cy*CHUNK;
     const cellsIn=new Map(), cells=cellsIn, mcells=new Map(), box=(x,z,y,h,c,sx,sz,ry,l)=>{ sx=sx||1; sz=sz||1; const fx=Math.floor(x), fz=Math.floor(z), cells=MG?mcells:cellsIn;
         if(sx===1&&sz===1&&!ry&&Math.abs(x-fx-0.5)<1e-4&&Math.abs(z-fz-0.5)<1e-4){ const kk=fz*W+fx; let q=cells.get(kk); if(!q) cells.set(kk,q={x:fx,y:fz,segs:[]}); q.segs.push([y,y+h,c,l||0]); return; }   // a whole tile's column: part of the ground mesh
-        boxes.push({x,z,y,h,c,sx,sz,ry,l}); }, tufts=[], cones=[], rocks=[], relief=[], crystals=[], lamps=[], flowers=[];
-    let MG=false; const snap=()=>[boxes.length,bush.length,fence.length,lava.length,tufts.length,cones.length,rocks.length,crystals.length,lamps.length,Object.fromEntries(Object.entries(trees).map(([k,l])=>[k,l.length]))];
-    const unsnap=S=>{ boxes.length=S[0]; bush.length=S[1]; fence.length=S[2]; lava.length=S[3]; tufts.length=S[4]; cones.length=S[5]; rocks.length=S[6]; crystals.length=S[7]; lamps.length=S[8]; Object.keys(trees).forEach(k=>trees[k].length=S[9][k]||0); };
+        boxes.push({x,z,y,h,c,sx,sz,ry,l}); }, tufts=[], ferns=[], fl2=[], logs=[], moss=[], shafts=[], cones=[], rocks=[], relief=[], crystals=[], lamps=[], flowers=[];
+    let MG=false; const snap=()=>[boxes.length,bush.length,fence.length,lava.length,tufts.length,cones.length,rocks.length,crystals.length,lamps.length,[ferns.length,fl2.length,logs.length,moss.length,shafts.length],Object.fromEntries(Object.entries(trees).map(([k,l])=>[k,l.length]))];
+    const unsnap=S=>{ boxes.length=S[0]; bush.length=S[1]; fence.length=S[2]; lava.length=S[3]; tufts.length=S[4]; cones.length=S[5]; rocks.length=S[6]; crystals.length=S[7]; lamps.length=S[8]; [ferns,fl2,logs,moss,shafts].forEach((l,i)=>l.length=S[9][i]); Object.keys(trees).forEach(k=>trees[k].length=S[10][k]||0); };
     for(let y=Math.max(0,y0-1);y<Math.min(H,y0+CHUNK+1);y++) for(let x=Math.max(0,x0-1);x<Math.min(W,x0+CHUNK+1);x++){ MG=x<x0||y<y0||x>=x0+CHUNK||y>=y0+CHUNK; const S0=MG?snap():null;   // a one-tile margin from the neighbours, read only so the ground meets theirs
      try{ const t=T(x,y), e=E(x,y), k=y*W+x, cx=x+0.5, cz=y+0.5, top=e*TIER*LIFT(x,y)+0.02, sg=LIFT(x,y)>1, jit=(hsh(x,y)-0.5)*0.05;
       if(t===3||(t>=36&&t<=38)) continue;
@@ -1356,7 +1381,7 @@ function buildWorld(WD,opt){
         if(dn&&hsh(x*11,y*13)<0.16){ const px=cx+dn[0]*0.4, pz=cz+dn[1]*0.4; box(px,pz,top,1.15,0x5a4028,0.07,0.07); box(px+0.11,pz,top+0.95,0.16,0xc84a3a,0.2,0.03); } }
       if(RK[k]&&TALLW&&t===1&&FWB(k)){ if(!MG){ relief.push([x,y]); const tr=trunkAt(x,y), gy=(a2,b2)=>ground(a2,b2);   /* trees ride the roll themselves (rv); the rest are lifted onto it below */   // V225: the wood's rise — giants on the slope, ferns between
           if(tr&&!tilesOnly){ let kk=treeKind(x,y); const big=tr.s>1.5&&TREE_GEO[kk+'T']; if(big) kk+='T'; const sq=big?1:1.05; (trees[kk]=trees[kk]||[]).push({x:tr.x,z:tr.z,y:lv.ground(tr.x,tr.z)-0.08,h:big?tr.s*0.92:tr.s,sx:tr.s*sq,sz:tr.s*sq,ry:hsh(x,y)*6,rv:1}); }
-          else if(!tilesOnly){ for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y*7), hz=hsh(y*5+i,x*3), px=x+0.12+hx*0.76, pz=y+0.12+hz*0.76; tufts.push({x:px,z:pz,y:gy(px,pz)-0.03,h:0.45+hz*0.4,sx:1+hx*0.6,sz:1+hz*0.6,ry:hx*6.28,c:[0x3f7a3a,0x4a8a40,0x2f6a34][(i+x+y)%3],l:0}); }
+          else if(!tilesOnly){ floorDress(x,y,gy,{ferns,fl2,logs,moss,shafts}); for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y*7), hz=hsh(y*5+i,x*3), px=x+0.12+hx*0.76, pz=y+0.12+hz*0.76; tufts.push({x:px,z:pz,y:gy(px,pz)-0.03,h:0.45+hz*0.4,sx:1+hx*0.6,sz:1+hz*0.6,ry:hx*6.28,c:[0x3f7a3a,0x4a8a40,0x2f6a34][(i+x+y)%3],l:0}); }
             if(hsh(x*13,y*17)<0.14){ const px=x+0.3+hsh(y,x*5)*0.4, pz=y+0.3+hsh(x,y*5)*0.4; bush.push({x:px,z:pz,y:gy(px,pz)-0.03,h:0.7+hsh(x,y)*0.3,sx:1,sz:1,ry:hsh(x,y)*6}); } } } continue; }
       if(RK[k]){ if(!MG){ relief.push([x,y]); if(RK[k]===2&&!tilesOnly&&RH[k]<(region(x,y)==='crystalpeak'?3.2:5.8)-hsh(y,x*3)*0.8){ const hi=RH[k]>3.4, kk=hi?'snow':treeKind(x,y), sc=(0.85+hsh(x,y)*0.35)*(hi?0.8:1), hy=reliefV(x*2+1,y*2+1); (trees[kk]=trees[kk]||[]).push({x:cx+(hsh(y,x)-0.5)*0.2,z:cz,y:hy-0.05,h:sc,sx:sc,sz:sc,ry:hsh(x,y)*6,rv:1}); } } continue; }   // the high ground is its own mesh
       if(e) box(cx,cz,-0.4,top-0.12+0.4,0x9a958c,1,1,0,(hsh(y,x)-0.5)*0.08);
@@ -1449,7 +1474,7 @@ function buildWorld(WD,opt){
       else if(t===4) for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y), hz=hsh(y*5+i,x); box(x+0.15+hx*0.7,y+0.15+hz*0.7,y1,0.1,[0xf4f4f4,0xf0c040,0xe04a6a,0xa06ae0][(i+x+y)%4],0.1,0.1); }
       if(t===1&&TALLW){ const tr=trunkAt(x,y);   // V225: a giant of the tall woods, or the floor between them
         if(tr){ let kk=treeKind(x,y); const big=tr.s>1.5&&TREE_GEO[kk+'T']; if(big) kk+='T'; const sq=big?1:kk==='pine'||kk==='snow'?0.9:1.08, h=big?tr.s*0.92:tr.s; (trees[kk]=trees[kk]||[]).push({x:tr.x,z:tr.z,y:y1,h,sx:tr.s*sq,sz:tr.s*sq,ry:hsh(x,y)*6}); }
-        else { for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y*7), hz=hsh(y*5+i,x*3); tufts.push({x:x+0.12+hx*0.76,z:y+0.12+hz*0.76,y:y1,h:0.45+hz*0.4,sx:1+hx*0.6,sz:1+hz*0.6,ry:hx*6.28,c:[0x3f7a3a,0x4a8a40,0x2f6a34][(i+x+y)%3],l:0}); }
+        else { if(!tilesOnly) floorDress(x,y,()=>y1,{ferns,fl2,logs,moss,shafts}); for(let i=0;i<3;i++){ const hx=hsh(x*3+i,y*7), hz=hsh(y*5+i,x*3); tufts.push({x:x+0.12+hx*0.76,z:y+0.12+hz*0.76,y:y1,h:0.45+hz*0.4,sx:1+hx*0.6,sz:1+hz*0.6,ry:hx*6.28,c:[0x3f7a3a,0x4a8a40,0x2f6a34][(i+x+y)%3],l:0}); }
           if(hsh(x*13,y*17)<0.14) bush.push({x:x+0.3+hsh(y,x*5)*0.4,z:y+0.3+hsh(x,y*5)*0.4,y:y1,h:0.7+hsh(x,y)*0.3,sx:1,sz:1,ry:hsh(x,y)*6}); } }
       else if(t===1){ const kk=treeKind(x,y), s=(0.85+hsh(x,y)*0.35)*(opt.land&&[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>WK(x+a,y+b))?0.68:1); (trees[kk]=trees[kk]||[]).push({x:cx+(hsh(y,x)-0.5)*0.2,z:cz,y:y1,h:s,sx:s,sz:s,ry:hsh(x,y)*6}); }
       if(t===15) bush.push({x:cx,z:cz,y:y1,h:0.8+hsh(x,y)*0.3,sx:1,sz:1,ry:hsh(x,y)*6});
@@ -1465,11 +1490,11 @@ function buildWorld(WD,opt){
       if(t===14||t===39) fence.push({x:cx,z:cz,y:y1,h:1,sx:1,sz:1,ry:(T(x,y-1)===t||T(x,y+1)===t)&&!(T(x-1,y)===t||T(x+1,y)===t)?Math.PI/2:0});
       if(t===40){ box(cx-0.45,cz,y1,1.1,0x6f5128,0.14,0.14); box(cx+0.45,cz,y1,1.1,0x6f5128,0.14,0.14); }
      } finally { if(MG) unsnap(S0); } }
-    if(ROLL){ const lift=o=>{ if(o.rv) return; const r=roll(o.x,o.z); if(r) o.y+=r; }; boxes.forEach(lift); bush.forEach(lift); fence.forEach(lift); tufts.forEach(lift); flowers.forEach(lift); cones.forEach(lift); rocks.forEach(lift); crystals.forEach(lift); lamps.forEach(o=>{ if(o.x!==undefined&&o.y!==undefined) lift(o); }); Object.values(trees).forEach(l=>l.forEach(lift)); }
+    if(ROLL){ const lift=o=>{ if(o.rv) return; const r=roll(o.x,o.z); if(r) o.y+=r; }; boxes.forEach(lift); bush.forEach(lift); fence.forEach(lift); tufts.forEach(lift); flowers.forEach(lift); ferns.forEach(lift); fl2.forEach(lift); logs.forEach(lift); moss.forEach(lift); shafts.forEach(lift); cones.forEach(lift); rocks.forEach(lift); crystals.forEach(lift); lamps.forEach(o=>{ if(o.x!==undefined&&o.y!==undefined) lift(o); }); Object.values(trees).forEach(l=>l.forEach(lift)); }
     groundMesh(ch,cells,mcells); reliefMesh(ch,relief); instList(ch,boxes,UNIT,boxMat,true); if(cones.length) instList(ch,cones,CONE_U,bmat(0xffffff,'roof'),true); if(rocks.length) instList(ch,rocks,ROCK_U,rockMat,true); if(crystals.length) instList(ch,crystals,CRYSTAL_U,crystalMat,false); if(lamps.length){ instList(ch,lamps,UNIT,lampMat,false); if(typeof DAYNIGHT!=='undefined') lamps.forEach(l=>{ const o=new THREE.Object3D(); o.position.set(l.x,l.y+l.h*0.5,l.z); ch.g.add(o); DAYNIGHT.lamp(o,1.2+l.h*1.5); }); };
     Object.entries(trees).forEach(([k,l])=>instList(ch,l,geo(k),treeMat,true));
     if(flowers.length){ const FC=[0xfff8f0,0xf6d040,0xe8607a,0xb08ae8,0xf0a0c8]; for(let k=0;k<5;k++){ const l=flowers.filter(f=>f.k===k); if(l.length) instList(ch,l,geos['flower'+k]||(geos['flower'+k]=FLOWER_GEO(FC[k])),flowerMat,false); } }
-    instList(ch,bush,geo('bush'),vcMat,true); if(tufts.length) instList(ch,tufts,geo('tuft'),tuftMat,false); instList(ch,fence,geo('fence'),vcMat,true);
+    instList(ch,bush,geo('bush'),vcMat,true); if(tufts.length) instList(ch,tufts,geo('tuft'),tuftMat,false); if(ferns.length) instList(ch,ferns,geos.fern||(geos.fern=FERN_GEO()),fernMat,false); if(fl2.length) instList(ch,fl2,geos.mush||(geos.mush=MUSH_GEO()),vcMat,false); if(logs.length) instList(ch,logs,geos.log||(geos.log=LOG_GEO()),vcMat,true); if(moss.length) instList(ch,moss,geos.moss||(geos.moss=MOSS_GEO()),vcMat,false); if(shafts.length) instList(ch,shafts,geos.shaft||(geos.shaft=SHAFT_GEO()),shaftMat,false); instList(ch,fence,geo('fence'),vcMat,true);
     instList(ch,lava,UNIT,glow(0xff6a1a));
     if(tilesOnly) return;
     dressChunk(ch); }

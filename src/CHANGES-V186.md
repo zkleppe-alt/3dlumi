@@ -497,3 +497,10 @@ After Oceanside harbour, as a beachfront town:
   - package.json uses electron-builder for an NSIS installer and a portable .exe.
   - Tested here on Linux under a virtual display: app://game/index.html loads the title screen with all models.
 - .github/workflows/desktop.yml ("Desktop build"): on windows-latest, gathers index.html, three.min.js, models, music and icons into src/desktop/game and builds both .exe files as a run artifact. A desktop-v* tag also makes a Release with the tag's version.
+
+## V230 — the living woods
+- **Forest floor** (world.js `floorDress`): between the giants of the tall woods, ferns (≈50% of floor tiles, swaying in the wind), moss cushions, toadstool clusters, the odd fallen mossy log (never beside a trunk), and under the thickest canopy faint shafts of sunlight that fade out as the sun goes down. All instanced per chunk, deterministic, rolled back on margin tiles like the rest.
+- **Wildlife** (new engine/woodlife.js): deer and stags (rigged ANIM3 models), rabbits, red foxes and little flocks of birds spawn 10–22 tiles off in the woods and are let go beyond 35. They graze and wander between the trunks and bolt when you come close (sooner on horseback); birds fly up through the canopy and away. Fewer by night.
+- **Small finds**: 24 fixed sites deep in the woods, ≥40 tiles apart — scripture stones (verses of trees and rest, XP), keepsake chests (a keepsake, gold, XP, journal) and ruined shrines (kneel: full heal). Built only within 45 tiles. State `S.woodFinds`.
+- **The Hermit's Glade**: the walled-off meadow by the southern sea (~371,754) — ruined hermitage with ivy, fallen beam, gable cross, the hermit's lettered wall (Psalm 23), bench (rest: heal), and his chest (150 gold, once); overgrown garden; a still pool with lily pads under a little waterfall (drink: heal); an ancient oak; a calm herd of deer and stags; butterflies. Walls, pool, rocks and oak block the walk. First visit: toast, XP, journal. State `S.glade`.
+- lv.tileAt / lv.fdens exposed for modules.
