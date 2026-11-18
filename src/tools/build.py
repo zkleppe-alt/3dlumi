@@ -22,6 +22,8 @@ scripts = "\n".join(["(function(){", head] + ["// ── engine/%s ──\n%s" %
                     + ["// ── cities/%s.js ──\n%s" % (name, read("cities", name + ".js")), "})();"])
 page = read("engine", "shell.html").replace("{{SCRIPTS}}", scripts)
 MD = os.path.join(ROOT, "dist", "models"); os.makedirs(MD, exist_ok=True)
+for f in sorted(os.listdir(os.path.join(ROOT, "pwa"))):   # V229: the installable web app — manifest, offline worker, icons
+    shutil.copy(os.path.join(ROOT, "pwa", f), os.path.join(ROOT, "dist", f))
 for f in sorted(os.listdir(os.path.join(ROOT, "data", "models"))):
     src = os.path.join(ROOT, "data", "models", f)
     if os.path.isdir(src): shutil.copytree(src, os.path.join(MD, f), dirs_exist_ok=True)   # look3/: the rigged test models (glTF), fetched at run time

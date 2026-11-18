@@ -1,0 +1,27 @@
+{
+  "name": "kingdoms-last-knight",
+  "productName": "Kingdom's Last Knight",
+  "version": "1.0.0",
+  "description": "Kingdom's Last Knight — Luminar 3D, a Christian RPG.",
+  "author": "Restful Knight Gaming",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis portable --publish never"
+  },
+  "devDependencies": {
+    "electron": "33.2.1",
+    "electron-builder": "25.1.8"
+  },
+  "build": {
+    "appId": "com.restfulknight.lastknight",
+    "productName": "Kingdom's Last Knight",
+    "files": ["main.js", "package.json", "game/**/*"],
+    "asar": false,
+    "win": { "target": ["nsis", "portable"], "icon": "game/icon-512.png" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true, "shortcutName": "Kingdom's Last Knight" },
+    "portable": { "artifactName": "LastKnight-portable-${version}.exe" },
+    "artifactName": "LastKnight-Setup-${version}.${ext}"
+  }
+}

@@ -1575,7 +1575,7 @@ function buildWorld(WD,opt){
   signs.forEach(s=>{ const lines=s.v.split('\n'); lv.spots.push({key:s.x+','+s.y,x:s.wx,z:s.wz,r:0.9,label:'Read',who:lines[0].replace(/^[^A-Za-z—]+/,'').trim()||'Sign',lines:[lines.slice(1).filter(l=>!/Ⓐ/.test(l)).join('\n').trim()||lines[0]]}); });
   // ── townsfolk ──
   WD.villagers.forEach(v=>{ const vk='v:'+v.x+','+v.y+':'+v.outfit, dn=(typeof DIALOGUE!=='undefined'&&DIALOGUE.lines)?DIALOGUE.lines(vk):null;   /* V132: the story's name for him (Old Man Elijah) picks his look */
-    const f=addPerson(lv,chunkAt(v.x,v.y).g,v.outfit,v.x+0.5,v.y+0.5,lv.ground(v.x+0.5,v.y+0.5)+0.02,v.name||(dn&&dn.who)||OUTFIT_NAMES[v.outfit]||'Villager',cleanLines(v.lines),{rest:hsh(v.x,v.y)*6}); f.chunk=chunkAt(v.x,v.y); f.key='v:'+v.x+','+v.y+':'+v.outfit; });
+    const f=addPerson(lv,chunkAt(v.x,v.y).g,v.outfit,v.x+0.5,v.y+0.5,lv.ground(v.x+0.5,v.y+0.5)+0.02,v.name||(dn&&dn.who)||OUTFIT_NAMES[v.outfit]||'Villager',cleanLines(v.lines),{rest:hsh(v.x,v.y)*6,lazy:typeof folkWake==='function'}); f.chunk=chunkAt(v.x,v.y); f.key='v:'+v.x+','+v.y+':'+v.outfit; });
   // ── the forest hollows and anything else the wiring hangs off a tile ──
   for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(T(x,y)===35){ const fn=opt.hollow&&opt.hollow(x,y); if(fn) lv.spots.push({x:x+0.5,z:y+1.2,r:1.3,label:'Enter',who:'The wood',action:fn}); }
   // ── Abaddon's barriers: a dome of dark power over every town still sealed ──
@@ -1638,10 +1638,12 @@ function buildWorld(WD,opt){
       const inView=frus.intersectsSphere(ch.sphere), near=d<G.shR; ch.ims.forEach(im=>{ const tu=im.material===tuftMat; im.visible=inView&&(!tu||d<G.tuftR); im.castShadow=!tu&&(near&&im.material!==boxMat&&im.material!==groundMat||near&&d<G.shR*0.7); }); });
     lv._builds=0; lv._freed=0;
     if((tick%20)===0) cullFar(p,VIEWX+30);
+    if((tick%8)===0&&typeof folkWake==='function'){ let woke=0; for(const f of lv.folk){ if(!f._mk) continue; const d=Math.hypot(f.x-p.x,f.z-p.z);   // V228: the villagers near you, built two at a time; those far behind, let go
+        if(d<48&&woke<2&&folkWake(f)) woke++; else if(d>72) folkSleep(f); } }
   // redraw the ground of an area in place (the tiles only — people, buildings and decorations stay)
   lv.retile=(x0,y0,x1,y1)=>chunks.forEach(ch=>{ if(!ch.built) return; const cx0=ch.cx*CHUNK, cy0=ch.cy*CHUNK; if(cx0>x1||cy0>y1||cx0+CHUNK<x0||cy0+CHUNK<y0) return; ch.ims.forEach(im=>ch.g.remove(im)); ch.ims=[]; buildChunk(ch,true); }); };
   lv._builds=0;
-  lv.chunks=chunks; lv.prime=p=>{ chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z); if(d<VIEW*0.7){ if(!ch.built) buildChunk(ch); else if(!ch.dressed) dressChunk(ch); } }); };
+  lv.chunks=chunks; lv.prime=p=>{ if(typeof folkWake==='function') lv.folk.forEach(f=>{ if(f._mk&&Math.hypot(f.x-p.x,f.z-p.z)<40) folkWake(f); }); chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z); if(d<VIEW*0.7){ if(!ch.built) buildChunk(ch); else if(!ch.dressed) dressChunk(ch); } }); };
   lv.onEnter=sp=>lv.prime(sp);
   lv.zone=p=>{ const x=Math.floor(p.x), y=Math.floor(p.z); let best=null, bd=1e9; (WD.towns||[]).forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-y); if(d<bd){ bd=d; best=n; } });
     const z=(WD.zones||[]).find(q=>x>=q.x0&&x<q.x1&&y>=q.y0&&y<q.y1); const BN=['The open country','The Greenwood','The Dust Sea','The Ashlands','The Frostfells','The Fens','The Sea Meadows','The Iron Hills','The Burning Marches','The Vale'], where=bd<20?best:T(x,y)===7?'The deep wood':BIO?BN[bio(x,y)]||BN[0]:desert(x,y)?'The Dust Road':ashland(x,y)?'The Ashlands':'The open country';

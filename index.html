@@ -3763,9 +3763,21 @@ function folkPose(f,t,dt,P,talking){ const u=f.g.userData; if(u.castK){ castPose
   st.hy+=(hy-st.hy)*k; st.hp+=(hp-st.hp)*k; st.rx+=(rx-st.rx)*Math.min(1,dt*(st.wave>0?14:7)); st.rz+=(rz-st.rz)*Math.min(1,dt*(st.wave>0?14:7)); st.lx+=(lx-st.lx)*k;
   ps.head.value.set(st.hy,st.hp,0); ps.armR.value.set(st.rx,st.rz); ps.armL.value.set(st.lx,0); }
 // helper: put a person into a level at tile (x,y), facing rest, saying lines
-function addPerson(lv,par,look,x,z,y,who,lines,opts){ opts=opts||{}; const nl=who&&NAMED_LOOK[who]; if(nl){ look=nl; opts=Object.assign({},opts); delete opts.her; } const g=person(look,Object.assign({who:who||''},opts)); g.position.set(x,y,z); g.rotation.y=opts.rest||0; par.add(g);
+function addPerson(lv,par,look,x,z,y,who,lines,opts){ opts=opts||{}; const nl=who&&NAMED_LOOK[who]; if(nl){ look=nl; opts=Object.assign({},opts); delete opts.her; } const mk=()=>person(look,Object.assign({who:who||''},opts));
+  const g=opts.lazy?folkHolder():mk(); g.position.set(x,y,z); g.rotation.y=opts.rest||0; par.add(g);
   const f={g,x,z,y,who,look,lines,rest:opts.rest||0,ph:hsh(Math.floor(x*7),Math.floor(z*7))*6,reach:opts.reach||0,next:opts.next,mute:opts.mute,still:opts.still};
+  if(opts.lazy) f._mk=mk;
   lv.folk.push(f); return f; }
+/* V228: FOLK WHO ARE FAR AWAY ARE NOT BUILT — a villager out of sight is an empty stand-in (where he is, which way he faces,
+   whether the story has him here); his figure, some ninety pieces on a full rig, is made when you come near (folkWake) and
+   let go again when you are well away (folkSleep). The game's own showing and hiding carries over in both directions. */
+function folkHolder(){ const h=new THREE.Group(); h.userData.lazy=true; return h; }
+function folkWake(f){ if(!f._mk||!f.g.userData.lazy) return false; const h=f.g, g=f._mk(); f._own=new Set(g.children); g.position.copy(h.position); g.rotation.copy(h.rotation); g.visible=h.visible;
+  h.children.slice().forEach(c=>g.add(c));   // what the game hung on him meanwhile (a quest's ❗) goes with him
+  if(h.parent){ h.parent.add(g); h.parent.remove(h); } f.g=g; return true; }
+function folkSleep(f){ if(!f._mk||f.g.userData.lazy) return false; const g=f.g, h=folkHolder(); h.position.copy(g.position); h.rotation.copy(g.rotation); h.visible=g.visible;
+  g.children.slice().forEach(c=>{ if(f._own&&!f._own.has(c)) h.add(c); });
+  if(g.parent){ g.parent.add(h); g.parent.remove(g); } f.g=h; g.traverse(q=>{ if(q.geometry) q.geometry.dispose(); if(q.skeleton&&q.skeleton.dispose) q.skeleton.dispose(); }); return true; }
 
 // ── engine/heroes.js ──
 // ════════════════════════════════════════════════════════════════
@@ -8291,7 +8303,7 @@ function buildWorld(WD,opt){
   signs.forEach(s=>{ const lines=s.v.split('\n'); lv.spots.push({key:s.x+','+s.y,x:s.wx,z:s.wz,r:0.9,label:'Read',who:lines[0].replace(/^[^A-Za-z—]+/,'').trim()||'Sign',lines:[lines.slice(1).filter(l=>!/Ⓐ/.test(l)).join('\n').trim()||lines[0]]}); });
   // ── townsfolk ──
   WD.villagers.forEach(v=>{ const vk='v:'+v.x+','+v.y+':'+v.outfit, dn=(typeof DIALOGUE!=='undefined'&&DIALOGUE.lines)?DIALOGUE.lines(vk):null;   /* V132: the story's name for him (Old Man Elijah) picks his look */
-    const f=addPerson(lv,chunkAt(v.x,v.y).g,v.outfit,v.x+0.5,v.y+0.5,lv.ground(v.x+0.5,v.y+0.5)+0.02,v.name||(dn&&dn.who)||OUTFIT_NAMES[v.outfit]||'Villager',cleanLines(v.lines),{rest:hsh(v.x,v.y)*6}); f.chunk=chunkAt(v.x,v.y); f.key='v:'+v.x+','+v.y+':'+v.outfit; });
+    const f=addPerson(lv,chunkAt(v.x,v.y).g,v.outfit,v.x+0.5,v.y+0.5,lv.ground(v.x+0.5,v.y+0.5)+0.02,v.name||(dn&&dn.who)||OUTFIT_NAMES[v.outfit]||'Villager',cleanLines(v.lines),{rest:hsh(v.x,v.y)*6,lazy:typeof folkWake==='function'}); f.chunk=chunkAt(v.x,v.y); f.key='v:'+v.x+','+v.y+':'+v.outfit; });
   // ── the forest hollows and anything else the wiring hangs off a tile ──
   for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(T(x,y)===35){ const fn=opt.hollow&&opt.hollow(x,y); if(fn) lv.spots.push({x:x+0.5,z:y+1.2,r:1.3,label:'Enter',who:'The wood',action:fn}); }
   // ── Abaddon's barriers: a dome of dark power over every town still sealed ──
@@ -8354,10 +8366,12 @@ function buildWorld(WD,opt){
       const inView=frus.intersectsSphere(ch.sphere), near=d<G.shR; ch.ims.forEach(im=>{ const tu=im.material===tuftMat; im.visible=inView&&(!tu||d<G.tuftR); im.castShadow=!tu&&(near&&im.material!==boxMat&&im.material!==groundMat||near&&d<G.shR*0.7); }); });
     lv._builds=0; lv._freed=0;
     if((tick%20)===0) cullFar(p,VIEWX+30);
+    if((tick%8)===0&&typeof folkWake==='function'){ let woke=0; for(const f of lv.folk){ if(!f._mk) continue; const d=Math.hypot(f.x-p.x,f.z-p.z);   // V228: the villagers near you, built two at a time; those far behind, let go
+        if(d<48&&woke<2&&folkWake(f)) woke++; else if(d>72) folkSleep(f); } }
   // redraw the ground of an area in place (the tiles only — people, buildings and decorations stay)
   lv.retile=(x0,y0,x1,y1)=>chunks.forEach(ch=>{ if(!ch.built) return; const cx0=ch.cx*CHUNK, cy0=ch.cy*CHUNK; if(cx0>x1||cy0>y1||cx0+CHUNK<x0||cy0+CHUNK<y0) return; ch.ims.forEach(im=>ch.g.remove(im)); ch.ims=[]; buildChunk(ch,true); }); };
   lv._builds=0;
-  lv.chunks=chunks; lv.prime=p=>{ chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z); if(d<VIEW*0.7){ if(!ch.built) buildChunk(ch); else if(!ch.dressed) dressChunk(ch); } }); };
+  lv.chunks=chunks; lv.prime=p=>{ if(typeof folkWake==='function') lv.folk.forEach(f=>{ if(f._mk&&Math.hypot(f.x-p.x,f.z-p.z)<40) folkWake(f); }); chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z); if(d<VIEW*0.7){ if(!ch.built) buildChunk(ch); else if(!ch.dressed) dressChunk(ch); } }); };
   lv.onEnter=sp=>lv.prime(sp);
   lv.zone=p=>{ const x=Math.floor(p.x), y=Math.floor(p.z); let best=null, bd=1e9; (WD.towns||[]).forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-y); if(d<bd){ bd=d; best=n; } });
     const z=(WD.zones||[]).find(q=>x>=q.x0&&x<q.x1&&y>=q.y0&&y<q.y1); const BN=['The open country','The Greenwood','The Dust Sea','The Ashlands','The Frostfells','The Fens','The Sea Meadows','The Iron Hills','The Burning Marches','The Vale'], where=bd<20?best:T(x,y)===7?'The deep wood':BIO?BN[bio(x,y)]||BN[0]:desert(x,y)?'The Dust Road':ashland(x,y)?'The Ashlands':'The open country';
@@ -11430,7 +11444,7 @@ const SIDEQ=(function(){
     function spotNear(cx,cz,i){ for(let r=4;r<14;r+=0.5){ for(let k=0;k<16;k++){ const a=i*2.1+k*0.39, x=Math.floor(cx+Math.cos(a)*r), z=Math.floor(cz+Math.sin(a)*r); let ok=true; for(let dy=-1;dy<=1&&ok;dy++) for(let dx=-1;dx<=1;dx++) if(!W.walkTile(x+dx,z+dy)){ ok=false; break; } if(ok&&!Object.values(placed).some(p=>Math.hypot(p[0]-x,p[1]-z)<3)) return [x+0.5,z+0.5]; } } return null; }
     for(const t in D.quests){ const tw=(W.towns||[]).find(q=>q[0]===TOWNS[+t]); if(!tw) continue;
       D.quests[t].forEach((q0,i)=>{ const q=Object.assign({town:+t},q0), at=spotNear(tw[1],tw[2],i+(+t)); if(!at) return; placed[q.id]=at;
-        let f=null; try{ f=addPerson(W,W.scene,q.giver.look,at[0],at[1],W.ground(at[0],at[1])+0.02,q.giver.name,[],{rest:Math.atan2(tw[1]-at[0],tw[2]-at[1])}); }catch(e){ return; } f.still=true; f.sideq=q.id; f.label='Talk';
+        let f=null; try{ f=addPerson(W,W.scene,q.giver.look,at[0],at[1],W.ground(at[0],at[1])+0.02,q.giver.name,[],{rest:Math.atan2(tw[1]-at[0],tw[2]-at[1]),lazy:typeof folkWake==='function'}); }catch(e){ return; } f.still=true; f.sideq=q.id; f.label='Talk';
         const mk=new THREE.Sprite(markMat('!')); mk.scale.setScalar(0.5); mk.position.y=2.25; f.g.add(mk);
         f.action=()=>{ const s0=qs(q.id); const sp=(lines,after)=>ENGINE.speak(q.giver.name,lines.map(strip),f,after);
           if(q.giver.needs==='helper'&&!(S().cata&&S().cata[q.town]&&S().cata[q.town].helper)&&s0===0){ sp(['(He is not here yet — he is still below, in the cage. Come back when he is free.)']); return; }
@@ -20340,7 +20354,7 @@ const LANDMARKS=(function(){
     // the shepherd's hut, and its shepherd
     { const p=at(118.5,190.5), g=group(p.x,p.y,p.z,scene); B(2.2,1.5,1.8,0x8a7a62,0,0,0,g); const rf=prism(2.6,1.0,2.2,0x6a5a3a); rf.position.y=1.5; g.add(rf); B(0.6,1.1,0.05,0x3a2a1a,0,0,0.91,g);
       for(let i=0;i<10;i++){ const a=i/10*TAU, x=3.4+Math.cos(a)*1.8, z=1.0+Math.sin(a)*1.4; if(i===3) continue; Cy(0.05,0.06,0.8,5,0x6a4a2a,x,0,z,g); }   // the fold
-      if(typeof addPerson==='function') addPerson(world,scene,'peasant',p.x+1.6,p.z+1.8,p.y,'Old Shepherd Abner',['Lost a lamb last spring, up among the rocks. Ninety-nine in the fold and I went looking for the one. Found her, too.','“Rejoice with me; for I have found my sheep which was lost.” — Luke 15:6','The towers? Watchmen built them, before my grandfather. You can still climb the stairs, if your knees are younger than mine.'],{rest:Math.PI});
+      if(typeof addPerson==='function') addPerson(world,scene,'peasant',p.x+1.6,p.z+1.8,p.y,'Old Shepherd Abner',['Lost a lamb last spring, up among the rocks. Ninety-nine in the fold and I went looking for the one. Found her, too.','“Rejoice with me; for I have found my sheep which was lost.” — Luke 15:6','The towers? Watchmen built them, before my grandfather. You can still climb the stairs, if your knees are younger than mine.'],{rest:Math.PI,lazy:typeof folkWake==='function'});
       PLACES.push({x:p.x,z:p.z,r:7,name:'🐑 The shepherd’s hut'}); }
     // the waystone shrine
     { const p=at(220.5,170.5), g=group(p.x,p.y,p.z,scene); B(1.6,0.25,1.6,0x8a8478,0,0,0,g); B(0.7,1.6,0.3,0x9a948a,0,0.25,0,g); const tp=prism(0.9,0.4,0.4,0x8a8478); tp.position.y=1.85; g.add(tp); B(0.08,0.5,0.02,0xe8c46a,0,1.0,0.16,g); B(0.3,0.08,0.02,0xe8c46a,0,1.3,0.16,g);

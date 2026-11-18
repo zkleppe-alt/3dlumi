@@ -478,3 +478,22 @@ After Oceanside harbour, as a beachfront town:
   - cullFar(): every 20 updates, anything set straight into the overworld scene (not into a chunk) that is further than the drawn land (VIEWX+30) goes onto layer 5, which neither the camera nor the sun's shadow renders. It comes back when near. .visible is left alone, so the story's showing and hiding still works. Things laid out from the origin, unculled objects (sky, far country) and the knight are skipped.
   - At the start town, meshes the renderer considers outside the chunks dropped from about 7,000 (227 groups, median 421 tiles away; 45 demons; all 147 villagers) to about 880.
   - Re-dressing a chunk (its houses) is limited to one per build step, so riding into a town no longer builds two towns' worth in one frame.
+
+## V228 — folk built only when near
+- engine/people.js: addPerson(…,{lazy:true}) makes the figure an empty stand-in (folkHolder) that keeps position, facing and .visible. folkWake() builds the real figure (about 90–100 pieces on a full rig) and carries over anything the game hung on the stand-in, like a quest's ❗. folkSleep() swaps the stand-in back, keeps those extras and disposes the figure's geometry and skeleton.
+- engine/world.js: every 8 updates, lazy folk within 48 tiles are woken (2 a pass) and those beyond 72 put to sleep. lv.prime wakes those within 40 of where you arrive.
+- Lazy: the overworld villagers (world.js), the side-quest givers (sidequests.js) and Old Shepherd Abner (landmarks.js). Still built at once (rarely far, or used as models elsewhere): the tournament's Herald and Marshal, Asa the Ferryman, Reuben, the crypt guard.
+- Measured at the start: folk meshes about 5,400 → about 1,960; startup heap about 570MB → about 475MB. Tested: a giver far away sleeps with his ❗ kept, wakes on return with it, and can be talked to either way.
+
+## V229 — installable: a web app for Chromebooks/phones, a Windows app
+- pwa/ (copied to the site root by build.py and the ship):
+  - manifest.webmanifest: fullscreen, landscape, the shield-and-cross icon (self-made) at 192/512, plus maskable and apple-touch versions.
+  - sw.js, the offline worker: the page is fetched network-first and kept for offline. three.js, models, music and icons go stale-while-revalidate into one cache ('lk-assets') that outlives updates, so a new version never re-downloads the 80MB of models. Google Fonts are kept too.
+- engine/shell.html: manifest, theme-color and icons; registers sw.js only when served over http(s) and not on localhost (?sw=1 forces it for tests).
+- Tested: after one online visit, a reload with the network cut loads the game (title, three.js, all 24 cast models).
+- desktop/ is the Windows app (Electron 33):
+  - The game is served from inside the app on a private app:// address (protocol.handle), so models and music load as on the web, and saves live in the app's own storage.
+  - GPU blocklist ignored, GPU rasterization, no background throttling, 4GB JS heap. F11 or Alt+Enter for full screen, F5 to reload; no menu bar.
+  - package.json uses electron-builder for an NSIS installer and a portable .exe.
+  - Tested here on Linux under a virtual display: app://game/index.html loads the title screen with all models.
+- .github/workflows/desktop.yml ("Desktop build"): on windows-latest, gathers index.html, three.min.js, models, music and icons into src/desktop/game and builds both .exe files as a run artifact. A desktop-v* tag also makes a Release with the tag's version.

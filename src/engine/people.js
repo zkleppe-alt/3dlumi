@@ -545,6 +545,18 @@ function folkPose(f,t,dt,P,talking){ const u=f.g.userData; if(u.castK){ castPose
   st.hy+=(hy-st.hy)*k; st.hp+=(hp-st.hp)*k; st.rx+=(rx-st.rx)*Math.min(1,dt*(st.wave>0?14:7)); st.rz+=(rz-st.rz)*Math.min(1,dt*(st.wave>0?14:7)); st.lx+=(lx-st.lx)*k;
   ps.head.value.set(st.hy,st.hp,0); ps.armR.value.set(st.rx,st.rz); ps.armL.value.set(st.lx,0); }
 // helper: put a person into a level at tile (x,y), facing rest, saying lines
-function addPerson(lv,par,look,x,z,y,who,lines,opts){ opts=opts||{}; const nl=who&&NAMED_LOOK[who]; if(nl){ look=nl; opts=Object.assign({},opts); delete opts.her; } const g=person(look,Object.assign({who:who||''},opts)); g.position.set(x,y,z); g.rotation.y=opts.rest||0; par.add(g);
+function addPerson(lv,par,look,x,z,y,who,lines,opts){ opts=opts||{}; const nl=who&&NAMED_LOOK[who]; if(nl){ look=nl; opts=Object.assign({},opts); delete opts.her; } const mk=()=>person(look,Object.assign({who:who||''},opts));
+  const g=opts.lazy?folkHolder():mk(); g.position.set(x,y,z); g.rotation.y=opts.rest||0; par.add(g);
   const f={g,x,z,y,who,look,lines,rest:opts.rest||0,ph:hsh(Math.floor(x*7),Math.floor(z*7))*6,reach:opts.reach||0,next:opts.next,mute:opts.mute,still:opts.still};
+  if(opts.lazy) f._mk=mk;
   lv.folk.push(f); return f; }
+/* V228: FOLK WHO ARE FAR AWAY ARE NOT BUILT — a villager out of sight is an empty stand-in (where he is, which way he faces,
+   whether the story has him here); his figure, some ninety pieces on a full rig, is made when you come near (folkWake) and
+   let go again when you are well away (folkSleep). The game's own showing and hiding carries over in both directions. */
+function folkHolder(){ const h=new THREE.Group(); h.userData.lazy=true; return h; }
+function folkWake(f){ if(!f._mk||!f.g.userData.lazy) return false; const h=f.g, g=f._mk(); f._own=new Set(g.children); g.position.copy(h.position); g.rotation.copy(h.rotation); g.visible=h.visible;
+  h.children.slice().forEach(c=>g.add(c));   // what the game hung on him meanwhile (a quest's ❗) goes with him
+  if(h.parent){ h.parent.add(g); h.parent.remove(h); } f.g=g; return true; }
+function folkSleep(f){ if(!f._mk||f.g.userData.lazy) return false; const g=f.g, h=folkHolder(); h.position.copy(g.position); h.rotation.copy(g.rotation); h.visible=g.visible;
+  g.children.slice().forEach(c=>{ if(f._own&&!f._own.has(c)) h.add(c); });
+  if(g.parent){ g.parent.add(h); g.parent.remove(g); } f.g=h; g.traverse(q=>{ if(q.geometry) q.geometry.dispose(); if(q.skeleton&&q.skeleton.dispose) q.skeleton.dispose(); }); return true; }

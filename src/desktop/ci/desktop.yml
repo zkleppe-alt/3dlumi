@@ -1,0 +1,39 @@
+# Builds the Windows app (an installer and a no-install portable .exe) from the game in this repo.
+# Run it from the Actions tab ("Desktop build" → Run workflow), or push a tag like desktop-v1.0.0 to also make a Release.
+name: Desktop build
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+permissions:
+  contents: write
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Gather the game into the app
+        shell: bash
+        run: |
+          mkdir -p src/desktop/game
+          cp index.html three.min.js src/desktop/game/
+          cp manifest.webmanifest *.png src/desktop/game/ 2>/dev/null || true
+          cp -r models src/desktop/game/
+          if [ -d music ]; then cp -r music src/desktop/game/; fi
+          if [[ "$GITHUB_REF" == refs/tags/desktop-v* ]]; then cd src/desktop && npm pkg set version="${GITHUB_REF#refs/tags/desktop-v}"; fi
+      - name: Build the Windows app
+        working-directory: src/desktop
+        run: |
+          npm install --no-audit --no-fund
+          npx electron-builder --win nsis portable --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LastKnight-Windows
+          path: src/desktop/dist/*.exe
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: src/desktop/dist/*.exe

@@ -51,7 +51,7 @@ const SIDEQ=(function(){
     function spotNear(cx,cz,i){ for(let r=4;r<14;r+=0.5){ for(let k=0;k<16;k++){ const a=i*2.1+k*0.39, x=Math.floor(cx+Math.cos(a)*r), z=Math.floor(cz+Math.sin(a)*r); let ok=true; for(let dy=-1;dy<=1&&ok;dy++) for(let dx=-1;dx<=1;dx++) if(!W.walkTile(x+dx,z+dy)){ ok=false; break; } if(ok&&!Object.values(placed).some(p=>Math.hypot(p[0]-x,p[1]-z)<3)) return [x+0.5,z+0.5]; } } return null; }
     for(const t in D.quests){ const tw=(W.towns||[]).find(q=>q[0]===TOWNS[+t]); if(!tw) continue;
       D.quests[t].forEach((q0,i)=>{ const q=Object.assign({town:+t},q0), at=spotNear(tw[1],tw[2],i+(+t)); if(!at) return; placed[q.id]=at;
-        let f=null; try{ f=addPerson(W,W.scene,q.giver.look,at[0],at[1],W.ground(at[0],at[1])+0.02,q.giver.name,[],{rest:Math.atan2(tw[1]-at[0],tw[2]-at[1])}); }catch(e){ return; } f.still=true; f.sideq=q.id; f.label='Talk';
+        let f=null; try{ f=addPerson(W,W.scene,q.giver.look,at[0],at[1],W.ground(at[0],at[1])+0.02,q.giver.name,[],{rest:Math.atan2(tw[1]-at[0],tw[2]-at[1]),lazy:typeof folkWake==='function'}); }catch(e){ return; } f.still=true; f.sideq=q.id; f.label='Talk';
         const mk=new THREE.Sprite(markMat('!')); mk.scale.setScalar(0.5); mk.position.y=2.25; f.g.add(mk);
         f.action=()=>{ const s0=qs(q.id); const sp=(lines,after)=>ENGINE.speak(q.giver.name,lines.map(strip),f,after);
           if(q.giver.needs==='helper'&&!(S().cata&&S().cata[q.town]&&S().cata[q.town].helper)&&s0===0){ sp(['(He is not here yet — he is still below, in the cage. Come back when he is free.)']); return; }

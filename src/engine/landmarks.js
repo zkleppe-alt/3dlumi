@@ -107,7 +107,7 @@ const LANDMARKS=(function(){
     // the shepherd's hut, and its shepherd
     { const p=at(118.5,190.5), g=group(p.x,p.y,p.z,scene); B(2.2,1.5,1.8,0x8a7a62,0,0,0,g); const rf=prism(2.6,1.0,2.2,0x6a5a3a); rf.position.y=1.5; g.add(rf); B(0.6,1.1,0.05,0x3a2a1a,0,0,0.91,g);
       for(let i=0;i<10;i++){ const a=i/10*TAU, x=3.4+Math.cos(a)*1.8, z=1.0+Math.sin(a)*1.4; if(i===3) continue; Cy(0.05,0.06,0.8,5,0x6a4a2a,x,0,z,g); }   // the fold
-      if(typeof addPerson==='function') addPerson(world,scene,'peasant',p.x+1.6,p.z+1.8,p.y,'Old Shepherd Abner',['Lost a lamb last spring, up among the rocks. Ninety-nine in the fold and I went looking for the one. Found her, too.','“Rejoice with me; for I have found my sheep which was lost.” — Luke 15:6','The towers? Watchmen built them, before my grandfather. You can still climb the stairs, if your knees are younger than mine.'],{rest:Math.PI});
+      if(typeof addPerson==='function') addPerson(world,scene,'peasant',p.x+1.6,p.z+1.8,p.y,'Old Shepherd Abner',['Lost a lamb last spring, up among the rocks. Ninety-nine in the fold and I went looking for the one. Found her, too.','“Rejoice with me; for I have found my sheep which was lost.” — Luke 15:6','The towers? Watchmen built them, before my grandfather. You can still climb the stairs, if your knees are younger than mine.'],{rest:Math.PI,lazy:typeof folkWake==='function'});
       PLACES.push({x:p.x,z:p.z,r:7,name:'🐑 The shepherd’s hut'}); }
     // the waystone shrine
     { const p=at(220.5,170.5), g=group(p.x,p.y,p.z,scene); B(1.6,0.25,1.6,0x8a8478,0,0,0,g); B(0.7,1.6,0.3,0x9a948a,0,0.25,0,g); const tp=prism(0.9,0.4,0.4,0x8a8478); tp.position.y=1.85; g.add(tp); B(0.08,0.5,0.02,0xe8c46a,0,1.0,0.16,g); B(0.3,0.08,0.02,0xe8c46a,0,1.3,0.16,g);
