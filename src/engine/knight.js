@@ -159,39 +159,73 @@ function buildKnight(){
     [AL,AR].forEach(A=>{ A.hand.box.material=M.hand; A.hand.box.scale.setScalar(1); if(A.hand.ring){ A.hand.remove(A.hand.ring); A.hand.ring=null; } });
     K.weaponFam=art?art.fam:'light'; if(!art) return; const p=art.pal||{}, c=(k,d)=>p[k]||d, g=new THREE.Group(); wpnG=g; swRoll.add(g);
     const box=(w,h,d,m,x,y,z)=>add(new THREE.BoxGeometry(w,h,d),m,x,y,z,g), cy=(r0,r1,h,m,x,y,z,sg)=>add(new THREE.CylinderGeometry(r0,r1,h,sg||6),m,x,y,z,g);
-    const blade=WM(c('B','#e8e8f0'),90,new THREE.Color(c('D','#9aa2b2')).multiplyScalar(0.35)), edge=WM(c('H','#ffffff'),90), guard=WM(c('G','#d8b24a'),50), grip=WM(c('GR','#7a4a24')), pom=WM(c('P',c('G','#c9a94a')),40);
-    const f=art.fam;
+    const blade=WM(c('B','#e8e8f0'),60,new THREE.Color(c('D','#9aa2b2')).multiplyScalar(0.12)), edge=WM(c('H','#ffffff'),90), guard=WM(c('G','#d8b24a'),50), grip=WM(c('GR','#7a4a24')), pom=WM(c('P',c('G','#c9a94a')),40);
+    const f=art.fam, rust=a=>id==='rusty';
     if(f==='fist'){ const gm=WM(c('B','#c9cdd6'),60), sc=1+(art.bulk||0)*0.28; [AL,AR].forEach(A=>{ A.hand.box.material=gm; A.hand.box.scale.setScalar(sc); });
       if(art.bulk>=2) [AL,AR].forEach(A=>{ const k=add(new THREE.BoxGeometry(0.11,0.03,0.12),WM(c('H','#eef0f4'),60),0,0.06,0.0,A.hand); A.hand.ring=k; });   // knuckle plates
       if(art.gem){ const r=new THREE.Group(); AR.hand.add(r); AR.hand.ring=r; add(new THREE.TorusGeometry(0.035,0.012,5,10),WM(c('B','#e8b93a'),70),0,0,0.06,r).rotation.y=Math.PI/2;
         const gem=add(new THREE.OctahedronGeometry(0.03),new THREE.MeshBasicMaterial({color:new THREE.Color(art.gem)}),0,0.0,0.1,r); }
       return; }
+    /* V234: THE ARMOURY, SHARPENED — every blade is forged rather than boxed: a hexagonal section (flat faces, bevelled edges
+       catching the light) tapering to a true point, a fuller down each face, a ricasso at the guard; quillons that sweep, a
+       grip bound in leather turns, a faceted wheel pommel. Same lengths and the same hold as before. */
+    const facet=g=>{ const n=g.index?g.toNonIndexed():g; n.computeVertexNormals(); return n; };
+    const bladeGeo=(len,w,t,o)=>{ o=o||{}; const sec=[], n=10; for(let k=0;k<=n;k++){ const v=k/n; let hw=w/2*(1-(o.taper===undefined?0.16:o.taper)*v); if(o.flare&&v>0.55) hw*=1+0.45*Math.sin(Math.min(1,(v-0.55)/0.35)*Math.PI/2); if(v<0.06) hw*=0.86; sec.push([v*len,hw,t/2*(1-0.25*v)]); }
+      sec.push([len+w*(o.tip||1.05),0.0005,0.0005]); const P=[], ring=([y,hw,ht])=>[[hw,y,0],[hw*0.52,y,ht],[-hw*0.52,y,ht],[-hw,y,0],[-hw*0.52,y,-ht],[hw*0.52,y,-ht]];
+      for(let k=0;k<sec.length-1;k++){ const a=ring(sec[k]), b=ring(sec[k+1]); for(let q=0;q<6;q++){ const q2=(q+1)%6; P.push(...a[q],...b[q],...b[q2],...a[q],...b[q2],...a[q2]); } }
+      const r0=ring(sec[0]); for(let q=1;q<5;q++) P.push(...r0[0],...r0[q+1],...r0[q]);
+      const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); g.computeVertexNormals(); return g; };
+    const ring=(r,tube,m,y,par)=>{ const o=add(new THREE.TorusGeometry(r,tube,4,10),m,0,y,0,par||g); o.rotation.x=Math.PI/2; return o; };
+    const gripWrap=(y0,y1,r,m,m2)=>{ cy(r,r,y1-y0,m,0,(y0+y1)/2,0,8); for(let y=y0+0.012;y<y1-0.005;y+=0.024) ring(r*1.02,0.0055,m2,y); };
+    const wheel=(r,y,m,m2)=>{ const pw=add(new THREE.CylinderGeometry(r,r,r*0.75,8),m,0,y,0,g); pw.rotation.z=Math.PI/2; const b=add(new THREE.CylinderGeometry(r*0.45,r*0.45,r*0.95,8),m2,0,y,0,g); b.rotation.z=Math.PI/2; };
+    const quillons=(span,y,m,up)=>{ box(0.05,0.042,0.05,m,0,y,0); [-1,1].forEach(sd=>{ const d=new THREE.Vector3(sd*Math.cos(up||0),Math.sin(up||0),0), q=add(facet(new THREE.CylinderGeometry(0.01,0.019,span/2,6)),m,d.x*span/4,y+d.y*span/4,0,g); q.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d); add(new THREE.OctahedronGeometry(0.017),m,d.x*span/2,y+d.y*span/2,0,g); }); };
     if(f==='light'||f==='heavy'||f==='radiant'){ const L0=(f==='heavy'?(art.lenL||art.len):art.len)||12, W0=(f==='heavy'?(art.w0L||art.w0):art.w0)||5;
-      const len=0.3+L0*0.034*(f==='heavy'?1.12:1), wid=0.024+W0*0.0075, th=f==='heavy'?0.024:0.016;
-      cy(0.022,0.022,f==='heavy'?0.2:0.12,grip,0,f==='heavy'?-0.04:0,0);                                           // the grip (two hands' worth on a greatsword)
-      add(new THREE.SphereGeometry(f==='heavy'?0.042:0.034,6,4),pom,0,f==='heavy'?-0.16:-0.075,0,g);                // pommel
-      box(Math.max(0.2,wid*3.4),0.035,0.045,guard,0,0.07,0);                                                          // cross-guard
-      if(f==='heavy') [-1,1].forEach(sd=>box(0.04,0.06,0.05,guard,sd*wid*1.75,0.1,0));                                 // the quillons turn up
-      box(wid,len,th,f==='radiant'?WM(c('B','#fff8dc'),90,c('G','#ffd86a')):blade,0,0.09+len/2,0);
-      box(wid*0.28,len*0.9,th+0.004,f==='radiant'?WM('#ffffff',90,'#fff4c0'):edge,0,0.09+len*0.47,0);                   // the fuller, lit
-      if(art.flare){ box(wid*1.5,len*0.22,th,blade,0,0.09+len*0.82,0); }                                               // Gideon's blade broadens toward the point
-      const tp=add(new THREE.ConeGeometry(wid*(art.flare?0.8:0.72),0.1,4),f==='radiant'?WM(c('B','#fff8dc'),90,c('G','#ffd86a')):blade,0,0.09+len+0.05,0,g); tp.scale.z=th/wid*1.6; tp.rotation.y=Math.PI/4;
-      if(f==='radiant'){ const halo=new THREE.Mesh(new THREE.BoxGeometry(wid*3.2,len*1.08,0.09),new THREE.MeshBasicMaterial({color:new THREE.Color(art.glow||'#ffd86a'),transparent:true,opacity:0.28,depthWrite:false,blending:THREE.AdditiveBlending}));
-        halo.position.y=0.09+len/2; g.add(halo); g.userData.halo=halo; const lt=new THREE.PointLight(new THREE.Color(art.glow||'#ffd86a'),0.6,3.2); lt.position.y=0.09+len*0.6; g.add(lt); }
+      const len=0.3+L0*0.034*(f==='heavy'?1.12:1), wid=0.024+W0*0.0075, th=f==='heavy'?0.024:0.016, hv=f==='heavy', rad=f==='radiant';
+      const bm=rad?WM(c('B','#fff8dc'),90,c('G','#ffd86a')):blade, fm=rad?WM('#ffffff',90,'#fff4c0'):WM(c('D','#9aa2b2'),70), gd=WM(c('GD',c('G','#9a7622')),40), grd=WM(c('GRD','#4b2c13'));
+      gripWrap(hv?-0.15:-0.065,hv?0.06:0.055,hv?0.022:0.02,grip,grd);                                                    // the grip, bound in leather (two hands' worth on a great blade)
+      wheel(hv?0.04:0.032,hv?-0.175:-0.085,pom,gd);                                                                    // the wheel pommel
+      quillons(Math.max(0.2,wid*3.6)*(hv?1.15:1),0.075,guard,hv?0.32:0.12);                                             // the cross: quillons swept toward the blade
+      box(wid*0.8,0.03,th*1.6,gd,0,0.098,0);                                                                           // the guard's langet over the ricasso
+      const bl=add(bladeGeo(len-0.02,wid,th,{flare:!!art.flare,taper:rust(art)?0.1:hv?0.12:0.18,tip:hv?1.2:1.05}),bm,0,0.105,0,g); bl.castShadow=true;   // the blade
+      [-1,1].forEach(sd=>{ const fu=add(new THREE.BoxGeometry(wid*0.22,len*0.62,0.002),fm,0,0.13+len*0.31,sd*th*0.36,g); });   // the fuller, down each face
+      if(rust(art)) for(let k=0;k<5;k++){ const n=add(new THREE.BoxGeometry(wid*0.25,0.012,th*1.3),WM(c('E','#3d372c')),(k%2?1:-1)*wid*0.38,0.15+k*len*0.17,0,g); }   // a rusty blade's notches and pits
+      if(rad){ const halo=new THREE.Mesh(bladeGeo(len*1.04,wid*2.6,0.07,{taper:0.1,tip:1.3}),new THREE.MeshBasicMaterial({color:new THREE.Color(art.glow||'#ffd86a'),transparent:true,opacity:0.22,depthWrite:false,blending:THREE.AdditiveBlending}));   /* V234: a glow in the blade's own shape */
+        halo.position.y=0.085; g.add(halo); g.userData.halo=halo; const lt=new THREE.PointLight(new THREE.Color(art.glow||'#ffd86a'),0.6,3.2); lt.position.y=0.09+len*0.6; g.add(lt);
+        const gem=add(new THREE.OctahedronGeometry(0.02),new THREE.MeshBasicMaterial({color:0xfff4c0}),0,0.075,0.03,g); gem.scale.set(0.8,1.3,0.6); }
       return; }
-    if(f==='hammer'){ cy(0.026,0.026,0.78,grip,0,0.2,0); const head=WM(c('B','#9aa0ac'),55);
-      box(0.3,0.15,0.15,head,0,0.62,0); box(0.04,0.17,0.17,WM(c('H','#ccd2da'),55),0.15,0.62,0); box(0.04,0.17,0.17,WM(c('D','#6a7080'),55),-0.15,0.62,0);
-      const sp=add(new THREE.ConeGeometry(0.035,0.12,4),head,0,0.75,0,g); box(0.06,0.06,0.06,guard,0,0.5,0); add(new THREE.SphereGeometry(0.035,6,4),pom,0,-0.2,0,g); return; }
-    if(f==='haft'){ cy(0.026,0.03,1.4,WM(c('B','#a87a44')),0,0.05,0); add(new THREE.SphereGeometry(0.05,6,5),WM(c('G','#c8b090'),20),0,0.76,0,g); add(new THREE.SphereGeometry(0.04,6,5),WM(c('G','#c8b090'),20),0,-0.66,0,g);
-      [0.5,-0.4].forEach(y=>cy(0.034,0.034,0.06,WM(c('D','#7a5428')),0,y,0)); g.rotation.x=0.15; return; }
+    if(f==='hammer'){ const head=WM(c('B','#9aa0ac'),55), hi=WM(c('H','#ccd2da'),70), dk=WM(c('D','#6a7080'),55), grd=WM(c('GRD','#4a2c12'));
+      cy(0.022,0.026,0.82,WM(c('G','#8a5a2c')),0,0.2,0,8); gripWrap(-0.17,0.12,0.027,grip,grd);                         // the haft, its grip bound
+      [-1,1].forEach(sd=>box(0.012,0.22,0.03,dk,sd*0.026,0.5,0));                                                     // iron langets up the haft
+      const hd=add(facet(new THREE.CylinderGeometry(0.075,0.075,0.2,8)),head,0.02,0.64,0,g); hd.rotation.z=Math.PI/2;   // the head: an eight-sided block
+      const fc=add(facet(new THREE.CylinderGeometry(0.085,0.08,0.035,8)),hi,0.135,0.64,0,g); fc.rotation.z=Math.PI/2;   // its striking face, flared
+      [0.06,-0.03].forEach(x=>{ const bd=add(facet(new THREE.CylinderGeometry(0.079,0.079,0.016,8)),dk,x,0.64,0,g); bd.rotation.z=Math.PI/2; });   // banded
+      const bk=add(facet(new THREE.ConeGeometry(0.045,0.16,4)),head,-0.15,0.64,0,g); bk.rotation.z=Math.PI/2;           // the back spike
+      add(facet(new THREE.ConeGeometry(0.03,0.13,4)),hi,0,0.775,0,g);                                                   // the top spike
+      wheel(0.03,-0.2,pom,dk); return; }
+    if(f==='haft'){ const wood=WM(c('B','#a87a44')), dk=WM(c('D','#7a5428')), lt=WM(c('H','#d0a066'));                  // Aiden's crook: the shepherd's staff
+      cy(0.022,0.027,1.3,wood,0,0.0,0,7); const R=0.11, hook=add(facet(new THREE.TorusGeometry(R,0.022,6,14,Math.PI*1.25)),wood,-R,0.65,0,g);
+      add(new THREE.SphereGeometry(0.026,7,5),lt,-R-R*Math.cos(Math.PI*0.25),0.65-R*Math.sin(Math.PI*0.25),0,g);   // the hook, its end rounded
+      gripWrap(0.08,0.32,0.03,dk,WM(c('E','#4e3416')));                                                                 // a leather-bound grip
+      cy(0.03,0.024,0.07,WM('#7a7a80',40),0,-0.67,0,7); [0.6,-0.45].forEach(y=>ring(0.029,0.007,lt,y));               // the iron ferrule; brass bands
+      g.rotation.x=0.15; return; }
     if(f==='bow'){ const wood=WM(c('B','#a87a44')), str=WM(c('ST','#e8e8f0')), metal=WM(c('M','#9aa0a8'),60);
       if(id==='sling'){ [-1,1].forEach(sd=>{ const cd=box(0.012,0.34,0.012,str,sd*0.03,-0.16,0); cd.rotation.z=sd*0.12; }); const pouch=add(new THREE.SphereGeometry(0.05,6,4),wood,0,-0.34,0,g); pouch.scale.set(1.2,0.6,0.8); add(new THREE.SphereGeometry(0.032,6,4),metal,0,-0.33,0.02,g); g.rotation.x=Math.PI; return; }
-      if(id==='throwaxe'){ cy(0.022,0.024,0.46,WM(c('ST','#6a4a2a')),0,0.12,0); const hd=WM(c('B','#c8ccd4'),60); box(0.03,0.13,0.1,hd,0,0.38,0.05); const bl=box(0.02,0.2,0.08,WM(c('H','#f0f2f6'),70),0,0.38,0.11); return; }
+      if(id==='throwaxe'){ cy(0.02,0.024,0.5,WM(c('ST','#6a4a2a')),0,0.12,0,7); gripWrap(-0.1,0.06,0.025,WM(c('G','#7a5230')),WM(c('E','#4a505a')));   /* V234: a bearded axe */
+        const sh=new THREE.Shape(); sh.moveTo(0,0.05); sh.lineTo(0.05,0.06); sh.quadraticCurveTo(0.1,0.08,0.13,0.1); sh.quadraticCurveTo(0.15,0,0.12,-0.12); sh.quadraticCurveTo(0.08,-0.06,0.05,-0.03); sh.lineTo(0,-0.03); sh.closePath();
+        const ax=add(facet(new THREE.ExtrudeGeometry(sh,{depth:0.016,bevelEnabled:true,bevelSize:0.004,bevelThickness:0.006,bevelSegments:1})),WM(c('B','#c8ccd4'),60),0,0.36,0,g); ax.rotation.y=-Math.PI/2; ax.position.x=0.008;
+        add(new THREE.BoxGeometry(0.03,0.2,0.006),WM(c('H','#f0f2f6'),80),0,0.35,0.128,g).rotation.y=Math.PI/2;
+        box(0.034,0.07,0.034,WM(c('D','#7a808c'),50),0,0.37,0); return; }
       // an arc of radius R spanning ±th, its middle at the origin, laid in the hand's frame by basis (u: the bulge axis, v: the span axis)
       const arcIn=(R,th,mat,u,v)=>{ const bw=new THREE.Group(), w=u.clone().cross(v); bw.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(u,v,w)); g.add(bw);
-        const a=new THREE.Mesh(new THREE.TorusGeometry(R,0.02,4,14,th*2),mat); a.rotation.z=-th; a.position.x=-R; bw.add(a); a.castShadow=true; return bw; };
+        /* V234: the stave tapers from a thick grip to slender tips, each tip capped in horn */
+        const N=14, pt=a=>new THREE.Vector3(-R+R*Math.cos(a),R*Math.sin(a),0), Y=new THREE.Vector3(0,1,0);
+        for(let k=0;k<N;k++){ const a0=-th+2*th*k/N, a1=-th+2*th*(k+1)/N, p0=pt(a0), p1=pt(a1), am=Math.abs((a0+a1)/2)/th, r=0.025-0.013*am;
+          const cyl=new THREE.Mesh(facet(new THREE.CylinderGeometry(r*0.92,r,p0.distanceTo(p1)*1.06,7)),mat); cyl.position.copy(p0).add(p1).multiplyScalar(0.5); cyl.quaternion.setFromUnitVectors(Y,p1.clone().sub(p0).normalize()); cyl.castShadow=true; bw.add(cyl); }
+        [th,-th].forEach(a=>{ const t=new THREE.Mesh(new THREE.ConeGeometry(0.014,0.045,6),WM(c('H','#d8b070'),30)); t.position.copy(pt(a)); t.quaternion.setFromUnitVectors(Y,pt(a).sub(pt(a*0.93)).normalize()); bw.add(t); });
+        return bw; };
       const V3=(x,y,z)=>new THREE.Vector3(x,y,z);
-      if(id==='crossbow'){ box(0.07,0.62,0.06,wood,0,0.22,-0.03); const th=Math.PI*0.32, R=0.3; const pr=arcIn(R,th,metal,V3(0,1,0),V3(1,0,0)); pr.position.y=0.5;   // the stock runs forward; the prod lies across its nose
+      if(id==='crossbow'){ box(0.06,0.6,0.05,wood,0,0.22,-0.03); box(0.075,0.16,0.07,WM(c('D','#4a301a')),0,-0.02,-0.035); box(0.012,0.5,0.012,WM(c('E','#2a1a0c')),0,0.26,0.0);   /* V234: a butt, the bolt's groove, a stirrup */
+        const st=add(new THREE.TorusGeometry(0.05,0.008,4,10,Math.PI),metal,0,0.56,-0.03,g); st.rotation.z=0; box(0.012,0.05,0.02,metal,0,0.1,-0.07); const th=Math.PI*0.32, R=0.3; const pr=arcIn(R,th,metal,V3(0,1,0),V3(1,0,0)); pr.position.y=0.5;   // the stock runs forward; the prod lies across its nose
         box(2*R*Math.sin(th),0.008,0.008,str,0,0.5+R*(Math.cos(th)-1),0); box(0.04,0.06,0.06,metal,0,0.08,0.02); return; }
       const R=id==='huntbow'?0.5:0.42, th=Math.PI*0.36; arcIn(R,th,wood,V3(0,1,0),V3(0,0,1));                               // the stave stands upright, the tips curving back toward you
       /* V227: a string that draws — two lengths from the tips to the nock, which the right hand pulls back to the cheek and lets
@@ -201,7 +235,7 @@ function buildKnight(){
       const hd=new THREE.Mesh(new THREE.ConeGeometry(0.022,0.07,4),metal); hd.position.y=0.8; ar.add(hd);
       [0,1,2].forEach(i=>{ const f=new THREE.Mesh(new THREE.BoxGeometry(0.003,0.09,0.03),WM(c('F','#e8e2d4'))); f.position.y=0.07; f.rotation.y=i*Math.PI*2/3; f.translateZ(0.016); ar.add(f); }); ar.visible=false;
       K._bowRig={g,tT:new THREE.Vector3(0,sy,sz),tB:new THREE.Vector3(0,sy,-sz),mid:new THREE.Vector3(0,sy,0),n:new THREE.Vector3(0,sy,0),s1:mkS(),s2:mkS(),ar,rel:0,off:new THREE.Vector3()};
-      box(0.05,0.05,0.12,WM(c('G','#c8b090')),0,0,0); return; } };
+      const gw=WM(c('G','#c8b090')); box(0.046,0.05,0.13,gw,0,0,0); for(let k=-2;k<=2;k++) box(0.05,0.054,0.008,WM(c('GRD',c('D','#6a4a24'))),0,0,k*0.024); add(new THREE.SphereGeometry(0.012,5,4),WM(c('H','#d8b070'),30),0,0.02,0.07,g); return; } };
   // ── livery shapes the palette can't say (drawKnightBody's crest(), cape(), the wings): the Armour of God's upright plume,
   //   wings, white cape and halo · the Ranger's hood with a tucked feather, green cape and gold leaf · the Stormward bolt ·
   //   the Fallen Plate's broken wing · the Champion's gold cape and red cross · Robby's Demise: horns, a beast's hands, a
@@ -826,6 +860,37 @@ function buildKnight(){
     kite(KS*0.95).getSpacedPoints(16).forEach(q=>{ const x=q.x, y=q.y; add(new THREE.SphereGeometry(0.009,8,6),GOLD,x,y,0.03-x*x*0.7,sh); });
     { const jg=new THREE.Group(); sh.add(jg); jerusalem(jg,0,0.02,0.034,1.25,M.cross); jg.children.forEach(m=>{ m.position.z-=m.position.x*m.position.x*0.7; }); }
     }
+    // ── V234: THE GREAT HELM, SHARPENED (Zak's sheet): a faceted steel helm with a keel down the face, the T of the eye-slit and
+    //  the breaths cut dark into it, a gold band arched over the brow and running up the crest to a gilt plume-socket, a gilt
+    //  rivet at each ear. It takes the place of the sculpt's rounder helm (same size, same head). ──
+    { const HM=[]; head.children.forEach(o=>{ if(o.isMesh&&o.userData.seg==='head'&&/^(helm|visor|gold)$/.test(o.userData.part)){ o.visible=false; o.userData.b3hid=true; } });
+      const XR=0.118, ZR=0.134, YB=-0.135, YT=0.182, YBROW=0.072;
+      const S=(phi,y,off)=>{ const v=(y-YB)/(YT-YB), vb=(YBROW-YB)/(YT-YB); let k=v<vb?0.94+0.06*Math.sin(v/vb*Math.PI/2):Math.pow(Math.max(0,Math.cos((v-vb)/(1-vb)*Math.PI/2)),0.85);
+        const fr=Math.max(0,Math.cos(phi)), keel=0.024*Math.max(0,1-Math.abs(Math.sin(phi))/0.42)*fr*(v<0.97?1:0)*k; const r=k+(off||0)/ZR;
+        return new THREE.Vector3(XR*r*Math.sin(phi), y, ZR*r*Math.cos(phi)+keel+(off||0)*Math.cos(phi)*0.0); };
+      const NP=28, NY=12, P=[]; for(let j=0;j<NY;j++) for(let i=0;i<NP;i++){ const p0=i/NP*Math.PI*2-Math.PI, p1=(i+1)/NP*Math.PI*2-Math.PI, y0=YB+(YT-YB)*j/NY, y1=YB+(YT-YB)*(j+1)/NY;
+        const a=S(p0,y0), b=S(p1,y0), c2=S(p1,y1), d=S(p0,y1); P.push(...a.toArray(),...b.toArray(),...c2.toArray(),...a.toArray(),...c2.toArray(),...d.toArray()); }
+      const hg=new THREE.BufferGeometry(); hg.setAttribute('position',new THREE.Float32BufferAttribute(P,3)); hg.computeVertexNormals();
+      const helm=new THREE.Mesh(hg,M.helm); helm.castShadow=true; helm.userData.seg='head'; helm.userData.part='helm2'; head.add(helm);
+      // a strip lying on the helm's skin, a little proud of it: along phi at a height (band) or along height at a phi (stripe)
+      const strip=(fn,n,w,off,mat,part)=>{ const Q=[]; for(let k=0;k<n;k++){ const [a0,b0]=fn(k/n,off,w), [a1,b1]=fn((k+1)/n,off,w); Q.push(...a0.toArray(),...a1.toArray(),...b1.toArray(),...a0.toArray(),...b1.toArray(),...b0.toArray()); }
+        const g2=new THREE.BufferGeometry(); g2.setAttribute('position',new THREE.Float32BufferAttribute(Q,3)); g2.computeVertexNormals(); const m=new THREE.Mesh(g2,mat); m.userData.seg='head'; m.userData.part=part; head.add(m); return m; };
+      const out=(p,phi,o)=>p.add(new THREE.Vector3(Math.sin(phi)*o,0,Math.cos(phi)*o));
+      const DARK=new THREE.MeshBasicMaterial({color:0x07080c, side:THREE.DoubleSide});
+      // the eye-slit across the face, and the breath-slit down the keel
+      strip((u,o,w)=>{ const phi=-0.98+1.96*u, y=0.03; return [out(S(phi,y-w/2),phi,o),out(S(phi,y+w/2),phi,o)]; },22,0.03,0.0025,DARK,'slit');
+      strip((u,o,w)=>{ const y=0.024-0.115*u, phi=0; return [out(S(-w*4,y),-w*4,o),out(S(w*4,y),w*4,o)]; },8,0.011,0.0025,DARK,'slit');
+      const GD=GOLD; GD.side=THREE.DoubleSide;
+      // the gold brow band, arched over the slit and sweeping down toward the ears
+      strip((u,o,w)=>{ const phi=-1.35+2.7*u, y=0.064+0.016*(1-Math.pow(phi/1.35,2))-0.03*Math.pow(Math.abs(phi)/1.35,3); return [out(S(phi,y-w/2),phi,o),out(S(phi,y+w/2),phi,o)]; },28,0.022,0.006,GD,'gold2');
+      // the crest band: up the middle from the brow, over the crown to the socket at the back
+      [-1,1].forEach(sd=>strip((u,o,w)=>{ const front=u<0.62, y=front?0.075+(YT-0.008-0.075)*(u/0.62):YT-0.008-(u-0.62)/0.38*0.075, base=front?0:Math.PI, dw=w/XR;   /* in two halves, so it rides the keel */
+        const A=S(base,y), B=S(base+sd*dw,y), lift=p=>{ p.y+=o*0.6; return out(p,base,o); }; return [lift(A),lift(B)]; },22,0.024,0.006,GD,'gold2'));
+      // the keel's edge picked out in gold below the slit
+      [-1,1].forEach(sd=>{ const rv=add(new THREE.CylinderGeometry(0.02,0.02,0.01,10),GD,0,0,0,head); const p2=S(sd*Math.PI/2,0.02); rv.position.copy(p2).add(new THREE.Vector3(sd*0.004,0,0)); rv.rotation.z=Math.PI/2; rv.userData.seg='head'; rv.userData.part='gold2';
+        const bs=add(new THREE.SphereGeometry(0.008,8,6),GD,0,0,0,head); bs.position.copy(p2).add(new THREE.Vector3(sd*0.01,0,0)); bs.userData.seg='head'; bs.userData.part='gold2'; });   // the ear rivets
+      const sock=add(new THREE.CylinderGeometry(0.016,0.022,0.04,8),GD,0,YT-0.005,-0.02,head); sock.rotation.x=-0.5; sock.userData.seg='head'; sock.userData.part='gold2';   // the plume's socket
+      plume.position.y=Math.max(plume.position.y,YT-0.02); }
     // ── colours: the livery's, eased toward the concept — a deep navy, bright steel, gold, a dark undersuit ──
     const tc=new THREE.Color(), MIX={hand:[0x5e3d27,0.8],tunic:[0x1a2850,0.72],arm:[HQ?0x8a909a:0x34373e,0.6],leg:[HQ?0x8a909a:0x2c2f36,0.6],helm:[HQ?0xd2d6dc:0x9aa2ae,0.45],paul:[HQ?0xd2d6dc:0x9aa2ae,0.45],steel:[HQ?0xc4c8d0:0x8e96a2,0.45],plume:[0xc0201a,0.35],plumeHi:[0xe03a28,0.3]};
     // the concept sheet's navy surcoat and bright steel belong to the azure livery; every other livery keeps its own hue — its cloth a
