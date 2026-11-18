@@ -1,0 +1,17 @@
+{
+  "name": "Kingdom's Last Knight — Luminar 3D",
+  "short_name": "Last Knight",
+  "description": "A Christian RPG in 3D: ride out from Luminar, cleanse the ten chapels, free the generals.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#0e1424",
+  "theme_color": "#162240",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
