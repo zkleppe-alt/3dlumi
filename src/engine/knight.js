@@ -602,9 +602,28 @@ function buildKnight(){
     //  leg folds at the knee (the hip keeping the foot under it) by as much as its ground rises. Only standing and walking,
     //  outdoors; the camera-near and the player first
     if(K.footIK&&(mode==='walk'||mode==='idle')&&!(K.air>0.02)&&!(K.dash>0)&&typeof ENGINE!=='undefined'&&ENGINE.level&&ENGINE.level.ground&&!ENGINE.level.interior&&!K._act) footIK();
+    /* V236: a two-handed hilt really is held in both hands — the left hand is solved onto the grip just below the right, whatever the clip or the stance has the arms doing */
+    { const ac=K._act&&K._act.n, want=K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&!(K.spinT>=0)&&!(K.charge>0)&&mode!=='sit'&&mode!=='ride'&&mode!=='lyre'&&mode!=='climb'&&mode!=='fish'&&ac!=='drawBack'&&ac!=='draw'&&!(K.dash>0)?1:0;
+      K._2h=(K._2h||0)+(want-(K._2h||0))*Math.min(1,dt*14); if(K._2h>0.01) twoHand(Math.min(1,K._2h*1.15)); }
+    /* V236: a bow at rest is carried upright in the left hand at his side, not dangling tip-down from the fist */
+    { const want=K._fam==='bow'&&sword.parent===AL.hand&&K._st==='drawn'&&!K._bow&&swing<0&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&!K._act?1:0;
+      K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0], m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
+        m(AL.sh,'x',P[0]); m(AL.sh,'y',P[1]); m(AL.sh,'z',P[2]); m(AL.el,'x',P[3]); m(AL.el,'y',0); m(AL.el,'z',0); m(AL.hand,'x',P[4]); m(AL.hand,'y',0); m(AL.hand,'z',P[5]); } }
     if(K._bowRig) bowString(dt);
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);
   };
+  const _ia=new THREE.Vector3(), _ib=new THREE.Vector3(), _ic=new THREE.Vector3(), _iu=new THREE.Vector3(), _iw=new THREE.Vector3(), _ix=new THREE.Vector3(), _im=new THREE.Matrix4(), _iq=new THREE.Quaternion(), _iq2=new THREE.Quaternion(), _iX=new THREE.Vector3(1,0,0);
+  function twoHand(w){ const l1=0.24, l2=0.23; K.updateMatrixWorld(true);
+    const gp=sword.localToWorld(_ia.set(0,-(K._2hO!==undefined?K._2hO:0.12),0)); torso.worldToLocal(gp);      // the grip, a fist's width below the right hand, in the torso's frame
+    const d=_ib.copy(gp).sub(AL.sh.position); let D=d.length(); if(D<1e-4) return; d.multiplyScalar(1/D); D=Math.min(D,(l1+l2)*0.999); D=Math.max(D,Math.abs(l1-l2)+0.02);
+    const cl=v=>Math.max(-1,Math.min(1,v)), al=Math.acos(cl((l1*l1+D*D-l2*l2)/(2*l1*D))), be=Math.PI-Math.acos(cl((l1*l1+l2*l2-D*D)/(2*l1*l2)));
+    const pl=K._2hPole||[0.7,-1,-0.35], n=_ic.set(pl[0],pl[1],pl[2]); n.addScaledVector(d,-n.dot(d)); if(n.lengthSq()<1e-6) n.set(1,0,0).addScaledVector(d,-d.x); n.normalize();   // the elbow down and out
+    const u=_iu.copy(d).multiplyScalar(Math.cos(al)).addScaledVector(n,Math.sin(al));                      // the upper arm
+    const f=_iw.copy(d).multiplyScalar(D).addScaledVector(u,-l1); f.addScaledVector(u,-f.dot(u)); if(f.lengthSq()<1e-8) return; f.normalize();   // the way the forearm bends
+    _ix.copy(u).negate().cross(f); _im.makeBasis(_ix,u.negate(),f); _iq.setFromRotationMatrix(_im); AL.sh.quaternion.slerp(_iq,w);
+    _iq.setFromAxisAngle(_iX,-be); AL.el.quaternion.slerp(_iq,w);
+    AL.el.updateWorldMatrix(true,false); AL.el.getWorldQuaternion(_iq2).invert(); AR.hand.getWorldQuaternion(_iq); _iq2.multiply(_iq); AL.hand.quaternion.slerp(_iq2,w);   // the fist turned as the other is, round the same hilt
+  }
   const _fa=new THREE.Vector3(), _fk=new THREE.Vector3(); let _fdS=0;
   function footIK(){ const lv=ENGINE.level, par=K.parent; if(!par) return; K.updateMatrixWorld(true); _ws.setFromMatrixScale(K.matrixWorld); const wsc=_ws.y||1;
     K.getWorldPosition(_fk); const g0=lv.ground(_fk.x,_fk.z), lt=Math.abs(L.knee.position.y)||0.3, ls=K.hipY-lt+0.012, cap=K.hipY*0.3, off=[];
@@ -645,7 +664,7 @@ function buildKnight(){
   const _setW=K.setWeapon; K.setWeapon=function(art,id){ _setW(art,id); const f=art?art.fam:'light'; K._fam=f;
     K._carry=f==='fist'?'none':f==='light'||f==='radiant'?'hip':'back'; scab.visible=K._carry==='hip'; K._shB=f==='bow'||f==='heavy'||f==='hammer'; shieldHome();
     scabbard(art&&(f==='light'||f==='radiant')?0.3+(art.len||12)*0.034+0.12:0.74);
-    if(K._carry==='none'&&K._st!=='drawn') drawNow(); else if(K._st==='sheathed') stow(); };
+    if(K._carry==='none'&&K._st!=='drawn') drawNow(); else if(K._st==='sheathed') stow(); else if(K._st==='drawn') drawNow(); };   /* V236: a change of weapon in hand goes to the right hand — a bow to the left */
   K._carry='hip'; scabbard(0.74); K._st='sheathed'; stow();
   K.sheathe=()=>{ if(K._carry!=='none'){ K._st='sheathed'; stow(); } }; K.draw=drawNow;
 
@@ -934,7 +953,8 @@ function buildKnight(){
         C.skF.uWave.value=C.skB.uWave.value=0.006+0.01*a; C.skF.uSway.value=C.skB.uSway.value=hSpr(sCsw,-dTy*0.04+Math.sin(t*1.3)*0.01,60,12,dt);
         // the cape: its foot trails with the speed and kicks with each footfall, a ripple runs across it, it swings after a turn
         C.cape.uBend.value=hSpr(sCcB,0.1*a+0.22*rf+Math.max(0,mo.acc)*0.05,30,7,dt); if(K._capeB!==undefined) C.cape.uBend.value=K._capeB;
-        if(K._shB){ capeP.rotation.x=Math.min(capeP.rotation.x,0.08); C.cape.uBend.value*=0.4; C.cape.uKick.value=Math.max(-0.02,Math.min(0.02,C.cape.uKick.value)); }   /* V235: a shield slung on the back pins the cape under it — it no longer flies out through it */ C.cape.uKick.value=hSpr(sCck,-mo.vy*0.04,70,11,dt); C.cape.uWave.value=0.008+0.016*a+0.02*rf;
+        C.cape.uKick.value=hSpr(sCck,-mo.vy*0.04,70,11,dt); C.cape.uWave.value=0.008+0.016*a+0.02*rf;
+        if(K._shB){ capeP.rotation.x=Math.min(capeP.rotation.x,0.08); C.cape.uBend.value*=0.4; C.cape.uKick.value=Math.max(-0.02,Math.min(0.02,C.cape.uKick.value)); }   /* V235: a shield slung on the back pins the cape under it (V236: after the kick is set, so the pin holds) */
         C.cape.uSway.value=hSpr(sCcs,-dTy*0.08+(K.rotation.z||0)*0.5,25,6,dt);
         C.cape.uT.value=C.skF.uT.value=C.skB.uT.value=t*(1+a+rf); if(window.NOCLOTH) for(const k in C) for(const u in C[k]) C[k][u].value=0; }
       if(K._sheathRest!==undefined) sheathP.rotation.x=hSpr(sShX,K._sheathRest+Math.max(0,L.hip.rotation.x)*0.55+Math.max(0,-L.hip.rotation.x)*0.15,90,8,dt);

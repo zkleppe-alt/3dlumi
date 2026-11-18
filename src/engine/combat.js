@@ -425,11 +425,15 @@ const COMBAT=(function(){
       if(Math.hypot(p.x-a.x,p.z-a.z)<0.7) hurtFromBoss(a.dmg!==undefined?a.dmg:4+a.level*0.7); });
     c.adds=c.adds.filter(a=>{ if(a.alive) return true; if(a.g&&a.g.parent) a.g.parent.remove(a.g); return false; });
     c.arrows.forEach(s=>{ if(s.tg&&s.tg.alive){ const dx=s.tg.x-s.x, dz=s.tg.z-s.z, a0=Math.atan2(s.vx,s.vz); let da=Math.atan2(dx,dz)-a0; da=Math.atan2(Math.sin(da),Math.cos(da)); if(Math.abs(da)<1.1){ const a=a0+Math.max(-0.14,Math.min(0.14,da)), sp=s.sp||Math.hypot(s.vx,s.vz); s.vx=Math.sin(a)*sp; s.vz=Math.cos(a)*sp; } else s.tg=null; }   /* V231: it keeps to its mark */
-      for(let sub=0;sub<2&&s.t>0;sub++){ s.x+=s.vx/2; s.z+=s.vz/2; if(!walk(s.x,s.z)){ s.t=0; break; }
+      if(s.stuck){ return; }   /* V236: lodged — it stays where it struck */
+      for(let sub=0;sub<2&&s.t>0;sub++){ s.x+=s.vx/2; s.z+=s.vz/2; if(!walk(s.x,s.z)){ s.t=0; s.x-=s.vx/4; s.z-=s.vz/4; s.stuck={w:1,t:420,y:s.y0}; break; }
       for(const d of c.foes){ if(!d.alive) continue; const vx=d.x-s.x, vz=d.z-s.z, dist=Math.hypot(vx,vz); if(dist>0.56+(d.boss?0.3:0)) continue;
         let dmg=Math.max(1,Math.round(S().atk*(s.pow||1))+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
-        dmg=bossHitGate(d,dmg); s.t=0; if(s.kind!=='stone'&&!s.stuck) s.stuck={d,ox:s.x-d.x,oz:s.z-d.z,t:40}; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--; });
-    c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; if(s.stuck&&s.stuck.t-->0&&s.stuck.d.alive!==false) return true; c.fx.remove(s.m); return false; });   /* V235: it stays in what it hit a moment */
+        dmg=bossHitGate(d,dmg); s.t=0; if(!s.stuck) s.stuck=s.kind==='stone'?{g:1,t:150,x:s.x,z:s.z,y:s.y0}:{d,ox:s.x-d.x,oz:s.z-d.z,t:300}; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--;
+      if(s.t<=0&&!s.stuck) s.stuck={g:1,t:420,x:s.x,z:s.z,y:s.y0}; });   /* V236: a miss comes down and sticks in the ground */
+    c.arrows.forEach(s=>{ const k=s.stuck; if(!k||!k.d||k.d.alive!==false) return; const n=Math.hypot(k.ox,k.oz)||1; s.stuck={g:1,t:300,x:k.d.x+k.ox/n*0.4,z:k.d.z+k.oz/n*0.4,y:s.y0}; });   /* the foe falls, the arrow drops beside him */
+    c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; if(s.stuck&&s.stuck.t-->0) return true; c.fx.remove(s.m); return false; });
+    if(c.arrows.length>40){ const old=c.arrows.filter(s=>s.stuck&&s.t<=0).slice(0,c.arrows.length-40); old.forEach(s=>{ s.stuck.t=Math.min(s.stuck.t,20); }); }   /* V236: lodged shafts last several seconds — capped, so a long fight doesn't bristle forever */
     if(cfg.tick) cfg.tick(); }
   // V146: every demon fights its own way, and every blow is shown before it comes — the demon's whole body flashes red as
   //  it winds up (bright on the last beat: that's the moment to guard). Its FORM says how it fights:
@@ -602,8 +606,14 @@ const COMBAT=(function(){
     c.adds.forEach(a=>{ a.g.position.set(a.x,lv.ground(a.x,a.z),a.z); if(a.g.animate){ a.g.animate(dt,a.moving||a.walking?'walk':'idle',1); a.g.rotation.y=a.walking?Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z):ENGINE.P.face; } else a.g.rotation.y=Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z); });
     c.shots.forEach(s=>s.m.position.set(s.x,lv.ground(s.x,s.z)+0.9,s.z));
     c.arrows.forEach(s=>{ const ps=Math.max(0.8,VIEWMODE.ps(lv));   /* V235: drawn a little larger, so a shot can be followed */
-      if(s.stuck&&s.t<=0){ const d=s.stuck.d; s.m.position.x=d.x+s.stuck.ox*0.4; s.m.position.z=d.z+s.stuck.oz*0.4; s.m.position.y=lv.ground(d.x,d.z)+(d.boss?1.6:0.9)*ps; s.m.children.forEach(o=>{ if(o.material&&o.material.transparent) o.visible=false; }); return; }
-      const u=s.t0?1-s.t/s.t0:0.5; s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz);
+      if(s.stuck&&s.t<=0){ const k=s.stuck, sc=ps*Math.min(1,k.t/20); s.m.scale.setScalar(Math.max(0.001,sc)); s.m.children.forEach(o=>{ if(o.material&&o.material.transparent) o.visible=false; });   /* V236: lodged — in the foe, the ground or the wall it struck; it shrinks away only at the very end */
+        const sp=s.kind==='axe'?s.m.getObjectByName('spin'):null, fy=s.m.rotation.y, bk=s.kind==='axe'?0.06:s.kind==='stone'?0:0.16;
+        if(k.d){ const d=k.d, n=Math.hypot(k.ox,k.oz)||1, R=d.boss?0.55:0.3; if(k.h===undefined) k.h=(d.boss?1.3:0.75)+Math.random()*0.35; if(k.r===undefined) k.r=(Math.random()-0.5)*0.5;
+          s.m.position.set(d.x+k.ox/n*R-Math.sin(fy)*bk*ps,lv.ground(d.x,d.z)+k.h*ps,d.z+k.oz/n*R-Math.cos(fy)*bk*ps); s.m.rotation.x=0.15+k.r*0.3; if(sp) sp.rotation.x=Math.PI/2; }
+        else { const gy=lv.ground(k.x,k.z); if(k.w){ if(k.y==null) k.y=gy+0.8*ps; s.m.position.set(k.x,k.y,k.z); s.m.rotation.x=0.1; if(sp) sp.rotation.x=Math.PI/2; }
+          else { const lie=s.kind==='stone'?0.05:s.kind==='axe'?0.14:0.1, y1=gy+lie*ps; k.fy=k.fy==null?(k.y!=null?k.y:y1+0.4):k.fy+(y1-k.fy)*0.35; s.m.position.set(k.x,k.fy,k.z); s.m.rotation.x=s.kind==='stone'?0:s.kind==='axe'?0:0.95; if(sp) sp.rotation.x=Math.PI; } }
+        return; }
+      const u=s.t0?1-s.t/s.t0:0.5; s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.y0=s.m.position.y; s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz);
       if(s.kind==='axe'){ s.m.rotation.x=0; s.m.rotation.z=0; { const sp=s.m.getObjectByName('spin'); if(sp) sp.rotation.x-=0.55; } } else if(s.kind==='stone'){ s.m.rotation.x=0; } else { s.m.rotation.x=-0.12+0.42*u; s.m.rotation.z+=0.5; } });   /* V213: a shallow arc, nose rising then dropping, the shaft spinning */
     c.rings=c.rings.filter(r=>{ r.t+=dt;
       if(r.bit){ const b=r.bit; r.m.position.x+=b.vx*dt; r.m.position.z+=b.vz*dt; r.m.position.y+=b.vy*dt; b.vy-=9*dt; r.m.rotation.x+=dt*8; const life=b.dust?0.55:0.35; r.m.scale.setScalar(Math.max(0.05,1-r.t/life)); if(r.t>=life){ c.fx.remove(r.m); return false; } return true; }

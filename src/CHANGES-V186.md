@@ -538,3 +538,10 @@ After Oceanside harbour, as a beachfront town:
 - engine/combat.js: each ranged weapon throws its own shot — arrows (bows), a short heavy bolt (crossbow, +15% power), a throwing axe tumbling end over end (slower, +25% power), a sling stone — all drawn larger (scale ≥0.8) with a pale streak behind; an arrow, bolt or axe that hits stays in the foe a moment (~0.7 s).
 - Test hooks: K._capeX / K._capeB hold the cape's swing and bend.
 - Seen: the ready stance front and side; the cape flaring under the shield from above and behind; all four shots land (foe hp falls), an axe caught mid-flight.
+
+## V236 — two hands on the hilt, the bow at the ready, shafts that stay where they strike
+- knight.js `twoHand(w)`: two-bone IK solves the left arm onto the grip (`K._2hO` 0.12 below the right fist, elbow pole `K._2hPole`), the left fist turned as the right. Runs last in the frame (after clips, stance, foot IK) whenever a heavy/hammer weapon is out in the right hand (not spin/charge/draw/dash/sit/ride/climb/fish); blended by `K._2h`.
+- knight.js bow carry: a drawn bow at rest (not shooting) is held upright at the ready in the left hand — pose `K._bwP` [-0.25,0.1,0.18,-1.2,1.2,0], blended by `K._bwR`. It used to hang off the fist tip-down.
+- setWeapon while drawn now re-homes the weapon (`drawNow`), so a bow switched in goes to the left hand, not the right.
+- Cape pin fix: the V235 kick clamp ran before the kick was set; it now runs after.
+- combat.js: projectiles lodge. A hit sticks in the foe ~5 s (300 ticks), at a random height on the side it struck, and follows him; if he falls it drops beside him. A miss comes down and sticks in the ground ~7 s (arrows/bolts nose-down, the axe head-down, stones lie). A wall hit sticks in the wall. Shrinks away over the last 20 ticks; capped at 40 lodged at once.

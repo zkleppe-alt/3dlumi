@@ -2916,9 +2916,28 @@ function buildKnight(){
     //  leg folds at the knee (the hip keeping the foot under it) by as much as its ground rises. Only standing and walking,
     //  outdoors; the camera-near and the player first
     if(K.footIK&&(mode==='walk'||mode==='idle')&&!(K.air>0.02)&&!(K.dash>0)&&typeof ENGINE!=='undefined'&&ENGINE.level&&ENGINE.level.ground&&!ENGINE.level.interior&&!K._act) footIK();
+    /* V236: a two-handed hilt really is held in both hands — the left hand is solved onto the grip just below the right, whatever the clip or the stance has the arms doing */
+    { const ac=K._act&&K._act.n, want=K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&!(K.spinT>=0)&&!(K.charge>0)&&mode!=='sit'&&mode!=='ride'&&mode!=='lyre'&&mode!=='climb'&&mode!=='fish'&&ac!=='drawBack'&&ac!=='draw'&&!(K.dash>0)?1:0;
+      K._2h=(K._2h||0)+(want-(K._2h||0))*Math.min(1,dt*14); if(K._2h>0.01) twoHand(Math.min(1,K._2h*1.15)); }
+    /* V236: a bow at rest is carried upright in the left hand at his side, not dangling tip-down from the fist */
+    { const want=K._fam==='bow'&&sword.parent===AL.hand&&K._st==='drawn'&&!K._bow&&swing<0&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&!K._act?1:0;
+      K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0], m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
+        m(AL.sh,'x',P[0]); m(AL.sh,'y',P[1]); m(AL.sh,'z',P[2]); m(AL.el,'x',P[3]); m(AL.el,'y',0); m(AL.el,'z',0); m(AL.hand,'x',P[4]); m(AL.hand,'y',0); m(AL.hand,'z',P[5]); } }
     if(K._bowRig) bowString(dt);
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);
   };
+  const _ia=new THREE.Vector3(), _ib=new THREE.Vector3(), _ic=new THREE.Vector3(), _iu=new THREE.Vector3(), _iw=new THREE.Vector3(), _ix=new THREE.Vector3(), _im=new THREE.Matrix4(), _iq=new THREE.Quaternion(), _iq2=new THREE.Quaternion(), _iX=new THREE.Vector3(1,0,0);
+  function twoHand(w){ const l1=0.24, l2=0.23; K.updateMatrixWorld(true);
+    const gp=sword.localToWorld(_ia.set(0,-(K._2hO!==undefined?K._2hO:0.12),0)); torso.worldToLocal(gp);      // the grip, a fist's width below the right hand, in the torso's frame
+    const d=_ib.copy(gp).sub(AL.sh.position); let D=d.length(); if(D<1e-4) return; d.multiplyScalar(1/D); D=Math.min(D,(l1+l2)*0.999); D=Math.max(D,Math.abs(l1-l2)+0.02);
+    const cl=v=>Math.max(-1,Math.min(1,v)), al=Math.acos(cl((l1*l1+D*D-l2*l2)/(2*l1*D))), be=Math.PI-Math.acos(cl((l1*l1+l2*l2-D*D)/(2*l1*l2)));
+    const pl=K._2hPole||[0.7,-1,-0.35], n=_ic.set(pl[0],pl[1],pl[2]); n.addScaledVector(d,-n.dot(d)); if(n.lengthSq()<1e-6) n.set(1,0,0).addScaledVector(d,-d.x); n.normalize();   // the elbow down and out
+    const u=_iu.copy(d).multiplyScalar(Math.cos(al)).addScaledVector(n,Math.sin(al));                      // the upper arm
+    const f=_iw.copy(d).multiplyScalar(D).addScaledVector(u,-l1); f.addScaledVector(u,-f.dot(u)); if(f.lengthSq()<1e-8) return; f.normalize();   // the way the forearm bends
+    _ix.copy(u).negate().cross(f); _im.makeBasis(_ix,u.negate(),f); _iq.setFromRotationMatrix(_im); AL.sh.quaternion.slerp(_iq,w);
+    _iq.setFromAxisAngle(_iX,-be); AL.el.quaternion.slerp(_iq,w);
+    AL.el.updateWorldMatrix(true,false); AL.el.getWorldQuaternion(_iq2).invert(); AR.hand.getWorldQuaternion(_iq); _iq2.multiply(_iq); AL.hand.quaternion.slerp(_iq2,w);   // the fist turned as the other is, round the same hilt
+  }
   const _fa=new THREE.Vector3(), _fk=new THREE.Vector3(); let _fdS=0;
   function footIK(){ const lv=ENGINE.level, par=K.parent; if(!par) return; K.updateMatrixWorld(true); _ws.setFromMatrixScale(K.matrixWorld); const wsc=_ws.y||1;
     K.getWorldPosition(_fk); const g0=lv.ground(_fk.x,_fk.z), lt=Math.abs(L.knee.position.y)||0.3, ls=K.hipY-lt+0.012, cap=K.hipY*0.3, off=[];
@@ -2959,7 +2978,7 @@ function buildKnight(){
   const _setW=K.setWeapon; K.setWeapon=function(art,id){ _setW(art,id); const f=art?art.fam:'light'; K._fam=f;
     K._carry=f==='fist'?'none':f==='light'||f==='radiant'?'hip':'back'; scab.visible=K._carry==='hip'; K._shB=f==='bow'||f==='heavy'||f==='hammer'; shieldHome();
     scabbard(art&&(f==='light'||f==='radiant')?0.3+(art.len||12)*0.034+0.12:0.74);
-    if(K._carry==='none'&&K._st!=='drawn') drawNow(); else if(K._st==='sheathed') stow(); };
+    if(K._carry==='none'&&K._st!=='drawn') drawNow(); else if(K._st==='sheathed') stow(); else if(K._st==='drawn') drawNow(); };   /* V236: a change of weapon in hand goes to the right hand — a bow to the left */
   K._carry='hip'; scabbard(0.74); K._st='sheathed'; stow();
   K.sheathe=()=>{ if(K._carry!=='none'){ K._st='sheathed'; stow(); } }; K.draw=drawNow;
 
@@ -3248,7 +3267,8 @@ function buildKnight(){
         C.skF.uWave.value=C.skB.uWave.value=0.006+0.01*a; C.skF.uSway.value=C.skB.uSway.value=hSpr(sCsw,-dTy*0.04+Math.sin(t*1.3)*0.01,60,12,dt);
         // the cape: its foot trails with the speed and kicks with each footfall, a ripple runs across it, it swings after a turn
         C.cape.uBend.value=hSpr(sCcB,0.1*a+0.22*rf+Math.max(0,mo.acc)*0.05,30,7,dt); if(K._capeB!==undefined) C.cape.uBend.value=K._capeB;
-        if(K._shB){ capeP.rotation.x=Math.min(capeP.rotation.x,0.08); C.cape.uBend.value*=0.4; C.cape.uKick.value=Math.max(-0.02,Math.min(0.02,C.cape.uKick.value)); }   /* V235: a shield slung on the back pins the cape under it — it no longer flies out through it */ C.cape.uKick.value=hSpr(sCck,-mo.vy*0.04,70,11,dt); C.cape.uWave.value=0.008+0.016*a+0.02*rf;
+        C.cape.uKick.value=hSpr(sCck,-mo.vy*0.04,70,11,dt); C.cape.uWave.value=0.008+0.016*a+0.02*rf;
+        if(K._shB){ capeP.rotation.x=Math.min(capeP.rotation.x,0.08); C.cape.uBend.value*=0.4; C.cape.uKick.value=Math.max(-0.02,Math.min(0.02,C.cape.uKick.value)); }   /* V235: a shield slung on the back pins the cape under it (V236: after the kick is set, so the pin holds) */
         C.cape.uSway.value=hSpr(sCcs,-dTy*0.08+(K.rotation.z||0)*0.5,25,6,dt);
         C.cape.uT.value=C.skF.uT.value=C.skB.uT.value=t*(1+a+rf); if(window.NOCLOTH) for(const k in C) for(const u in C[k]) C[k][u].value=0; }
       if(K._sheathRest!==undefined) sheathP.rotation.x=hSpr(sShX,K._sheathRest+Math.max(0,L.hip.rotation.x)*0.55+Math.max(0,-L.hip.rotation.x)*0.15,90,8,dt);
@@ -9923,11 +9943,15 @@ const COMBAT=(function(){
       if(Math.hypot(p.x-a.x,p.z-a.z)<0.7) hurtFromBoss(a.dmg!==undefined?a.dmg:4+a.level*0.7); });
     c.adds=c.adds.filter(a=>{ if(a.alive) return true; if(a.g&&a.g.parent) a.g.parent.remove(a.g); return false; });
     c.arrows.forEach(s=>{ if(s.tg&&s.tg.alive){ const dx=s.tg.x-s.x, dz=s.tg.z-s.z, a0=Math.atan2(s.vx,s.vz); let da=Math.atan2(dx,dz)-a0; da=Math.atan2(Math.sin(da),Math.cos(da)); if(Math.abs(da)<1.1){ const a=a0+Math.max(-0.14,Math.min(0.14,da)), sp=s.sp||Math.hypot(s.vx,s.vz); s.vx=Math.sin(a)*sp; s.vz=Math.cos(a)*sp; } else s.tg=null; }   /* V231: it keeps to its mark */
-      for(let sub=0;sub<2&&s.t>0;sub++){ s.x+=s.vx/2; s.z+=s.vz/2; if(!walk(s.x,s.z)){ s.t=0; break; }
+      if(s.stuck){ return; }   /* V236: lodged — it stays where it struck */
+      for(let sub=0;sub<2&&s.t>0;sub++){ s.x+=s.vx/2; s.z+=s.vz/2; if(!walk(s.x,s.z)){ s.t=0; s.x-=s.vx/4; s.z-=s.vz/4; s.stuck={w:1,t:420,y:s.y0}; break; }
       for(const d of c.foes){ if(!d.alive) continue; const vx=d.x-s.x, vz=d.z-s.z, dist=Math.hypot(vx,vz); if(dist>0.56+(d.boss?0.3:0)) continue;
         let dmg=Math.max(1,Math.round(S().atk*(s.pow||1))+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
-        dmg=bossHitGate(d,dmg); s.t=0; if(s.kind!=='stone'&&!s.stuck) s.stuck={d,ox:s.x-d.x,oz:s.z-d.z,t:40}; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--; });
-    c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; if(s.stuck&&s.stuck.t-->0&&s.stuck.d.alive!==false) return true; c.fx.remove(s.m); return false; });   /* V235: it stays in what it hit a moment */
+        dmg=bossHitGate(d,dmg); s.t=0; if(!s.stuck) s.stuck=s.kind==='stone'?{g:1,t:150,x:s.x,z:s.z,y:s.y0}:{d,ox:s.x-d.x,oz:s.z-d.z,t:300}; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--;
+      if(s.t<=0&&!s.stuck) s.stuck={g:1,t:420,x:s.x,z:s.z,y:s.y0}; });   /* V236: a miss comes down and sticks in the ground */
+    c.arrows.forEach(s=>{ const k=s.stuck; if(!k||!k.d||k.d.alive!==false) return; const n=Math.hypot(k.ox,k.oz)||1; s.stuck={g:1,t:300,x:k.d.x+k.ox/n*0.4,z:k.d.z+k.oz/n*0.4,y:s.y0}; });   /* the foe falls, the arrow drops beside him */
+    c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; if(s.stuck&&s.stuck.t-->0) return true; c.fx.remove(s.m); return false; });
+    if(c.arrows.length>40){ const old=c.arrows.filter(s=>s.stuck&&s.t<=0).slice(0,c.arrows.length-40); old.forEach(s=>{ s.stuck.t=Math.min(s.stuck.t,20); }); }   /* V236: lodged shafts last several seconds — capped, so a long fight doesn't bristle forever */
     if(cfg.tick) cfg.tick(); }
   // V146: every demon fights its own way, and every blow is shown before it comes — the demon's whole body flashes red as
   //  it winds up (bright on the last beat: that's the moment to guard). Its FORM says how it fights:
@@ -10100,8 +10124,14 @@ const COMBAT=(function(){
     c.adds.forEach(a=>{ a.g.position.set(a.x,lv.ground(a.x,a.z),a.z); if(a.g.animate){ a.g.animate(dt,a.moving||a.walking?'walk':'idle',1); a.g.rotation.y=a.walking?Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z):ENGINE.P.face; } else a.g.rotation.y=Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z); });
     c.shots.forEach(s=>s.m.position.set(s.x,lv.ground(s.x,s.z)+0.9,s.z));
     c.arrows.forEach(s=>{ const ps=Math.max(0.8,VIEWMODE.ps(lv));   /* V235: drawn a little larger, so a shot can be followed */
-      if(s.stuck&&s.t<=0){ const d=s.stuck.d; s.m.position.x=d.x+s.stuck.ox*0.4; s.m.position.z=d.z+s.stuck.oz*0.4; s.m.position.y=lv.ground(d.x,d.z)+(d.boss?1.6:0.9)*ps; s.m.children.forEach(o=>{ if(o.material&&o.material.transparent) o.visible=false; }); return; }
-      const u=s.t0?1-s.t/s.t0:0.5; s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz);
+      if(s.stuck&&s.t<=0){ const k=s.stuck, sc=ps*Math.min(1,k.t/20); s.m.scale.setScalar(Math.max(0.001,sc)); s.m.children.forEach(o=>{ if(o.material&&o.material.transparent) o.visible=false; });   /* V236: lodged — in the foe, the ground or the wall it struck; it shrinks away only at the very end */
+        const sp=s.kind==='axe'?s.m.getObjectByName('spin'):null, fy=s.m.rotation.y, bk=s.kind==='axe'?0.06:s.kind==='stone'?0:0.16;
+        if(k.d){ const d=k.d, n=Math.hypot(k.ox,k.oz)||1, R=d.boss?0.55:0.3; if(k.h===undefined) k.h=(d.boss?1.3:0.75)+Math.random()*0.35; if(k.r===undefined) k.r=(Math.random()-0.5)*0.5;
+          s.m.position.set(d.x+k.ox/n*R-Math.sin(fy)*bk*ps,lv.ground(d.x,d.z)+k.h*ps,d.z+k.oz/n*R-Math.cos(fy)*bk*ps); s.m.rotation.x=0.15+k.r*0.3; if(sp) sp.rotation.x=Math.PI/2; }
+        else { const gy=lv.ground(k.x,k.z); if(k.w){ if(k.y==null) k.y=gy+0.8*ps; s.m.position.set(k.x,k.y,k.z); s.m.rotation.x=0.1; if(sp) sp.rotation.x=Math.PI/2; }
+          else { const lie=s.kind==='stone'?0.05:s.kind==='axe'?0.14:0.1, y1=gy+lie*ps; k.fy=k.fy==null?(k.y!=null?k.y:y1+0.4):k.fy+(y1-k.fy)*0.35; s.m.position.set(k.x,k.fy,k.z); s.m.rotation.x=s.kind==='stone'?0:s.kind==='axe'?0:0.95; if(sp) sp.rotation.x=Math.PI; } }
+        return; }
+      const u=s.t0?1-s.t/s.t0:0.5; s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.y0=s.m.position.y; s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz);
       if(s.kind==='axe'){ s.m.rotation.x=0; s.m.rotation.z=0; { const sp=s.m.getObjectByName('spin'); if(sp) sp.rotation.x-=0.55; } } else if(s.kind==='stone'){ s.m.rotation.x=0; } else { s.m.rotation.x=-0.12+0.42*u; s.m.rotation.z+=0.5; } });   /* V213: a shallow arc, nose rising then dropping, the shaft spinning */
     c.rings=c.rings.filter(r=>{ r.t+=dt;
       if(r.bit){ const b=r.bit; r.m.position.x+=b.vx*dt; r.m.position.z+=b.vz*dt; r.m.position.y+=b.vy*dt; b.vy-=9*dt; r.m.rotation.x+=dt*8; const life=b.dust?0.55:0.35; r.m.scale.setScalar(Math.max(0.05,1-r.t/life)); if(r.t>=life){ c.fx.remove(r.m); return false; } return true; }
