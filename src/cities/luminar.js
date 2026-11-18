@@ -210,7 +210,7 @@
     if(J.theme==='shop'){ const R=WD.siRooms[J.siRoom[0]], shopTown=WD.shopTown[id]!==undefined?WD.shopTown[id]:town;
       ENGINE.add({id:L(0),lazy:()=>{ const keeper=(J.npcs.find(n=>R.keep&&n.x===R.keep[0]&&n.y===R.keep[1])||J.npcs[0]||{}).name;
         const lv=objectRoom({id:L(0),name:J.name,theme:'shop',pal,sign,room:R,npcs:J.npcs,keeper,exit:back(b.id),zone:J.name});
-        lv.folk.filter(f=>f.who===keeper).forEach(f=>{ f.label='Shop'; const tt=TRADE?TRADE.townOf(id):null; f.action=()=>{ const wares=()=>SERVICES.openShop(shopTown,keeper); if(TRADE&&tt!==null&&TRADE.unlocked()) TRADE.shopMenu(tt,wares); else wares(); }; }); return lv; }});
+        lv.folk.filter(f=>f.who===keeper).forEach(f=>{ f.label='Shop'; const tt=TRADE?TRADE.townOf(id):null; f.action=()=>{ const wares0=()=>SERVICES.openShop(shopTown,keeper), wares=id==='ih_forge'&&typeof HERALD!=='undefined'?()=>HERALD.smithy(keeper,wares0):wares0;   /* V233: the Great Forge's smith paints your shield */ if(TRADE&&tt!==null&&TRADE.unlocked()) TRADE.shopMenu(tt,wares); else wares(); }; }); return lv; }});
       return; }
     // homes and keeps: rooms whose tiles are the furniture
     J.floors.forEach((f,n)=>ENGINE.add({id:L(n),lazy:()=>gridRoom({id:L(n),name:J.name,theme:J.theme==='keep'?'keep':'home',pal:J.theme==='keep'?{cloth:pal.accent,accent:pal.accent,trim:pal.trim}:undefined,

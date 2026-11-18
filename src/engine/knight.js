@@ -126,7 +126,7 @@ function buildKnight(){
   /* V232: with a bow or a two-handed weapon the shield rides on his back, slung between the shoulders (the weapon, when it's
      put away, goes across it); K._sbP/_sbR tune where. shieldHome() moves it there or back to the arm as the weapon changes. */
   const shBack=pivot(0,0.24,-0.29,torso);
-  function shieldHome(){ const back=!!K._shB; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,Math.PI];
+  function shieldHome(){ const back=!!K._shB; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,0];
       shM.position.set(p[0],p[1],p[2]); shM.rotation.set(r[0],r[1],r[2]); sh.rotation.set(q[0],q[1],q[2]); }
     else if(shM.parent!==AL.el){ AL.el.add(shM); shM.position.set(K.shX,K.shY,0); shM.rotation.set(0,K.shRY,0); sh.rotation.set(0,0,0); } shM.visible=true; }
   function kite(s){ const p=new THREE.Shape(); p.moveTo(0,0.26*s); p.quadraticCurveTo(0.2*s,0.26*s,0.2*s,0.12*s); p.quadraticCurveTo(0.18*s,-0.12*s,0,-0.34*s);
@@ -352,6 +352,7 @@ function buildKnight(){
   K.mot={v:0,acc:0,vy:0,a:0,rf:0,ph:0}; const _sp=new THREE.Vector3(), _hp=new THREE.Vector3(), _ax=new THREE.Vector3(), _pre=new THREE.Vector3(), _sq=new THREE.Quaternion(), _hq=new THREE.Quaternion(), _dq=new THREE.Quaternion(), _de=new THREE.Euler();
   K.animate=function(dt,mode,speed){
     dt=Math.max(0,dt||0); t+=dt; const moving=mode==='walk', sp=speed||1; dt=Math.min(dt,0.1);
+    if(K.herald&&!K.npc&&typeof GAME!=='undefined'&&GAME.S) K.herald.paint(GAME.S.shieldCol);   /* V233: the colours the smith painted */
     // how fast he really travels (world → his own scale)
     K.getWorldPosition(_wp); _ws.setFromMatrixScale(K.matrixWorld); const wsc=_ws.x||1;
     if(_lp&&dt>0){ const dv=Math.hypot(_wp.x-_lp.x,_wp.z-_lp.z)/dt/wsc; vRaw=dv<16?dv:vRaw; } _lp=(_lp||new THREE.Vector3()).copy(_wp);
@@ -875,6 +876,8 @@ function buildKnight(){
     const sCfB={x:0,v:0}, sCbB={x:0,v:0}, sCsw={x:0,v:0}, sCcB={x:0,v:0}, sCck={x:0,v:0}, sCcs={x:0,v:0}; let cTy=0, cLx=0, cInit=false; const qT=new THREE.Quaternion(), qP=new THREE.Quaternion(), qW=new THREE.Quaternion(), qG=new THREE.Quaternion(), eF=new THREE.Euler();
     const sShX={x:-2.55,v:0}, sSkF={x:0,v:0}, sSkB={x:0,v:0}, sPlX={x:0,v:0}, sPlZ={x:0,v:0}; let pTy=0;
     K.remodel=true; K.hero=true; })();
+  /* V233: the shield is the arms of Luminar (heraldry.js) — the kite and its liveried colours put away; the smith paints it */
+  if(typeof HERALD!=='undefined'){ sh.children.slice().forEach(o=>{ o.visible=false; o.userData.b3hid=true; }); sh.scale.x=1; K.herald=HERALD.shield(sh); }
   K.rig={hips,torso,head,plume,L,R,AL,AR,capeP,sh,cape,sword,sheathP,backP,shM}; K.M=M;   // the joints, for a skinned body (engine/body.js)
   /* V139: play one of the motion-capture clips through once, over everything (falling in battle, kneeling to sow): its
      length squeezed or stretched to dur; arms:true lets the clip have the sword arm too */

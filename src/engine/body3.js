@@ -183,7 +183,7 @@ const BODY3=(function(){
   function unitOf(F){ const hold=F.hold, K=F.K; const bb=new THREE.Box3().setFromObject(F.body); const toK=new THREE.Matrix4().copy(K.matrixWorld).invert(); bb.applyMatrix4(toK); return F.D.lh/Math.max(0.01,bb.max.y-bb.min.y); }
   function hook(K,F){ const a=K.animate; K.animate=function(){ const r=a.apply(this,arguments); if(F.hold.visible) F.sync(); return r; }; F.sync(); }
   const TW=new Map();
-  function toonify(K,F){ const out=new Set(); K.traverse(o=>{ if(!o.isMesh||o.isSkinnedMesh||!o.visible||o.userData.b3hid||!o.material||Array.isArray(o.material)) return; if(F.parts.includes(o)||(o.parent&&F.parts.includes(o.parent))) return;
+  function toonify(K,F){ const out=new Set(); K.traverse(o=>{ if(!o.isMesh||o.isSkinnedMesh||!o.visible||o.userData.b3hid||o.userData.keepMat||!o.material||Array.isArray(o.material)) return; if(F.parts.includes(o)||(o.parent&&F.parts.includes(o.parent))) return;
       const src=o.material; if(src.isMeshBasicMaterial||src.isMeshToonMaterial||src.isSpriteMaterial||src.blending===THREE.AdditiveBlending||src.transparent&&src.opacity<0.9) return;
       let t=TW.get(src); if(!t){ t=twin(src,false); if(src.onBeforeCompile&&String(src.onBeforeCompile).includes('uBend')){ const ob=src.onBeforeCompile, tb=t.onBeforeCompile; t.onBeforeCompile=(sh,r)=>{ ob.call(src,sh,r); tb(sh,r); }; t.customProgramCacheKey=()=>'b3cloth'+(src.customProgramCacheKey?src.customProgramCacheKey():''); } TW.set(src,t); }
       o.material=t; out.add(t); }); return [...out]; }
