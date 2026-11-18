@@ -465,3 +465,16 @@ After Oceanside harbour, as a beachfront town:
   - The shield is hidden while the bow is in hand and comes back when it's stowed.
   - stow() and fishing also release from the left hand.
 - engine/forest.js — the Forest of Disillusionment uses the tall shapes (oakT/pineT): slim trunks on their own tiles, crowns high over the trail. The widened old oaks' root flares had spilled into the paths.
+
+## V227 — a real bow draw; smoother running
+- engine/knight.js — the bow:
+  - The archer's clip now drives both arms (K._rArm on ov 'shoot'). Before, only the left arm followed it and the right stayed in the sword pose, which read as pointing a pistol.
+  - Measured through the clip: the right hand reaches the cheek about 20% in and full draw runs from about 55–75%, so the draw holds at 62% and the loose plays 76% → 100%.
+  - A real string: two lengths from the tips to a nock that follows the right hand (clamped to 0.78 of the bow's size). On release it snaps home with a damped shiver (0.6 s).
+  - An arrow is nocked on the string while drawing.
+  - bowAim(): the bow stands upright in the left fist in world space, its belly along the line from the drawing hand to the bow hand, canted 0.18. The clip doesn't set the wrist, so no fixed angle in the hand worked.
+  - K._bowU is a test hook that holds the clip at one moment.
+- engine/world.js — smoother running:
+  - cullFar(): every 20 updates, anything set straight into the overworld scene (not into a chunk) that is further than the drawn land (VIEWX+30) goes onto layer 5, which neither the camera nor the sun's shadow renders. It comes back when near. .visible is left alone, so the story's showing and hiding still works. Things laid out from the origin, unculled objects (sky, far country) and the knight are skipped.
+  - At the start town, meshes the renderer considers outside the chunks dropped from about 7,000 (227 groups, median 421 tiles away; 45 demons; all 147 villagers) to about 880.
+  - Re-dressing a chunk (its houses) is limited to one per build step, so riding into a town no longer builds two towns' worth in one frame.

@@ -1618,17 +1618,26 @@ function buildWorld(WD,opt){
      rolled ground under their feet. Only ever raised: folk on a bridge, a deck or a stair keep their height. */
   if(ROLL){ let gT=0; lv.anim.push((t,dt)=>{ gT+=dt||0.016; if(gT<0.5) return; gT=0; if(ENGINE.level!==lv) return;
     for(const f of lv.folk){ const pa=f.g&&f.g.parent; if(!pa||(pa!==scene&&(pa.parent!==scene||pa.position.lengthSq()>0.01))) continue; const gy=lv.ground(f.x,f.z)+0.02; if(f.y<gy-0.03){ f.y=gy; if(f.still&&f.g) f.g.position.y=gy; } } }); }
+  /* V227: WHAT IS FAR AWAY IS NOT DRAWN — everything set straight into the realm rather than into a chunk (the demons on their
+     posts, the beasts, travellers on the roads, folk out in the country) is put on an unseen layer when it is further off than
+     the land is drawn, and back when you come near: the game's own showing and hiding (.visible) is left untouched. Before,
+     some two hundred of them, most of them hundreds of tiles away, were sorted, culled and shadow-tested every frame. */
+  
+  let CHG=null; function cullFar(p,R){ CHG=CHG||new Set(chunks.map(c=>c.g)); for(const o of scene.children){ if(o.isLight||o.isPoints||o.isSprite||o.frustumCulled===false||CHG.has(o)||(typeof ENGINE!=='undefined'&&o===ENGINE.K)) continue;
+      const x=o.position.x, z=o.position.z; if(Math.abs(x)<0.5&&Math.abs(z)<0.5) continue;   // things laid out from the origin (the roads, the birds) look after themselves
+      const far=Math.hypot(x-p.x,z-p.z)>R; if(far!==!!o.userData._far){ o.userData._far=far; o.traverse(q=>q.layers.set(far?5:0)); } } }
   lv.follow=p=>{ const G=lv.gfx; const VIEW0=VIEW, VIEWX=(HGB&&VIEW0>=56&&p.x>HGB[0]-20&&p.x<HGB[2]+20&&p.z>HGB[1]-10&&p.z<HGB[3]+30)?VIEW0+34:VIEW0;   /* V208: the great city is seen whole from its gate — the near land is drawn further out round Hellgate */
     if(FAR){ FAR.U.uR.value=Math.max(18,VIEWX-16); FAR.U.uC.value.set(p.x,p.z); scene.fog.near=G.fogN; scene.fog.far=G.fogF; } if(typeof DAYNIGHT!=='undefined'){ const L=DAYNIGHT.state().light; const SD=G.sunD||34; sun.position.set(p.x+L.x*SD,p.y+L.y*SD,p.z+L.z*SD); } else sun.position.set(p.x-12,p.y+30,p.z+14); sun.target.position.set(p.x,p.y,p.z);
     const cam=ENGINE.cam; cam.updateMatrixWorld(); PM.multiplyMatrices(cam.projectionMatrix,cam.matrixWorldInverse); frus.setFromProjectionMatrix(PM);
     const heavy=(tick++%6)===0;
     chunks.forEach(ch=>{ const d=Math.hypot(ch.x-p.x,ch.z-p.z);
       if(heavy&&!ch.built&&d<VIEWX+10&&lv._builds<2){ buildChunk(ch); lv._builds++; }
-      else if(heavy&&ch.built&&!ch.dressed&&d<VIEWX+10&&lv._builds<2){ dressChunk(ch); lv._builds++; }
+      else if(heavy&&ch.built&&!ch.dressed&&d<VIEWX+10&&lv._builds<1){ dressChunk(ch); lv._builds+=2; }   /* V227: a town's houses are the heavy part: one chunk's worth a step, so a ride through the country never hitches on two at once */
       else if(ch.dressed&&d>VIEWX+26&&(lv._freed||0)<4){ undressChunk(ch); lv._freed=(lv._freed||0)+1; }
       const show=d<VIEWX+12; ch.g.visible=show&&ch.built; if(!ch.g.visible) return;
       const inView=frus.intersectsSphere(ch.sphere), near=d<G.shR; ch.ims.forEach(im=>{ const tu=im.material===tuftMat; im.visible=inView&&(!tu||d<G.tuftR); im.castShadow=!tu&&(near&&im.material!==boxMat&&im.material!==groundMat||near&&d<G.shR*0.7); }); });
     lv._builds=0; lv._freed=0;
+    if((tick%20)===0) cullFar(p,VIEWX+30);
   // redraw the ground of an area in place (the tiles only — people, buildings and decorations stay)
   lv.retile=(x0,y0,x1,y1)=>chunks.forEach(ch=>{ if(!ch.built) return; const cx0=ch.cx*CHUNK, cy0=ch.cy*CHUNK; if(cx0>x1||cy0>y1||cx0+CHUNK<x0||cy0+CHUNK<y0) return; ch.ims.forEach(im=>ch.g.remove(im)); ch.ims=[]; buildChunk(ch,true); }); };
   lv._builds=0;

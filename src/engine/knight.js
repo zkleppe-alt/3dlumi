@@ -149,7 +149,7 @@ function buildKnight(){
   // the blade turns in the hand through each blow so the edge leads, not the flat (V90): everything the hand holds hangs off this roll
   const swRoll=new THREE.Group(); defSword.forEach(o=>swRoll.add(o)); sword.add(swRoll); K._roll=swRoll;
   const WM=(hex,shiny,em)=>{ const k=hex+'|'+(shiny||0)+'|'+(em||''); return wmat[k]||(wmat[k]=new THREE.MeshPhongMaterial({color:new THREE.Color(hex),flatShading:true,shininess:shiny||8,specular:shiny?0x666677:0x111111,emissive:em?new THREE.Color(em):new THREE.Color(0)})); };
-  K.setWeapon=function(art,id){ bladeLen=0; K._trailCol=art&&art.fam==='radiant'?[1,0.85,0.45]:null; if(wpnG){ swRoll.remove(wpnG); wpnG=null; } defSword.forEach(o=>o.visible=!art);
+  K.setWeapon=function(art,id){ K._bowRig=null; bladeLen=0; K._trailCol=art&&art.fam==='radiant'?[1,0.85,0.45]:null; if(wpnG){ swRoll.remove(wpnG); wpnG=null; } defSword.forEach(o=>o.visible=!art);
     [AL,AR].forEach(A=>{ A.hand.box.material=M.hand; A.hand.box.scale.setScalar(1); if(A.hand.ring){ A.hand.remove(A.hand.ring); A.hand.ring=null; } });
     K.weaponFam=art?art.fam:'light'; if(!art) return; const p=art.pal||{}, c=(k,d)=>p[k]||d, g=new THREE.Group(); wpnG=g; swRoll.add(g);
     const box=(w,h,d,m,x,y,z)=>add(new THREE.BoxGeometry(w,h,d),m,x,y,z,g), cy=(r0,r1,h,m,x,y,z,sg)=>add(new THREE.CylinderGeometry(r0,r1,h,sg||6),m,x,y,z,g);
@@ -188,7 +188,13 @@ function buildKnight(){
       if(id==='crossbow'){ box(0.07,0.62,0.06,wood,0,0.22,-0.03); const th=Math.PI*0.32, R=0.3; const pr=arcIn(R,th,metal,V3(0,1,0),V3(1,0,0)); pr.position.y=0.5;   // the stock runs forward; the prod lies across its nose
         box(2*R*Math.sin(th),0.008,0.008,str,0,0.5+R*(Math.cos(th)-1),0); box(0.04,0.06,0.06,metal,0,0.08,0.02); return; }
       const R=id==='huntbow'?0.5:0.42, th=Math.PI*0.36; arcIn(R,th,wood,V3(0,1,0),V3(0,0,1));                               // the stave stands upright, the tips curving back toward you
-      box(0.006,0.006,2*R*Math.sin(th),str,0,R*(Math.cos(th)-1),0);
+      /* V227: a string that draws — two lengths from the tips to the nock, which the right hand pulls back to the cheek and lets
+         go (it snaps home and shivers); an arrow sits on it while you draw */
+      const sy=R*(Math.cos(th)-1), sz=R*Math.sin(th), mkS=()=>{ const m=new THREE.Mesh(new THREE.CylinderGeometry(0.005,0.005,1,4),str); g.add(m); return m; };
+      const ar=new THREE.Group(); g.add(ar); const sh=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.78,5),WM(c('A','#8a6a42'))); sh.position.y=0.39; ar.add(sh);
+      const hd=new THREE.Mesh(new THREE.ConeGeometry(0.022,0.07,4),metal); hd.position.y=0.8; ar.add(hd);
+      [0,1,2].forEach(i=>{ const f=new THREE.Mesh(new THREE.BoxGeometry(0.003,0.09,0.03),WM(c('F','#e8e2d4'))); f.position.y=0.07; f.rotation.y=i*Math.PI*2/3; f.translateZ(0.016); ar.add(f); }); ar.visible=false;
+      K._bowRig={g,tT:new THREE.Vector3(0,sy,sz),tB:new THREE.Vector3(0,sy,-sz),mid:new THREE.Vector3(0,sy,0),n:new THREE.Vector3(0,sy,0),s1:mkS(),s2:mkS(),ar,rel:0,off:new THREE.Vector3()};
       box(0.05,0.05,0.12,WM(c('G','#c8b090')),0,0,0); return; } };
   // ── livery shapes the palette can't say (drawKnightBody's crest(), cape(), the wings): the Armour of God's upright plume,
   //   wings, white cape and halo · the Ranger's hood with a tucked feather, green cape and gold leaf · the Stormward bolt ·
@@ -399,7 +405,8 @@ function buildKnight(){
         const A0=K._act;
         if(A0) ov={n:A0.n,u:(A0.u0||0)+((A0.u1===undefined?1:A0.u1)-(A0.u0||0))*Math.min(1,A0.t/A0.dur),w:A0.w,fade:A0.fade||10};
         else if(K._lyreOn&&K.mocap.actions.lyre){ K._lyreClk=(K._lyreClk||0)+dt; const ld=K.mocap.dur.lyre||7.5; ov={n:'lyre',u:(K._lyreClk%ld)/ld,w:0.97,fade:7}; }   /* V215: the lyre in his hands — Zak's playing clip, looping */
-        else if(K._bow&&K._fam==='bow'){ const B0=K._bow; B0.t+=dt; if(B0.ph==='draw') ov={n:'shoot',u:Math.min(0.7,0.12+B0.t/0.5*0.58),w:0.97,fade:12}; else { ov={n:'shoot',u:Math.min(1,0.72+B0.t/0.35*0.28),w:0.97,fade:12}; if(B0.t>0.45) K._bow=null; } }   /* V224: draw and hold, then loose */
+        else if(K._bowU!=null) ov={n:'shoot',u:K._bowU,w:0.97,fade:40};   /* (a test hook: hold the archer's clip at one moment) */
+        else if(K._bow&&K._fam==='bow'){ const B0=K._bow; B0.t+=dt; if(B0.ph==='draw') ov={n:'shoot',u:Math.min(0.62,0.12+B0.t/0.55*0.5),w:0.97,fade:12}; else { ov={n:'shoot',u:Math.min(1,0.76+B0.t/0.4*0.24),w:0.97,fade:12}; if(B0.t>0.45) K._bow=null; } }   /* V224: draw and hold, then loose */
         else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.95,fade:14}:{n:sk===0?'atk3':sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8,fade:16};   /* a quick cut takes less of the clip's lunge */
         else if(K.falling>0&&!(K.raise>0)) ov={n:'fall',t:0.35+K.falling*1.15,w:Math.min(0.92,0.45+K.falling*3),fade:9};   /* V165: off a ledge, the falling clip from the first moment — arms up and out, legs reaching for the ground */
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
@@ -410,7 +417,8 @@ function buildKnight(){
         /* V142: walk or run by how fast he truly goes (in hip heights a second), eased — not the hand-keyed gait's own blend */
         const vH=veff/K.hipY; K._rfM=(K._rfM||0)+(smooth01((vH-2.9)/0.6)-(K._rfM||0))*Math.min(1,dt*5);
         RG.step(dt,a,K._rfM,vH,ov,K.npc?{idle:'idleCalm',walk:'walk',run:'walk'}:K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
-        K._rArm=!!(A0&&A0.arms!==false)||!!(RG.ual&&!K.npc&&K._st==='sheathed'&&swing<0&&!(K.raise>0)&&!(K.charge>0)&&!(K.spinT>=0)&&!K.guarding);   /* V192: sword away, the new clips swing both arms */
+        K._rArm=!!(ov&&ov.n==='shoot')||!!(A0&&A0.arms!==false)||   /* V227: the archer's clip has both arms — the right one draws the string */
+          !!(RG.ual&&!K.npc&&K._st==='sheathed'&&swing<0&&!(K.raise>0)&&!(K.charge>0)&&!(K.spinT>=0)&&!K.guarding);   /* V192: sword away, the new clips swing both arms */
         const kq=(o,out)=>{ out.identity(); for(let q=o.parent;q&&q!==K;q=q.parent) out.premultiply(q.quaternion); return out; };
         const turn=(o,n,ww)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,ww); };
         const point=(o,a0,b0,ww)=>{ _mv.subVectors(RG.p(b0),RG.p(a0)).normalize(); kq(o,_mp); _mv.applyQuaternion(_mp.invert()); _mq.setFromUnitVectors(_MD,_mv); o.quaternion.slerp(_mq,ww); };
@@ -547,6 +555,7 @@ function buildKnight(){
     //  leg folds at the knee (the hip keeping the foot under it) by as much as its ground rises. Only standing and walking,
     //  outdoors; the camera-near and the player first
     if(K.footIK&&(mode==='walk'||mode==='idle')&&!(K.air>0.02)&&!(K.dash>0)&&typeof ENGINE!=='undefined'&&ENGINE.level&&ENGINE.level.ground&&!ENGINE.level.interior&&!K._act) footIK();
+    if(K._bowRig) bowString(dt);
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);
   };
   const _fa=new THREE.Vector3(), _fk=new THREE.Vector3(); let _fdS=0;
@@ -565,6 +574,25 @@ function buildKnight(){
     add(new THREE.CylinderGeometry(0.036,0.034,0.04,10),SG,0,0.085,0,scab).scale.z=0.6;                       // the throat
     add(new THREE.ConeGeometry(0.026,0.07,10),SG,0,0.075+len+0.02,0,scab).rotation.x=Math.PI;                 // the chape
     add(new THREE.CylinderGeometry(0.033,0.033,0.02,10),SG,0,0.075+len*0.45,0,scab).scale.z=0.6; }           // a band
+  const _bw=new THREE.Vector3(), _bd=new THREE.Vector3(), _bq=new THREE.Quaternion(), _bY=new THREE.Vector3(0,1,0);
+  function bowSeg(m,p,q){ _bd.subVectors(q,p); const L=_bd.length()||1e-4; m.position.copy(p).addScaledVector(_bd,0.5); m.scale.set(1,L,1); m.quaternion.setFromUnitVectors(_bY,_bd.multiplyScalar(1/L)); }
+  const _bF=new THREE.Vector3(), _bU=new THREE.Vector3(), _bX=new THREE.Vector3(), _bM=new THREE.Matrix4(), _bQ=new THREE.Quaternion(), _bR=new THREE.Quaternion(), _bP=new THREE.Quaternion(), _bL=new THREE.Vector3();
+  // V227: the bow stands upright in the left fist whatever the clip does with the wrist: its belly faces along the line from the
+  //  drawing hand to the bow hand (the arrow's line), canted a touch, so it always reads as a bow being drawn
+  function bowAim(){ K.updateMatrixWorld(true); AL.hand.getWorldPosition(_bL);
+    if(K._bow){ AR.hand.getWorldPosition(_bF); _bF.subVectors(_bL,_bF); } else _bF.set(Math.sin(K.rotation.y),0,Math.cos(K.rotation.y));
+    _bF.normalize(); _bU.set(0,1,0).addScaledVector(_bF,-_bF.y).normalize(); _bX.crossVectors(_bF,_bU).normalize(); _bU.applyAxisAngle(_bF,-0.18);   /* a slight cant, as archers hold it */ _bX.crossVectors(_bF,_bU).normalize();
+    _bM.makeBasis(_bX,_bF,_bU); _bQ.setFromRotationMatrix(_bM);                      // where the bow (its group) should face in the world: Y along the arrow, Z up
+    const G=K._bowRig.g; _bM.copy(sword.matrixWorld).invert().multiply(G.matrixWorld); _bR.setFromRotationMatrix(_bM);   // the bow within the hand's attachment
+    sword.parent.getWorldQuaternion(_bP); sword.quaternion.copy(_bP.invert().multiply(_bQ).multiply(_bR.invert())); sword.updateMatrixWorld(true); }
+  function bowString(dt){ const B=K._bowRig, inHand=sword.parent===AL.hand, drawing=inHand&&K._bow&&K._bow.ph==='draw';
+    if(inHand) bowAim();
+    if(drawing){ AR.hand.getWorldPosition(_bw); B.g.worldToLocal(_bw); _bd.subVectors(_bw,B.mid); const L=_bd.length(), mx=0.78; if(L>mx) _bd.multiplyScalar(mx/L); _bw.copy(B.mid).add(_bd);
+      B.n.lerp(_bw,Math.min(1,dt*20)); B.rel=0; B.off.subVectors(B.n,B.mid); }
+    else if(B.off.lengthSq()>1e-6){ B.rel+=dt; const k=Math.exp(-B.rel*16)*Math.cos(B.rel*70); B.n.copy(B.mid).addScaledVector(B.off,B.rel<0.6?k:0); if(B.rel>=0.6) B.off.set(0,0,0); }   // let go: it snaps home and shivers
+    else B.n.copy(B.mid);
+    bowSeg(B.s1,B.tT,B.n); bowSeg(B.s2,B.tB,B.n);
+    B.ar.visible=drawing&&B.n.distanceTo(B.mid)>0.05; if(B.ar.visible){ B.ar.position.copy(B.n); _bd.copy(B.n).multiplyScalar(-1).normalize(); B.ar.quaternion.setFromUnitVectors(_bY,_bd); } }
   function stow(){ (K._carry==='hip'?sheathP:backP).add(sword); sword.position.set(0,0,0); sword.rotation.set(0,0,0); shM.visible=true; }   /* V226: the shield comes back to the arm once the bow is put away */
   function drawNow(){ if(K._fam==='bow'){ AL.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); shM.visible=false; } else { AR.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); shM.visible=true; } K._st='drawn'; K._idle=0; }   /* V226: a bow is held in the left fist, as the archer's clip holds it; the right hand draws the string */
   const _setW=K.setWeapon; K.setWeapon=function(art,id){ _setW(art,id); const f=art?art.fam:'light'; K._fam=f;
