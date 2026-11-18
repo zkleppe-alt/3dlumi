@@ -195,19 +195,54 @@ const COMBAT=(function(){
   // V224: THE BOW — DRAW AND AIM. Press to raise the bow and draw; hold to draw it fuller (the arrow flies further, faster and
   //  harder); while drawn you turn to the nearest foe within reach and a faint line on the ground shows where the arrow will go;
   //  let go to loose. A tap still shoots — the draw is never shorter than a third of a second.
-  const DRAW={min:0.32,full:0.85}; let aimLine=null;
-  function drawStart(){ if(pl.draw||pl.dashing>0) return; pl.draw={t0:now(),rel:false}; ENGINE.K._bow={ph:'draw',t:0}; if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
+  /* V231: THE BOW, CLEANER. Two ways to aim, both with a crosshair instead of the old line on the ground:
+      · LOCK-ON (the default): press to draw and a reticle settles on the foe you're facing (or the one you're locked on to,
+        F / RB / R3; flick the mouse or the look stick to the next). Its ring closes as the draw fills and turns gold when
+        it's full; let go and the arrow flies to that foe, curving after it if it moves. No foe: the reticle floats ahead.
+      · THE SHOULDER (hold Guard — right mouse / LT / LB / Shift — with a bow in hand): the camera moves over his right shoulder
+        and a crosshair sits in the middle of the screen; you aim with the mouse or the look stick; a foe under the
+        crosshair lights it and the arrow keeps to him. No shield while you aim.
+     Reach: a tap shot about 12 tiles, a full draw about 25 (it was 9: a 2D screen's width). */
+  const DRAW={min:0.32,full:0.85}, BOWR={tap:12,full:25}; let soft=null, aimHit=null;
+  const bowRange=k=>BOWR.tap+(BOWR.full-BOWR.tap)*k;
+  const shoulder=()=>bowOn()&&pl.bDown&&!(ENGINE.level&&ENGINE.level.mounted&&ENGINE.level.mounted());
+  const camFw=()=>({x:-Math.sin(ENGINE.yaw),z:-Math.cos(ENGINE.yaw)});
+  function bowPick(fw,R,cone){ const c=A(), p=P(); if(!c) return null; let best=null, bs=1e9;
+    c.foes.forEach(d=>{ if(!d.alive||d.ghost) return; const vx=d.x-p.x, vz=d.z-p.z, dist=Math.hypot(vx,vz); if(dist>R+(d.boss?1:0)||dist<1e-3) return;
+      const dot=(vx*fw.x+vz*fw.z)/dist; if(cone){ const side=Math.abs(vx*fw.z-vz*fw.x); if(dot<0.5||side>0.7+(d.boss?0.6:0)+dist*0.03) return; const sc=side+dist*0.02; if(sc<bs&&los(p.x,p.z,d.x,d.z)){ bs=sc; best=d; } return; }
+      if(dot<0.1) return; const sc=dist*(1.7-dot)*(d.boss?0.7:1); if(sc<bs&&los(p.x,p.z,d.x,d.z)){ bs=sc; best=d; } }); return best; }
+  // the HUD: one reticle that is a lock-on ring over a foe, or the shoulder crosshair in the screen's middle
+  let RET=null; function reticleEl(){ if(RET) return RET; const d=document.createElement('div'); d.id='bowRet';
+    d.style.cssText='position:fixed;left:0;top:0;width:0;height:0;pointer-events:none;z-index:3;display:none';
+    d.innerHTML='<svg width="96" height="96" viewBox="-48 -48 96 96" style="position:absolute;left:-48px;top:-48px;overflow:visible"><circle class="r" r="30" fill="none" stroke-width="2.5"/><g class="t" stroke-width="3" stroke-linecap="round"><line x1="0" y1="-40" x2="0" y2="-30"/><line x1="0" y1="40" x2="0" y2="30"/><line x1="-40" y1="0" x2="-30" y2="0"/><line x1="40" y1="0" x2="30" y2="0"/></g><circle class="c" r="2.6"/></svg>';
+    document.body.appendChild(d); RET={d,r:d.querySelector('.r'),t:d.querySelector('.t'),c:d.querySelector('.c')}; return RET; }
+  const _v3=new THREE.Vector3();
+  function showRet(on,sx,sy,k,col,center){ const R=reticleEl(); if(!on){ R.d.style.display='none'; return; } R.d.style.display='block'; R.d.style.transform=`translate(${sx}px,${sy}px)`;
+    const rr=center?16-6*k:30-17*k; R.r.setAttribute('r',rr.toFixed(1)); R.r.setAttribute('stroke',col); R.r.setAttribute('opacity',center&&k<=0?0.55:0.95);
+    R.t.setAttribute('stroke',col); R.t.setAttribute('transform',`scale(${(rr+6)/36})`); R.c.setAttribute('fill',col); R.c.style.display=center?'block':'none';
+    R.d.style.filter='drop-shadow(0 0 2px rgba(0,0,0,.85))'; }
+  function drawStart(){ if(pl.draw||pl.dashing>0) return; pl.draw={t0:now(),rel:false}; ENGINE.K._bow={ph:'draw',t:0}; soft=null; if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
   function drawK(){ return pl.draw?Math.min(1,((pl.draw.rel||now())-pl.draw.t0)/1000/DRAW.full):0; }
-  function loose(){ const c=A(), d=pl.draw; if(!d) return; const k=Math.max(0.25,drawK()); pl.draw=null; ENGINE.K._bow={ph:'loose',t:0}; if(aimLine) aimLine.visible=false; if(!c) return;
-    const f=fv(), p=P(), m=arrowMesh(); c.fx.add(m); const sp=(2.2+1.6*k)*PX, life=Math.round(14+16*k);
-    c.arrows.push({x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*sp,vz:f.z*sp,t:life,t0:life,m,pow:0.7+0.6*k}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
-  function drawTick(){ const c=A(); if(!pl.draw){ if(aimLine) aimLine.visible=false; return; } if(!c||!bowOn()){ pl.draw=null; ENGINE.K._bow=null; return; }
-    const b=aim(9), p=P(); if(b) p.face=Math.atan2(b.x-p.x,b.z-p.z);
-    const k=drawK(), len=(2.2+1.6*k)*PX*(14+16*k)*(Math.max(0.25,k)>0?1:1), f=fv();
-    if(!aimLine){ aimLine=new THREE.Mesh(new THREE.PlaneGeometry(0.06,1),new THREE.MeshBasicMaterial({color:0xfff0b0,transparent:true,opacity:0.35,depthWrite:false,side:THREE.DoubleSide})); aimLine.rotation.order='YXZ'; }
-    if(aimLine.parent!==c.fx) c.fx.add(aimLine); aimLine.visible=(now()-pl.draw.t0)>120; aimLine.scale.y=len; aimLine.material.opacity=0.18+0.3*k; aimLine.rotation.set(-Math.PI/2,0,0); aimLine.rotation.y=Math.atan2(f.x,f.z); aimLine.rotateX(0);
-    aimLine.position.set(p.x+f.x*(0.4+len/2),ENGINE.level.ground(p.x,p.z)+0.04,p.z+f.z*(0.4+len/2));
-    if(pl.draw.rel&&(now()-pl.draw.t0)/1000>=DRAW.min) loose(); }
+  function bowTarget(k){ if(shoulder()) return aimHit; if(lock&&lock.alive&&Math.hypot(lock.x-P().x,lock.z-P().z)<=bowRange(1)+2) return lock; return soft&&soft.alive?soft:null; }
+  function loose(){ const c=A(), d=pl.draw; if(!d) return; const k=Math.max(0.25,drawK()); pl.draw=null; ENGINE.K._bow={ph:'loose',t:0}; if(!c) return;
+    const p=P(), tg=bowTarget(k), R=bowRange(k); let f=fv(); if(tg){ const dx=tg.x-p.x, dz=tg.z-p.z, l=Math.hypot(dx,dz)||1; f={x:dx/l,z:dz/l}; } else if(shoulder()) f=camFw();
+    const m=arrowMesh(); c.fx.add(m); const sp=0.3+0.2*k, life=Math.ceil(R/sp);   // tiles a frame: a full draw flies about 30 a second
+    c.arrows.push({x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*sp,vz:f.z*sp,sp,t:life,t0:life,m,pow:0.7+0.6*k,tg:tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5?tg:null}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
+  function drawTick(){ const c=A(), p=P(), sh=c&&shoulder(); if(sh) pl.blocking=false; { const lb=bowOn()?'Aim':'Guard'; if(guardB.textContent!==lb) guardB.textContent=lb; }
+    if(!c||!bowOn()){ if(pl.draw){ pl.draw=null; ENGINE.K._bow=null; } showRet(false); aimHit=null; return; }
+    const k=drawK(), R=bowRange(Math.max(0.25,k)), cam=ENGINE.cam;
+    if(sh){ const fw=camFw(); p.face=Math.atan2(fw.x,fw.z); aimHit=bowPick(fw,bowRange(1),true);
+      const col=aimHit?(Math.hypot(aimHit.x-p.x,aimHit.z-p.z)<=R+1.5?'#ff6a4a':'#ffb07a'):k>=1?'#ffd84a':'#ffffff';
+      showRet(true,innerWidth/2,innerHeight/2,pl.draw?k:0,col,true); }
+    else { aimHit=null; if(!pl.draw){ showRet(false); return; }
+      const lk=lock&&lock.alive&&Math.hypot(lock.x-p.x,lock.z-p.z)<=bowRange(1)+2?lock:null;
+      if(!lk&&(!soft||!soft.alive||Math.hypot(soft.x-p.x,soft.z-p.z)>bowRange(1)+3)) soft=bowPick(lk?fv():camFw(),bowRange(1),false)||bowPick(fv(),bowRange(1),false);
+      const tg=lk||soft; let wx, wz, wy; if(tg){ p.face=Math.atan2(tg.x-p.x,tg.z-p.z); wx=tg.x; wz=tg.z; wy=ENGINE.level.ground(wx,wz)+(tg.boss?1.6:0.9)*Math.max(0.6,VIEWMODE.ps(ENGINE.level)); }
+      else { const f=fv(), dd=Math.min(R,10); wx=p.x+f.x*dd; wz=p.z+f.z*dd; wy=ENGINE.level.ground(wx,wz)+0.6; }
+      _v3.set(wx,wy,wz).project(cam); if(_v3.z>1){ _v3.x=-_v3.x; _v3.y=-1.5; } _v3.x=Math.max(-0.93,Math.min(0.93,_v3.x)); _v3.y=Math.max(-0.88,Math.min(0.88,_v3.y)); const on=true;   // off the screen: it waits at the edge, toward the mark
+      const inR=tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5, col=!tg?'rgba(255,255,255,.7)':k>=1&&inR?'#ffd84a':inR?'#ffffff':'#9aa4b4';
+      showRet(on&&(now()-pl.draw.t0)>90,(_v3.x+1)/2*innerWidth,(1-_v3.y)/2*innerHeight,k,col,false); }
+    if(pl.draw&&pl.draw.rel&&(now()-pl.draw.t0)/1000>=DRAW.min) loose(); }
   function attack(){ const c=A(); if(!c) return; if(bowOn()){ if(!pl.draw&&pl.dashing<=0) drawStart(); return; } if(pl.swing>0||pl.dashing>0){ if(pl.swing<=Math.max(10,pl.swingDur*0.6)||pl.dashing>0) pl.buf=20; return; }
     if(pl.comboT<=0) pl.combo=0; pl.combo++; pl.comboT=60; if(c.cfg.onSwing) c.cfg.onSwing();
     if(pl.combo>=3){ pl.combo=0; special(); return; }
@@ -329,7 +364,7 @@ const COMBAT=(function(){
     if(typeof PETFIGHT!=='undefined') PETFIGHT.step(c,PFK);
     if(PK().regen&&(c._rg=(c._rg||0)+1)>=180){ c._rg=0; const s=S(); if(s.hp<s.maxHp&&s.hp>0&&c.foes.some(d=>d.alive&&(d.boss||Math.hypot(d.x-p.x,d.z-p.z)<9))){ s.hp=Math.min(s.maxHp,s.hp+Math.max(1,Math.round(s.maxHp*PK().regen))); hud(); } }
     if(pl.leap){ pl.leapT++; const k=pl.leapT; pl.jumpY=k<=12?Math.sin(k/12*Math.PI/2)*0.95:Math.max(0,0.95*(1-(k-12)/6)); if(k>=18){ pl.leap=0; pl.jumpY=0; } }   // up for twelve steps, down in six
-    if(pl.swing>0) pl.swing--; if(pl.iframes>0) pl.iframes--; if(pl.guardBreak>0) pl.guardBreak--; pl.blocking=pl.bDown&&!(pl.guardBreak>0); if(pl.dodgeCd>0) pl.dodgeCd--; if(pl.comboT>0&&--pl.comboT<=0) pl.combo=0;
+    if(pl.swing>0) pl.swing--; if(pl.iframes>0) pl.iframes--; if(pl.guardBreak>0) pl.guardBreak--; pl.blocking=pl.bDown&&!(pl.guardBreak>0)&&!bowOn(); if(pl.dodgeCd>0) pl.dodgeCd--; if(pl.comboT>0&&--pl.comboT<=0) pl.combo=0;
     if(pl.dashing>0){ const k=0.35+0.65*pl.dashing/DASH_N; pl.dashing--; const L0=ENGINE.level, nx=p.x+pl.dashx*k, nz=p.z+pl.dashz*k; if(L0.canMove(p.x,p.z,nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)) p.z=nz; }
     if(pl.lungeT>0){ const N=pl.lungeN||1, u0=(N-pl.lungeT)/N, u1=(N-pl.lungeT+1)/N, sm=u=>u*u*(3-2*u), k=sm(u1)-sm(u0); pl.lungeT--; const L0=ENGINE.level, nx=p.x+pl.lx*k, nz=p.z+pl.lz*k; if(L0.canMove(p.x,p.z,nx,p.z)&&!solid(nx,p.z)) p.x=nx; if(L0.canMove(p.x,p.z,p.x,nz)&&!solid(p.x,nz)) p.z=nz; }
     if(pl.buf>0){ pl.buf--; if(pl.swing<=0&&pl.dashing<=0){ pl.buf=0; attack(); } }
@@ -377,10 +412,11 @@ const COMBAT=(function(){
       else { const dx=p.x-a.x, dz=p.z-a.z, m=Math.hypot(dx,dz)||1; a.x+=dx/m*a.speed; a.z+=dz/m*a.speed; } if(a.hurt>0) a.hurt--;
       if(Math.hypot(p.x-a.x,p.z-a.z)<0.7) hurtFromBoss(a.dmg!==undefined?a.dmg:4+a.level*0.7); });
     c.adds=c.adds.filter(a=>{ if(a.alive) return true; if(a.g&&a.g.parent) a.g.parent.remove(a.g); return false; });
-    c.arrows.forEach(s=>{ s.x+=s.vx; s.z+=s.vz; s.t--; if(!walk(s.x,s.z)) s.t=0; if(s.t<=0) return;
+    c.arrows.forEach(s=>{ if(s.tg&&s.tg.alive){ const dx=s.tg.x-s.x, dz=s.tg.z-s.z, a0=Math.atan2(s.vx,s.vz); let da=Math.atan2(dx,dz)-a0; da=Math.atan2(Math.sin(da),Math.cos(da)); if(Math.abs(da)<1.1){ const a=a0+Math.max(-0.14,Math.min(0.14,da)), sp=s.sp||Math.hypot(s.vx,s.vz); s.vx=Math.sin(a)*sp; s.vz=Math.cos(a)*sp; } else s.tg=null; }   /* V231: it keeps to its mark */
+      for(let sub=0;sub<2&&s.t>0;sub++){ s.x+=s.vx/2; s.z+=s.vz/2; if(!walk(s.x,s.z)){ s.t=0; break; }
       for(const d of c.foes){ if(!d.alive) continue; const vx=d.x-s.x, vz=d.z-s.z, dist=Math.hypot(vx,vz); if(dist>0.56+(d.boss?0.3:0)) continue;
         let dmg=Math.max(1,Math.round(S().atk*(s.pow||1))+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
-        dmg=bossHitGate(d,dmg); s.t=0; if(dmg<0){ d.hurt=3; return; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; return; } });
+        dmg=bossHitGate(d,dmg); s.t=0; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--; });
     c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; c.fx.remove(s.m); return false; });
     if(cfg.tick) cfg.tick(); }
   // V146: every demon fights its own way, and every blow is shown before it comes — the demon's whole body flashes red as
@@ -395,7 +431,7 @@ const COMBAT=(function(){
   const PARRY_MS=200, ST={ pounce:{wind:18,windD:20}, claw:{wind:13,windD:14}, brute:{wind:34,windD:34}, spit:{wind:24,windD:24} };
   const styleOf=d=>d.style||(d.style=d.boss||d.custom||d.ai?'boss':['pounce','claw','brute',(d.level||1)>=5?'spit':'claw'][(d.form||0)%4]);
   let parryTip=false;
-  function parryNow(){ return pl.bDown&&!(pl.guardBreak>0)&&now()-pl.bAt<PARRY_MS+(PK().parryMs||0); }
+  function parryNow(){ return !bowOn()&&pl.bDown&&!(pl.guardBreak>0)&&now()-pl.bAt<PARRY_MS+(PK().parryMs||0); }
   function parry(d,boss){ const p=P(); pl.iframes=Math.max(pl.iframes,16); hitStop=Math.max(hitStop,0.12); shake=Math.max(shake,0.2); SFX.play('parry');
     pop(p.x,ENGINE.level.ground(p.x,p.z)+2.0,p.z,'PARRY!','#ffe27a'); spark(d,true);
     const sk=1+(PK().staggerK||0); if(PK().counter) pl.counter=300; spirit();
@@ -442,12 +478,12 @@ const COMBAT=(function(){
       if(dn<r){ const k=(r-dn)/2, ux=vx/dn*k, uz=vz/dn*k; if(walk(a.x-ux,a.z-uz)){ a.x-=ux; a.z-=uz; } if(walk(b.x+ux,b.z+uz)){ b.x+=ux; b.z+=uz; } } } }
   // ── lock-on: tap the look stick (or F) — the nearest foe in front; again to let go; it moves on when that one falls ──
   function pickLock(exclude){ const c=A(), p=P(); if(!c) return null; const fw={x:-Math.sin(ENGINE.yaw),z:-Math.cos(ENGINE.yaw)}; let best=null, bs=1e9;
-    c.foes.forEach(d=>{ if(!d.alive||d===exclude||d.ghost) return; const vx=d.x-p.x, vz=d.z-p.z, dist=Math.hypot(vx,vz); if(dist>12) return; const dot=(vx*fw.x+vz*fw.z)/(dist||1); const sc=dist*(2-dot)*(d.boss?0.6:1); if(sc<bs){ bs=sc; best=d; } });
+    c.foes.forEach(d=>{ if(!d.alive||d===exclude||d.ghost) return; const vx=d.x-p.x, vz=d.z-p.z, dist=Math.hypot(vx,vz); if(dist>(bowOn()?BOWR.full:12)) return; const dot=(vx*fw.x+vz*fw.z)/(dist||1); const sc=dist*(2-dot)*(d.boss?0.6:1); if(sc<bs){ bs=sc; best=d; } });
     return best; }
   function toggleLock(){ const c=A(); if(!c){ return; } if(lock){ lock=null; UI.toast('🎯 Lock released',700); return; } lock=pickLock(); UI.toast(lock?'🎯 Locked on — tap again to release':'Nothing near enough to lock on to',900); }
   // a flick of the mouse while locked on: the next foe that way (sign +1 = to your right on screen)
   function switchLock(sign){ const c=A(), p=P(); if(!c||!lock) return; const base=Math.atan2(lock.x-p.x,lock.z-p.z); let best=null, bs=9;
-    c.foes.forEach(d=>{ if(!d.alive||d===lock||d.ghost) return; const dist=Math.hypot(d.x-p.x,d.z-p.z); if(dist>12) return; let a=Math.atan2(d.x-p.x,d.z-p.z)-base; a=Math.atan2(Math.sin(a),Math.cos(a));
+    c.foes.forEach(d=>{ if(!d.alive||d===lock||d.ghost) return; const dist=Math.hypot(d.x-p.x,d.z-p.z); if(dist>(bowOn()?BOWR.full:12)) return; let a=Math.atan2(d.x-p.x,d.z-p.z)-base; a=Math.atan2(Math.sin(a),Math.cos(a));
       if(Math.sign(-a)!==sign) return; const sc=Math.abs(a)+dist*0.05; if(sc<bs){ bs=sc; best=d; } });
     if(best){ lock=best; UI.toast('🎯 Next foe',500); } }
   // locked on, Ocarina-style: black bars slide in at the top and bottom of the screen
@@ -456,7 +492,7 @@ const COMBAT=(function(){
   let reticle=null;
   function drawLock(lv){ if(!reticle){ reticle=new THREE.Group(); const r=new THREE.Mesh(new THREE.RingGeometry(0.5,0.6,24),new THREE.MeshBasicMaterial({color:0xffd84a,transparent:true,opacity:0.8,side:THREE.DoubleSide,depthWrite:false})); r.rotation.x=-Math.PI/2; reticle.add(r);
       const dm=new THREE.Mesh(new THREE.OctahedronGeometry(0.12),new THREE.MeshBasicMaterial({color:0xffd84a})); dm.scale.y=1.6; reticle.add(dm); reticle.dm=dm; reticle.ring=r; }
-    if(lock&&(!lock.alive||Math.hypot(lock.x-P().x,lock.z-P().z)>15)){ const was=lock; lock=lock.alive?null:pickLock(was); }
+    if(lock&&(!lock.alive||Math.hypot(lock.x-P().x,lock.z-P().z)>(bowOn()?BOWR.full+3:15))){ const was=lock; lock=lock.alive?null:pickLock(was); }
     if(reticle.parent!==lv.scene){ if(reticle.parent) reticle.parent.remove(reticle); lv.scene.add(reticle); }
     reticle.visible=!!lock; if(!lock) return; const ps=VIEWMODE.ps(lv), s=lock.boss?1.7:1, gy=lv.ground(lock.x,lock.z), t=now()/1000;
     { const warn=lock.lunge===1||(lock.boss&&lock.state==='telegraph'); reticle.ring.material.color.setHex(warn?0xff4a3a:0xffd84a); reticle.dm.material.color.setHex(warn?0xff4a3a:0xffd84a); }   /* red when it's about to strike */
@@ -564,7 +600,14 @@ const COMBAT=(function(){
     drawPops(dt); }
   function reset(){ pl.buf=0; pl.lungeT=0; lock=null; charge.on=false; charge.ready=false; if(charge.ring) charge.ring.visible=false; if(typeof letterbox==='function') letterbox(false); ENGINE.K.charge=0; ENGINE.K.spinT=-1; hitStop=0; shake=0; pl.leap=0; pl.jumpY=0; if(reticle) reticle.visible=false; meter(null); tintV.style.opacity=0; pl.iframes=0; pl.swing=0; pl.combo=0; pl.comboT=0; pl.blocking=false; pl.bDown=false; pl.dashing=0; later.length=0; ENGINE.K.visible=true; bossBar.hidden=true; guardB.hidden=true; potB.hidden=true; }
   // how fast you can walk just now: a swing roots you (you can still turn and edge), a guard or a charging blade slows you
-  function moveMul(){ if(pl.draw) return 0.3; return pl.swing>0?(pl.swing>pl.swingDur*0.35?0.25:0.6):pl.blocking?0.6:charge.on&&charge.k>0?0.55:1; }
-  return { moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hitBy:(d,dmg,fx,fz)=>hitBy(d,dmg,fx,fz), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
+  function moveMul(){ if(pl.draw) return 0.3; if(shoulder()) return 0.55; return pl.swing>0?(pl.swing>pl.swingDur*0.35?0.25:0.6):pl.blocking?0.6:charge.on&&charge.k>0?0.55:1; }
+  /* V231: over the shoulder while you aim — set after the follow camera each frame (core.js) */
+  let aimMix=0, fov0=0; function aimCam(cam,dt){ const on=!!A()&&shoulder(); aimMix+=((on?1:0)-aimMix)*Math.min(1,(dt||0.016)*9); if(!fov0) fov0=cam.fov;
+    if(aimMix<0.003){ if(cam.fov!==fov0){ cam.fov=fov0; cam.updateProjectionMatrix(); } if(!on&&!pl.draw) showRet(false); return; }
+    const p=P(), y=ENGINE.yaw, ps=Math.max(0.6,VIEWMODE.ps(ENGINE.level)), fw={x:-Math.sin(y),z:-Math.cos(y)}, rt={x:Math.cos(y),z:-Math.sin(y)};
+    const ex=p.x-fw.x*2.1*ps+rt.x*0.7*ps, ez=p.z-fw.z*2.1*ps+rt.z*0.7*ps, ey=p.y+1.75*ps; _v3.set(ex,ey,ez); cam.position.lerp(_v3,aimMix);
+    const L0=new THREE.Vector3(); cam.getWorldDirection(L0); L0.multiplyScalar(22).add(cam.position); const L1=_v3.set(p.x+fw.x*22,p.y+1.2*ps,p.z+fw.z*22);
+    cam.lookAt(L0.lerp(L1,aimMix)); const f=fov0*(1-0.18*aimMix); if(Math.abs(cam.fov-f)>0.01){ cam.fov=f; cam.updateProjectionMatrix(); } }
+  return { aimCam, get aiming(){ return !!A()&&shoulder(); }, moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hitBy:(d,dmg,fx,fz)=>hitBy(d,dmg,fx,fz), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
     if(pl.iframes>0) return; let inc=Math.max(1,Math.round((8+tl*0.5)-S().def*0.4)); if(pl.blocking) inc=Math.max(1,Math.ceil(inc*0.4)); pl.iframes=18; takeHit(inc); } };
 })();

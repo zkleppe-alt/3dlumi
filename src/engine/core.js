@@ -323,6 +323,7 @@ const ENGINE=(function(){
     if(typeof COMBAT!=='undefined'&&COMBAT.shakeAmt>0.001&&!calm){ const a=COMBAT.shakeAmt*(ps<1?0.6:1); cam.position.x+=(Math.random()-0.5)*a; cam.position.y+=(Math.random()-0.5)*a; cam.position.z+=(Math.random()-0.5)*a; }   // the blow lands
     if(L.follow) L.follow(P);
     if(L.cine) L.cine(cam,dt);   /* V150: a level's own cutscene camera (it blends from the follow camera and back) */
+    if(typeof COMBAT!=='undefined'&&COMBAT.aimCam&&L.combat&&!L.cine) COMBAT.aimCam(cam,dt);   /* V231: the bow's over-the-shoulder aim */
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     { const PO=window.KLK_POST; if(PO&&PO.on) PO.render(L.scene,cam); else R.render(L.scene,cam); } requestAnimationFrame(frame); }   /* V135: High/Ultra draw through post.js */
 

@@ -504,3 +504,11 @@ After Oceanside harbour, as a beachfront town:
 - **Small finds**: 24 fixed sites deep in the woods, ≥40 tiles apart — scripture stones (verses of trees and rest, XP), keepsake chests (a keepsake, gold, XP, journal) and ruined shrines (kneel: full heal). Built only within 45 tiles. State `S.woodFinds`.
 - **The Hermit's Glade**: the walled-off meadow by the southern sea (~371,754) — ruined hermitage with ivy, fallen beam, gable cross, the hermit's lettered wall (Psalm 23), bench (rest: heal), and his chest (150 gold, once); overgrown garden; a still pool with lily pads under a little waterfall (drink: heal); an ancient oak; a calm herd of deer and stags; butterflies. Walls, pool, rocks and oak block the walk. First visit: toast, XP, journal. State `S.glade`.
 - lv.tileAt / lv.fdens exposed for modules.
+
+## V231 — the bow, cleaner
+- engine/combat.js: the line on the ground is gone; two ways to aim, both with a crosshair (one DOM reticle, #bowRet):
+  - **Lock-on (default)**: drawing settles a reticle on the foe you face (or your lock-on target — F / RB / R3; flick to switch). Its ring closes as the draw fills and turns gold at full draw; grey when the mark is beyond this draw's reach. Off-screen marks wait at the screen's edge. No foe: it floats ahead.
+  - **Over the shoulder**: hold Guard (right mouse / LT / LB / Shift; the touch button reads "Aim" with a bow) — the camera eases over his right shoulder, zooms ~18%, a centre crosshair; mouse / look stick aims; a foe under the crosshair turns it red and the arrow keeps to him. No shield or parry while a bow is in hand. Walk at 55% while aiming, 30% while drawing.
+  - Reach: tap shot ~12 tiles, full draw ~25 (was 9). Arrows fly 18–30 tiles/s, curve after their mark (≤0.14 rad a frame, given up past ~63°), and step twice a frame so a fast arrow can't skip through a foe. Lock-on reaches 25 with a bow (12 otherwise).
+- engine/core.js: COMBAT.aimCam(cam,dt) after the follow camera.
+- Tested headless: lock-on shot hits a foe at 18 tiles; shoulder-aimed shot hits at ~15; crosshair red over a foe; no page errors. Not tested: real mouse/stick feel, phones.
