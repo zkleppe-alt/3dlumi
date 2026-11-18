@@ -125,7 +125,7 @@ function buildKnight(){
   const shM=pivot(0.088,-0.13,0,AL.el); shM.rotation.y=Math.PI/2; const sh=pivot(0,0,0,shM); sh.scale.x=1.2;   /* V232: a broader shield */
   /* V232: with a bow or a two-handed weapon the shield rides on his back, slung between the shoulders (the weapon, when it's
      put away, goes across it); K._sbP/_sbR tune where. shieldHome() moves it there or back to the arm as the weapon changes. */
-  const shBack=pivot(0,0.24,-0.29,torso);
+  const shBack=pivot(0,0.24,-0.32,torso);
   function shieldHome(){ const back=!!K._shB; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,0];
       shM.position.set(p[0],p[1],p[2]); shM.rotation.set(r[0],r[1],r[2]); sh.rotation.set(q[0],q[1],q[2]); }
     else if(shM.parent!==AL.el){ AL.el.add(shM); shM.position.set(K.shX,K.shY,0); shM.rotation.set(0,K.shRY,0); sh.rotation.set(0,0,0); } shM.visible=true; }
@@ -486,7 +486,7 @@ function buildKnight(){
     AL.el.rotation.x=mixv(AL.el.rotation.x,0); AL.el.rotation.z=mixv(0,-1.5);
     sh.rotation.z=mixv(rest,Math.PI/2); shM.rotation.y=mixv(K.shRY,Math.PI/2); shM.position.y=mixv(K.shY,K.shY+0.01); shM.position.x=mixv(K.shX,K.shX+0.007); }
     if(gk>0.01){ torso.rotation.y-=0.22*gk; hips.position.y-=0.03*gk; torso.rotation.x+=0.08*gk; L.knee.rotation.x+=0.25*gk; R.knee.rotation.x+=0.25*gk; }
-    sCape.v-=vy*0.9*dt*60*0.05; capeP.rotation.x=spr(sCape,0.08+(0.12+0.22*rf)*a+Math.max(0,acc)*0.02+Math.sin(t*3+walk)*0.03*a+0.03*breath*ia,32,4.5,dt);
+    sCape.v-=vy*0.9*dt*60*0.05; capeP.rotation.x=spr(sCape,0.08+(0.12+0.22*rf)*a+Math.max(0,acc)*0.02+Math.sin(t*3+walk)*0.03*a+0.03*breath*ia,32,4.5,dt); if(K._capeX!==undefined) capeP.rotation.x=K._capeX;
     if(wingKind) wings.children.forEach(w=>{ if(w.sd) w.rotation.y=w.sd*(0.55+Math.sin(t*(wingKind==='robby'?1.6:2.1))*0.12); });
     if(K.beast){ const eb=(Math.sin(t*3.8)+1)/2; M.visor.color.set(eb>0.5?'#ff3a44':'#d01820'); smoke.material.opacity=0.28+0.08*Math.sin(t*1.9); }
     if(wpnG&&wpnG.userData.halo) wpnG.userData.halo.material.opacity=0.22+0.1*Math.sin(t*3);
@@ -510,7 +510,9 @@ function buildKnight(){
       if(u>=1){ K.spinT=-1; K.spinA=0; } }
     if(swing<0) trailOn=false; trailTick();
     // a flinch when struck: thrown back a moment, head snapped, then square again
-    if(K._shB&&K._fam!=='bow'&&swing<0&&(K._g||0)>0.001){ const gk=K._g, ik=1-gk, mixv=(a,b)=>a*ik+b*gk; const P2=K._hbP||[-1.2,0.7,0.2,-1.1,1.4,-0.6,-1.1,0.6,0.2,-1.2];
+    /* V235: a two-handed weapon in hand is held in both hands — at the ready across the body when it's out, raised to guard */
+    { const want=K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)?1:0; K._rk=(K._rk||0)+(want-(K._rk||0))*Math.min(1,dt*10); }
+    if(K._shB&&K._fam!=='bow'&&swing<0&&((K._g||0)>0.001||(K._rk||0)>0.001)){ const gr=(K._g||0)>=(K._rk||0), gk=gr?K._g:K._rk, ik=1-gk, mixv=(a,b)=>a*ik+b*gk; const P2=gr?(K._hbP||[-1.2,0.7,0.2,-1.1,1.4,-0.6,-1.1,0.6,0.2,-1.2]):(K._rdP||[-0.9,0.6,0.25,-1.0,1.0,-0.8,-1.0,0.7,0.15,-1.25]);
       AR.sh.rotation.x=mixv(AR.sh.rotation.x,P2[0]); AR.sh.rotation.y=mixv(AR.sh.rotation.y,P2[1]); AR.sh.rotation.z=mixv(AR.sh.rotation.z,P2[2]); AR.el.rotation.x=mixv(AR.el.rotation.x,P2[3]); AR.hand.rotation.x=mixv(AR.hand.rotation.x,P2[4]); AR.hand.rotation.z=mixv(AR.hand.rotation.z,P2[5]);
       AL.sh.rotation.x=mixv(AL.sh.rotation.x,P2[6]); AL.sh.rotation.y=mixv(AL.sh.rotation.y,P2[7]); AL.sh.rotation.z=mixv(AL.sh.rotation.z,P2[8]); AL.el.rotation.x=mixv(AL.el.rotation.x,P2[9]); AL.el.rotation.z=mixv(AL.el.rotation.z,0); }
     if(flinch>0){ flinch=Math.max(0,flinch-dt*4); const f=Math.sin(flinch*Math.PI)*(flinch>0.5?1:flinch*2); torso.rotation.x-=0.32*f; head.rotation.x-=0.25*f; hips.position.z-=0.08*f; AR.sh.rotation.x+=0.4*f; hips.position.y-=0.02*f; }
@@ -931,7 +933,8 @@ function buildKnight(){
         const legV=(lx-cLx)/Math.max(dt,1e-3); cLx=lx; C.skF.uBend.value=hSpr(sCfB,Math.max(-0.25,Math.min(0.3,-legV*0.04))+0.06*rf,90,14,dt); C.skB.uBend.value=hSpr(sCbB,Math.max(-0.25,Math.min(0.3,legV*0.04))+0.14*rf,90,14,dt);
         C.skF.uWave.value=C.skB.uWave.value=0.006+0.01*a; C.skF.uSway.value=C.skB.uSway.value=hSpr(sCsw,-dTy*0.04+Math.sin(t*1.3)*0.01,60,12,dt);
         // the cape: its foot trails with the speed and kicks with each footfall, a ripple runs across it, it swings after a turn
-        C.cape.uBend.value=hSpr(sCcB,0.1*a+0.22*rf+Math.max(0,mo.acc)*0.05,30,7,dt); C.cape.uKick.value=hSpr(sCck,-mo.vy*0.04,70,11,dt); C.cape.uWave.value=0.008+0.016*a+0.02*rf;
+        C.cape.uBend.value=hSpr(sCcB,0.1*a+0.22*rf+Math.max(0,mo.acc)*0.05,30,7,dt); if(K._capeB!==undefined) C.cape.uBend.value=K._capeB;
+        if(K._shB){ capeP.rotation.x=Math.min(capeP.rotation.x,0.08); C.cape.uBend.value*=0.4; C.cape.uKick.value=Math.max(-0.02,Math.min(0.02,C.cape.uKick.value)); }   /* V235: a shield slung on the back pins the cape under it — it no longer flies out through it */ C.cape.uKick.value=hSpr(sCck,-mo.vy*0.04,70,11,dt); C.cape.uWave.value=0.008+0.016*a+0.02*rf;
         C.cape.uSway.value=hSpr(sCcs,-dTy*0.08+(K.rotation.z||0)*0.5,25,6,dt);
         C.cape.uT.value=C.skF.uT.value=C.skB.uT.value=t*(1+a+rf); if(window.NOCLOTH) for(const k in C) for(const u in C[k]) C[k][u].value=0; }
       if(K._sheathRest!==undefined) sheathP.rotation.x=hSpr(sShX,K._sheathRest+Math.max(0,L.hip.rotation.x)*0.55+Math.max(0,-L.hip.rotation.x)*0.15,90,8,dt);

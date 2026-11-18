@@ -189,6 +189,18 @@ const COMBAT=(function(){
       for(let i=0;i<3;i++){ const fl=new THREE.Mesh(new THREE.PlaneGeometry(0.07,0.16),L(0xf2efe6,{side:THREE.DoubleSide})); fl.position.z=-0.28; fl.rotation.set(0,Math.PI/2,0); const h=new THREE.Group(); h.rotation.z=i*Math.PI*2/3; fl.position.y=0.04; h.add(fl); g.add(h); }
       const tr=new THREE.Mesh(new THREE.PlaneGeometry(0.035,1.5),new THREE.MeshBasicMaterial({color:0xfff6d8,transparent:true,opacity:0.32,depthWrite:false,side:THREE.DoubleSide,fog:false})); tr.rotation.x=Math.PI/2; tr.position.z=-1.1; g.add(tr);
       ARROW=g; } return ARROW.clone(); }
+  /* V235: what each ranged weapon throws — the arrow (above), a crossbow's short heavy bolt, a throwing axe tumbling end over end,
+     a sling's stone; each with a pale streak behind it so you can follow it */
+  const PROJ={}; function projMesh(kind){ if(kind==='arrow') return arrowMesh(); if(PROJ[kind]) return PROJ[kind].clone();
+    const L=(c,o)=>new THREE.MeshLambertMaterial(Object.assign({color:c},o||{})), g=new THREE.Group(), streak=(w,len,op)=>{ const tr=new THREE.Mesh(new THREE.PlaneGeometry(w,len),new THREE.MeshBasicMaterial({color:0xfff6d8,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide,fog:false})); tr.rotation.x=Math.PI/2; tr.position.z=-len/2-0.25; g.add(tr); };
+    if(kind==='bolt'){ const sh=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.46,6),L(0x5a3a1e)); sh.rotation.x=Math.PI/2; g.add(sh); const hd=new THREE.Mesh(new THREE.ConeGeometry(0.045,0.12,4),L(0x9aa0aa)); hd.rotation.x=Math.PI/2; hd.position.z=0.29; g.add(hd);
+      [0,1].forEach(i=>{ const fl=new THREE.Mesh(new THREE.PlaneGeometry(0.08,0.1),L(0x2a2a2a,{side:THREE.DoubleSide})); fl.position.z=-0.18; fl.rotation.set(0,Math.PI/2,i*Math.PI/2); g.add(fl); }); streak(0.04,1.8,0.38); }
+    if(kind==='axe'){ const sp=new THREE.Group(); sp.name='spin'; g.add(sp); const hf=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.024,0.5,6),L(0x6a4a2a)); sp.add(hf);
+      const hd=new THREE.Shape(); hd.moveTo(0,0.05); hd.quadraticCurveTo(0.1,0.08,0.14,0.11); hd.quadraticCurveTo(0.16,0,0.13,-0.13); hd.quadraticCurveTo(0.08,-0.06,0,-0.03); hd.closePath();
+      const ax=new THREE.Mesh(new THREE.ExtrudeGeometry(hd,{depth:0.02,bevelEnabled:false}),L(0xd0d4dc)); ax.position.set(0.0,0.2,-0.01); sp.add(ax); streak(0.05,1.2,0.3); }
+    if(kind==='stone'){ const st=new THREE.Mesh(new THREE.IcosahedronGeometry(0.06,0),L(0x8a8478)); g.add(st); streak(0.05,1.4,0.4); }
+    PROJ[kind]=g; return g.clone(); }
+  const projKind=()=>{ const w=S().equip.weapon; return w==='crossbow'?'bolt':w==='throwaxe'?'axe':w==='sling'?'stone':'arrow'; };
   function weaponType(){ const e=SYS.EQUIP[S().equip.weapon]; return e&&e.type==='heavy'?'heavy':'light'; }
   const bowOn=()=>{ const a=SYS.WEAPON_ART&&SYS.WEAPON_ART[S().equip.weapon]; return !!a&&a.fam==='bow'; };
   // V90: a press in the last part of a swing (or a dodge) is kept and thrown the moment you're free — so combos flow
@@ -226,8 +238,8 @@ const COMBAT=(function(){
   function bowTarget(k){ if(shoulder()) return aimHit; if(lock&&lock.alive&&Math.hypot(lock.x-P().x,lock.z-P().z)<=bowRange(1)+2) return lock; return soft&&soft.alive?soft:null; }
   function loose(){ const c=A(), d=pl.draw; if(!d) return; const k=Math.max(0.25,drawK()); pl.draw=null; ENGINE.K._bow={ph:'loose',t:0}; if(!c) return;
     const p=P(), tg=bowTarget(k), R=bowRange(k); let f=fv(); if(tg){ const dx=tg.x-p.x, dz=tg.z-p.z, l=Math.hypot(dx,dz)||1; f={x:dx/l,z:dz/l}; } else if(shoulder()) f=camFw();
-    const m=arrowMesh(); c.fx.add(m); const sp=0.3+0.2*k, life=Math.ceil(R/sp);   // tiles a frame: a full draw flies about 30 a second
-    c.arrows.push({x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*sp,vz:f.z*sp,sp,t:life,t0:life,m,pow:0.7+0.6*k,tg:tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5?tg:null}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
+    const kind=projKind(), m=projMesh(kind); c.fx.add(m); const sp=(0.3+0.2*k)*(kind==='axe'?0.62:kind==='stone'?0.8:1), life=Math.ceil(R/sp);   // tiles a frame: a full draw flies about 30 a second (an axe slower)
+    c.arrows.push({kind,x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*sp,vz:f.z*sp,sp,t:life,t0:life,m,pow:(0.7+0.6*k)*(kind==='axe'?1.25:kind==='bolt'?1.15:1),tg:tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5?tg:null}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
   function drawTick(){ const c=A(), p=P(), sh=c&&shoulder(); if(sh) pl.blocking=false; { const lb=bowOn()?'Aim':'Guard'; if(guardB.textContent!==lb) guardB.textContent=lb; }
     if(!c||!bowOn()){ if(pl.draw){ pl.draw=null; ENGINE.K._bow=null; } showRet(false); aimHit=null; return; }
     const k=drawK(), R=bowRange(Math.max(0.25,k)), cam=ENGINE.cam;
@@ -416,8 +428,8 @@ const COMBAT=(function(){
       for(let sub=0;sub<2&&s.t>0;sub++){ s.x+=s.vx/2; s.z+=s.vz/2; if(!walk(s.x,s.z)){ s.t=0; break; }
       for(const d of c.foes){ if(!d.alive) continue; const vx=d.x-s.x, vz=d.z-s.z, dist=Math.hypot(vx,vz); if(dist>0.56+(d.boss?0.3:0)) continue;
         let dmg=Math.max(1,Math.round(S().atk*(s.pow||1))+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
-        dmg=bossHitGate(d,dmg); s.t=0; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--; });
-    c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; c.fx.remove(s.m); return false; });
+        dmg=bossHitGate(d,dmg); s.t=0; if(s.kind!=='stone'&&!s.stuck) s.stuck={d,ox:s.x-d.x,oz:s.z-d.z,t:40}; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--; });
+    c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; if(s.stuck&&s.stuck.t-->0&&s.stuck.d.alive!==false) return true; c.fx.remove(s.m); return false; });   /* V235: it stays in what it hit a moment */
     if(cfg.tick) cfg.tick(); }
   // V146: every demon fights its own way, and every blow is shown before it comes — the demon's whole body flashes red as
   //  it winds up (bright on the last beat: that's the moment to guard). Its FORM says how it fights:
@@ -589,7 +601,10 @@ const COMBAT=(function(){
       else if(d.boss){ d.tel.visible=false; d.slamM.visible=false; if(d.bandM) d.bandM.visible=false; if(d.markM) d.markM.visible=false; if(d.shadowM) d.shadowM.visible=false; } });
     c.adds.forEach(a=>{ a.g.position.set(a.x,lv.ground(a.x,a.z),a.z); if(a.g.animate){ a.g.animate(dt,a.moving||a.walking?'walk':'idle',1); a.g.rotation.y=a.walking?Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z):ENGINE.P.face; } else a.g.rotation.y=Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z); });
     c.shots.forEach(s=>s.m.position.set(s.x,lv.ground(s.x,s.z)+0.9,s.z));
-    c.arrows.forEach(s=>{ const u=s.t0?1-s.t/s.t0:0.5, ps=Math.max(0.5,VIEWMODE.ps(lv)); s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz); s.m.rotation.x=-0.12+0.42*u; s.m.rotation.z+=0.5; });   /* V213: a shallow arc, nose rising then dropping, the shaft spinning */
+    c.arrows.forEach(s=>{ const ps=Math.max(0.8,VIEWMODE.ps(lv));   /* V235: drawn a little larger, so a shot can be followed */
+      if(s.stuck&&s.t<=0){ const d=s.stuck.d; s.m.position.x=d.x+s.stuck.ox*0.4; s.m.position.z=d.z+s.stuck.oz*0.4; s.m.position.y=lv.ground(d.x,d.z)+(d.boss?1.6:0.9)*ps; s.m.children.forEach(o=>{ if(o.material&&o.material.transparent) o.visible=false; }); return; }
+      const u=s.t0?1-s.t/s.t0:0.5; s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz);
+      if(s.kind==='axe'){ s.m.rotation.x=0; s.m.rotation.z=0; { const sp=s.m.getObjectByName('spin'); if(sp) sp.rotation.x-=0.55; } } else if(s.kind==='stone'){ s.m.rotation.x=0; } else { s.m.rotation.x=-0.12+0.42*u; s.m.rotation.z+=0.5; } });   /* V213: a shallow arc, nose rising then dropping, the shaft spinning */
     c.rings=c.rings.filter(r=>{ r.t+=dt;
       if(r.bit){ const b=r.bit; r.m.position.x+=b.vx*dt; r.m.position.z+=b.vz*dt; r.m.position.y+=b.vy*dt; b.vy-=9*dt; r.m.rotation.x+=dt*8; const life=b.dust?0.55:0.35; r.m.scale.setScalar(Math.max(0.05,1-r.t/life)); if(r.t>=life){ c.fx.remove(r.m); return false; } return true; }
       if(r.slash){ const k=r.t/0.16; r.m.material.opacity=(r.m.userData.op||0.75)*(1-k); if(k>=1){ c.fx.remove(r.m); return false; } return true; }
