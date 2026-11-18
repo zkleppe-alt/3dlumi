@@ -122,7 +122,13 @@ function buildKnight(){
   // kite shield on the left forearm
   // strapped to the OUTSIDE of the forearm (the enarmes), face turned out — never through the arm; `shSpin` turns it about its own
   // face so its point hangs down at rest and still points down with the forearm raised across the body to guard
-  const shM=pivot(0.088,-0.13,0,AL.el); shM.rotation.y=Math.PI/2; const sh=pivot(0,0,0,shM);
+  const shM=pivot(0.088,-0.13,0,AL.el); shM.rotation.y=Math.PI/2; const sh=pivot(0,0,0,shM); sh.scale.x=1.2;   /* V232: a broader shield */
+  /* V232: with a bow or a two-handed weapon the shield rides on his back, slung between the shoulders (the weapon, when it's
+     put away, goes across it); K._sbP/_sbR tune where. shieldHome() moves it there or back to the arm as the weapon changes. */
+  const shBack=pivot(0,0.24,-0.29,torso);
+  function shieldHome(){ const back=!!K._shB; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,Math.PI];
+      shM.position.set(p[0],p[1],p[2]); shM.rotation.set(r[0],r[1],r[2]); sh.rotation.set(q[0],q[1],q[2]); }
+    else if(shM.parent!==AL.el){ AL.el.add(shM); shM.position.set(K.shX,K.shY,0); shM.rotation.set(0,K.shRY,0); sh.rotation.set(0,0,0); } shM.visible=true; }
   function kite(s){ const p=new THREE.Shape(); p.moveTo(0,0.26*s); p.quadraticCurveTo(0.2*s,0.26*s,0.2*s,0.12*s); p.quadraticCurveTo(0.18*s,-0.12*s,0,-0.34*s);
     p.quadraticCurveTo(-0.18*s,-0.12*s,-0.2*s,0.12*s); p.quadraticCurveTo(-0.2*s,0.26*s,0,0.26*s); return p; }
   const rim=add(new THREE.ExtrudeGeometry(kite(1),{depth:0.035,bevelEnabled:false,curveSegments:5}),M.shield,0,0,-0.02,sh);
@@ -396,6 +402,7 @@ function buildKnight(){
       const w=K._mw; if(w>0.01&&K.mocap){ const RG=K.mocap;
         // the clips laid over the gaits: a blow (the body of Mixamo's sword-and-shield attacks, timed to the swing — the sword arm
         //  keeps its own cut), the guard (the block stance: knees bent, weight back behind the shield)
+        if(K._swU!==undefined){ swing=K._swU; srate=0; sk=0; }   /* test hook: hold a blow at one moment */
         K._bw=(K._bw||0)+((K.guarding&&swing<0?1:0)-(K._bw||0))*Math.min(1,dt*10); let ov=null;
         // V139: the rest of Zak's clips — a one-shot (K.act: falling in battle, kneeling to sow), the bow's draw and loose, the
         //  jump and the long fall, the sword drawn and sheathed; and the gaits change with him: sword away, a calmer stand and an
@@ -407,7 +414,7 @@ function buildKnight(){
         else if(K._lyreOn&&K.mocap.actions.lyre){ K._lyreClk=(K._lyreClk||0)+dt; const ld=K.mocap.dur.lyre||7.5; ov={n:'lyre',u:(K._lyreClk%ld)/ld,w:0.97,fade:7}; }   /* V215: the lyre in his hands — Zak's playing clip, looping */
         else if(K._bowU!=null) ov={n:'shoot',u:K._bowU,w:0.97,fade:40};   /* (a test hook: hold the archer's clip at one moment) */
         else if(K._bow&&K._fam==='bow'){ const B0=K._bow; B0.t+=dt; if(B0.ph==='draw') ov={n:'shoot',u:Math.min(0.62,0.12+B0.t/0.55*0.5),w:0.97,fade:12}; else { ov={n:'shoot',u:Math.min(1,0.76+B0.t/0.4*0.24),w:0.97,fade:12}; if(B0.t>0.45) K._bow=null; } }   /* V224: draw and hold, then loose */
-        else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.95,fade:14}:{n:sk===0?'atk3':sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8,fade:16};   /* a quick cut takes less of the clip's lunge */
+        else if(swing>=0) ov=K._fam==='bow'?{n:'shoot',u:Math.min(1,swing),w:0.95,fade:14}:{n:sk===0?((K._fam==='heavy'||K._fam==='hammer')&&typeof ANIM_UAL!=='undefined'&&ANIM_UAL&&ANIM_UAL.clips&&ANIM_UAL.clips.heavy?'heavy':'atk3'):sk===2?'atk2':'atk1',u:0.08+0.78*Math.min(1,swing),w:srate>2.4?0.65:0.8,fade:16}; if(ov&&ov.n==='heavy'){ ov.u=Math.min(0.999,swing); ov.w=0.97; }   /* V232: the two-handed overhead blow, whole: its strike lands with the hit (0.42) */   /* a quick cut takes less of the clip's lunge */
         else if(K.falling>0&&!(K.raise>0)) ov={n:'fall',t:0.35+K.falling*1.15,w:Math.min(0.92,0.45+K.falling*3),fade:9};   /* V165: off a ledge, the falling clip from the first moment — arms up and out, legs reaching for the ground */
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
         else if(K._st==='sheathing') ov={n:K._carry==='back'?'sheath':'sheathHip',u:Math.min(1,K._shT||0),w:0.7};
@@ -417,7 +424,7 @@ function buildKnight(){
         /* V142: walk or run by how fast he truly goes (in hip heights a second), eased — not the hand-keyed gait's own blend */
         const vH=veff/K.hipY; K._rfM=(K._rfM||0)+(smooth01((vH-2.9)/0.6)-(K._rfM||0))*Math.min(1,dt*5);
         RG.step(dt,a,K._rfM,vH,ov,K.npc?{idle:'idleCalm',walk:'walk',run:'walk'}:K.crouch?{idle:'sneak',walk:'sneak',run:'sneak',idleAt:0.3}:{idle:calm?'idleCalm':'idle',walk:hurt?'walkInj':'walk',run:hurt?'walkInj':calm?'runCalm':'run'});
-        K._rArm=!!(ov&&ov.n==='shoot')||!!(A0&&A0.arms!==false)||   /* V227: the archer's clip has both arms — the right one draws the string */
+        K._rArm=!!(ov&&(ov.n==='shoot'||ov.n==='heavy'))||!!(A0&&A0.arms!==false)||   /* V227: the archer's clip has both arms — the right one draws the string */
           !!(RG.ual&&!K.npc&&K._st==='sheathed'&&swing<0&&!(K.raise>0)&&!(K.charge>0)&&!(K.spinT>=0)&&!K.guarding);   /* V192: sword away, the new clips swing both arms */
         const kq=(o,out)=>{ out.identity(); for(let q=o.parent;q&&q!==K;q=q.parent) out.premultiply(q.quaternion); return out; };
         const turn=(o,n,ww)=>{ RG.q(n,_mq); kq(o,_mp); _mp.invert().multiply(_mq); o.quaternion.slerp(_mp,ww); };
@@ -440,18 +447,18 @@ function buildKnight(){
     // the guard, eased in and out (~0.1 s): upper arm forward and in, forearm level across the chest, the shield squarely
     //  in front of him with its point down; a slight crouch and the torso turned shield-side into the blow
     K._g=(K._g||0)+((K.guarding?1:0)-(K._g||0))*Math.min(1,dt*16); const gk=K._g, ik=1-gk, mixv=(a,b)=>a*ik+b*gk; const rest=-(AL.sh.rotation.x+AL.el.rotation.x);
-    AL.sh.rotation.x=mixv(AL.sh.rotation.x,-1.22); AL.sh.rotation.y=mixv(0,0.15); AL.sh.rotation.z=mixv(AL.sh.rotation.z,-0.22);
+    if(!K._shB){ AL.sh.rotation.x=mixv(AL.sh.rotation.x,-1.22); AL.sh.rotation.y=mixv(0,0.15); AL.sh.rotation.z=mixv(AL.sh.rotation.z,-0.22);
     AL.el.rotation.x=mixv(AL.el.rotation.x,0); AL.el.rotation.z=mixv(0,-1.5);
-    sh.rotation.z=mixv(rest,Math.PI/2); shM.rotation.y=mixv(K.shRY,Math.PI/2); shM.position.y=mixv(K.shY,K.shY+0.01); shM.position.x=mixv(K.shX,K.shX+0.007);
+    sh.rotation.z=mixv(rest,Math.PI/2); shM.rotation.y=mixv(K.shRY,Math.PI/2); shM.position.y=mixv(K.shY,K.shY+0.01); shM.position.x=mixv(K.shX,K.shX+0.007); }
     if(gk>0.01){ torso.rotation.y-=0.22*gk; hips.position.y-=0.03*gk; torso.rotation.x+=0.08*gk; L.knee.rotation.x+=0.25*gk; R.knee.rotation.x+=0.25*gk; }
     sCape.v-=vy*0.9*dt*60*0.05; capeP.rotation.x=spr(sCape,0.08+(0.12+0.22*rf)*a+Math.max(0,acc)*0.02+Math.sin(t*3+walk)*0.03*a+0.03*breath*ia,32,4.5,dt);
     if(wingKind) wings.children.forEach(w=>{ if(w.sd) w.rotation.y=w.sd*(0.55+Math.sin(t*(wingKind==='robby'?1.6:2.1))*0.12); });
     if(K.beast){ const eb=(Math.sin(t*3.8)+1)/2; M.visor.color.set(eb>0.5?'#ff3a44':'#d01820'); smoke.material.opacity=0.28+0.08*Math.sin(t*1.9); }
     if(wpnG&&wpnG.userData.halo) wpnG.userData.halo.material.opacity=0.22+0.1*Math.sin(t*3);
-    if(swing>=0){ swing+=dt*srate; const k=Math.min(1,swing), o=lerpPose(BLOWS[sk],k);
-      AR.sh.rotation.set(o.x,o.y,o.z); AR.el.rotation.x=o.e; AR.hand.rotation.x=o.w; torso.rotation.y+=o.ty; torso.rotation.x+=o.tp; hips.position.z=o.hz;
+    if(swing>=0){ swing+=dt*srate; const k=Math.min(1,swing), o=lerpPose(BLOWS[sk],k), HV=K._rArm&&K._mw>0.5&&sk===0&&(K._fam==='heavy'||K._fam==='hammer');   /* V232: the heavy clip moves the whole body itself */
+      if(!HV){ AR.sh.rotation.set(o.x,o.y,o.z); AR.el.rotation.x=o.e; torso.rotation.y+=o.ty; torso.rotation.x+=o.tp; hips.position.z=o.hz;
       L.hip.rotation.x+=o.lh; R.hip.rotation.x+=o.rh; L.knee.rotation.x+=Math.max(0,-o.lh)*0.5; R.knee.rotation.x+=o.rh*0.6;
-      AL.sh.rotation.x+=Math.abs(o.ty)*0.35*(1-gk); head.rotation.y-=o.ty*0.6;                                  // the shield arm draws back as he turns; his eyes stay on the foe
+      AL.sh.rotation.x+=Math.abs(o.ty)*0.35*(1-gk); head.rotation.y-=o.ty*0.6; } AR.hand.rotation.x=HV?(K._hvW!==undefined?K._hvW:0.9):o.w;                                  // the shield arm draws back as he turns; his eyes stay on the foe
       swRoll.rotation.y=rollAt(ROLL[sk],k);
       trailOn=k>(sk===0?0.33:0.3)&&k<(sk===0?0.66:0.64);
     } else { const want=(K.charge>0||(K.spinT!==undefined&&K.spinT>=0)||sword.parent!==AR.hand||K._st==='sheathing')?0:RR; swRoll.rotation.y+=(want-swRoll.rotation.y)*Math.min(1,dt*12);   // edge up in the hand; flat for the spin and the scabbard
@@ -468,6 +475,9 @@ function buildKnight(){
       if(u>=1){ K.spinT=-1; K.spinA=0; } }
     if(swing<0) trailOn=false; trailTick();
     // a flinch when struck: thrown back a moment, head snapped, then square again
+    if(K._shB&&K._fam!=='bow'&&swing<0&&(K._g||0)>0.001){ const gk=K._g, ik=1-gk, mixv=(a,b)=>a*ik+b*gk; const P2=K._hbP||[-1.2,0.7,0.2,-1.1,1.4,-0.6,-1.1,0.6,0.2,-1.2];
+      AR.sh.rotation.x=mixv(AR.sh.rotation.x,P2[0]); AR.sh.rotation.y=mixv(AR.sh.rotation.y,P2[1]); AR.sh.rotation.z=mixv(AR.sh.rotation.z,P2[2]); AR.el.rotation.x=mixv(AR.el.rotation.x,P2[3]); AR.hand.rotation.x=mixv(AR.hand.rotation.x,P2[4]); AR.hand.rotation.z=mixv(AR.hand.rotation.z,P2[5]);
+      AL.sh.rotation.x=mixv(AL.sh.rotation.x,P2[6]); AL.sh.rotation.y=mixv(AL.sh.rotation.y,P2[7]); AL.sh.rotation.z=mixv(AL.sh.rotation.z,P2[8]); AL.el.rotation.x=mixv(AL.el.rotation.x,P2[9]); AL.el.rotation.z=mixv(AL.el.rotation.z,0); }
     if(flinch>0){ flinch=Math.max(0,flinch-dt*4); const f=Math.sin(flinch*Math.PI)*(flinch>0.5?1:flinch*2); torso.rotation.x-=0.32*f; head.rotation.x-=0.25*f; hips.position.z-=0.08*f; AR.sh.rotation.x+=0.4*f; hips.position.y-=0.02*f; }
     // the dodge: low and leaning into it
     if(K.dash>0&&!(K._act&&K._act.n==='roll')){ const d=K.dash; torso.rotation.x+=0.42*d; hips.position.y-=0.12*d; L.hip.rotation.x-=0.7*d; R.hip.rotation.x+=0.5*d; L.knee.rotation.x+=0.9*d; R.knee.rotation.x+=0.6*d; capeP.rotation.x+=0.4*d; }
@@ -593,10 +603,10 @@ function buildKnight(){
     else B.n.copy(B.mid);
     bowSeg(B.s1,B.tT,B.n); bowSeg(B.s2,B.tB,B.n);
     B.ar.visible=drawing&&B.n.distanceTo(B.mid)>0.05; if(B.ar.visible){ B.ar.position.copy(B.n); _bd.copy(B.n).multiplyScalar(-1).normalize(); B.ar.quaternion.setFromUnitVectors(_bY,_bd); } }
-  function stow(){ (K._carry==='hip'?sheathP:backP).add(sword); sword.position.set(0,0,0); sword.rotation.set(0,0,0); shM.visible=true; }   /* V226: the shield comes back to the arm once the bow is put away */
-  function drawNow(){ if(K._fam==='bow'){ AL.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); shM.visible=false; } else { AR.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); shM.visible=true; } K._st='drawn'; K._idle=0; }   /* V226: a bow is held in the left fist, as the archer's clip holds it; the right hand draws the string */
+  function stow(){ (K._carry==='hip'?sheathP:backP).add(sword); sword.position.set(0,0,0); sword.rotation.set(0,0,0); }
+  function drawNow(){ if(K._fam==='bow'){ AL.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); } else { AR.hand.add(sword); sword.position.set(0,0,0); sword.rotation.set(Math.PI/2,0,0); } K._st='drawn'; K._idle=0; }   /* V226: a bow is held in the left fist, as the archer's clip holds it; the right hand draws the string */
   const _setW=K.setWeapon; K.setWeapon=function(art,id){ _setW(art,id); const f=art?art.fam:'light'; K._fam=f;
-    K._carry=f==='fist'?'none':f==='light'||f==='radiant'?'hip':'back'; scab.visible=K._carry==='hip';
+    K._carry=f==='fist'?'none':f==='light'||f==='radiant'?'hip':'back'; scab.visible=K._carry==='hip'; K._shB=f==='bow'||f==='heavy'||f==='hammer'; shieldHome();
     scabbard(art&&(f==='light'||f==='radiant')?0.3+(art.len||12)*0.034+0.12:0.74);
     if(K._carry==='none'&&K._st!=='drawn') drawNow(); else if(K._st==='sheathed') stow(); };
   K._carry='hip'; scabbard(0.74); K._st='sheathed'; stow();
@@ -847,7 +857,7 @@ function buildKnight(){
       skirtF.rotation.x=hSpr(sSkF,Math.min(Math.min(lx,rx)+0.08,0)*1.08-0.04*a-0.03*rf,240,19,dt); skirtB.rotation.x=hSpr(sSkB,Math.max(Math.max(lx,rx)-0.08,0)*1.0+0.04*a+0.1*rf,200,16,dt);   /* the hinge keeps the knees inside */
       // the shield held as on the sheet: its face turned forward-out from his side, point down, whatever the forearm does
       //  (blended away in the guard, which squares it to the front)
-      if(K.shFace!==undefined){ const gk=K._g||0; torso.updateWorldMatrix(true,false); shM.updateWorldMatrix(true,false);
+      if(K.shFace!==undefined&&!K._shB){ const gk=K._g||0; torso.updateWorldMatrix(true,false); shM.updateWorldMatrix(true,false);
         qT.setFromRotationMatrix(torso.matrixWorld); qP.setFromRotationMatrix(shM.matrixWorld); qW.setFromEuler(eF.set(0,K.shFace,0)).premultiply(qT);
         qP.invert().multiply(qW); qG.copy(sh.quaternion); sh.quaternion.copy(qP).slerp(qG,gk); }
       if(K.CLOTH){ if(!cInit){ cInit=true; cTy=torso.rotation.y; cLx=L.hip.rotation.x; } const C=K.CLOTH, ty=torso.rotation.y, dTy=Math.max(-3,Math.min(3,(ty-cTy)/Math.max(dt,1e-3))); cTy=ty;
