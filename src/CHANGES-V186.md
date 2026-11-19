@@ -608,3 +608,27 @@ After Oceanside harbour, as a beachfront town:
 - The Guardian cowl's fur now drapes over the pauldrons. Each shoulder gets a shaggy pelt built on the arm's own joint (sized `_furS` 1.5× the shoulder's envelope), so it rides over whatever pauldrons are worn and moves with the arm.
 - A thick fur collar joins the two pelts at the neck. The bear's head (snout, nose, ears, eyes) now sits on the left shoulder.
 - The fur cloak down the back is longer (about 0.76 down) and wider, with a ragged tufted hem, outside the cloth cloak.
+
+## V245 — one inventory with the knight in it; armour of the ten towns; soft cloth; a clean bearskin
+- Gear tab (menu.js), after Zak's Valhalla inventory reference: the knight himself in the middle, turning (drag to turn). Strength tiles on the left (weapon, shield, helm, breastplate, legs: the stat gear), Look tiles on the right (the 11 armour slots). Tap a tile to list what can go there. Stat totals sit under the knight. The separate Armour tab and the System wardrobe are gone. On a narrow screen the knight is on top and the tiles below in two columns.
+- `ARMOR.preview`: the game's renderer draws the knight alone (world hidden, fog thinned, his helm shown even in first person) from a turntable camera into a 260×340 target, copied to the tab's canvas at about 22 fps.
+- Armour of the ten towns (engine/armor_town.js), one set per town, released to Ironhold's Great Forge when that town's chapel is cleansed (`S.chapels > town`):
+
+| Set | Town | Built on, and added touches |
+|---|---|---|
+| Hearthward | Hearthvale | wool and leather, a wheat-sheaf |
+| Ironforged | Ironhold | dark iron and bronze, rivets, crossed hammers |
+| Tidecaller | Saltmere | sea-green steel, scallop-shell pauldrons, scales |
+| Thornwarden | Thornwood | leaf mantles, thorned vambraces |
+| Sandstrider | Dusthaven | dune-coloured robes, the face wrapped |
+| Crystalborn | Crystalpeak | pale steel with glowing crystal shards |
+| Emberforged | Ashfield | blackened plate, ember trim, horns |
+| Tempest | Stormgate | bright steel, a winged helm, the bolt |
+| Shade | Shadowmere | dark robes, tatters, a violet light in the hood |
+| Archangel | Hellgate | white and gold, a halo, folded wings |
+
+  - Each set reuses the existing patterns, recoloured with its own materials (`K.M` overridden per set) and given its motifs.
+  - Prices run 40–150 a piece (helm and tabard dearest), about 900 for a full set, scaled up a little for the farther towns.
+  - The smith's sheet has "⛨ Armour of the ten towns", which opens the Gear tab in shop mode: tap a piece to try it on (worn until the menu closes), and buy to keep it (`S.armorOwned`).
+- Soft cloth (`ARMOR.tick`, called each frame after the knight animates): skirts, robes and the fur cloak (`userData.soft`, plus everything on the skirt hinges) are pushed vertex by vertex out of a capsule on each thigh and shin. The shoulder pelts are pushed out of a sphere round the head. Untouched vertices return to their rest shape.
+- The bearskin, cleaned: smooth shaded pelts (no flat facets) with soft rounded locks at the hems instead of spiky cones, a smooth bear's head on the left shoulder, and a smooth fur cloak with long locks at its hem.

@@ -45,11 +45,12 @@ const HERALD=(function(){
       PARTS.forEach(([k,n])=>{ h+=`<div class="gm-hint" style="margin:6px 0 4px">${n}</div><div style="display:flex;flex-wrap:wrap;gap:5px">`+TINCT.map(([tn,c])=>`<button data-act="c:${k}:${c}" title="${tn}" aria-label="${n}: ${tn}" style="width:30px;height:30px;border-radius:6px;background:${c};border:${pick[k]===c?'3px solid #fff':'1px solid rgba(255,255,255,.35)'};cursor:pointer"></button>`).join('')+'</div>'; });
       h+='</div></div>'+(msg?`<p class="gm-hint">${msg}</p>`:'');
       const same=JSON.stringify(pick)===JSON.stringify(cur);
-      h+=`<button class="gm-btn" data-act="paint" ${same?'disabled':''}>Paint it — ${COST} gold</button><button class="gm-item" data-act="luminar"><span>⚜ Luminar’s own colours</span></button>`+(wares?'<button class="gm-item" data-act="wares"><span>⚒ See his wares</span></button>':'');
+      h+=`<button class="gm-btn" data-act="paint" ${same?'disabled':''}>Paint it — ${COST} gold</button><button class="gm-item" data-act="luminar"><span>⚜ Luminar’s own colours</span></button>`+(typeof ARMOR!=='undefined'&&typeof MENU!=='undefined'?'<button class="gm-item" data-act="armoury"><span>⛨ Armour of the ten towns <span class="ds">try it on, buy it piece by piece</span></span></button>':'')+(wares?'<button class="gm-item" data-act="wares"><span>⚒ See his wares</span></button>':'');
       UI.sheet({title:'⚒ '+(keeper||'The smith')+' — your shield',html:h,act:a=>{
         if(a.indexOf('c:')===0){ const [,k,c]=a.split(':'); pick[k]=c; msg=''; draw(); return; }
         if(a==='luminar'){ pick=Object.assign({},DEF); msg=''; draw(); return; }
         if(a==='wares'){ UI.close(); wares(); return; }
+        if(a==='armoury'){ UI.close(); ARMOR.shop=true; MENU.show('Gear'); return; }   /* V245 */
         if(a==='paint'){ if((S.gold||0)<COST){ msg='“Thirty gold for the paint and the gilding, knight. Come back when your purse is heavier.”'; draw(); return; }
           if(GAME.addGold) GAME.addGold(-COST); else S.gold-=COST; S.shieldCol=Object.assign({},pick); Object.assign(cur,pick); GAME.save&&GAME.save(); GAME.changed&&GAME.changed();
           msg='“There. Let it dry a moment — the gold takes longest. Wear it well.”'; draw(); } }}); };

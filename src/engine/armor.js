@@ -266,7 +266,7 @@ const ARMOR=(function(){
   // ── wearing ──
   function state(K){ return K.userData.armorS||(K.userData.armorS={worn:{},groups:{},hid:{}}); }
   function build(K,slot,id){ const S=state(K), P=PIECES[slot]&&PIECES[slot][id]; if(!P) return null; const ctx={K,slot,groups:[]}; try{ P.build(ctx); }catch(e){ ctx.groups.forEach(g=>g.parent&&g.parent.remove(g)); if(window.DEBUG_ARMOR) console.error('ARMOR',slot,e); return null; } return ctx.groups; }
-  function show(K,slot,on){ const S=state(K); (S.groups[slot]||[]).forEach(g=>{ g.visible=on; });
+  function show(K,slot,on){ const S=state(K); S.softDirty=true; (S.groups[slot]||[]).forEach(g=>{ g.visible=on; });
     const cov=on?covered(K,slot):(S.hid[slot]||[]); if(on){ S.hid[slot]=cov; cov.forEach(o=>{ if(!o.userData.armorHid){ o.userData.armorHid=1; o.userData.armorWas=o.visible; } o.visible=false; }); }
     else { cov.forEach(o=>{ if(o.userData.armorHid){ o.visible=o.userData.armorWas!==false; delete o.userData.armorHid; } }); S.hid[slot]=[]; } }
   function toon(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||typeof BODY3==='undefined'||!BODY3.toonify) return; const tw=BODY3.toonify(K,F); if(!tw||!tw.length) return;
@@ -281,7 +281,7 @@ const ARMOR=(function(){
   //  Once earned a piece is kept (a respec doesn't take it back), and the wardrobe picks, slot by slot, from all that are earned ──
   const TREES={striker:'st',guardian:'gd',psalmist:'ps'}, TIER={gauntlets:0,sabatons:1,belt:2,arms:3,legs:4,skirt:5,pauldrons:6,cowl:7,tabard:8,helm:9,plume:9};
   const SG=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
-  function earned(id,slot){ if(id==='templar'||id==='base') return !!(PIECES[slot]&&PIECES[slot][id]); const S=SG(), pre=TREES[id]; if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
+  function earned(id,slot){ if(id==='templar'||id==='base') return !!(PIECES[slot]&&PIECES[slot][id]); const S=SG(), pre=TREES[id]; if(S.armorOwned&&S.armorOwned[id+'.'+slot]&&PIECES[slot]&&PIECES[slot][id]) return true;   /* V245: bought at the smithy */ if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
   function options(slot){ const o=Object.keys(PIECES[slot]||{}).filter(id=>earned(id,slot)&&id!=='base'); if(PIECES[slot]&&PIECES[slot].base) o.push('base'); return o; }   // plain clothes last
   function pick(slot){ const S=SG(); if(S.armorOff&&S.armorOff[slot]&&PIECES[slot].base) return 'base'; const id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }   /* V242: a slot with its armour off wears the plain clothes, not the old harness */
   function noteEarned(){ const S=SG(); if(!S.skills) return; S.armorEarned=S.armorEarned||{}; const fresh=[];
@@ -298,6 +298,51 @@ const ARMOR=(function(){
     if(K.bare||!K.rig||!K.M) return;
     const b=K.userData.b3, waiting=b==='loading'||(K.sculpted&&b===undefined&&typeof BODY3!=='undefined'&&BODY3.on&&!K._armWait); if(waiting){ K._armT=(K._armT||0)+1; if(K._armT<40) return; }
     try{ dress(K); }catch(e){ K.userData.armor=true; if(window.DEBUG_ARMOR) console.error('ARMOR',e); } },400);
+  // ── V245: SOFT CLOTH — skirts, robes and the fur cloak are pushed, vertex by vertex, out of the legs (a capsule for each thigh and
+  //  shin), and the shoulder pelts out of the head, every frame, so cloth never passes through the body it hangs on. Each soft mesh keeps
+  //  its rest shape and is bent away from the body only where it would cut into it. ──
+  const _w=new THREE.Vector3(), _p=new THREE.Vector3(), _d=new THREE.Vector3(), _ab=new THREE.Vector3(), _inv=new THREE.Matrix4(), _sc=new THREE.Vector3(), CAPS=[], HEAD={c:new THREE.Vector3(),r:0};
+  for(let i=0;i<4;i++) CAPS.push({a:new THREE.Vector3(),b:new THREE.Vector3(),r:0});
+  function softList(K,S){ const list=[]; for(const slot in S.groups){ (S.groups[slot]||[]).forEach(g=>{ if(!g.visible) return; const sk=g.parent===K._skF||g.parent===K._skB;
+      g.traverse(m=>{ if(!m.isMesh||!(sk||m.userData.soft||m.userData.softHead)) return; if(!m.userData.rest){ m.userData.rest=m.geometry.attributes.position.array.slice(); m.frustumCulled=false; } list.push(m); }); }); }
+    return list; }
+  function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return; if(!S.soft||S.softDirty){ S.soft=softList(K,S); S.softDirty=false; } const list=S.soft; if(!list.length) return;
+    K.updateMatrixWorld(true); K.getWorldScale(_sc); const sc=_sc.y||1, r=K.rig;
+    [r.L,r.R].forEach((G,i)=>{ const T=CAPS[i*2], Sh=CAPS[i*2+1]; G.hip.getWorldPosition(T.a); G.knee.getWorldPosition(T.b); T.r=0.1*sc; Sh.a.copy(T.b); G.knee.localToWorld(Sh.b.set(0,-0.34,0.03)); Sh.r=0.078*sc; });
+    r.head.localToWorld(HEAD.c.set(0,0.03,0)); HEAD.r=0.17*sc;
+    for(const m of list){ if(!m.visible||(m.parent&&!m.parent.visible)) continue; const pos=m.geometry.attributes.position, A=pos.array, R=m.userData.rest, head=!!m.userData.softHead; let dirty=false;
+      _inv.copy(m.matrixWorld).invert();
+      for(let i=0;i<A.length;i+=3){ _w.set(R[i],R[i+1],R[i+2]).applyMatrix4(m.matrixWorld); let hit=false;
+        if(head){ _d.subVectors(_w,HEAD.c); const L=_d.length(); if(L<HEAD.r){ _w.copy(HEAD.c).addScaledVector(L>1e-5?_d.multiplyScalar(1/L):_d.set(0,1,0),HEAD.r); hit=true; } }
+        else for(const C of CAPS){ _ab.subVectors(C.b,C.a); const t=Math.max(0,Math.min(1,_d.subVectors(_w,C.a).dot(_ab)/Math.max(1e-6,_ab.lengthSq()))); _p.copy(C.a).addScaledVector(_ab,t); _d.subVectors(_w,_p); const L=_d.length();
+          if(L<C.r){ _w.copy(_p).addScaledVector(L>1e-5?_d.multiplyScalar(1/L):_d.set(0,0,1),C.r); hit=true; } }
+        if(hit){ _w.applyMatrix4(_inv); A[i]=_w.x; A[i+1]=_w.y; A[i+2]=_w.z; dirty=true; }
+        else if(A[i]!==R[i]||A[i+1]!==R[i+1]||A[i+2]!==R[i+2]){ A[i]=R[i]; A[i+1]=R[i+1]; A[i+2]=R[i+2]; dirty=true; } }
+      if(dirty) pos.needsUpdate=true; } }
+  // ── V245: the PREVIEW — the knight himself, drawn alone into the Armour tab: the game's own renderer draws only his layer from a
+  //  turntable camera into a small target, which is copied into the tab's canvas. Drag to turn him. ──
+  const preview=(function(){ let cv=null, ctx2=null, rt=null, cam=null, raf=0, ang=0.5, drag=null, buf=null, img=null, last=0; const W=260, Hh=340, LAY=5;
+    function frame(t){ raf=requestAnimationFrame(frame); if(!cv||!cv.isConnected){ stop(); return; } if(t-last<45) return; last=t;
+      if(typeof ENGINE==='undefined'||!ENGINE.K||!ENGINE.level||!ENGINE.renderer) return; const K=ENGINE.K, L=ENGINE.level, R=ENGINE.renderer, sc=L.scene; if(!sc) return;
+      if(!rt){ rt=new THREE.WebGLRenderTarget(W,Hh); cam=new THREE.PerspectiveCamera(28,W/Hh,0.05,30); buf=new Uint8Array(W*Hh*4); img=ctx2.createImageData(W,Hh); }
+      K.traverse(o=>o.layers.enable(LAY)); sc.traverse(o=>{ if(o.isLight) o.layers.enable(LAY); }); cam.layers.set(LAY);
+      K.updateMatrixWorld(true); const foot=K.getWorldPosition(new THREE.Vector3()), hd=K.rig.head.getWorldPosition(new THREE.Vector3()), h=hd.y-foot.y, mid=foot.clone().add(V(0,h*0.55,0)), d=h*2.85, f=K.rotation.y+ang;
+      cam.position.set(mid.x+Math.sin(f)*d,mid.y+h*0.08,mid.z+Math.cos(f)*d); cam.lookAt(mid);
+      const bg=sc.background, fog=sc.fog, fN=fog&&fog.near, fF=fog&&fog.far, fD=fog&&fog.density, hv=K._head&&K._head.visible, kv=K.visible, cc=R.getClearColor(new THREE.Color()), ca=R.getClearAlpha(), prevT=R.getRenderTarget(), sm=R.shadowMap.autoUpdate;
+      const hid=[]; sc.children.forEach(o=>{ if(o!==K&&!o.isLight&&o.visible){ let has=false; if(o.isObject3D&&o.children.length){ let q=K.parent; while(q){ if(q===o){ has=true; break; } q=q.parent; } } if(!has){ o.visible=false; hid.push(o); } } });   /* the knight alone: the world set aside while he's drawn */
+      sc.background=null; if(fog){ if(fog.isFogExp2) fog.density=0; else { fog.near=1e4; fog.far=2e4; } }   /* fog thinned, not removed: shaders were built with it */ if(K._head) K._head.visible=true; K.visible=true; R.shadowMap.autoUpdate=false;
+      try{ R.setRenderTarget(rt); R.setClearColor(0x17161d,1); R.clear(); R.render(sc,cam); R.readRenderTargetPixels(rt,0,0,W,Hh,buf); }
+      finally{ hid.forEach(o=>o.visible=true); R.setRenderTarget(prevT); R.setClearColor(cc,ca); sc.background=bg; if(fog){ if(fog.isFogExp2) fog.density=fD; else { fog.near=fN; fog.far=fF; } } if(K._head) K._head.visible=hv; K.visible=kv; R.shadowMap.autoUpdate=sm; }
+      const D=img.data; for(let y=0;y<Hh;y++){ const s0=(Hh-1-y)*W*4, d0=y*W*4; for(let x=0;x<W*4;x++) D[d0+x]=buf[s0+x]; } ctx2.putImageData(img,0,0); }
+    function start(c){ if(!c) return; if(cv!==c){ cv=c; ctx2=c.getContext('2d'); img=null; rt&&(img=ctx2.createImageData(W,Hh));
+        c.addEventListener('pointerdown',e=>{ drag={x:e.clientX,a:ang}; c.setPointerCapture&&c.setPointerCapture(e.pointerId); c.style.cursor='grabbing'; });
+        c.addEventListener('pointermove',e=>{ if(drag) ang=drag.a+(e.clientX-drag.x)*0.012; });
+        const up=()=>{ drag=null; c.style.cursor='grab'; }; c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up); }
+      if(!raf) raf=requestAnimationFrame(frame); }
+    function stop(){ if(raf) cancelAnimationFrame(raf); raf=0; cv=null; }
+    return {start,stop,get angle(){ return ang; }}; })();
+  // trying a piece on (the smithy): worn for the preview only, until bought or the menu closes
+  function tryOn(slot,id){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; wear(ENGINE.K,slot,id); }
   const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds};
-  return { SLOTS, NAMES, PIECES, TREES, TIER, H, set, wear, worn, dress, apply, covered, earned, options, pick };
+  return { preview, tryOn, shop:false, tick, SLOTS, NAMES, PIECES, TREES, TIER, H, set, wear, worn, dress, apply, covered, earned, options, pick };
 })();

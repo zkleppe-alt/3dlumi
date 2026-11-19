@@ -10,6 +10,8 @@ const MENU=(function(){
   const sec=t=>`<div class="gm-sec">${t}</div>`;
   const statLine=e=>{ const p=[]; if(e.atk!==undefined&&e.slot==='weapon') p.push(`+${e.atk||0} atk`); else if(e.atk) p.push(`+${e.atk} atk`); if(e.def!==undefined||e.slot!=='weapon') p.push(`+${e.def||0} def`); if(e.maxHp) p.push(`+${e.maxHp} hp`); if(e.crit) p.push(`+${Math.round(e.crit*100)}% crit`); return p.join(' · '); };
   const SLOT_NAMES={weapon:['🗡','Weapon'],shield:['🛡','Shield'],helm:['⛑','Helm'],body:['🦺','Breastplate'],legs:['🥾','Legs']};
+  const LOOK_IC={helm:'⛑',plume:'🪶',cowl:'🧣',tabard:'✝',belt:'🎗',skirt:'🎽',pauldrons:'🛡',arms:'💪',gauntlets:'🧤',legs:'🦵',sabatons:'🥾'};   // V245
+  let invPick=null;
   const R={
     Character(S){ let h=row('Level',S.level)+row('XP',`${S.xp} / ${S.xpNext}`)+row('❤ Max HP',S.maxHp)+row('⚔ Attack',S.atk)+row('🛡 Defense',S.def)+row('✦ Crit',pct(S.crit))
         +row('🩹 Dmg Reduce',pct(S.dmgReduce))+row('🪙 Gold',S.gold)+row('★ Skill Points',S.skillPoints,'gold');
@@ -17,15 +19,6 @@ const MENU=(function(){
         h+=row(`${ic} ${nm}`, e&&!/^none/.test(S.equip[s])?E(e.name)+(s==='weapon'?` <span class="tag">[${e.type}]</span>`:''):(s==='body'&&e?E(e.name):'— none —'));
         if(s==='weapon') h+=row('✦ Combo Special','Ground Pound','gold'); }
       return h; },
-    Gear(S){ let h=sec('Worn'), tot={atk:0,def:0,hp:0};
-      for(const [s] of SYS.GEAR_SLOTS){ const id=S.equip[s], e=SYS.EQUIP[id], [ic,nm]=SLOT_NAMES[s];
-        if(e){ tot.atk+=e.atk||0; tot.def+=e.def||0; tot.hp+=e.maxHp||0; } h+=row(`${ic} ${e?E(e.name):nm+' — none'}`, e?statLine(e):''); }
-      h+=row('From gear',`+${tot.atk} atk · +${tot.def} def · +${tot.hp} hp`,'band');
-      const aog=GAME.aogWorn(); if(SYS.AOG_SET.some(id=>S.ownedGear[id])) h+=row('✝ Armor of God',`${aog} / ${SYS.AOG_SET.length} worn`+(aog===5?' — Stand firm':''));
-      for(const [s] of SYS.GEAR_SLOTS){ const own=Object.keys(SYS.EQUIP).filter(id=>S.ownedGear[id]&&SYS.EQUIP[id].slot===s); if(!own.length) continue;
-        h+=sec(SLOT_NAMES[s][1]); own.forEach(id=>{ const e=SYS.EQUIP[id], worn=S.equip[s]===id;
-          h+=`<button class="gm-item ${worn?'worn':''}" data-act="wear:${id}"><span>${e.emoji||'•'} ${E(e.name)}${e.type?` <span class="tag">[${e.type}]</span>`:''} <span class="ds">${statLine(e)}</span></span>${worn?'<i>worn</i>':''}</button>`; }); }
-      return h+'<p class="gm-hint">Tap to wear a piece · tap a worn piece to take it off. Pieces show on the knight.</p>'; },
     Items(S){ let h=sec('Potions'); const pots=Object.keys(SYS.POTIONS).filter(k=>S.inventory[k]>0);
       if(!pots.length) h+='<p class="gm-empty">— none · Healing Potions at any village shop, and more from Reuben’s wagon —</p>';
       pots.forEach(k=>{ const P=SYS.POTIONS[k]; h+=`<button class="gm-item" data-act="drink:${k}"><span>${P.emoji} ${E(P.name)} ×${S.inventory[k]} <span class="ds">${E(P.note)}</span></span><i>drink</i></button>`; });
@@ -76,11 +69,47 @@ const MENU=(function(){
         if(!own&&!['champion','crimson','forest','sable','argent','gilt','stormward','fallen','robby'].includes(k)) return;
         h+=`<button class="gm-item ${cur?'worn':''} ${own?'':'locked'}" data-act="${own?'livery:'+k:''}"><span><span class="sw" style="background:${L.TUNIC||'#3b6fd4'}"></span> ${E(L.name)} <span class="ds">${E(L.note||'')}</span></span>${cur?'<i>worn</i>':own?'':'<i>🔒</i>'}</button>`; });
       return h+'<p class="gm-hint">Champion’s Plate is won in the Grand Tournament. The other liveries come from the 2D game’s quests.</p>'; },
+    /* V245: GEAR — one inventory: the knight himself in the middle, turning; the gear that makes him strong in tiles on the left,
+       the look of his harness in tiles on the right; tap a tile to choose what goes there. At Ironhold's Great Forge, the towns'
+       sets wait below to be tried on and bought. */
+    Gear(S){ const AR=typeof ARMOR!=='undefined'?ARMOR:null; let tot={atk:0,def:0,hp:0};
+      for(const [sl] of SYS.GEAR_SLOTS){ const e=SYS.EQUIP[S.equip[sl]]; if(e){ tot.atk+=e.atk||0; tot.def+=e.def||0; tot.hp+=e.maxHp||0; } }
+      const tile=(act,ic,nm,val,sel,cls)=>`<button class="inv-tile ${sel?'sel':''} ${cls||''}" data-act="${act}"><b>${ic}</b><span>${E(nm)}</span><small>${E(val)}</small></button>`;
+      let left=SYS.GEAR_SLOTS.map(([sl])=>{ const e=SYS.EQUIP[S.equip[sl]], [ic,nm]=SLOT_NAMES[sl]; return tile('pk:g.'+sl,e&&e.emoji||ic,nm,e?e.name:'— none —',invPick==='g.'+sl,'big'); }).join('');
+      let right=AR?AR.SLOTS.map(sl=>{ const id=AR.pick(sl), P=AR.PIECES[sl][id]; return tile('pk:a.'+sl,LOOK_IC[sl]||'•',AR.NAMES[sl],P.set,invPick==='a.'+sl); }).join(''):'';
+      let h=`<style>#gm .inv{display:grid;grid-template-columns:minmax(150px,190px) 1fr minmax(220px,260px);gap:14px;align-items:start;max-width:1010px;margin:0 auto}
+        #gm .inv-col{display:flex;flex-direction:column;gap:8px} #gm .inv-look{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+        #gm .inv-tile{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 9px;border-radius:10px;border:1px solid rgba(255,214,130,.22);background:linear-gradient(160deg,rgba(40,52,62,.85),rgba(18,22,30,.9));color:#f3ead6;text-align:left;cursor:pointer;min-height:54px}
+        #gm .inv-tile.big{min-height:66px} #gm .inv-tile b{font-size:18px;line-height:1} #gm .inv-tile span{font:700 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase;opacity:.8} #gm .inv-tile small{font:600 12px var(--f-body);color:#ffd88a;line-height:1.15}
+        #gm .inv-tile.sel{border-color:#ffd36a;box-shadow:0 0 0 2px rgba(255,211,106,.35),inset 0 0 18px rgba(255,211,106,.12)} #gm .inv-tile:hover{border-color:rgba(255,214,130,.55)}
+        #gm .inv-mid{text-align:center} #gm .inv-mid canvas{width:100%;max-width:300px;aspect-ratio:260/340;border-radius:14px;background:radial-gradient(ellipse at 50% 40%,#25303a,#121419);touch-action:none;cursor:grab;box-shadow:inset 0 0 0 1px rgba(255,220,140,.18)}
+        #gm .inv-pow{display:flex;justify-content:center;gap:12px;font:800 13px var(--f-body);color:#ffe2a0;margin-top:6px} #gm .inv-pick{max-width:1010px;margin:14px auto 0}
+        @media (max-width:760px){ #gm .inv{grid-template-columns:1fr 1fr} #gm .inv-mid{grid-column:1/-1;order:-1} #gm .inv-mid canvas{max-width:230px} }</style>`;
+      h+=`<div class="inv"><div class="inv-col">${sec('Strength')}${left}</div><div class="inv-mid"><canvas id="arPrev" width="260" height="340"></canvas>
+        <div class="inv-pow"><span>⚔ +${tot.atk}</span><span>🛡 +${tot.def}</span><span>♥ +${tot.hp}</span></div><div class="gm-hint" style="margin-top:2px">drag to turn him</div></div>
+        <div>${sec('Look')}<div class="inv-look">${right}</div></div></div>`;
+      // the chosen tile's choices
+      if(invPick){ const [kind,sl]=invPick.split('.'); h+=`<div class="inv-pick">`;
+        if(kind==='g'){ const [ic,nm]=SLOT_NAMES[sl], own=Object.keys(SYS.EQUIP).filter(id=>S.ownedGear[id]&&SYS.EQUIP[id].slot===sl); h+=sec(ic+' '+nm);
+          if(!own.length) h+='<p class="gm-empty">— nothing for this slot yet —</p>';
+          own.forEach(id=>{ const e=SYS.EQUIP[id], worn=S.equip[sl]===id; h+=`<button class="gm-item ${worn?'worn':''}" data-act="wear:${id}"><span>${e.emoji||'•'} ${E(e.name)}${e.type?` <span class="tag">[${e.type}]</span>`:''} <span class="ds">${statLine(e)}</span></span>${worn?'<i>worn — tap to take off</i>':''}</button>`; }); }
+        else if(AR){ h+=sec((LOOK_IC[sl]||'')+' '+AR.NAMES[sl]); AR.options(sl).forEach(id=>{ const P=AR.PIECES[sl][id], on=AR.pick(sl)===id;
+          h+=`<button class="gm-item ${on?'worn':''}" data-act="arpick:${sl}.${id}"><span>${E(P.name)} <span class="ds">${E(P.set)}${P.town!==undefined?' · from '+E(SYS.TOWN_DATA[P.town].name):''}</span></span>${on?'<i>worn</i>':''}</button>`; });
+          h+='<p class="gm-hint">Each skill tree earns its own set as you climb it; the towns’ sets are sold at Ironhold’s Great Forge.</p>'; }
+        h+='</div>'; }
+      const aog=GAME.aogWorn(); if(SYS.AOG_SET.some(id=>S.ownedGear[id])) h+=`<div class="inv-pick">${row('✝ Armor of God',`${aog} / ${SYS.AOG_SET.length} worn`+(aog===5?' — Stand firm':''))}</div>`;
+      // the Great Forge
+      if(AR&&AR.shop){ h+=`<div class="inv-pick">`+sec('⚒ The Great Forge — armour of the ten towns')+`<p class="gm-hint">Each town’s smiths send their work here once its chapel is cleansed. Tap a piece to try it on; buy to keep it. 🪙 ${S.gold}</p>`;
+        AR.TOWN_SETS.forEach(st=>{ const rel=AR.released(st.id), town=SYS.TOWN_DATA[st.town].name, open=arOpen===st.id;
+          h+=`<button class="gm-item ${rel?'':'locked'}" data-act="${rel?'arset:'+st.id:''}"><span>${E(st.name)} <span class="ds">${rel?'from '+E(town):'cleanse '+E(town)+'’s chapel to bring it here'}</span></span><i>${rel?(open?'▾':'▸'):'🔒'}</i></button>`;
+          if(rel&&open) AR.SLOTS.forEach(sl=>{ const own=AR.owned(st.id,sl), pr=AR.price(st.id,sl), wearing=AR.worn(ENGINE.K)[sl]===st.id;
+            h+=`<div style="display:flex;gap:6px;margin:0 0 4px 14px"><button class="gm-item ${wearing?'worn':''}" style="flex:1;margin:0" data-act="artry:${st.id}.${sl}"><span>${E(AR.NAMES[sl])} <span class="ds">${own?'yours':'tap to try on'}</span></span></button>`
+              +(own?'':`<button class="gm-btn" style="flex:none;margin:0;min-width:84px" data-act="arbuy:${st.id}.${sl}" ${S.gold<pr?'disabled':''}>🪙 ${pr}</button>`)+`</div>`; }); });
+        h+='</div>'; }
+      return h; },
     System(S){ const slot=GAME.slot, hh=Math.floor(S.dayFrac*24), mm=Math.floor((S.dayFrac*24-hh)*60), ap=hh<12?'AM':'PM', h12=((hh+11)%12)+1;
       let h=row('Playing',`Slot ${slot} · ${E(S.name)} · Lv ${S.level} · ${S.chapels}/10`)+row('Time',`☀️ Day ${S.day} · ${h12}:${String(mm).padStart(2,'0')}${ap} · ⏱ ${Math.floor(S.playMs/3600000)}H${String(Math.floor(S.playMs/60000)%60).padStart(2,'0')}M played`);
       h+=sec('View')+['classic','grand'].map(m=>`<button class="gm-item ${VIEWMODE.mode===m?'worn':''}" data-act="view:${m}"><span>${m==='classic'?'🗺 Classic — the 2D game’s proportions':'🏔 Grand — people at 0.45×, the world towering over them (outdoors, for testing)'}</span>${VIEWMODE.mode===m?'<i>✓</i>':''}</button>`).join('')
-        +(typeof ARMOR!=='undefined'?`<div class="gm-hint" style="margin:8px 0 4px">🛡 Armour — tap a slot to change what you wear there. Each skill tree's tiers earn its own set, piece by piece (Striker · Guardian · Psalmist)</div>`+ARMOR.SLOTS.map(sl=>{ const id=ARMOR.pick(sl), on=id!=='base', opts=ARMOR.options(sl), P=ARMOR.PIECES[sl][id], all=Object.keys(ARMOR.PIECES[sl]).length;
-          return `<button class="gm-item ${on?'worn':''}" data-act="armor:${sl}"><span>${ARMOR.NAMES[sl]} <span class="ds">${P.name} · ${opts.length} of ${all} to wear</span></span><i>${P.set}</i></button>`; }).join(''):'')
         +`<button class="gm-item ${ENGINE.fp?'worn':''}" data-act="fpcam"><span>👁 Camera: ${ENGINE.fp?'first person — through his eyes':'third person — behind him'} <span class="ds">tap to switch · takes effect at once</span></span><i>${ENGINE.fp?'1st':'3rd'}</i></button>`
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
@@ -154,9 +183,10 @@ const MENU=(function(){
     head.innerHTML=`<div class="gh-lv" title="Level">${S.level}</div><div class="gh-id"><div class="gh-name">${E(S.name)}</div><div class="gh-xp"><i style="width:${Math.max(0,Math.min(100,S.xp/S.xpNext*100)).toFixed(1)}%"></i></div><div class="gh-xpt">LEVEL ${S.level} · ${S.xp} / ${S.xpNext} XP</div></div>`
       +`<div class="gh-chips"><span class="gh-chip">♥ ${S.hp} / ${S.maxHp}</span><span class="gh-chip">🪙 ${S.gold}</span>${S.skillPoints>0?`<span class="gh-chip pts">★ ${S.skillPoints}</span>`:''}</div>`;
     rail.innerHTML=TABS.map((t,i)=>`<button class="gm-rt ${i===tab?'sel':''}" data-tab="${i}"><b>${ICON[t]||''}</b>${t}${t==='Skills'&&S.skillPoints>0?'<span class="dot"></span>':''}</button>`).join('');
-    const top=pane.scrollTop, nt=note?`<p class="gm-note">${UI.esc(note)}</p>`:'', body=R[TABS[tab]](S), page=TABS[tab]==='Skills'?(nt?`<div class="gm-col">${nt}</div>`:'')+body:`<div class="gm-col">${nt}${body}</div>`;
+    const top=pane.scrollTop, nt=note?`<p class="gm-note">${UI.esc(note)}</p>`:'', body=R[TABS[tab]](S), page=(TABS[tab]==='Skills'||TABS[tab]==='Gear')?(nt?`<div class="gm-col">${nt}</div>`:'')+body:`<div class="gm-col">${nt}${body}</div>`;
     pane.innerHTML=page; if(keep) pane.scrollTop=top; else { pane.scrollTop=0; pane.classList.remove('turn'); void pane.offsetWidth; pane.classList.add('turn'); const sb=rail.querySelector('.sel'); if(sb&&sb.scrollIntoView) sb.scrollIntoView({inline:'center',block:'nearest'}); }
-    if(TABS[tab]==='Map') pins(); }
+    if(TABS[tab]==='Map') pins();
+    if(typeof ARMOR!=='undefined'&&ARMOR.preview){ if(TABS[tab]==='Gear') ARMOR.preview.start(document.getElementById('arPrev')); else ARMOR.preview.stop(); } }
   function pins(){ const box=$('gmMapPins'), tip=$('gmMapTip'), W=SYS.MAP.W, H=SYS.MAP.H, S=GAME.S;
     box.innerHTML=SYS.MAP.towns.map(([n,x,y])=>{ const ti=SYS.TOWN_DATA.findIndex(t=>t.name===n), col=ti<0?'#ffe04a':ti<S.chapels?'#6fdf8a':'#ff6a7a';
       return `<button class="pin" style="left:${x/W*100}%;top:${y/H*100}%;background:${col}" data-town="${UI.esc(n)}" aria-label="${UI.esc(n)}"></button>`; }).join('')
@@ -184,6 +214,11 @@ const MENU=(function(){
     else if(k==='decor'){ if(BOUNTY_API.cur){ toggle(false); BOUNTY_API.cur.place(v); } return; }
     else if(k==='travel'){ const t=SYS.MAP.towns.find(q=>q[0]===v); if(!t) return; toggle(false); ENGINE.go('world',{x:t[1]+0.5,z:t[2]+1.5,face:Math.PI}); setTimeout(()=>{ ENGINE.unstick(true); UI.toast(`🕊 You travel the roads to ${v}.`,1600); },900); return; }
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
+    else if(k==='pk'){ invPick=invPick===v?null:v; render(true); return; }
+    else if(k==='arpick'&&typeof ARMOR!=='undefined'){ const [sl,id]=v.split('.'); S.armorPick=S.armorPick||{}; S.armorPick[sl]=id; if(S.armorOff) delete S.armorOff[sl]; ARMOR.apply(); GAME.save(); render(true); return; }
+    else if(k==='arset'){ arOpen=arOpen===v?null:v; render(true); return; }
+    else if(k==='artry'&&typeof ARMOR!=='undefined'){ const [id,sl]=v.split('.'); ARMOR.tryOn(sl,id); render(true); return; }
+    else if(k==='arbuy'&&typeof ARMOR!=='undefined'){ const [id,sl]=v.split('.'), r=ARMOR.buy(id,sl); note=r==='ok'?'“A fine fit. It’s yours, knight.”':r==='poor'?'“That’ll want more gold than you carry.”':''; render(true); return; }
     else if(k==='armor'&&typeof ARMOR!=='undefined'){ S.armorOff=S.armorOff||{}; S.armorPick=S.armorPick||{}; const opts=ARMOR.options(v), cur=ARMOR.pick(v), seq=opts, nx=seq[(seq.indexOf(cur)+1)%seq.length];   /* V241: the wardrobe cycles what's earned, then off */
       delete S.armorOff[v]; S.armorPick[v]=nx; if(ENGINE.K) ARMOR.apply(); GAME.save(); render(true); return; }
     else if(k==='fpcam'){ ENGINE.fp=!ENGINE.fp; render(true); return; }
@@ -213,7 +248,8 @@ const MENU=(function(){
   addEventListener('resize',()=>{ if(open&&TABS[tab]==='Skills') render(true); });
   el.addEventListener('pointerdown',e=>{ if(e.target===el) toggle(false); });
   $('gmClose').addEventListener('click',()=>toggle(false));
-  function toggle(v){ open=v===undefined?!open:v; el.hidden=!open; if(open){ note=''; sub=null; render(); } else { GAME.save(); } }
+  let arOpen=null;
+  function toggle(v){ open=v===undefined?!open:v; el.hidden=!open; if(open){ note=''; sub=null; render(); } else { if(typeof ARMOR!=='undefined'){ ARMOR.preview&&ARMOR.preview.stop(); if(ARMOR.shop){ ARMOR.shop=false; } ARMOR.apply&&ARMOR.apply(); } GAME.save(); } }   /* V245: a piece only tried on comes off as the menu closes */
   GAME.on(()=>{ if(open) render(true); });
   return { toggle, get open(){ return open; }, show:t=>{ tab=TABS.indexOf(t); toggle(true); } };
 })();

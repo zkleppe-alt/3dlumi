@@ -286,7 +286,8 @@ const ENGINE=(function(){
         if(!lookV.y){ let dy=(want+Math.PI)-yaw; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); yaw+=dy*Math.min(1,dt*5); } } }
     if(fpOK()&&!(L.mounted&&L.mounted())&&!(L.driving&&L.driving())&&!(convo||busy||paused)&&!(typeof COMBAT!=='undefined'&&COMBAT.pl&&COMBAT.pl.dashing>0)){ let d=(yaw+Math.PI)-P.face; d=Math.atan2(Math.sin(d),Math.cos(d)); P.face+=d*Math.min(1,dt*18); }   /* V237: in first person he faces where you look */
     K.fp=fpMix>0.5;
-    K.animate(dt,hold&&holdMode?holdMode:l>0.08?'walk':'idle',Math.min(1,l)/ps); K.position.set(P.x,P.y+J.h+(typeof COMBAT!=='undefined'?COMBAT.pl.jumpY*ps:0),P.z); K.falling=J.on&&J.fall?J.fallT:0; if(J.on) K.air=Math.max(K.air||0,J.fall?1:Math.min(1,J.h*1.4+0.25)); else if(!L.combat) K.air=0; K.rotation.y=P.face+(K.spinA||0);   // (small legs step faster to cover the same ground)
+    K.animate(dt,hold&&holdMode?holdMode:l>0.08?'walk':'idle',Math.min(1,l)/ps);
+    if(typeof ARMOR!=='undefined'&&ARMOR.tick) ARMOR.tick(K);   /* V245: cloth kept out of the body */ K.position.set(P.x,P.y+J.h+(typeof COMBAT!=='undefined'?COMBAT.pl.jumpY*ps:0),P.z); K.falling=J.on&&J.fall?J.fallT:0; if(J.on) K.air=Math.max(K.air||0,J.fall?1:Math.min(1,J.h*1.4+0.25)); else if(!L.combat) K.air=0; K.rotation.y=P.face+(K.spinA||0);   // (small legs step faster to cover the same ground)
     if(typeof DIALOGUE!=='undefined'&&(++presT%20)===0) L.folk.forEach(f=>{ if(!f.key) return; const on=DIALOGUE.present(f.key);   // who the story has here now
       if(!on&&!f._phide){ f._phide=true; f.g.visible=false; f.mute=true; f.ghost=true; } else if(on&&f._phide){ f._phide=false; f.g.visible=true; f.mute=false; f.ghost=false; } });
     L.folk.forEach(f=>{ const u=f.g.userData, fs=ps*ACTOR_S(L); if(u.vs!==fs){ if(u.s0===undefined) u.s0=f.g.scale.x; f.g.scale.setScalar(u.s0*fs); u.vs=fs; } if(f.still) return; f.g.position.y=f.y+Math.abs(Math.sin(t*1.3+(f.ph||0)))*0.02;

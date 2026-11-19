@@ -254,6 +254,7 @@
 
   // ═════════════ V243: the beasts — fox, bear, dove ═════════════
   const FUR={}, fur=(k,c)=>FUR[k]||(FUR[k]=new THREE.MeshPhongMaterial({color:c,shininess:2,specular:0x0a0a0a,flatShading:true})), cl0=(k,c)=>fur('_'+k,c);
+  const pelt=(k,c)=>FUR['p'+k]||(FUR['p'+k]=new THREE.MeshPhongMaterial({color:c,shininess:3,specular:0x0c0a08,side:THREE.DoubleSide}));   // V245: fur, smooth
   // STRIKER · the fox — a brush of a tail for a crest, white at its tip
   reg('plume','striker','Striker fox-brush',ctx=>{ const K=ctx.K, M=K.M, g=piece(ctx,K.rig.plume), tip=fur('tip',0xf2eee6);
     const spine=bez(V(0,0.02,0.0),V(0,0.1,-0.06),V(0,0.08,-0.2),V(0,-0.12,-0.3),14), R=t=>0.03+0.05*Math.sin(Math.min(1,t*1.15)*Math.PI)*(1-0.3*t);
@@ -280,32 +281,30 @@
     [-1,1].forEach(sd=>panel(ctx,K._skB,{p0:Math.PI+(sd>0?0.06:-1.0),p1:Math.PI+(sd>0?1.0:-0.06),r0:0.205,r1:0.252,len:LB*0.64,teeth:4,dep:0.085,zk:0.8})); });
 
   // GUARDIAN · the bear — a shaggy fur cowl over the gorget that runs on into a short fur cape down the back
-  reg('cowl','guardian','Guardian bearskin',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), GD=GDm(M), F1=fur('bear',0x5a4130), F2=fur('bear2',0x76583e);
+  // the bearskin, cleaned: smooth pelts, their edges falling in soft locks (no spiky tufts), the bear's head on the left shoulder
+  const lock=(g,mat,pos,dir,len,wid)=>{ let f=new THREE.SphereGeometry(1,8,5); f.scale(wid,len/2,wid*0.45); f.translate(0,-len/2,0); const m=mesh(g,f,mat,'fur'); m.position.copy(pos); m.quaternion.setFromUnitVectors(V(0,-1,0),dir.clone().normalize()); m.userData.soft=1; return m; };
+  reg('cowl','guardian','Guardian bearskin',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), GD=GDm(M), F1=pelt('bear',0x5a4130), F2=pelt('bear2',0x6e5139), F3=pelt('bear3',0x46322a);
     const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y, w=Math.max(Math.abs(E.min.x),E.max.x);
-    for(let k=0;k<2;k++){ const ya=y0+0.05+k*0.05, r0=w*(1.18-k*0.2), r1=w*(1.06-k*0.2); mesh(g,band((ph,y)=>r0+(r1-r0)*(y-ya)/0.06,-Math.PI,Math.PI,ya,ya+0.06,16,1,{zk:0.95,two:0.004}),M.steel,'steel');
-      mesh(g,band(()=>r0+0.004,-Math.PI,Math.PI,ya,ya+0.012,24,1,{zk:0.95,two:0.002}),GD,'gold'); }
-    // the pelt: a thick roll round the shoulders, tufted, and a mantle of it hanging down the back
-    // the collar: a thick roll of fur about the neck, joining the two shoulder pelts
-    const tz=0.88, YA=y0+0.05, YT=y0+0.19, col=(ph,y)=>{ const v=(y-YA)/(YT-YA); return (K._furR||0.25)*(1-0.4*Math.pow(v,1.2))*(1+0.06*Math.sin(ph*11)+0.03*Math.sin(ph*23)); };
-    mesh(g,band(col,-Math.PI,Math.PI,YA,YT,36,4,{zk:tz,smooth:true,two:0.006}),F1,'fur');
-    const tuft=(par,pos,dir,big,mat)=>{ const tf=mesh(par,cone(0.022+big*0.012,0.07+big*0.05,4),mat,'fur'); tf.position.copy(pos); tf.quaternion.setFromUnitVectors(V(0,1,0),dir.clone().normalize()); return tf; };
-    for(let i=0;i<48;i++){ const ph=-Math.PI+i/48*Math.PI*2, y=YA+0.01+(i%3)*0.035, r=col(ph,y)+0.004; tuft(g,V(r*Math.sin(ph),y,tz*r*Math.cos(ph)),V(Math.sin(ph),-0.9,tz*Math.cos(ph)),(i%4)/3,i%3?F1:F2); }
-    // the pelts over the shoulders: on the arm's own joint, so they ride the pauldrons whatever is worn there, shaggy at the hem
+    // the collar: a thick soft roll about the neck, its lower edge in locks
+    const tz=0.88, YA=y0+0.05, YT=y0+0.19, col=(ph,y)=>{ const v=(y-YA)/(YT-YA); return (K._furR||0.25)*(1-0.4*Math.pow(v,1.2))*(1+0.035*Math.sin(ph*9)); };
+    mesh(g,band(col,-Math.PI,Math.PI,YA,YT,36,5,{zk:tz,smooth:true,two:0.006}),F1,'fur');
+    for(let i=0;i<30;i++){ const ph=-Math.PI+i/30*Math.PI*2+(i%2)*0.05, r=col(ph,YA)+0.002; lock(g,i%3?F1:F2,V(r*Math.sin(ph),YA+0.02,tz*r*Math.cos(ph)),V(Math.sin(ph)*0.35,-1,tz*Math.cos(ph)*0.35),0.07+(i%3)*0.015,0.03); }
+    // the pelts over the shoulders: on the arm's own joint, so they ride the pauldrons whatever is worn there; their hems in locks
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const gp=piece(ctx,A.sh), e=paulE(A,sd), rx=e.rx*(K._furS||1.5), rz=e.rz*(K._furS||1.45), top=e.top+0.07, ry=(top-e.bot)*0.95, cx=e.cx-sd*0.02;
-      const dome=(ph,th,o)=>{ const w=1+0.06*Math.sin(ph*7+th*5); return V(cx+(rx+(o||0))*w*Math.sin(th)*Math.sin(ph), top-ry+(ry+(o||0)*0.8)*Math.cos(th), (rz+(o||0))*w*Math.sin(th)*Math.cos(ph)); };
-      const TH=Math.PI*0.5; mesh(gp,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, th=TH*(1-v)+(v<0.01?0.12*tri(u*9+0.5):0); return dome(ph,th); },28,5,{smooth:true,two:0.006}),F1,'fur');
-      for(let i=0;i<26;i++){ const ph=-Math.PI+i/26*Math.PI*2, th=TH+0.06*(i%2), p=dome(ph,th,0.004); tuft(gp,p,V(Math.sin(ph)*0.5,-1,Math.cos(ph)*0.5),(i%3)/2,i%2?F1:F2); }
-      for(let i=0;i<14;i++){ const ph=-Math.PI+i/14*Math.PI*2+0.2, th=0.5+(i%3)*0.25, p=dome(ph,th,0.002); tuft(gp,p,p.clone().sub(V(cx,top-ry,0)),0.2,F2); }
+      const dome=(ph,th,o)=>{ const ww=1+0.035*Math.sin(ph*5+th*3); return V(cx+(rx+(o||0))*ww*Math.sin(th)*Math.sin(ph), top-ry+(ry+(o||0)*0.8)*Math.cos(th), (rz+(o||0))*ww*Math.sin(th)*Math.cos(ph)); };
+      const TH=Math.PI*0.5; const pm=mesh(gp,surf((u,v)=>dome(-Math.PI+u*Math.PI*2,TH*(1-v)),28,6,{smooth:true,two:0.006}),F1,'fur'); pm.userData.softHead=1;
+      for(let i=0;i<18;i++){ const ph=-Math.PI+i/18*Math.PI*2+(i%2)*0.08, p=dome(ph,TH-0.02,0.002), d=V(Math.sin(ph)*0.45,-1,Math.cos(ph)*0.45); lock(gp,i%3?F1:(i%2?F2:F3),p,d,0.085+(i%3)*0.02,0.036).userData.softHead=1; }
       if(sd>0){ // the bear's head, worn on the left shoulder, its snout to the fore
         const hp=dome(Math.PI/2,0.35,0.02), hg=new THREE.Group(); hg.position.copy(hp); gp.add(hg); hg.userData.armor=gp.userData.armor;
-        mesh(hg,facetSphere(0.075,0.06,0.08,9,6),F1,'fur'); const sn=mesh(hg,facetSphere(0.04,0.035,0.06,8,5),F2,'fur'); sn.position.set(0,-0.008,0.075);
-        mesh(hg,facetSphere(0.014,0.011,0.01,6,4),cl0('nose',0x161210),'fur').position.set(0,0.004,0.13);
-        [-1,1].forEach(q=>{ const ear=mesh(hg,facetSphere(0.022,0.024,0.012,6,4),F1,'fur'); ear.position.set(q*0.05,0.055,-0.01);
-          const eye=mesh(hg,facetSphere(0.007,0.005,0.004,6,4),cl0('eye',0x0c0a08),'fur'); eye.position.set(q*0.03,0.022,0.06); }); } });
-    // the cloak of fur down the back, outside the cloth one, long and ragged at its hem
-    const RC=0.32, cape=(ph,y)=>{ const v=(YA-y)/0.72; return RC*(1.0+0.16*v)*(1+0.04*Math.sin(ph*9+v*4)); };
-    mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-0.76*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y-(v<0.02?0.05*tri(u*8+0.5):0),tz*r*Math.cos(ph)); },20,7,{smooth:true,two:0.006}),F1,'fur');
-    for(let i=0;i<20;i++){ const ph=Math.PI-1.3+2.6*i/19, y=YA-0.73+(i%2)*0.03, r=cape(ph,y)+0.004; tuft(g,V(r*Math.sin(ph),y,tz*r*Math.cos(ph)),V(0,-1,0),(i%3)/2,i%2?F1:F2); }
+        const sm=(rx2,ry2,rz2)=>{ const s2=new THREE.SphereGeometry(1,12,8); s2.scale(rx2,ry2,rz2); return s2; };
+        mesh(hg,sm(0.075,0.06,0.08),F1,'fur'); const sn=mesh(hg,sm(0.04,0.034,0.06),F2,'fur'); sn.position.set(0,-0.01,0.075);
+        mesh(hg,sm(0.015,0.011,0.01),pelt('_nose',0x161210),'fur').position.set(0,0.003,0.132);
+        [-1,1].forEach(q=>{ const ear=mesh(hg,sm(0.022,0.024,0.012),F3,'fur'); ear.position.set(q*0.05,0.055,-0.01);
+          const eye=mesh(hg,sm(0.007,0.005,0.004),pelt('_eye',0x0c0a08),'fur'); eye.position.set(q*0.03,0.022,0.06); }); } });
+    // the cloak of fur down the back, outside the cloth one; smooth, its hem in long locks
+    const RC=0.32, cape=(ph,y)=>{ const v=(YA-y)/0.72; return RC*(1.0+0.16*v)*(1+0.03*Math.sin(ph*7+v*3)); };
+    const cm=mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-0.72*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y,tz*r*Math.cos(ph)); },20,8,{smooth:true,two:0.006}),F1,'fur'); cm.userData.soft=1;
+    for(let i=0;i<22;i++){ const ph=Math.PI-1.3+2.6*i/21, y=YA-0.68, r=cape(ph,y)+0.002; lock(g,i%3?F1:(i%2?F2:F3),V(r*Math.sin(ph),y,tz*r*Math.cos(ph)),V(0,-1,-0.1),0.1+(i%3)*0.025,0.04); }
   });
   // bear's paws: heavy gauntlets with three curved claws over the knuckles and a spike on the back of the hand
   reg('gauntlets','guardian','Guardian claws',ctx=>{ const K=ctx.K, M=K.M, GD=GDm(M);
@@ -340,7 +339,7 @@
   const cl=(k,c)=>CLOTH[k]||(CLOTH[k]=new THREE.MeshPhongMaterial({color:c,shininess:4,specular:0x111111,side:THREE.DoubleSide}));
   const hoodC=()=>cl('hood',0x4b3d30), linen=()=>cl('linen',0x8f8068), breeches=()=>cl('breeches',0x3d352d);
   const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build}; };
-  reg0('helm','Plain hood',ctx=>hood(ctx,{mat:hoodC(),eyes:0x8a7a60}));
+  reg0('helm','Plain hood',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
   reg0('plume','No crest',ctx=>{ piece(ctx,ctx.K.rig.plume); });
   reg0('cowl','Hood’s collar',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);
     const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y-0.035, y1=E.max.y, w=Math.max(Math.abs(E.min.x),E.max.x);
