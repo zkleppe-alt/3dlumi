@@ -79,6 +79,7 @@ const MENU=(function(){
     System(S){ const slot=GAME.slot, hh=Math.floor(S.dayFrac*24), mm=Math.floor((S.dayFrac*24-hh)*60), ap=hh<12?'AM':'PM', h12=((hh+11)%12)+1;
       let h=row('Playing',`Slot ${slot} · ${E(S.name)} · Lv ${S.level} · ${S.chapels}/10`)+row('Time',`☀️ Day ${S.day} · ${h12}:${String(mm).padStart(2,'0')}${ap} · ⏱ ${Math.floor(S.playMs/3600000)}H${String(Math.floor(S.playMs/60000)%60).padStart(2,'0')}M played`);
       h+=sec('View')+['classic','grand'].map(m=>`<button class="gm-item ${VIEWMODE.mode===m?'worn':''}" data-act="view:${m}"><span>${m==='classic'?'🗺 Classic — the 2D game’s proportions':'🏔 Grand — people at 0.45×, the world towering over them (outdoors, for testing)'}</span>${VIEWMODE.mode===m?'<i>✓</i>':''}</button>`).join('')
+        +`<button class="gm-item ${ENGINE.fp?'worn':''}" data-act="fpcam"><span>👁 Camera: ${ENGINE.fp?'first person — through his eyes':'third person — behind him'} <span class="ds">tap to switch · takes effect at once</span></span><i>${ENGINE.fp?'1st':'3rd'}</i></button>`
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
         +sec('Controls')+`<button class="gm-item" data-act="keys"><span>⌨ Keyboard Controls <span class="ds">see and change every key · 🧪 potion is ${typeof KEYS!=='undefined'?KEYS.keysFor('potion'):'P'}</span></span></button>`
@@ -181,6 +182,7 @@ const MENU=(function(){
     else if(k==='decor'){ if(BOUNTY_API.cur){ toggle(false); BOUNTY_API.cur.place(v); } return; }
     else if(k==='travel'){ const t=SYS.MAP.towns.find(q=>q[0]===v); if(!t) return; toggle(false); ENGINE.go('world',{x:t[1]+0.5,z:t[2]+1.5,face:Math.PI}); setTimeout(()=>{ ENGINE.unstick(true); UI.toast(`🕊 You travel the roads to ${v}.`,1600); },900); return; }
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
+    else if(k==='fpcam'){ ENGINE.fp=!ENGINE.fp; render(true); return; }
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }
     else if(k==='gfx'){ if(typeof HUD!=='undefined') HUD.setTier(v); note='Graphics: '+v; render(true); return; }

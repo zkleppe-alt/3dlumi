@@ -143,7 +143,7 @@ function buildKnight(){
   add(new THREE.BoxGeometry(0.26,0.035,0.04),M.visor,0,0.035,0.14,head);
   add(new THREE.BoxGeometry(0.03,0.11,0.04),M.visor,0,-0.04,0.145,head);
   add(new THREE.BoxGeometry(0.03,0.27,0.03),M.helm,0,0.01,0.155,head);           // centre ridge
-  const plume=pivot(0,0.2,0,head);
+  const plume=pivot(0,0.2,0,head); K._head=head;   // V237: hidden in first person
   [[0,0.04,0.02,0.09,0.1,'plume'],[0,0.11,-0.06,0.08,0.12,'plumeHi'],[0,0.12,-0.16,0.07,0.1,'plume'],[0,0.08,-0.24,0.06,0.09,'plume'],[0,0.01,-0.29,0.05,0.08,'plumeHi']]
     .forEach(([x,y,z,w,h,m],i)=>{ const p=add(new THREE.BoxGeometry(0.055,h,w*1.2),M[m],x,y,z,plume); p.rotation.x=-0.5-i*0.32; });
 
@@ -602,12 +602,16 @@ function buildKnight(){
     //  leg folds at the knee (the hip keeping the foot under it) by as much as its ground rises. Only standing and walking,
     //  outdoors; the camera-near and the player first
     if(K.footIK&&(mode==='walk'||mode==='idle')&&!(K.air>0.02)&&!(K.dash>0)&&typeof ENGINE!=='undefined'&&ENGINE.level&&ENGINE.level.ground&&!ENGINE.level.interior&&!K._act) footIK();
+    /* V237: in first person, a one-handed blade and the shield are carried up before him, where you can see them */
+    { const want=K.fp&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)&&!K._act&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'?1:0;
+      K._fpw=(K._fpw||0)+(want-(K._fpw||0))*Math.min(1,dt*10); if(K._fpw>0.01){ const b=K._fpw, R=K._fpR||[-1.25,0.35,-0.2,-0.7,1.2], Lp=K._fpL||[-1.2,-0.5,0.3,-1.2,0], m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
+        if(K._shB){ const H=K._fpH||[-1.4,0.7,-0.1,-0.6,1.1]; m(AR.sh,'x',H[0]); m(AR.sh,'y',H[1]); m(AR.sh,'z',H[2]); m(AR.el,'x',H[3]); m(AR.hand,'x',H[4]); } else { m(AR.sh,'x',R[0]); m(AR.sh,'y',R[1]); m(AR.sh,'z',R[2]); m(AR.el,'x',R[3]); m(AR.hand,'x',R[4]); m(AL.sh,'x',Lp[0]); m(AL.sh,'y',Lp[1]); m(AL.sh,'z',Lp[2]); m(AL.el,'x',Lp[3]); m(AL.hand,'x',Lp[4]); } } }
     /* V236: a two-handed hilt really is held in both hands — the left hand is solved onto the grip just below the right, whatever the clip or the stance has the arms doing */
     { const ac=K._act&&K._act.n, want=K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&!(K.spinT>=0)&&!(K.charge>0)&&mode!=='sit'&&mode!=='ride'&&mode!=='lyre'&&mode!=='climb'&&mode!=='fish'&&ac!=='drawBack'&&ac!=='draw'&&!(K.dash>0)?1:0;
       K._2h=(K._2h||0)+(want-(K._2h||0))*Math.min(1,dt*14); if(K._2h>0.01) twoHand(Math.min(1,K._2h*1.15)); }
     /* V236: a bow at rest is carried upright in the left hand at his side, not dangling tip-down from the fist */
     { const want=K._fam==='bow'&&sword.parent===AL.hand&&K._st==='drawn'&&!K._bow&&swing<0&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&!K._act?1:0;
-      K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0], m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
+      K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K.fp?(K._bwPF||[-1.3,0.45,0.15,-0.6,1.2,0]):(K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0]), m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
         m(AL.sh,'x',P[0]); m(AL.sh,'y',P[1]); m(AL.sh,'z',P[2]); m(AL.el,'x',P[3]); m(AL.el,'y',0); m(AL.el,'z',0); m(AL.hand,'x',P[4]); m(AL.hand,'y',0); m(AL.hand,'z',P[5]); } }
     if(K._bowRig) bowString(dt);
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);

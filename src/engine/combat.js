@@ -217,8 +217,20 @@ const COMBAT=(function(){
      Reach: a tap shot about 12 tiles, a full draw about 25 (it was 9: a 2D screen's width). */
   const DRAW={min:0.32,full:0.85}, BOWR={tap:12,full:25}; let soft=null, aimHit=null;
   const bowRange=k=>BOWR.tap+(BOWR.full-BOWR.tap)*k;
-  const shoulder=()=>bowOn()&&pl.bDown&&!(ENGINE.level&&ENGINE.level.mounted&&ENGINE.level.mounted());
+  const shoulder=()=>bowOn()&&(pl.bDown||(pl.draw&&!(lock&&lock.alive)))&&!(ENGINE.level&&ENGINE.level.mounted&&ENGINE.level.mounted());   /* V237: drawing with no foe locked is free aim over the shoulder too */
   const camFw=()=>({x:-Math.sin(ENGINE.yaw),z:-Math.cos(ENGINE.yaw)});
+  /* V237: what a shaft can strike besides a foe — a tree's trunk, then whatever the level calls solid (walls, houses, rocks, a tree's tile) */
+  const PG=0.003;   // the drop (about true: an arrow at 30 tiles a second falls as a real one would), tiles a frame per frame
+  function projSolid(x,z,y){ const lv=ENGINE.level; if(!lv) return false; const gy=lv.ground?lv.ground(x,z):0;
+    if(lv.trunkAt){ const tx=Math.floor(x), tz=Math.floor(z); for(let j=-1;j<=1;j++) for(let i=-1;i<=1;i++){ const tr=lv.trunkAt(tx+i,tz+j); if(tr&&Math.hypot(x-tr.x,z-tr.z)<tr.r+0.1&&y<gy+2.1*tr.s) return 'tree'; } }
+    if(lv.camBlock){ if(!lv.camBlock(x,z,y)) return false; const t=lv.tileAt?lv.tileAt(Math.floor(x),Math.floor(z)):-1; return t===1?'tree':'wall'; }
+    return !walk(x,z)&&y<gy+2.6?'wall':false; }
+  /* where the crosshair rests: along the camera's look, the first thing solid (or a foe), else far off */
+  function aimPoint(){ const cam=ENGINE.cam, lv=ENGINE.level, c=A(); if(!cam) return null; cam.updateMatrixWorld(); const o=cam.position, d=cam.getWorldDirection(new THREE.Vector3()), ps=Math.max(0.6,VIEWMODE.ps(lv)), p=P();
+    const pd=(p.x-o.x)*d.x+(p.y+1.3*ps-o.y)*d.y+(p.z-o.z)*d.z, s0=Math.max(0.5,pd+0.6);   // start past the knight himself
+    for(let s=s0;s<45;s+=0.25){ const x=o.x+d.x*s, y=o.y+d.y*s, z=o.z+d.z*s; if(lv.ground&&y<=lv.ground(x,z)) return {x,y,z}; if(projSolid(x,z,y)) return {x,y,z};
+      if(c) for(const f of c.foes){ if(!f.alive) continue; const fb=lv.ground(f.x,f.z)+(f.alt||0); if(Math.hypot(f.x-x,f.z-z)<0.5+(f.boss?0.3:0)&&y>fb&&y<fb+(f.boss?2.8:1.7)*ps) return {x,y,z}; } }
+    return {x:o.x+d.x*45,y:o.y+d.y*45,z:o.z+d.z*45}; }
   function bowPick(fw,R,cone){ const c=A(), p=P(); if(!c) return null; let best=null, bs=1e9;
     c.foes.forEach(d=>{ if(!d.alive||d.ghost) return; const vx=d.x-p.x, vz=d.z-p.z, dist=Math.hypot(vx,vz); if(dist>R+(d.boss?1:0)||dist<1e-3) return;
       const dot=(vx*fw.x+vz*fw.z)/dist; if(cone){ const side=Math.abs(vx*fw.z-vz*fw.x); if(dot<0.5||side>0.7+(d.boss?0.6:0)+dist*0.03) return; const sc=side+dist*0.02; if(sc<bs&&los(p.x,p.z,d.x,d.z)){ bs=sc; best=d; } return; }
@@ -239,7 +251,10 @@ const COMBAT=(function(){
   function loose(){ const c=A(), d=pl.draw; if(!d) return; const k=Math.max(0.25,drawK()); pl.draw=null; ENGINE.K._bow={ph:'loose',t:0}; if(!c) return;
     const p=P(), tg=bowTarget(k), R=bowRange(k); let f=fv(); if(tg){ const dx=tg.x-p.x, dz=tg.z-p.z, l=Math.hypot(dx,dz)||1; f={x:dx/l,z:dz/l}; } else if(shoulder()) f=camFw();
     const kind=projKind(), m=projMesh(kind); c.fx.add(m); const sp=(0.3+0.2*k)*(kind==='axe'?0.62:kind==='stone'?0.8:1), life=Math.ceil(R/sp);   // tiles a frame: a full draw flies about 30 a second (an axe slower)
-    c.arrows.push({kind,x:p.x+f.x*0.35,z:p.z+f.z*0.35,vx:f.x*sp,vz:f.z*sp,sp,t:life,t0:life,m,pow:(0.7+0.6*k)*(kind==='axe'?1.25:kind==='bolt'?1.15:1),tg:tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5?tg:null}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
+    const lv=ENGINE.level, ps=Math.max(0.6,VIEWMODE.ps(lv)), x0=p.x+f.x*0.35, z0=p.z+f.z*0.35, y0=(p.y!==undefined?p.y:lv.ground(p.x,p.z))+1.35*ps; let vx=f.x*sp, vz=f.z*sp, vy=0.5*PG*life;   /* V237: loosed from the shoulder */
+    if(shoulder()){ const T=aimPoint(); if(T){ const dx=T.x-x0, dy=T.y-y0, dz=T.z-z0, D=Math.hypot(dx,dy,dz)||1, hd=Math.hypot(dx,dz), tt=Math.max(1,hd/sp); vx=dx/D*sp; vz=dz/D*sp; vy=dy/D*sp+0.5*PG*tt; } }   // free aim: straight down the crosshair, up or down, a touch high for the drop
+    else if(tg){ const hd=Math.hypot(tg.x-x0,tg.z-z0), tt=Math.max(1,hd/sp), ty=lv.ground(tg.x,tg.z)+(tg.alt||0)+(tg.boss?1.5:0.85)*ps; vy=(ty-y0)/tt+0.5*PG*tt; }
+    c.arrows.push({kind,x:x0,z:z0,y:y0,vx,vz,vy,d0:0,sp,t:life,t0:life,m,pow:(0.7+0.6*k)*(kind==='axe'?1.25:kind==='bolt'?1.15:1),tg:!shoulder()&&tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5?tg:null}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
   function drawTick(){ const c=A(), p=P(), sh=c&&shoulder(); if(sh) pl.blocking=false; { const lb=bowOn()?'Aim':'Guard'; if(guardB.textContent!==lb) guardB.textContent=lb; }
     if(!c||!bowOn()){ if(pl.draw){ pl.draw=null; ENGINE.K._bow=null; } showRet(false); aimHit=null; return; }
     const k=drawK(), R=bowRange(Math.max(0.25,k)), cam=ENGINE.cam;
@@ -424,16 +439,25 @@ const COMBAT=(function(){
       else { const dx=p.x-a.x, dz=p.z-a.z, m=Math.hypot(dx,dz)||1; a.x+=dx/m*a.speed; a.z+=dz/m*a.speed; } if(a.hurt>0) a.hurt--;
       if(Math.hypot(p.x-a.x,p.z-a.z)<0.7) hurtFromBoss(a.dmg!==undefined?a.dmg:4+a.level*0.7); });
     c.adds=c.adds.filter(a=>{ if(a.alive) return true; if(a.g&&a.g.parent) a.g.parent.remove(a.g); return false; });
-    c.arrows.forEach(s=>{ if(s.tg&&s.tg.alive){ const dx=s.tg.x-s.x, dz=s.tg.z-s.z, a0=Math.atan2(s.vx,s.vz); let da=Math.atan2(dx,dz)-a0; da=Math.atan2(Math.sin(da),Math.cos(da)); if(Math.abs(da)<1.1){ const a=a0+Math.max(-0.14,Math.min(0.14,da)), sp=s.sp||Math.hypot(s.vx,s.vz); s.vx=Math.sin(a)*sp; s.vz=Math.cos(a)*sp; } else s.tg=null; }   /* V231: it keeps to its mark */
-      if(s.stuck){ return; }   /* V236: lodged — it stays where it struck */
-      for(let sub=0;sub<2&&s.t>0;sub++){ s.x+=s.vx/2; s.z+=s.vz/2; if(!walk(s.x,s.z)){ s.t=0; s.x-=s.vx/4; s.z-=s.vz/4; s.stuck={w:1,t:420,y:s.y0}; break; }
-      for(const d of c.foes){ if(!d.alive) continue; const vx=d.x-s.x, vz=d.z-s.z, dist=Math.hypot(vx,vz); if(dist>0.56+(d.boss?0.3:0)) continue;
-        let dmg=Math.max(1,Math.round(S().atk*(s.pow||1))+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
-        dmg=bossHitGate(d,dmg); s.t=0; if(!s.stuck) s.stuck=s.kind==='stone'?{g:1,t:150,x:s.x,z:s.z,y:s.y0}:{d,ox:s.x-d.x,oz:s.z-d.z,t:300}; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; } } s.t--;
-      if(s.t<=0&&!s.stuck) s.stuck={g:1,t:420,x:s.x,z:s.z,y:s.y0}; });   /* V236: a miss comes down and sticks in the ground */
-    c.arrows.forEach(s=>{ const k=s.stuck; if(!k||!k.d||k.d.alive!==false) return; const n=Math.hypot(k.ox,k.oz)||1; s.stuck={g:1,t:300,x:k.d.x+k.ox/n*0.4,z:k.d.z+k.oz/n*0.4,y:s.y0}; });   /* the foe falls, the arrow drops beside him */
-    c.arrows=c.arrows.filter(s=>{ if(s.t>0) return true; if(s.stuck&&s.stuck.t-->0) return true; c.fx.remove(s.m); return false; });
-    if(c.arrows.length>40){ const old=c.arrows.filter(s=>s.stuck&&s.t<=0).slice(0,c.arrows.length-40); old.forEach(s=>{ s.stuck.t=Math.min(s.stuck.t,20); }); }   /* V236: lodged shafts last several seconds — capped, so a long fight doesn't bristle forever */
+    /* V237: shafts fly in three dimensions — up or down where they were aimed, a little drop, homing only for a tap-fire at a marked foe —
+       and lodge where they strike: a foe, the ground, a wall, a tree's trunk */
+    c.arrows.forEach(s=>{ if(s.stuck) return; const lv=ENGINE.level, ps=Math.max(0.6,VIEWMODE.ps(lv)), gnd=(x,z)=>lv.ground?lv.ground(x,z):0;
+      if(s.y===undefined){ s.y=gnd(s.x,s.z)+1.2*ps; s.vy=0; s.d0=0; }
+      if(s.tg&&s.tg.alive){ const dx=s.tg.x-s.x, dz=s.tg.z-s.z, a0=Math.atan2(s.vx,s.vz); let da=Math.atan2(dx,dz)-a0; da=Math.atan2(Math.sin(da),Math.cos(da)); if(Math.abs(da)<1.1){ const a=a0+Math.max(-0.14,Math.min(0.14,da)), sp=Math.hypot(s.vx,s.vz); s.vx=Math.sin(a)*sp; s.vz=Math.cos(a)*sp;
+          const hd=Math.hypot(dx,dz), T=Math.max(1,hd/(sp||0.3)), ty=gnd(s.tg.x,s.tg.z)+(s.tg.alt||0)+(s.tg.boss?1.5:0.85)*ps; s.vy+=(((ty-s.y)/T+0.5*PG*T)-s.vy)*0.35; } else s.tg=null; }
+      const spent=s.t<=0; s.vy-=PG*(spent?3:1);
+      for(let sub=0;sub<3&&!s.stuck;sub++){ const ox=s.x, oy=s.y, oz=s.z; s.x+=s.vx/3; s.z+=s.vz/3; s.y+=s.vy/3; s.d0+=Math.hypot(s.vx,s.vz)/3;
+        let hit=false;
+        for(const d of c.foes){ if(!d.alive) continue; const vx=d.x-s.x, vz=d.z-s.z, dist=Math.hypot(vx,vz); if(dist>0.56+(d.boss?0.3:0)) continue; const fb=gnd(d.x,d.z)+(d.alt||0); if(s.y<fb-0.2||s.y>fb+(d.boss?2.8:1.75)*ps) continue;
+          let dmg=Math.max(1,Math.round(S().atk*(s.pow||1))+(Math.random()*5|0)-2); const crit=Math.random()<S().crit; if(crit) dmg=Math.round(dmg*1.8);
+          dmg=bossHitGate(d,dmg); s.t=0; s.stuck=s.kind==='stone'?{g:1,t:150,x:s.x,z:s.z}:{d,ox:s.x-d.x,oz:s.z-d.z,h:Math.max(0.35,(s.y-fb)/ps),t:300}; hit=true; if(dmg<0){ d.hurt=3; break; } hitFoe(d,dmg,crit,vx,vz,dist,4); pl.comboT=48; break; }
+        if(hit) break;
+        const gy=gnd(s.x,s.z); if(s.y<=gy){ s.t=0; s.stuck={g:1,t:420,x:s.x,z:s.z,pitch:Math.atan2(-s.vy,Math.hypot(s.vx,s.vz))}; break; }
+        const wh=s.d0>0.6&&projSolid(s.x,s.z,s.y); if(wh){ s.t=0; const bk=s.kind==='stone'?0.25:0.05; s.stuck=s.kind==='stone'?{g:1,t:150,x:ox-s.vx*bk,z:oz-s.vz*bk}:{w:1,t:480,x:ox+(s.x-ox)*0.6,z:oz+(s.z-oz)*0.6,y:oy+(s.y-oy)*0.6,pitch:Math.atan2(-s.vy,Math.hypot(s.vx,s.vz)),tree:wh==='tree'}; break; } }
+      s.t--; if(!s.stuck&&s.t<-240) s.stuck={g:1,t:60,x:s.x,z:s.z}; });
+    c.arrows.forEach(s=>{ const k=s.stuck; if(!k||!k.d||k.d.alive!==false) return; const n=Math.hypot(k.ox,k.oz)||1; s.stuck={g:1,t:300,x:k.d.x+k.ox/n*0.4,z:k.d.z+k.oz/n*0.4,y:s.m.position.y}; });   /* the foe falls, the arrow drops beside him */
+    c.arrows=c.arrows.filter(s=>{ if(!s.stuck) return true; if(s.stuck.t-->0) return true; c.fx.remove(s.m); return false; });
+    if(c.arrows.length>40){ const old=c.arrows.filter(s=>s.stuck).slice(0,c.arrows.length-40); old.forEach(s=>{ s.stuck.t=Math.min(s.stuck.t,20); }); }   /* V236: lodged shafts last several seconds — capped, so a long fight doesn't bristle forever */
     if(cfg.tick) cfg.tick(); }
   // V146: every demon fights its own way, and every blow is shown before it comes — the demon's whole body flashes red as
   //  it winds up (bright on the last beat: that's the moment to guard). Its FORM says how it fights:
@@ -606,15 +630,16 @@ const COMBAT=(function(){
     c.adds.forEach(a=>{ a.g.position.set(a.x,lv.ground(a.x,a.z),a.z); if(a.g.animate){ a.g.animate(dt,a.moving||a.walking?'walk':'idle',1); a.g.rotation.y=a.walking?Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z):ENGINE.P.face; } else a.g.rotation.y=Math.atan2(ENGINE.P.x-a.x,ENGINE.P.z-a.z); });
     c.shots.forEach(s=>s.m.position.set(s.x,lv.ground(s.x,s.z)+0.9,s.z));
     c.arrows.forEach(s=>{ const ps=Math.max(0.8,VIEWMODE.ps(lv));   /* V235: drawn a little larger, so a shot can be followed */
-      if(s.stuck&&s.t<=0){ const k=s.stuck, sc=ps*Math.min(1,k.t/20); s.m.scale.setScalar(Math.max(0.001,sc)); s.m.children.forEach(o=>{ if(o.material&&o.material.transparent) o.visible=false; });   /* V236: lodged — in the foe, the ground or the wall it struck; it shrinks away only at the very end */
+      if(s.stuck){ const k=s.stuck, sc=ps*Math.min(1,k.t/20); s.m.scale.setScalar(Math.max(0.001,sc)); s.m.children.forEach(o=>{ if(o.material&&o.material.transparent) o.visible=false; });   /* V236/V237: lodged — in the foe, the ground, a wall or a tree; it shrinks away only at the very end */
         const sp=s.kind==='axe'?s.m.getObjectByName('spin'):null, fy=s.m.rotation.y, bk=s.kind==='axe'?0.06:s.kind==='stone'?0:0.16;
         if(k.d){ const d=k.d, n=Math.hypot(k.ox,k.oz)||1, R=d.boss?0.55:0.3; if(k.h===undefined) k.h=(d.boss?1.3:0.75)+Math.random()*0.35; if(k.r===undefined) k.r=(Math.random()-0.5)*0.5;
-          s.m.position.set(d.x+k.ox/n*R-Math.sin(fy)*bk*ps,lv.ground(d.x,d.z)+k.h*ps,d.z+k.oz/n*R-Math.cos(fy)*bk*ps); s.m.rotation.x=0.15+k.r*0.3; if(sp) sp.rotation.x=Math.PI/2; }
-        else { const gy=lv.ground(k.x,k.z); if(k.w){ if(k.y==null) k.y=gy+0.8*ps; s.m.position.set(k.x,k.y,k.z); s.m.rotation.x=0.1; if(sp) sp.rotation.x=Math.PI/2; }
-          else { const lie=s.kind==='stone'?0.05:s.kind==='axe'?0.14:0.1, y1=gy+lie*ps; k.fy=k.fy==null?(k.y!=null?k.y:y1+0.4):k.fy+(y1-k.fy)*0.35; s.m.position.set(k.x,k.fy,k.z); s.m.rotation.x=s.kind==='stone'?0:s.kind==='axe'?0:0.95; if(sp) sp.rotation.x=Math.PI; } }
+          s.m.position.set(d.x+k.ox/n*R-Math.sin(fy)*bk*ps,lv.ground(d.x,d.z)+(d.alt||0)+k.h*ps,d.z+k.oz/n*R-Math.cos(fy)*bk*ps); s.m.rotation.x=0.15+k.r*0.3; if(sp) sp.rotation.x=Math.PI/2; }
+        else if(k.w){ const cp=Math.cos(k.pitch||0); s.m.position.set(k.x-Math.sin(fy)*bk*ps*cp,k.y+Math.sin(k.pitch||0)*bk*ps,k.z-Math.cos(fy)*bk*ps*cp); s.m.rotation.x=(k.pitch||0)*0.8+0.05; if(sp) sp.rotation.x=Math.PI/2; if(k.q===undefined){ k.q=0.12; } if(k.q>0){ s.m.rotation.z+=Math.sin(k.q*90)*k.q*0.5; k.q=Math.max(0,k.q-0.008); } }   /* in the wood: a thunk and a quiver */
+        else { const gy=lv.ground(k.x,k.z), lie=s.kind==='stone'?0.05:s.kind==='axe'?0.14:0.1, y1=gy+lie*ps; k.fy=k.fy==null?(k.y!=null?k.y:y1):k.fy+(y1-k.fy)*0.35; s.m.position.set(k.x,k.fy,k.z);
+          s.m.rotation.x=s.kind==='stone'||s.kind==='axe'?0:Math.max(0.5,Math.min(1.3,k.pitch!=null?k.pitch+0.2:0.95)); if(sp) sp.rotation.x=Math.PI; }
         return; }
-      const u=s.t0?1-s.t/s.t0:0.5; s.m.scale.setScalar(ps); s.m.position.set(s.x,lv.ground(s.x,s.z)+(1.15+0.5*u-1.1*u*u)*ps,s.z); s.y0=s.m.position.y; s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz);
-      if(s.kind==='axe'){ s.m.rotation.x=0; s.m.rotation.z=0; { const sp=s.m.getObjectByName('spin'); if(sp) sp.rotation.x-=0.55; } } else if(s.kind==='stone'){ s.m.rotation.x=0; } else { s.m.rotation.x=-0.12+0.42*u; s.m.rotation.z+=0.5; } });   /* V213: a shallow arc, nose rising then dropping, the shaft spinning */
+      s.m.scale.setScalar(ps); s.m.position.set(s.x,s.y,s.z); s.m.rotation.order='YXZ'; s.m.rotation.y=Math.atan2(s.vx,s.vz);
+      if(s.kind==='axe'){ s.m.rotation.x=0; s.m.rotation.z=0; { const sp=s.m.getObjectByName('spin'); if(sp) sp.rotation.x-=0.55; } } else if(s.kind==='stone'){ s.m.rotation.x=0; } else { s.m.rotation.x=-Math.atan2(s.vy,Math.hypot(s.vx,s.vz)); s.m.rotation.z+=0.5; } });   /* V237: the nose follows the flight */
     c.rings=c.rings.filter(r=>{ r.t+=dt;
       if(r.bit){ const b=r.bit; r.m.position.x+=b.vx*dt; r.m.position.z+=b.vz*dt; r.m.position.y+=b.vy*dt; b.vy-=9*dt; r.m.rotation.x+=dt*8; const life=b.dust?0.55:0.35; r.m.scale.setScalar(Math.max(0.05,1-r.t/life)); if(r.t>=life){ c.fx.remove(r.m); return false; } return true; }
       if(r.slash){ const k=r.t/0.16; r.m.material.opacity=(r.m.userData.op||0.75)*(1-k); if(k>=1){ c.fx.remove(r.m); return false; } return true; }
@@ -627,12 +652,14 @@ const COMBAT=(function(){
   // how fast you can walk just now: a swing roots you (you can still turn and edge), a guard or a charging blade slows you
   function moveMul(){ if(pl.draw) return 0.3; if(shoulder()) return 0.55; return pl.swing>0?(pl.swing>pl.swingDur*0.35?0.25:0.6):pl.blocking?0.6:charge.on&&charge.k>0?0.55:1; }
   /* V231: over the shoulder while you aim — set after the follow camera each frame (core.js) */
+  const aimPitch=()=>Math.max(-0.95,Math.min(1.1,-(ENGINE.pitch-0.3)*1.25));   // the follow camera's height becomes the aim's rise: the higher the camera rides, the lower the shot
   let aimMix=0, fov0=0; function aimCam(cam,dt){ const on=!!A()&&shoulder(); aimMix+=((on?1:0)-aimMix)*Math.min(1,(dt||0.016)*9); if(!fov0) fov0=cam.fov;
     if(aimMix<0.003){ if(cam.fov!==fov0){ cam.fov=fov0; cam.updateProjectionMatrix(); } if(!on&&!pl.draw) showRet(false); return; }
+    if(ENGINE.fpMix>0.5){ const f=fov0*(1-0.18*aimMix); if(Math.abs(cam.fov-f)>0.01){ cam.fov=f; cam.updateProjectionMatrix(); } return; }   /* V237: in first person the eyes are the aim — only the zoom */
     const p=P(), y=ENGINE.yaw, ps=Math.max(0.6,VIEWMODE.ps(ENGINE.level)), fw={x:-Math.sin(y),z:-Math.cos(y)}, rt={x:Math.cos(y),z:-Math.sin(y)};
     const ex=p.x-fw.x*2.1*ps+rt.x*0.7*ps, ez=p.z-fw.z*2.1*ps+rt.z*0.7*ps, ey=p.y+1.75*ps; _v3.set(ex,ey,ez); cam.position.lerp(_v3,aimMix);
-    const L0=new THREE.Vector3(); cam.getWorldDirection(L0); L0.multiplyScalar(22).add(cam.position); const L1=_v3.set(p.x+fw.x*22,p.y+1.2*ps,p.z+fw.z*22);
+    const ap=aimPitch(), cp=Math.cos(ap), L0=new THREE.Vector3(); cam.getWorldDirection(L0); L0.multiplyScalar(22).add(cam.position); const L1=_v3.set(ex+fw.x*22*cp,ey+Math.sin(ap)*22,ez+fw.z*22*cp);   /* V237: the look goes up and down too */
     cam.lookAt(L0.lerp(L1,aimMix)); const f=fov0*(1-0.18*aimMix); if(Math.abs(cam.fov-f)>0.01){ cam.fov=f; cam.updateProjectionMatrix(); } }
-  return { aimCam, get aiming(){ return !!A()&&shoulder(); }, moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hitBy:(d,dmg,fx,fz)=>hitBy(d,dmg,fx,fz), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
+  return { _aimPoint:()=>aimPoint(), aimCam, get aiming(){ return !!A()&&shoulder(); }, moveMul, nightify, chargeStart, chargeRelease, get charging(){ return charge.on&&charge.k>0; }, arena, foe, add, shot, clear, meter, tint(col,o){ tintV.style.boxShadow=`inset 0 0 120px 40px ${col}`; tintV.style.opacity=o; }, hurtFromBoss:(d,p)=>hurtFromBoss(d,p), hitBy:(d,dmg,fx,fz)=>hitBy(d,dmg,fx,fz), hurtRaw:(inc,ifr)=>{ if(pl.iframes>0) return; pl.iframes=ifr; takeHit(inc); }, blocking:()=>pl.blocking, attack, bDown, bUp, dodge, frame, reset, pl, PX, solid, toggleLock, switchLock, lockTarget:()=>lock&&lock.alive?lock:null, landed, get shakeAmt(){ return shake; }, demonModel, knightModel, pop, takeHit, get later(){ return later; }, mirrorBurst(tl){
     if(pl.iframes>0) return; let inc=Math.max(1,Math.round((8+tl*0.5)-S().def*0.4)); if(pl.blocking) inc=Math.max(1,Math.ceil(inc*0.4)); pl.iframes=18; takeHit(inc); } };
 })();

@@ -179,6 +179,11 @@ const ENGINE=(function(){
   // ── mouse and keyboard: click the game to steer the view with the mouse (pointer lock), as a PC action game does —
   //    left click swings (or reads on, in a conversation), hold right click to guard, middle click locks on; while locked on,
   //    a sharp flick of the mouse switches to the next foe that side. Esc (or any menu) frees the cursor. ──
+  /* V237: FIRST PERSON — a setting (☰ System → View), switched live: the camera rides at his eyes, his helm hidden, his hands and
+     blade before him. It steps back out to the follow camera wherever first person can't serve (riding, a seat, a cutscene, a minigame). */
+  let FP=false; try{ FP=localStorage.getItem('klk3d_fp')==='1'; }catch(e){} let fpMix=0, fpHid=false, fpFov=false; const _fpE=new THREE.Vector3(), _fpL=new THREE.Vector3(), _fpT=new THREE.Vector3();
+  const fpOK=()=>FP&&L&&!L.custom&&!L.cine&&!(L.mounted&&L.mounted())&&!(holdT>0);
+  const fpElev=()=>Math.max(-1.25,Math.min(1.15,-(pitch-0.45)*1.25));   // in first person the look's rise: drag up to look up
   let mlock=false, flick=0, flickT=0; const MS=()=>typeof KEYS!=='undefined'&&KEYS.mouse?KEYS.mouse():{sens:1,inv:false};
   const lockable=()=>L&&!L.custom&&!UI.open&&!(MENU&&MENU.open)&&!busy;
   cv.addEventListener('mousedown',e=>{ if(!mlock){ if(e.button===0&&lockable()&&matchMedia('(pointer:fine)').matches&&cv.requestPointerLock){ try{ const r=cv.requestPointerLock(); if(r&&r.catch) r.catch(()=>{}); }catch(_){} } return; }
@@ -279,6 +284,8 @@ const ENGINE=(function(){
     if(typeof COMBAT!=='undefined'&&L.combat){ const tg=COMBAT.lockTarget(); if(tg&&!(convo||busy||paused||hold)){   // locked on: face the foe, and the camera swings round behind you to frame it (the look stick still nudges it)
         const want=Math.atan2(tg.x-P.x,tg.z-P.z); if(!COMBAT.pl.dashing){ let d=want-P.face; d=Math.atan2(Math.sin(d),Math.cos(d)); P.face+=d*Math.min(1,dt*14); }
         if(!lookV.y){ let dy=(want+Math.PI)-yaw; dy=Math.atan2(Math.sin(dy),Math.cos(dy)); yaw+=dy*Math.min(1,dt*5); } } }
+    if(fpOK()&&!(convo||busy||paused)&&!(typeof COMBAT!=='undefined'&&COMBAT.pl&&COMBAT.pl.dashing>0)){ let d=(yaw+Math.PI)-P.face; d=Math.atan2(Math.sin(d),Math.cos(d)); P.face+=d*Math.min(1,dt*18); }   /* V237: in first person he faces where you look */
+    K.fp=fpMix>0.5;
     K.animate(dt,hold&&holdMode?holdMode:l>0.08?'walk':'idle',Math.min(1,l)/ps); K.position.set(P.x,P.y+J.h+(typeof COMBAT!=='undefined'?COMBAT.pl.jumpY*ps:0),P.z); K.falling=J.on&&J.fall?J.fallT:0; if(J.on) K.air=Math.max(K.air||0,J.fall?1:Math.min(1,J.h*1.4+0.25)); else if(!L.combat) K.air=0; K.rotation.y=P.face+(K.spinA||0);   // (small legs step faster to cover the same ground)
     if(typeof DIALOGUE!=='undefined'&&(++presT%20)===0) L.folk.forEach(f=>{ if(!f.key) return; const on=DIALOGUE.present(f.key);   // who the story has here now
       if(!on&&!f._phide){ f._phide=true; f.g.visible=false; f.mute=true; f.ghost=true; } else if(on&&f._phide){ f._phide=false; f.g.visible=true; f.mute=false; f.ghost=false; } });
@@ -324,8 +331,16 @@ const ENGINE=(function(){
     if(L.follow) L.follow(P);
     if(L.cine) L.cine(cam,dt);   /* V150: a level's own cutscene camera (it blends from the follow camera and back) */
     if(typeof COMBAT!=='undefined'&&COMBAT.aimCam&&L.combat&&!L.cine) COMBAT.aimCam(cam,dt);   /* V231: the bow's over-the-shoulder aim */
+    { const want=fpOK()?1:0; fpMix+=(want-fpMix)*Math.min(1,dt*(want?7:9)); if(fpMix<0.002) fpMix=0;   /* V237: first person */
+      const hide=fpMix>0.35; if(hide!==fpHid){ fpHid=hide; if(K._head) K._head.visible=!hide; if(K._plume) K._plume.visible=!hide; }
+      if(fpMix>0){ K.visible=true; const ps2=Math.max(0.5,VIEWMODE.ps(L)); K.updateMatrixWorld(true); if(K._head) K._head.localToWorld(_fpE.set(0,0.1,K._fpZ!==undefined?K._fpZ:-0.05)); else _fpE.set(P.x,P.y+1.6*ps2,P.z);
+        const el=fpElev(), ce=Math.cos(el), fw=_fpT.set(-Math.sin(yaw)*ce,Math.sin(el),-Math.cos(yaw)*ce);
+        _fpE.x-=Math.sin(yaw)*0.06*ps2; _fpE.z-=Math.cos(yaw)*0.06*ps2;   // just before the visor
+        cam.getWorldDirection(_fpL); _fpL.multiplyScalar(8).add(cam.position);
+        cam.position.lerp(_fpE,fpMix); const tgt=_fpT.multiplyScalar(8).add(_fpE); cam.lookAt(_fpL.lerp(tgt,fpMix)); }
+      if(fpMix>0||fpFov){ const base=L.combat&&typeof COMBAT!=='undefined'&&COMBAT.aimCam?cam.fov:55, f=base*(1+(K._fpFov!==undefined?K._fpFov:0.3)*fpMix); if(Math.abs(cam.fov-f)>0.01){ cam.fov=f; cam.updateProjectionMatrix(); } fpFov=fpMix>0; } }   // a wider eye, so his hands are in it
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     { const PO=window.KLK_POST; if(PO&&PO.on) PO.render(L.scene,cam); else R.render(L.scene,cam); } requestAnimationFrame(frame); }   /* V135: High/Ultra draw through post.js */
 
-  return { pace:PACE, add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, knock(fx,fz){ if(J.on||(L&&L.mounted&&L.mounted())) return false; const dx=P.x-fx, dz=P.z-fz, d=Math.hypot(dx,dz)||1; P.face=Math.atan2(-dx,-dz); holdT=2.65; holdMode='knock'; K._kn=0; K._kmode=false; J.kx=dx/d; J.kz=dz/d; J.kt=0.55; if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('knock'); }catch(_){} return true; },   /* V165: shoved over (Dylan): he faces the shove and goes down backwards */ get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
+  return { pace:PACE, add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get pitch(){ return pitch; }, set pitch(v){ pitch=v; }, get fp(){ return FP; }, set fp(v){ FP=!!v; try{ localStorage.setItem('klk3d_fp',FP?'1':'0'); }catch(e){} if(FP) pitch=0.45; }, get fpMix(){ return fpMix; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, knock(fx,fz){ if(J.on||(L&&L.mounted&&L.mounted())) return false; const dx=P.x-fx, dz=P.z-fz, d=Math.hypot(dx,dz)||1; P.face=Math.atan2(-dx,-dz); holdT=2.65; holdMode='knock'; K._kn=0; K._kmode=false; J.kx=dx/d; J.kz=dz/d; J.kt=0.55; if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('knock'); }catch(_){} return true; },   /* V165: shoved over (Dylan): he faces the shove and goes down backwards */ get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();

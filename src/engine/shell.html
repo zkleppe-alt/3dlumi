@@ -271,6 +271,8 @@ body.mlook #stick,body.mlook #swing,body.mlook #guardBtn,body.mlook #jumpBtn{vis
 (function(){ var shown=0; function say(t){ if(shown++>3) return; var m=document.getElementById('err'); if(!m) return; m.hidden=false; m.style.cssText+=';z-index:99999;background:rgba(10,8,16,.92);color:#f3ead6;padding:14px;border-radius:10px;font:14px/1.4 sans-serif;white-space:pre-wrap';
     m.textContent=(shown>1?m.textContent+'\n':'The game hit a problem starting up:\n')+t+(shown===1?'\n\nTry a hard refresh (Ctrl+Shift+R). If it keeps happening, send this message to the developer.':''); }
   window.addEventListener('error',function(e){ var el=e.target; if(el&&el.tagName==='SCRIPT'){ say('Could not load '+(el.getAttribute('src')||'a script')+' (a network or school/office filter may be blocking it).'); return; }
+    /* V237: not ours — a browser's own injected script (Brave's wallet: window.ethereum…), an extension, or a cross-origin "Script error." with nothing in it — is no reason to alarm anyone */
+    var fn=String(e.filename||''), msg=String(e.message||''); if(/^Script error\.?$/.test(msg)||/ethereum|web3|solana|phantom|metamask|__gCrWeb|webkit\.messageHandlers/i.test(msg)||(!fn&&(e.lineno||0)<=1)||/^(chrome|moz|safari|safari-web|ms-browser)-?extension:|^webkit-masked-url:/i.test(fn)||(fn&&/^https?:/.test(location.protocol)&&/^https?:/.test(fn)&&fn.indexOf(location.origin)!==0)) return;
     if(e.message) say(e.message+(e.filename?' ('+String(e.filename).split('/').pop()+':'+e.lineno+')':'')); },true);
   window.__klkErr=say; })();
 </script>
