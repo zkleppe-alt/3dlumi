@@ -604,28 +604,38 @@ function buildKnight(){
     if(K.footIK&&(mode==='walk'||mode==='idle')&&!(K.air>0.02)&&!(K.dash>0)&&typeof ENGINE!=='undefined'&&ENGINE.level&&ENGINE.level.ground&&!ENGINE.level.interior&&!K._act) footIK();
     /* V237: in first person, a one-handed blade and the shield are carried up before him, where you can see them */
     { const want=K.fp&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)&&!K._act&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'?1:0;
-      K._fpw=(K._fpw||0)+(want-(K._fpw||0))*Math.min(1,dt*10); if(K._fpw>0.01){ const b=K._fpw, R=K._fpR||[-1.25,0.35,-0.2,-0.7,1.2], Lp=K._fpL||[-1.2,-0.5,0.3,-1.2,0], m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
-        if(K._shB){ const H=K._fpH||[-1.4,0.7,-0.1,-0.6,1.1]; m(AR.sh,'x',H[0]); m(AR.sh,'y',H[1]); m(AR.sh,'z',H[2]); m(AR.el,'x',H[3]); m(AR.hand,'x',H[4]); } else { m(AR.sh,'x',R[0]); m(AR.sh,'y',R[1]); m(AR.sh,'z',R[2]); m(AR.el,'x',R[3]); m(AR.hand,'x',R[4]); m(AL.sh,'x',Lp[0]); m(AL.sh,'y',Lp[1]); m(AL.sh,'z',Lp[2]); m(AL.el,'x',Lp[3]); m(AL.hand,'x',Lp[4]); } } }
+      K._fpw=(K._fpw||0)+(want-(K._fpw||0))*Math.min(1,dt*10); if(K._fpw>0.01){ const b=K._fpw, R=K._fpR||[-1.55,0.35,-0.2,-0.6,1.3], Lp=K._fpL||[-1.5,-0.5,0.3,-1.0,0], m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
+        if(K._shB){ const H=K._fpH||[-1.85,0.75,-0.2,-0.35,0.8]; m(AR.sh,'x',H[0]); m(AR.sh,'y',H[1]); m(AR.sh,'z',H[2]); m(AR.el,'x',H[3]); m(AR.hand,'x',H[4]); } else { m(AR.sh,'x',R[0]); m(AR.sh,'y',R[1]); m(AR.sh,'z',R[2]); m(AR.el,'x',R[3]); m(AR.hand,'x',R[4]); m(AL.sh,'x',Lp[0]); m(AL.sh,'y',Lp[1]); m(AL.sh,'z',Lp[2]); m(AL.el,'x',Lp[3]); m(AL.hand,'x',Lp[4]); } } }
     /* V236: a two-handed hilt really is held in both hands — the left hand is solved onto the grip just below the right, whatever the clip or the stance has the arms doing */
     { const ac=K._act&&K._act.n, want=K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&!(K.spinT>=0)&&!(K.charge>0)&&mode!=='sit'&&mode!=='ride'&&mode!=='lyre'&&mode!=='climb'&&mode!=='fish'&&ac!=='drawBack'&&ac!=='draw'&&!(K.dash>0)?1:0;
-      K._2h=(K._2h||0)+(want-(K._2h||0))*Math.min(1,dt*14); if(K._2h>0.01) twoHand(Math.min(1,K._2h*1.15)); }
+      K._2h=(K._2h||0)+(want-(K._2h||0))*Math.min(1,dt*14); if(!K.fp&&(K._rk||0)>0.01&&!((K._g||0)>(K._rk||0))&&!ac) readyTwo(Math.min(1,K._rk)); if(K._2h>0.01) twoHand(Math.min(1,K._2h*1.15)); }
     /* V236: a bow at rest is carried upright in the left hand at his side, not dangling tip-down from the fist */
     { const want=K._fam==='bow'&&sword.parent===AL.hand&&K._st==='drawn'&&!K._bow&&swing<0&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&!K._act?1:0;
-      K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K.fp?(K._bwPF||[-1.3,0.45,0.15,-0.6,1.2,0]):(K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0]), m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
+      K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K.fp?(K._bwPF||[-1.5,0.45,0.15,-0.5,1.2,0]):(K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0]), m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
         m(AL.sh,'x',P[0]); m(AL.sh,'y',P[1]); m(AL.sh,'z',P[2]); m(AL.el,'x',P[3]); m(AL.el,'y',0); m(AL.el,'z',0); m(AL.hand,'x',P[4]); m(AL.hand,'y',0); m(AL.hand,'z',P[5]); } }
     if(K._bowRig) bowString(dt);
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);
   };
   const _ia=new THREE.Vector3(), _ib=new THREE.Vector3(), _ic=new THREE.Vector3(), _iu=new THREE.Vector3(), _iw=new THREE.Vector3(), _ix=new THREE.Vector3(), _im=new THREE.Matrix4(), _iq=new THREE.Quaternion(), _iq2=new THREE.Quaternion(), _iX=new THREE.Vector3(1,0,0);
-  function twoHand(w){ const l1=0.24, l2=0.23; K.updateMatrixWorld(true);
-    const gp=sword.localToWorld(_ia.set(0,-(K._2hO!==undefined?K._2hO:0.12),0)); torso.worldToLocal(gp);      // the grip, a fist's width below the right hand, in the torso's frame
-    const d=_ib.copy(gp).sub(AL.sh.position); let D=d.length(); if(D<1e-4) return; d.multiplyScalar(1/D); D=Math.min(D,(l1+l2)*0.999); D=Math.max(D,Math.abs(l1-l2)+0.02);
+  /* V238: two-bone arm IK — the shoulder turned and the elbow bent so the hand lands on a point (torso frame) */
+  function solveArm(Arm,gp,pl,w){ const l1=0.24, l2=0.23;
+    const d=_ib.copy(gp).sub(Arm.sh.position); let D=d.length(); if(D<1e-4) return; d.multiplyScalar(1/D); D=Math.min(D,(l1+l2)*0.999); D=Math.max(D,Math.abs(l1-l2)+0.02);
     const cl=v=>Math.max(-1,Math.min(1,v)), al=Math.acos(cl((l1*l1+D*D-l2*l2)/(2*l1*D))), be=Math.PI-Math.acos(cl((l1*l1+l2*l2-D*D)/(2*l1*l2)));
-    const pl=K._2hPole||[0.7,-1,-0.35], n=_ic.set(pl[0],pl[1],pl[2]); n.addScaledVector(d,-n.dot(d)); if(n.lengthSq()<1e-6) n.set(1,0,0).addScaledVector(d,-d.x); n.normalize();   // the elbow down and out
+    const n=_ic.set(pl[0],pl[1],pl[2]); n.addScaledVector(d,-n.dot(d)); if(n.lengthSq()<1e-6) n.set(1,0,0).addScaledVector(d,-d.x); n.normalize();   // the elbow down and out
     const u=_iu.copy(d).multiplyScalar(Math.cos(al)).addScaledVector(n,Math.sin(al));                      // the upper arm
     const f=_iw.copy(d).multiplyScalar(D).addScaledVector(u,-l1); f.addScaledVector(u,-f.dot(u)); if(f.lengthSq()<1e-8) return; f.normalize();   // the way the forearm bends
-    _ix.copy(u).negate().cross(f); _im.makeBasis(_ix,u.negate(),f); _iq.setFromRotationMatrix(_im); AL.sh.quaternion.slerp(_iq,w);
-    _iq.setFromAxisAngle(_iX,-be); AL.el.quaternion.slerp(_iq,w);
+    _ix.copy(u).negate().cross(f); _im.makeBasis(_ix,u.negate(),f); _iq.setFromRotationMatrix(_im); Arm.sh.quaternion.slerp(_iq,w);
+    _iq.setFromAxisAngle(_iX,-be); Arm.el.quaternion.slerp(_iq,w); }
+  const _bA=new THREE.Vector3(), _bB=new THREE.Vector3(), _rq=new THREE.Quaternion(), _tq=new THREE.Quaternion();
+  /* V238: the two-handed READY — hilt before the belly, blade up and forward, the right fist placed and the blade turned there, the left below it */
+  function readyTwo(w){ K.updateMatrixWorld(true); const T=K._2hT||[-0.04,0.05,0.32], Dd=K._2hD||[0.12,0.72,0.68];
+    solveArm(AR,_ia.set(T[0],T[1],T[2]),K._2hPR||[-0.8,-1,-0.25],w);
+    AR.el.updateWorldMatrix(true,true); torso.getWorldQuaternion(_tq); const want=_bA.set(Dd[0],Dd[1],Dd[2]).normalize().applyQuaternion(_tq);
+    sword.updateWorldMatrix(true,false); const cur=_bB.set(0,1,0).transformDirection(sword.matrixWorld); _rq.setFromUnitVectors(cur,want);
+    AR.hand.getWorldQuaternion(_iq); _iq.premultiply(_rq); AR.el.getWorldQuaternion(_iq2).invert(); _iq2.multiply(_iq); AR.hand.quaternion.slerp(_iq2,w); }
+  function twoHand(w){ K.updateMatrixWorld(true);
+    const gp=sword.localToWorld(_ia.set(0,-(K._2hO!==undefined?K._2hO:0.12),0)); torso.worldToLocal(gp);      // the grip, a fist's width below the right hand, in the torso's frame
+    solveArm(AL,gp,K._2hPole||[0.7,-1,-0.35],w);
     AL.el.updateWorldMatrix(true,false); AL.el.getWorldQuaternion(_iq2).invert(); AR.hand.getWorldQuaternion(_iq); _iq2.multiply(_iq); AL.hand.quaternion.slerp(_iq2,w);   // the fist turned as the other is, round the same hilt
   }
   const _fa=new THREE.Vector3(), _fk=new THREE.Vector3(); let _fdS=0;

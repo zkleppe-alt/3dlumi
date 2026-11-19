@@ -248,13 +248,13 @@ const COMBAT=(function(){
   function drawStart(){ if(pl.draw||pl.dashing>0) return; pl.draw={t0:now(),rel:false}; ENGINE.K._bow={ph:'draw',t:0}; soft=null; if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
   function drawK(){ return pl.draw?Math.min(1,((pl.draw.rel||now())-pl.draw.t0)/1000/DRAW.full):0; }
   function bowTarget(k){ if(shoulder()) return aimHit; if(lock&&lock.alive&&Math.hypot(lock.x-P().x,lock.z-P().z)<=bowRange(1)+2) return lock; return soft&&soft.alive?soft:null; }
-  function loose(){ const c=A(), d=pl.draw; if(!d) return; const k=Math.max(0.25,drawK()); pl.draw=null; ENGINE.K._bow={ph:'loose',t:0}; if(!c) return;
-    const p=P(), tg=bowTarget(k), R=bowRange(k); let f=fv(); if(tg){ const dx=tg.x-p.x, dz=tg.z-p.z, l=Math.hypot(dx,dz)||1; f={x:dx/l,z:dz/l}; } else if(shoulder()) f=camFw();
+  function loose(){ const c=A(), d=pl.draw; if(!d) return; const k=Math.max(0.25,drawK()), sh=shoulder()||(ENGINE.fpMix>0.5&&!(lock&&lock.alive)); pl.draw=null;   /* V238: read the aim before the draw is let go — a free shot down a hill goes down the hill */ ENGINE.K._bow={ph:'loose',t:0}; if(!c) return;
+    const p=P(), tg=sh?null:bowTarget(k), R=bowRange(k); let f=fv(); if(sh) f=camFw(); else if(tg){ const dx=tg.x-p.x, dz=tg.z-p.z, l=Math.hypot(dx,dz)||1; f={x:dx/l,z:dz/l}; }
     const kind=projKind(), m=projMesh(kind); c.fx.add(m); const sp=(0.3+0.2*k)*(kind==='axe'?0.62:kind==='stone'?0.8:1), life=Math.ceil(R/sp);   // tiles a frame: a full draw flies about 30 a second (an axe slower)
     const lv=ENGINE.level, ps=Math.max(0.6,VIEWMODE.ps(lv)), x0=p.x+f.x*0.35, z0=p.z+f.z*0.35, y0=(p.y!==undefined?p.y:lv.ground(p.x,p.z))+1.35*ps; let vx=f.x*sp, vz=f.z*sp, vy=0.5*PG*life;   /* V237: loosed from the shoulder */
-    if(shoulder()){ const T=aimPoint(); if(T){ const dx=T.x-x0, dy=T.y-y0, dz=T.z-z0, D=Math.hypot(dx,dy,dz)||1, hd=Math.hypot(dx,dz), tt=Math.max(1,hd/sp); vx=dx/D*sp; vz=dz/D*sp; vy=dy/D*sp+0.5*PG*tt; } }   // free aim: straight down the crosshair, up or down, a touch high for the drop
+    if(sh){ const T=aimPoint(); if(T){ const dx=T.x-x0, dy=T.y-y0, dz=T.z-z0, D=Math.hypot(dx,dy,dz)||1, hd=Math.hypot(dx,dz), tt=Math.max(1,hd/sp); vx=dx/D*sp; vz=dz/D*sp; vy=dy/D*sp+0.5*PG*tt; } }   // free aim: straight down the crosshair, up or down, a touch high for the drop
     else if(tg){ const hd=Math.hypot(tg.x-x0,tg.z-z0), tt=Math.max(1,hd/sp), ty=lv.ground(tg.x,tg.z)+(tg.alt||0)+(tg.boss?1.5:0.85)*ps; vy=(ty-y0)/tt+0.5*PG*tt; }
-    c.arrows.push({kind,x:x0,z:z0,y:y0,vx,vz,vy,d0:0,sp,t:life,t0:life,m,pow:(0.7+0.6*k)*(kind==='axe'?1.25:kind==='bolt'?1.15:1),tg:!shoulder()&&tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5?tg:null}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
+    c.arrows.push({kind,x:x0,z:z0,y:y0,vx,vz,vy,d0:0,sp,t:life,t0:life,m,pow:(0.7+0.6*k)*(kind==='axe'?1.25:kind==='bolt'?1.15:1),tg:!sh&&tg&&Math.hypot(tg.x-p.x,tg.z-p.z)<=R+1.5?tg:null}); if(typeof SFX!=='undefined') try{ SFX.play('swing','light'); }catch(e){} }
   function drawTick(){ const c=A(), p=P(), sh=c&&shoulder(); if(sh) pl.blocking=false; { const lb=bowOn()?'Aim':'Guard'; if(guardB.textContent!==lb) guardB.textContent=lb; }
     if(!c||!bowOn()){ if(pl.draw){ pl.draw=null; ENGINE.K._bow=null; } showRet(false); aimHit=null; return; }
     const k=drawK(), R=bowRange(Math.max(0.25,k)), cam=ENGINE.cam;
