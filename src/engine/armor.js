@@ -255,7 +255,7 @@ const ARMOR=(function(){
     if(slot==='cowl') kids(r.torso,o=>o.userData.part==='scarf');
     if(slot==='tabard') kids(r.torso,o=>/^(tunic|steel|gold|cross|field)$/.test(o.userData.part));
     if(slot==='belt') kids(r.torso,o=>o.userData.part==='leather');
-    if(slot==='skirt'){ kids(K._skF,()=>true); kids(K._skB,()=>true); }
+    if(slot==='skirt'){ kids(K._skF,()=>true); kids(K._skB,()=>true); kids(r.torso,o=>o.userData.part==='mail'); }   /* V242: and the old mail skirt beneath */
     if(slot==='pauldrons') [r.AL,r.AR].forEach(A=>kids(A.sh,o=>/^(paul|gold)$/.test(o.userData.part)));
     if(slot==='arms'){ [r.AL,r.AR].forEach(A=>{ kids(A.sh,o=>o.userData.part==='steel'); kids(A.el,()=>true); }); regs(['forearm','lowerarm_l','lowerarm_r']); regs(['upperarm'],true);   /* the old rerebrace's steel stays beneath, filling the shoulder under the pauldron; only its gold edge goes */ }
     if(slot==='gauntlets') [r.AL,r.AR].forEach(A=>kids(A.hand,o=>/^(steel|gold)$/.test(o.userData.part)));
@@ -281,15 +281,15 @@ const ARMOR=(function(){
   //  Once earned a piece is kept (a respec doesn't take it back), and the wardrobe picks, slot by slot, from all that are earned ──
   const TREES={striker:'st',guardian:'gd',psalmist:'ps'}, TIER={gauntlets:0,sabatons:1,belt:2,arms:3,legs:4,skirt:5,pauldrons:6,cowl:7,tabard:8,helm:9,plume:9};
   const SG=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
-  function earned(id,slot){ if(id==='templar') return true; const S=SG(), pre=TREES[id]; if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
-  function options(slot){ return Object.keys(PIECES[slot]||{}).filter(id=>earned(id,slot)); }
-  function pick(slot){ const S=SG(), id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }
+  function earned(id,slot){ if(id==='templar'||id==='base') return !!(PIECES[slot]&&PIECES[slot][id]); const S=SG(), pre=TREES[id]; if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
+  function options(slot){ const o=Object.keys(PIECES[slot]||{}).filter(id=>earned(id,slot)&&id!=='base'); if(PIECES[slot]&&PIECES[slot].base) o.push('base'); return o; }   // plain clothes last
+  function pick(slot){ const S=SG(); if(S.armorOff&&S.armorOff[slot]&&PIECES[slot].base) return 'base'; const id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }   /* V242: a slot with its armour off wears the plain clothes, not the old harness */
   function noteEarned(){ const S=SG(); if(!S.skills) return; S.armorEarned=S.armorEarned||{}; const fresh=[];
     for(const id in TREES) for(const slot in TIER){ const k=id+'.'+slot; if(!S.armorEarned[k]&&S.skills[TREES[id]+TIER[slot]]&&PIECES[slot]&&PIECES[slot][id]){ S.armorEarned[k]=1; fresh.push(PIECES[slot][id].name); } }
     if(fresh.length&&typeof UI!=='undefined'&&UI.toast&&!noteEarned.quiet) UI.toast('🛡 Armour earned: '+fresh.join(', ')+' — try it on in ☰ System → Armour',3200); noteEarned.quiet=false; }
   noteEarned.quiet=true;
-  function dress(K){ const off=SG().armorOff||{}; SLOTS.forEach(s=>{ if(!off[s]) wear(K,s,pick(s)); }); K.userData.armor=true; }
-  function apply(){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K, off=SG().armorOff||{}, S=state(K); SLOTS.forEach(s=>{ if(off[s]){ set(K,s,false); return; } const id=pick(s); if((S.ids&&S.ids[s])!==id||!S.groups[s]) wear(K,s,id); else set(K,s,true); }); }
+  function dress(K){ SLOTS.forEach(s=>wear(K,s,pick(s))); K.userData.armor=true; }
+  function apply(){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K, off=SG().armorOff||{}, S=state(K); SLOTS.forEach(s=>{ const id=pick(s); if((S.ids&&S.ids[s])!==id||!S.groups[s]) wear(K,s,id); else set(K,s,true); }); }
   // the hero, once his body has come (the plate shells it makes are among what the harness covers)
   let lastOff='';
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K;

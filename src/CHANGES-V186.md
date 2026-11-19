@@ -579,3 +579,32 @@ After Oceanside harbour, as a beachfront town:
   - **Psalmist:** a deep hood (face in shadow, two soft lights for eyes) under a gold circlet with a cross; hood-tail; hood-collar cape; robe with a gold-edged stole; cord belt with tassels, a sash and a satchel; long robe skirt split before; cloth mantles with cross-pins; wide sleeves with gilt cuffs; leather gloves with a cross; bound leg-wraps; soft boots with turned cuffs and gilt toes.
 - Earned piece by piece: tree tier → slot is gauntlets 0, sabatons 1, belt 2, arms 3, legs 4, skirt 5, pauldrons 6, cowl 7, tabard 8, helm and plume 9 (the ultimate). Earned pieces are kept in `GAME.S.armorEarned`, so a respec doesn't take them back. A toast announces each new piece.
 - Wardrobe (☰ System → Armour): tapping a slot cycles through the pieces earned for it, then off. Saved in `GAME.S.armorPick` and `armorOff`. `ARMOR.options`, `pick`, `earned` and `apply` handle it.
+
+## V242 — plain clothes beneath: a hooded traveller, not the old harness
+- Each slot has a `base` piece (set "Plain") in armor_sets.js. A slot with its armour off now wears it, instead of showing the old sculpted plate:
+  - **Hood:** plain cloth, face in shadow, two dim lights for eyes. It shares the Psalmist hood's shape (`hood(ctx,{mat,eyes,circlet})`).
+  - **Upper body:** the hood's collar; a tunic in the livery's colour with a laced throat; the tunic's skirt split at the sides; soft tunic shoulders; linen sleeves.
+  - **Belt, hands and legs:** a plain belt with a pouch; leather wrist wraps; breeches; plain calf boots.
+- Wardrobe: each slot cycles through the earned sets, then Plain (which replaces "off"). Old saves' `armorOff` slots now wear Plain. `ARMOR.pick` returns 'base' for them.
+- The skirt slot also hides the sculpt's mail skirt (it hung outside the slimmer skirts and darkened them).
+
+## V243 — the beasts in the harness: fox, bear, dove
+- **Striker (fox):**
+  - Helm: two slanted eye-slits; a sharper snout keel; two tall pointed ear-fins with gold leading edges (replacing the single crest fin).
+  - Crest: a bushy fox-brush with a white tip.
+  - Spaulders: three swept blades over each shoulder.
+  - Gauntlets: cuffs drawn to a point up the forearm (the knuckle spikes moved to the Guardian as claws).
+  - Skirt: cut into sharper points.
+- **Guardian (bear):**
+  - Bearskin: a broad shaggy roll over the pauldrons' tops (`K._furR`), with a fur cape down the back outside the cloak and a ragged hem; the bear's head worn at the nape; two gorget lames under it.
+  - Gauntlets: three curved claws over the knuckles and a spike on the back of the hand.
+- **Psalmist (dove):**
+  - Hood: smooth-shaded (`hood({smooth})`), the brow drawn to a soft beak-point.
+  - Tail-feathers: five feathers down the back with a gold quill.
+  - Wing-mantle: three rows of laid feathers over a smooth mantle, the lowest row gilt.
+  - Robe: its hem scalloped like a wing's edge.
+
+## V244 — the bearskin over the shoulders (after Zak's Valhalla references)
+- The Guardian cowl's fur now drapes over the pauldrons. Each shoulder gets a shaggy pelt built on the arm's own joint (sized `_furS` 1.5× the shoulder's envelope), so it rides over whatever pauldrons are worn and moves with the arm.
+- A thick fur collar joins the two pelts at the neck. The bear's head (snout, nose, ears, eyes) now sits on the left shoulder.
+- The fur cloak down the back is longer (about 0.76 down) and wider, with a ragged tufted hem, outside the cloth cloak.
