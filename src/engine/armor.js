@@ -245,7 +245,7 @@ const ARMOR=(function(){
       mesh(g,band(()=>x0+0.002,-Math.PI,Math.PI,yt-0.06,yt-0.02,10,1,{two:0.003,cx,cz:z0+0.05}),M.boot,'leather');      // the strap
       const so=mesh(g,new THREE.BoxGeometry(x0*2+0.006,0.016,L).toNonIndexed(),M.boot,'leather'); so.position.set(cx,ys+0.008,z0+L/2); }); };
 
-  const PIECES={}; SLOTS.forEach(s=>PIECES[s]={templar:{name:'Templar '+NAMES[s].toLowerCase(),build:T[s]}});
+  const PIECES={}; SLOTS.forEach(s=>PIECES[s]={templar:{name:'Templar '+NAMES[s].toLowerCase(),set:'Templar',build:T[s]}});
 
   // ── what each slot covers of the built-in harness (hidden while the piece is worn, shown again when it comes off) ──
   function covered(K,slot){ const r=K.rig, out=[], F=K.userData.b3&&typeof K.userData.b3==='object'?K.userData.b3:null, kids=(p,t)=>p&&p.children.forEach(o=>{ if(o.isMesh&&!o.userData.armor&&t(o)) out.push(o); });
@@ -277,14 +277,27 @@ const ARMOR=(function(){
   function set(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K); }
   function worn(K){ const S=state(K), o={}; SLOTS.forEach(s=>o[s]=S.worn[s]?(S.ids&&S.ids[s])||'templar':null); return o; }
   // put the hero in his harness: every slot, save those the wardrobe has taken off
-  function dress(K){ const off=(typeof GAME!=='undefined'&&GAME.S&&GAME.S.armorOff)||{}; SLOTS.forEach(s=>{ if(!off[s]) wear(K,s,'templar'); }); K.userData.armor=true; }
-  function apply(){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K; const off=(typeof GAME!=='undefined'&&GAME.S&&GAME.S.armorOff)||{}; SLOTS.forEach(s=>set(K,s,!off[s])); }
+  // ── the skill trees' harnesses (armor_sets.js): each tier of a tree earns one of its pieces, the ultimate the helm and its crest.
+  //  Once earned a piece is kept (a respec doesn't take it back), and the wardrobe picks, slot by slot, from all that are earned ──
+  const TREES={striker:'st',guardian:'gd',psalmist:'ps'}, TIER={gauntlets:0,sabatons:1,belt:2,arms:3,legs:4,skirt:5,pauldrons:6,cowl:7,tabard:8,helm:9,plume:9};
+  const SG=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
+  function earned(id,slot){ if(id==='templar') return true; const S=SG(), pre=TREES[id]; if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
+  function options(slot){ return Object.keys(PIECES[slot]||{}).filter(id=>earned(id,slot)); }
+  function pick(slot){ const S=SG(), id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }
+  function noteEarned(){ const S=SG(); if(!S.skills) return; S.armorEarned=S.armorEarned||{}; const fresh=[];
+    for(const id in TREES) for(const slot in TIER){ const k=id+'.'+slot; if(!S.armorEarned[k]&&S.skills[TREES[id]+TIER[slot]]&&PIECES[slot]&&PIECES[slot][id]){ S.armorEarned[k]=1; fresh.push(PIECES[slot][id].name); } }
+    if(fresh.length&&typeof UI!=='undefined'&&UI.toast&&!noteEarned.quiet) UI.toast('🛡 Armour earned: '+fresh.join(', ')+' — try it on in ☰ System → Armour',3200); noteEarned.quiet=false; }
+  noteEarned.quiet=true;
+  function dress(K){ const off=SG().armorOff||{}; SLOTS.forEach(s=>{ if(!off[s]) wear(K,s,pick(s)); }); K.userData.armor=true; }
+  function apply(){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K, off=SG().armorOff||{}, S=state(K); SLOTS.forEach(s=>{ if(off[s]){ set(K,s,false); return; } const id=pick(s); if((S.ids&&S.ids[s])!==id||!S.groups[s]) wear(K,s,id); else set(K,s,true); }); }
   // the hero, once his body has come (the plate shells it makes are among what the harness covers)
   let lastOff='';
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K;
-    if(K.userData.armor){ const off=JSON.stringify((typeof GAME!=='undefined'&&GAME.S&&GAME.S.armorOff)||{}); if(off!==lastOff){ lastOff=off; try{ apply(); }catch(e){} } return; }   // a loaded save, or the wardrobe
+    try{ noteEarned(); }catch(e){}
+    if(K.userData.armor){ const S=SG(), off=JSON.stringify([S.armorOff||{},S.armorPick||{},S.armorEarned||{},S.skills||{}]); if(off!==lastOff){ lastOff=off; try{ apply(); }catch(e){} } return; }   // a loaded save, or the wardrobe
     if(K.bare||!K.rig||!K.M) return;
     const b=K.userData.b3, waiting=b==='loading'||(K.sculpted&&b===undefined&&typeof BODY3!=='undefined'&&BODY3.on&&!K._armWait); if(waiting){ K._armT=(K._armT||0)+1; if(K._armT<40) return; }
     try{ dress(K); }catch(e){ K.userData.armor=true; if(window.DEBUG_ARMOR) console.error('ARMOR',e); } },400);
-  return { SLOTS, NAMES, PIECES, set, wear, worn, dress, apply, covered };
+  const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds};
+  return { SLOTS, NAMES, PIECES, TREES, TIER, H, set, wear, worn, dress, apply, covered, earned, options, pick };
 })();

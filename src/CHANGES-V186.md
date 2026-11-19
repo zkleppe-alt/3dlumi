@@ -571,3 +571,11 @@ After Oceanside harbour, as a beachfront town:
 - What each slot hides: the sculpt's parts by joint and material, the body's plate shells by region (body3 now tags `userData.b3reg`, and `b3trim` on gold edges), the V234 helm. The old rerebrace steel stays beneath the pauldrons; only its gold edge goes.
 - Materials are the knight's own (`K.M`, which now carries `goldD`, `mail` and `scarf`), cel-shaded through `BODY3.toonify` (now exported), so liveries recolour them.
 - Wardrobe: ☰ System → 🛡 Armour lists every piece, on or off, saved in `GAME.S.armorOff`. A watcher re-applies it on load.
+
+## V241 — the skill trees' armour sets (engine/armor_sets.js)
+- Three new sets register into `ARMOR.PIECES` next to the Templar one. They change shape only; liveries still paint them.
+  - **Striker:** a sallet with a fin and swept tail; short swept crest; scarf with streaming tails; crossed harness with a gilt medallion; belt with a dagger; short split skirts; spiked spaulders; slim vambraces with spiked couters; knuckle spikes; spiked poleyns; pointed sabatons.
+  - **Guardian:** a flat-topped great helm with a gold cross on its face and breaths cut in a cross; heraldic fan crest; steel gorget; steel breastplate with plackart and raised cross; plaqued war belt; plate tassets over a short skirt; huge three-lame pauldrons with haute-pieces; heavy banded vambraces; bell-cuff gauntlets; laminated cuisses and closed greaves; broad four-lame sabatons.
+  - **Psalmist:** a deep hood (face in shadow, two soft lights for eyes) under a gold circlet with a cross; hood-tail; hood-collar cape; robe with a gold-edged stole; cord belt with tassels, a sash and a satchel; long robe skirt split before; cloth mantles with cross-pins; wide sleeves with gilt cuffs; leather gloves with a cross; bound leg-wraps; soft boots with turned cuffs and gilt toes.
+- Earned piece by piece: tree tier → slot is gauntlets 0, sabatons 1, belt 2, arms 3, legs 4, skirt 5, pauldrons 6, cowl 7, tabard 8, helm and plume 9 (the ultimate). Earned pieces are kept in `GAME.S.armorEarned`, so a respec doesn't take them back. A toast announces each new piece.
+- Wardrobe (☰ System → Armour): tapping a slot cycles through the pieces earned for it, then off. Saved in `GAME.S.armorPick` and `armorOff`. `ARMOR.options`, `pick`, `earned` and `apply` handle it.
