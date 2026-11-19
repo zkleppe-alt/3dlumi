@@ -155,7 +155,7 @@ function buildKnight(){
   // the blade turns in the hand through each blow so the edge leads, not the flat (V90): everything the hand holds hangs off this roll
   const swRoll=new THREE.Group(); defSword.forEach(o=>swRoll.add(o)); sword.add(swRoll); K._roll=swRoll;
   const WM=(hex,shiny,em)=>{ const k=hex+'|'+(shiny||0)+'|'+(em||''); return wmat[k]||(wmat[k]=new THREE.MeshPhongMaterial({color:new THREE.Color(hex),flatShading:true,shininess:shiny||8,specular:shiny?0x666677:0x111111,emissive:em?new THREE.Color(em):new THREE.Color(0)})); };
-  K.setWeapon=function(art,id){ K._bowRig=null; bladeLen=0; K._trailCol=art&&art.fam==='radiant'?[1,0.85,0.45]:null; if(wpnG){ swRoll.remove(wpnG); wpnG=null; } defSword.forEach(o=>o.visible=!art);
+  K.setWeapon=function(art,id){ K._wid=id; K._bowRig=null; bladeLen=0; K._trailCol=art&&art.fam==='radiant'?[1,0.85,0.45]:null; if(wpnG){ swRoll.remove(wpnG); wpnG=null; } defSword.forEach(o=>o.visible=!art);
     [AL,AR].forEach(A=>{ A.hand.box.material=M.hand; A.hand.box.scale.setScalar(1); if(A.hand.ring){ A.hand.remove(A.hand.ring); A.hand.ring=null; } });
     K.weaponFam=art?art.fam:'light'; if(!art) return; const p=art.pal||{}, c=(k,d)=>p[k]||d, g=new THREE.Group(); wpnG=g; swRoll.add(g);
     const box=(w,h,d,m,x,y,z)=>add(new THREE.BoxGeometry(w,h,d),m,x,y,z,g), cy=(r0,r1,h,m,x,y,z,sg)=>add(new THREE.CylinderGeometry(r0,r1,h,sg||6),m,x,y,z,g);
@@ -606,6 +606,14 @@ function buildKnight(){
     { const want=K.fp&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)&&!K._act&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'?1:0;
       K._fpw=(K._fpw||0)+(want-(K._fpw||0))*Math.min(1,dt*10); if(K._fpw>0.01){ const b=K._fpw, R=K._fpR||[-1.55,0.35,-0.2,-0.6,1.3], Lp=K._fpL||[-1.5,-0.5,0.3,-1.0,0], m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
         if(K._shB){ const H=K._fpH||[-1.85,0.75,-0.2,-0.35,0.8]; m(AR.sh,'x',H[0]); m(AR.sh,'y',H[1]); m(AR.sh,'z',H[2]); m(AR.el,'x',H[3]); m(AR.hand,'x',H[4]); } else { m(AR.sh,'x',R[0]); m(AR.sh,'y',R[1]); m(AR.sh,'z',R[2]); m(AR.el,'x',R[3]); m(AR.hand,'x',R[4]); m(AL.sh,'x',Lp[0]); m(AL.sh,'y',Lp[1]); m(AL.sh,'z',Lp[2]); m(AL.el,'x',Lp[3]); m(AL.hand,'x',Lp[4]); } } }
+    /* V239: a one-handed blade out, the shield is HELD — the forearm across his front, the shield turned to face the foe (canted a touch outward
+       in third person, square on in first person), its rim near his chin. Not while guarding, swinging or busy. */
+    { const want=!K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)&&!K._act&&shM.parent===AL.el&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&mode!=='lyre'?1:0;
+      K._sr=(K._sr||0)+(want-(K._sr||0))*Math.min(1,dt*10); if(K._sr>0.01) holdShield(Math.min(1,K._sr*1.1)); else if(K._srOn){ shM.rotation.set(0,Math.PI/2,0); K._srOn=false; } }
+    /* V239: first person, bow or crossbow up — the left arm out with the bow upright before your eye (canted a touch), the right fist drawn to the cheek;
+       the crossbow's stock to the shoulder. Placed by IK in his own frame, whatever the archer's clip has done to his shoulders. */
+    { const want=K.fp&&K._fam==='bow'&&sword.parent===AL.hand&&(K._bow||K.guarding)?1:0; K._fpA=(K._fpA||0)+(want-(K._fpA||0))*Math.min(1,dt*14);
+      if(K._fpA>0.01) fpArcher(Math.min(1,K._fpA*1.1),/crossbow/.test(K._wid||'')); }
     /* V236: a two-handed hilt really is held in both hands — the left hand is solved onto the grip just below the right, whatever the clip or the stance has the arms doing */
     { const ac=K._act&&K._act.n, want=K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&!(K.spinT>=0)&&!(K.charge>0)&&mode!=='sit'&&mode!=='ride'&&mode!=='lyre'&&mode!=='climb'&&mode!=='fish'&&ac!=='drawBack'&&ac!=='draw'&&!(K.dash>0)?1:0;
       K._2h=(K._2h||0)+(want-(K._2h||0))*Math.min(1,dt*14); if(!K.fp&&(K._rk||0)>0.01&&!((K._g||0)>(K._rk||0))&&!ac) readyTwo(Math.min(1,K._rk)); if(K._2h>0.01) twoHand(Math.min(1,K._2h*1.15)); }
@@ -633,6 +641,23 @@ function buildKnight(){
     AR.el.updateWorldMatrix(true,true); torso.getWorldQuaternion(_tq); const want=_bA.set(Dd[0],Dd[1],Dd[2]).normalize().applyQuaternion(_tq);
     sword.updateWorldMatrix(true,false); const cur=_bB.set(0,1,0).transformDirection(sword.matrixWorld); _rq.setFromUnitVectors(cur,want);
     AR.hand.getWorldQuaternion(_iq); _iq.premultiply(_rq); AR.el.getWorldQuaternion(_iq2).invert(); _iq2.multiply(_iq); AR.hand.quaternion.slerp(_iq2,w); }
+  const _ZAshd=new THREE.Vector3(), _ZBshd=new THREE.Vector3(), _ZCshd=new THREE.Vector3(), _Zmshd=new THREE.Matrix4(), _Zqshd=new THREE.Quaternion(), _Zq2shd=new THREE.Quaternion(), _Zq0shd=new THREE.Quaternion().setFromEuler(new THREE.Euler(0,Math.PI/2,0));
+  function holdShield(w){ K._srOn=true; K.updateMatrixWorld(true); const fp=!!K.fp, T=fp?(K._shTF||[0.18,0.28,0.32]):(K._shT||[0.03,0.08,0.3]);
+    solveArm(AL,_ZAshd.set(T[0],T[1],T[2]),fp?(K._shPF||[1,-0.3,0.4]):(K._shPole||[1,-0.6,0.25]),w);
+    const yo=fp?(K._shYF!==undefined?K._shYF:0.25):(K._shY!==undefined?K._shY:0.5), tilt=fp?0.05:(K._shTl!==undefined?K._shTl:0.12);   // the face turned a little outward; the top tipped back a touch
+    const fw=_ZBshd.set(Math.sin(yo),-Math.sin(tilt),Math.cos(yo)).normalize().transformDirection(K.matrixWorld), up=_ZCshd.set(0,1,0).transformDirection(K.matrixWorld); up.addScaledVector(fw,-up.dot(fw)).normalize();
+    const xa=new THREE.Vector3().copy(up).cross(fw); _Zmshd.makeBasis(xa,up,fw); _Zqshd.setFromRotationMatrix(_Zmshd);
+    AL.el.updateWorldMatrix(true,false); AL.el.getWorldQuaternion(_Zq2shd).invert(); _Zq2shd.multiply(_Zqshd); _Zqshd.copy(_Zq0shd).slerp(_Zq2shd,w); shM.quaternion.copy(_Zqshd); }
+  const _eA=new THREE.Vector3(), _eB=new THREE.Vector3(), _eC=new THREE.Vector3(), _em=new THREE.Matrix4(), _eq=new THREE.Quaternion(), _eq2=new THREE.Quaternion();
+  function fpArcher(w,xb){ K.updateMatrixWorld(true); torso.getWorldScale(_eC); const sc=_eC.y||1;
+    const eye=K._eyeK||(K._eyeK=K.worldToLocal(head.localToWorld(new THREE.Vector3(0,0.1,0))).clone());   // his eye, in his own frame (taken once, at rest)
+    const LT=K._fpBL||(xb?[0.0,-0.1,0.5]:[0.1,-0.12,0.62]), RT=K._fpBR||(xb?[-0.03,-0.16,0.2]:[-0.08,-0.16,0.04]);
+    const tgt=(T,out)=>{ out.set(eye.x+T[0],eye.y+T[1],eye.z+T[2]); K.localToWorld(out); return torso.worldToLocal(out); };
+    solveArm(AL,tgt(LT,_eA),[0.8,-1,-0.3],w); solveArm(AR,tgt(RT,_eB),[-0.9,-0.7,-0.5],w);
+    // the bow turned upright and facing the mark: its +y (the belly) forward, its +z (the stave / the stock's top) up, canted a little
+    const cant=K._fpCant!==undefined?K._fpCant:(xb?0:0.35), fw=_eA.set(0,0,1).transformDirection(K.matrixWorld), up=_eB.set(-Math.sin(cant),Math.cos(cant),0).transformDirection(K.matrixWorld);
+    up.addScaledVector(fw,-up.dot(fw)).normalize(); const xa=_eC.copy(fw).cross(up); _em.makeBasis(xa,fw,up); _eq.setFromRotationMatrix(_em);
+    const wq=wpnG||sword; wq.updateWorldMatrix(true,false); AL.hand.getWorldQuaternion(_eq2).invert(); _eq2.multiply(wq.getWorldQuaternion(new THREE.Quaternion())); _eq.multiply(_eq2.invert());   /* the hand turned so the weapon itself sits so */ AL.el.updateWorldMatrix(true,true); AL.el.getWorldQuaternion(_eq2).invert(); _eq2.multiply(_eq); AL.hand.quaternion.slerp(_eq2,w); }
   function twoHand(w){ K.updateMatrixWorld(true);
     const gp=sword.localToWorld(_ia.set(0,-(K._2hO!==undefined?K._2hO:0.12),0)); torso.worldToLocal(gp);      // the grip, a fist's width below the right hand, in the torso's frame
     solveArm(AL,gp,K._2hPole||[0.7,-1,-0.35],w);
@@ -761,6 +786,7 @@ function buildKnight(){
     M.tunic.side=THREE.DoubleSide; M.cape.side=THREE.DoubleSide;
     const GOLD=HQ?PAINT.mat('gold',0xe0b048):new THREE.MeshPhongMaterial({color:0xd6a640,shininess:55,specular:0x8a6a30}), MAIL=HQ?PAINT.mat('mail',0x9aa0aa):new THREE.MeshPhongMaterial({color:0x34373e,shininess:20,specular:0x2a2c30}), SCARF=HQ?PAINT.mat('cloth',0x182544,{side:THREE.DoubleSide}):new THREE.MeshPhongMaterial({color:0x182544,side:THREE.DoubleSide});
     M.gold=GOLD; const GOLDD=HQ?PAINT.mat('gold',0xe0b048,{side:THREE.DoubleSide}):new THREE.MeshPhongMaterial({color:0xd6a640,shininess:55,specular:0x8a6a30,side:THREE.DoubleSide});
+    M.goldD=GOLDD; M.mail=MAIL; M.scarf=SCARF;   // V240: for the armour pieces (armor.js)
     const lathe=(pts,seg,p0,pl)=>new THREE.LatheGeometry((pts[0][1]>pts[pts.length-1][1]?pts.slice().reverse():pts).map(([r,y])=>new THREE.Vector2(Math.max(0.0005,r),y)),seg||24,p0||0,pl||Math.PI*2);
     const ell=(rx,ry,rz,seg)=>{ const g=new THREE.SphereGeometry(1,seg||18,Math.round((seg||18)*0.7)); g.scale(rx,ry,rz); return g; };
     const zs=(g,k)=>{ g.scale(1,1,k); return g; };
@@ -776,7 +802,7 @@ function buildKnight(){
     function jerusalem(par,cx,cy,z,s,mat){ const b=(w,h,x,y)=>box(w*s,h*s,0.01,mat,cx+x*s,cy+y*s,z,par);
       b(0.034,0.2,0,0); b(0.2,0.034,0,0); [[0,0.1,0.075,0.026],[0,-0.1,0.075,0.026],[0.1,0,0.026,0.075],[-0.1,0,0.026,0.075]].forEach(([x,y,w,h])=>b(w,h,x,y));   // the arms and their potent ends
       [[-1,1],[1,1],[-1,-1],[1,-1]].forEach(([sx,sy])=>{ b(0.016,0.05,sx*0.062,sy*0.062); b(0.05,0.016,sx*0.062,sy*0.062); }); }
-    const skirtF=pivot(0,0.06,0,torso), skirtB=pivot(0,0.06,0,torso);
+    const skirtF=pivot(0,0.06,0,torso), skirtB=pivot(0,0.06,0,torso); K._skF=skirtF; K._skB=skirtB;
     // the sculpted body (tools/sculpt_knight.py → HERO_KNIGHT): modelled in Blender from the concept sheet, bevelled,
     //  subdivided, its shadows baked in; when it is present it replaces the hand-built parts below
     const SYNC=[];

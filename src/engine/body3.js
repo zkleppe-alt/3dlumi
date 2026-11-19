@@ -158,7 +158,7 @@ const BODY3=(function(){
     const mkGeo=(tris,extraOut)=>{ const ng=new THREE.BufferGeometry(), PA=new Float32Array(n*3), NA=new Float32Array(n*3); const eo=(extraOut||0)*F.unit;
       for(let q=0;q<n;q++){ const c=cn[q]; for(let e=0;e<3;e++){ PA[q*3+e]=X[c*3+e]+Nn[c*3+e]*eo; NA[q*3+e]=Nn[c*3+e]; } }
       ng.setAttribute('position',new THREE.BufferAttribute(PA,3)); ng.setAttribute('normal',new THREE.BufferAttribute(NA,3)); ['skinIndex','skinWeight','uv'].forEach(nm=>{ if(g.attributes[nm]) ng.setAttribute(nm,g.attributes[nm]); }); ng.setIndex(tris); return ng; };
-    const add=(geo,m)=>{ const sm=new THREE.SkinnedMesh(geo,m); sm.castShadow=true; sm.frustumCulled=false; body.parent.add(sm); sm.bind(body.skeleton,body.bindMatrix); F.parts.push(sm); return sm; };
+    const add=(geo,m)=>{ const sm=new THREE.SkinnedMesh(geo,m); sm.castShadow=true; sm.frustumCulled=false; sm.userData.b3reg=regs.join(','); body.parent.add(sm); sm.bind(body.skeleton,body.bindMatrix); F.parts.push(sm); return sm; };
     let mm=typeof col==='object'&&col.isMaterial?col:mat(o.kind||'cloth',col);
     if(o.pat!=null){ const cl=new Float32Array(n*3), c0=lin(col), c1=lin(o.pat), ks=[...nb.keys()], hot=new Set(); for(let q=7;q<ks.length;q+=Math.max(1,Math.floor(ks.length/(o.patN||140)))){ hot.add(ks[q]); }   /* small soft spots, each one vertex: flowers at a distance */
       for(let q=0;q<n;q++){ const c=hot.has(cn[q])?c1:c0; cl[q*3]=c.r; cl[q*3+1]=c.g; cl[q*3+2]=c.b; } mm=mat(o.kind||'cloth',0xffffff,{vertexColors:true}); o._col=cl; }
@@ -166,7 +166,7 @@ const BODY3=(function(){
     // a band of trim round the edge (a ring or two of triangles in from it), standing a little proud
     if(o.trim){ const ring=new Set(edge); for(let k=1;k<(o.trimRings||2);k++){ const add2=[]; ring.forEach(a=>{ const ns=nb.get(a); if(ns) ns.forEach(b=>add2.push(b)); }); add2.forEach(b=>ring.add(b)); }
       const bt=[]; for(let t=0;t<tri.length;t+=3){ const a=cn[tri[t]],b=cn[tri[t+1]],c=cn[tri[t+2]]; if(ring.has(a)&&ring.has(b)&&ring.has(c)) bt.push(tri[t],tri[t+1],tri[t+2]); }
-      if(bt.length) add(mkGeo(bt,0.0035),typeof o.trim==='object'&&o.trim.isMaterial?o.trim:mat('gold',o.trim)); }
+      if(bt.length){ const tm=add(mkGeo(bt,0.0035),typeof o.trim==='object'&&o.trim.isMaterial?o.trim:mat('gold',o.trim)); tm.userData.b3trim=true; } }
     return main; }
   // ── paint the bare body by region ──
   function paint(F,fn,kind){ const body=F.body, g=body.geometry=body.geometry.clone(), R=F.D.reg, n=g.attributes.position.count, col=new Float32Array(n*3), c=new THREE.Color();
@@ -200,7 +200,7 @@ const BODY3=(function(){
       [['thigh',0.026],[['calf','boot'],0.024],['upperarm',0.022],['forearm',0.024],['foot',0.018]].forEach(([rg,d])=>shell(F,Array.isArray(rg)?rg:[rg],ST,d,rg==='foot'?4:10,{trim:GD,trimRings:2,any:true}));   // the sabatons too, on the body's own feet
       cut(F,['head','hand','foot','chest','belly']);   // under the helm, the gauntlets, the sabatons and the breastplate, nothing of the bare body
       // the poleyns and couters (knee and elbow cops) on the shin and forearm bones
-      const cop=(bn,r,fwd,y)=>{ const b=F.B[bn]; if(!b) return; const g2=new THREE.Group(); const sp=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),CS); sp.scale.set(1,1.1,0.75); const rg=new THREE.Mesh(new THREE.TorusGeometry(r*1.02,r*0.13,6,20),CG); g2.add(sp,rg); g2.traverse(o=>{ o.castShadow=true; });
+      const cop=(bn,r,fwd,y)=>{ const b=F.B[bn]; if(!b) return; const g2=new THREE.Group(); const sp=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),CS); sp.scale.set(1,1.1,0.75); const rg=new THREE.Mesh(new THREE.TorusGeometry(r*1.02,r*0.13,6,20),CG); g2.add(sp,rg); g2.userData.b3reg=bn; g2.traverse(o=>{ o.castShadow=true; });
         // built in the rig's own units (K may be scaled), where the joint stands now (the body is still in the rest pose), then pinned to the bone
         K.updateMatrixWorld(true); const toK=new THREE.Matrix4().copy(K.matrixWorld).invert(), w=b.getWorldPosition(V()).applyMatrix4(toK); g2.position.set(w.x,w.y+y,w.z+fwd); K.add(g2); g2.updateMatrixWorld(true); b.attach(g2); F.parts.push(g2); };
       ['l','r'].forEach(sd=>{ cop('calf_'+sd,0.05,0.062,0.012); cop('lowerarm_'+sd,0.04,-0.05,0.008); });
@@ -299,5 +299,5 @@ const BODY3=(function(){
     (lv.folk||[]).forEach(f=>{ if(n>=2) return; const K=f.g; if(!K||!K.userData||K.userData.b3||K.userData.b3swap) return; if(!K.userData.castD&&!K.userData.b3spec) return; if(Math.hypot(f.x-P.x,f.z-P.z)>40) return; n++; if(K.userData.castD) folk(K); else swapIn(f); }); },400);
   // the hero is dressed as soon as he stands in the world (and again if he is ever rebuilt)
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K; if(K.sculpted&&!K.bare&&!K.userData.b3) hero(K); },500);
-  return { hero, folk, folkSpec, swapIn, specOf, get on(){ return on(); }, get, build, shell, paint, cut, unitOf, hook, mat, REG };
+  return { toonify, hero, folk, folkSpec, swapIn, specOf, get on(){ return on(); }, get, build, shell, paint, cut, unitOf, hook, mat, REG };
 })();

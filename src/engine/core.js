@@ -333,7 +333,7 @@ const ENGINE=(function(){
     if(typeof COMBAT!=='undefined'&&COMBAT.aimCam&&L.combat&&!L.cine) COMBAT.aimCam(cam,dt);   /* V231: the bow's over-the-shoulder aim */
     { const want=fpOK()?1:0; fpMix+=(want-fpMix)*Math.min(1,dt*(want?7:9)); if(fpMix<0.002) fpMix=0;   /* V237: first person */
       const hide=fpMix>0.35; if(hide!==fpHid){ fpHid=hide; if(K._head) K._head.visible=!hide; if(K._plume) K._plume.visible=!hide; }
-      if(fpMix>0){ K.visible=true; const ps2=Math.max(0.5,VIEWMODE.ps(L)); K.updateMatrixWorld(true); if(K._head) K._head.localToWorld(_fpE.set(0,0.1,K._fpZ!==undefined?K._fpZ:-0.2)); else _fpE.set(P.x,P.y+1.6*ps2,P.z);
+      if(fpMix>0){ K.visible=true; const ps2=Math.max(0.5,VIEWMODE.ps(L)); K.updateMatrixWorld(true); if(K._head){ K._head.localToWorld(_fpE.set(0,0.1,0)); const z=(K._fpZ!==undefined?K._fpZ:-0.2)*(K.scale.y||1); _fpE.x-=Math.sin(yaw)*z; _fpE.z-=Math.cos(yaw)*z; } else   /* V239: set back along the look, not the head — a bow-draw turns his head and shoulders aside */ _fpE.set(P.x,P.y+1.6*ps2,P.z);
         const el=fpElev(), ce=Math.cos(el), fw=_fpT.set(-Math.sin(yaw)*ce,Math.sin(el),-Math.cos(yaw)*ce);
         _fpE.x-=Math.sin(yaw)*0.06*ps2; _fpE.z-=Math.cos(yaw)*0.06*ps2;   // just before the visor
         cam.getWorldDirection(_fpL); _fpL.multiplyScalar(8).add(cam.position);
