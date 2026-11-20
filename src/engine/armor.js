@@ -306,7 +306,9 @@ const ARMOR=(function(){
   function softList(K,S){ const list=[]; for(const slot in S.groups){ (S.groups[slot]||[]).forEach(g=>{ if(!g.visible) return; const sk=g.parent===K._skF||g.parent===K._skB;
       g.traverse(m=>{ if(!m.isMesh||!(sk||m.userData.soft||m.userData.softHead)) return; if(!m.userData.rest){ m.userData.rest=m.geometry.attributes.position.array.slice(); m.frustumCulled=false; } list.push(m); }); }); }
     return list; }
-  function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return; if(!S.soft||S.softDirty){ S.soft=softList(K,S); S.softDirty=false; } const list=S.soft; if(!list.length) return;
+  function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return;
+    if(K.rig&&K.rig.capeP&&K.rig.capeP.visible) K.rig.capeP.visible=false;   /* V246: no cloth cape on the hero — it fought every other cloak (and the saddle) */
+    if(K.herald&&!K.herald._robust){ K.herald._robust=true; K.herald.group.traverse(m=>{ if(m.isMesh){ m.frustumCulled=false; if(m.material&&m.userData.part==='face'){ m.material.side=THREE.DoubleSide; m.material.needsUpdate=true; } } }); }   /* V246: the shield is never culled */ if(!S.soft||S.softDirty){ S.soft=softList(K,S); S.softDirty=false; } const list=S.soft; if(!list.length) return;
     K.updateMatrixWorld(true); K.getWorldScale(_sc); const sc=_sc.y||1, r=K.rig;
     [r.L,r.R].forEach((G,i)=>{ const T=CAPS[i*2], Sh=CAPS[i*2+1]; G.hip.getWorldPosition(T.a); G.knee.getWorldPosition(T.b); T.r=0.1*sc; Sh.a.copy(T.b); G.knee.localToWorld(Sh.b.set(0,-0.34,0.03)); Sh.r=0.078*sc; });
     r.head.localToWorld(HEAD.c.set(0,0.03,0)); HEAD.r=0.17*sc;

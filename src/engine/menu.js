@@ -99,7 +99,11 @@ const MENU=(function(){
         h+='</div>'; }
       const aog=GAME.aogWorn(); if(SYS.AOG_SET.some(id=>S.ownedGear[id])) h+=`<div class="inv-pick">${row('✝ Armor of God',`${aog} / ${SYS.AOG_SET.length} worn`+(aog===5?' — Stand firm':''))}</div>`;
       // the Great Forge
-      if(AR&&AR.shop){ h+=`<div class="inv-pick">`+sec('⚒ The Great Forge — armour of the ten towns')+`<p class="gm-hint">Each town’s smiths send their work here once its chapel is cleansed. Tap a piece to try it on; buy to keep it. 🪙 ${S.gold}</p>`;
+      if(AR&&AR.shop==='pelts'&&AR.PELTS){ h+=`<div class="inv-pick">`+sec('🐾 Furs & pelts')+`<p class="gm-hint">Worn as your cowl, over whatever armour you wear. Tap one to try it on; buy to keep it. 🪙 ${S.gold}</p>`;
+        AR.PELTS.forEach(pl=>{ const own=AR.owned(pl.id,'cowl'), wearing=AR.worn(ENGINE.K).cowl===pl.id;
+          h+=`<div style="display:flex;gap:6px;margin:0 0 4px"><button class="gm-item ${wearing?'worn':''}" style="flex:1;margin:0" data-act="artry:${pl.id}.cowl"><span>${E(pl.name)} <span class="ds">${own?'yours':'tap to try on'}</span></span></button>`
+            +(own?'':`<button class="gm-btn" style="flex:none;margin:0;min-width:84px" data-act="arpelt:${pl.id}" ${S.gold<pl.price?'disabled':''}>🪙 ${pl.price}</button>`)+`</div>`; }); h+='</div>'; }
+      else if(AR&&AR.shop){ h+=`<div class="inv-pick">`+sec('⚒ The Great Forge — armour of the ten towns')+`<p class="gm-hint">Each town’s smiths send their work here once its chapel is cleansed. Tap a piece to try it on; buy to keep it. 🪙 ${S.gold}</p>`;
         AR.TOWN_SETS.forEach(st=>{ const rel=AR.released(st.id), town=SYS.TOWN_DATA[st.town].name, open=arOpen===st.id;
           h+=`<button class="gm-item ${rel?'':'locked'}" data-act="${rel?'arset:'+st.id:''}"><span>${E(st.name)} <span class="ds">${rel?'from '+E(town):'cleanse '+E(town)+'’s chapel to bring it here'}</span></span><i>${rel?(open?'▾':'▸'):'🔒'}</i></button>`;
           if(rel&&open) AR.SLOTS.forEach(sl=>{ const own=AR.owned(st.id,sl), pr=AR.price(st.id,sl), wearing=AR.worn(ENGINE.K)[sl]===st.id;
@@ -216,6 +220,7 @@ const MENU=(function(){
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
     else if(k==='pk'){ invPick=invPick===v?null:v; render(true); return; }
     else if(k==='arpick'&&typeof ARMOR!=='undefined'){ const [sl,id]=v.split('.'); S.armorPick=S.armorPick||{}; S.armorPick[sl]=id; if(S.armorOff) delete S.armorOff[sl]; ARMOR.apply(); GAME.save(); render(true); return; }
+    else if(k==='arpelt'&&typeof ARMOR!=='undefined'){ const r=ARMOR.buyPelt(v); note=r==='ok'?'“Warm and handsome. It’s yours.”':r==='poor'?'“That’ll want more gold than you carry.”':''; render(true); return; }
     else if(k==='arset'){ arOpen=arOpen===v?null:v; render(true); return; }
     else if(k==='artry'&&typeof ARMOR!=='undefined'){ const [id,sl]=v.split('.'); ARMOR.tryOn(sl,id); render(true); return; }
     else if(k==='arbuy'&&typeof ARMOR!=='undefined'){ const [id,sl]=v.split('.'), r=ARMOR.buy(id,sl); note=r==='ok'?'“A fine fit. It’s yours, knight.”':r==='poor'?'“That’ll want more gold than you carry.”':''; render(true); return; }

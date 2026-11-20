@@ -18,7 +18,8 @@ const SERVICES=(function(){
       groups.forEach(([t,f])=>{ const ks=items.filter(k=>!used.has(k)&&f(k)); if(!ks.length) return; ks.forEach(k=>used.add(k)); h+=`<div class="gm-sec">${t}</div>`;
         ks.forEach(k=>{ const it=item(k), i=items.indexOf(k), own=owned(k), have=GAME.S.inventory[k];
           h+=`<button class="gm-item ${i===sel?'worn':''} ${own?'locked':''}" data-act="${own?'':'pick:'+i}"><span>${it.emoji} ${E(it.name)} — <b style="color:var(--gold)">${it.price}g</b> <span class="ds">${E(it.note||'')}${have?` · you carry ${have}`:''}</span></span><i>${own?'owned':i===sel?'buy':''}</i></button>`; }); });
-      UI.sheet({title:o.title||'🏪 Capital Market Hall',html:h,keepScroll:true,act:a=>{ const i=+a.split(':')[1]; if(i===sel) buy(items[i]); else { sel=i; msg=item(items[i]).note||''; } draw(); }}); };
+      if(!o.items&&typeof ARMOR!=='undefined'&&ARMOR.PELTS&&typeof MENU!=='undefined') h+=`<div class="gm-sec">Furs & pelts</div><button class="gm-item" data-act="pelts"><span>🐾 Wolf, fox, lion, stag, snow-bear… <span class="ds">try them on, worn as your cowl</span></span><i>▸</i></button>`;   /* V246 */
+      UI.sheet({title:o.title||'🏪 Capital Market Hall',html:h,keepScroll:true,act:a=>{ if(a==='pelts'){ UI.close(); ARMOR.shop='pelts'; MENU.show('Gear'); return; } const i=+a.split(':')[1]; if(i===sel) buy(items[i]); else { sel=i; msg=item(items[i]).note||''; } draw(); }}); };
     function buy(k){ const S=GAME.S, it=item(k); if(owned(k)){ msg=`You already own the ${it.name}.`; return; } if(S.gold<it.price){ msg=`Not enough gold for ${it.name}.`; return; }
       S.gold-=it.price;
       if(SYS.PET_GEAR[k]){ S.petGear[k]=true; msg=`Bought ${it.emoji} ${it.name}! Equip it from the 🐾 Pet tab.`; }

@@ -283,29 +283,69 @@
   // GUARDIAN · the bear — a shaggy fur cowl over the gorget that runs on into a short fur cape down the back
   // the bearskin, cleaned: smooth pelts, their edges falling in soft locks (no spiky tufts), the bear's head on the left shoulder
   const lock=(g,mat,pos,dir,len,wid)=>{ let f=new THREE.SphereGeometry(1,8,5); f.scale(wid,len/2,wid*0.45); f.translate(0,-len/2,0); const m=mesh(g,f,mat,'fur'); m.position.copy(pos); m.quaternion.setFromUnitVectors(V(0,-1,0),dir.clone().normalize()); m.userData.soft=1; return m; };
-  reg('cowl','guardian','Guardian bearskin',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), GD=GDm(M), F1=pelt('bear',0x5a4130), F2=pelt('bear2',0x6e5139), F3=pelt('bear3',0x46322a);
-    const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y, w=Math.max(Math.abs(E.min.x),E.max.x);
-    // the collar: a thick soft roll about the neck, its lower edge in locks
-    const tz=0.88, YA=y0+0.05, YT=y0+0.19, col=(ph,y)=>{ const v=(y-YA)/(YT-YA); return (K._furR||0.25)*(1-0.4*Math.pow(v,1.2))*(1+0.035*Math.sin(ph*9)); };
-    mesh(g,band(col,-Math.PI,Math.PI,YA,YT,36,5,{zk:tz,smooth:true,two:0.006}),F1,'fur');
-    for(let i=0;i<30;i++){ const ph=-Math.PI+i/30*Math.PI*2+(i%2)*0.05, r=col(ph,YA)+0.002; lock(g,i%3?F1:F2,V(r*Math.sin(ph),YA+0.02,tz*r*Math.cos(ph)),V(Math.sin(ph)*0.35,-1,tz*Math.cos(ph)*0.35),0.07+(i%3)*0.015,0.03); }
-    // the pelts over the shoulders: on the arm's own joint, so they ride the pauldrons whatever is worn there; their hems in locks
-    [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const gp=piece(ctx,A.sh), e=paulE(A,sd), rx=e.rx*(K._furS||1.5), rz=e.rz*(K._furS||1.45), top=e.top+0.07, ry=(top-e.bot)*0.95, cx=e.cx-sd*0.02;
-      const dome=(ph,th,o)=>{ const ww=1+0.035*Math.sin(ph*5+th*3); return V(cx+(rx+(o||0))*ww*Math.sin(th)*Math.sin(ph), top-ry+(ry+(o||0)*0.8)*Math.cos(th), (rz+(o||0))*ww*Math.sin(th)*Math.cos(ph)); };
-      const TH=Math.PI*0.5; const pm=mesh(gp,surf((u,v)=>dome(-Math.PI+u*Math.PI*2,TH*(1-v)),28,6,{smooth:true,two:0.006}),F1,'fur'); pm.userData.softHead=1;
-      for(let i=0;i<18;i++){ const ph=-Math.PI+i/18*Math.PI*2+(i%2)*0.08, p=dome(ph,TH-0.02,0.002), d=V(Math.sin(ph)*0.45,-1,Math.cos(ph)*0.45); lock(gp,i%3?F1:(i%2?F2:F3),p,d,0.085+(i%3)*0.02,0.036).userData.softHead=1; }
-      if(sd>0){ // the bear's head, worn on the left shoulder, its snout to the fore
-        const hp=dome(Math.PI/2,0.35,0.02), hg=new THREE.Group(); hg.position.copy(hp); gp.add(hg); hg.userData.armor=gp.userData.armor;
-        const sm=(rx2,ry2,rz2)=>{ const s2=new THREE.SphereGeometry(1,12,8); s2.scale(rx2,ry2,rz2); return s2; };
-        mesh(hg,sm(0.075,0.06,0.08),F1,'fur'); const sn=mesh(hg,sm(0.04,0.034,0.06),F2,'fur'); sn.position.set(0,-0.01,0.075);
-        mesh(hg,sm(0.015,0.011,0.01),pelt('_nose',0x161210),'fur').position.set(0,0.003,0.132);
-        [-1,1].forEach(q=>{ const ear=mesh(hg,sm(0.022,0.024,0.012),F3,'fur'); ear.position.set(q*0.05,0.055,-0.01);
-          const eye=mesh(hg,sm(0.007,0.005,0.004),pelt('_eye',0x0c0a08),'fur'); eye.position.set(q*0.03,0.022,0.06); }); } });
-    // the cloak of fur down the back, outside the cloth one; smooth, its hem in long locks
-    const RC=0.32, cape=(ph,y)=>{ const v=(YA-y)/0.72; return RC*(1.0+0.16*v)*(1+0.03*Math.sin(ph*7+v*3)); };
-    const cm=mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-0.72*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y,tz*r*Math.cos(ph)); },20,8,{smooth:true,two:0.006}),F1,'fur'); cm.userData.soft=1;
-    for(let i=0;i<22;i++){ const ph=Math.PI-1.3+2.6*i/21, y=YA-0.68, r=cape(ph,y)+0.002; lock(g,i%3?F1:(i%2?F2:F3),V(r*Math.sin(ph),y,tz*r*Math.cos(ph)),V(0,-1,-0.1),0.1+(i%3)*0.025,0.04); }
-  });
+  /* V246: PELTS — the bearskin's pattern for any beast: a collar of fur at the neck, a pelt over each shoulder (on the arm's own joint,
+     riding whatever pauldrons are worn), the beast's head on the left shoulder, and a cloak of its hide down the back. o: {c:[main,light,dark],
+     head:'bear'|'wolf'|'fox'|'lion'|'stag'|'ram'|'raven', cloak:length (0 for none), sh:shoulder size, mane, feathers, tail, spots} */
+  function furCowl(ctx,o){ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to), F1=pelt(o.k+'1',o.c[0]), F2=pelt(o.k+'2',o.c[1]), F3=pelt(o.k+'3',o.c[2]), DK=pelt('_nose',0x161210), EY=pelt('_eye',0x0c0a08);
+    const E=bounds(to,q=>q.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y;
+    const LK=(par,mat,pos,dir,len,wid)=>o.feathers?(()=>{ let f=new THREE.SphereGeometry(1,8,5); f.scale(wid*0.9,len/2,0.006); f.translate(0,-len/2,0); const m=mesh(par,f,mat,'fur'); m.position.copy(pos); m.quaternion.setFromUnitVectors(V(0,-1,0),dir.clone().normalize()); m.userData.soft=1; return m; })():lock(par,mat,pos,dir,len,wid);
+    const mix=i=>i%3?F1:(i%2?F2:F3);
+    // the collar
+    const tz=0.88, YA=y0+0.05, YT=y0+0.19+(o.mane?0.05:0), R0=(K._furR||0.25)*(o.mane?1.22:1), col=(ph,y)=>{ const v=(y-YA)/(YT-YA); return R0*(1-0.4*Math.pow(v,1.2))*(1+0.035*Math.sin(ph*9)); };
+    mesh(g,band(col,-Math.PI,Math.PI,YA,YT,36,5,{zk:tz,smooth:true,two:0.006}),o.mane?F2:F1,'fur');
+    const NL=o.mane?44:30; for(let i=0;i<NL;i++){ const ph=-Math.PI+i/NL*Math.PI*2+(i%2)*0.05, r=col(ph,YA)+0.002, ln=(o.mane?0.13:0.07)+(i%3)*0.015; LK(g,o.mane?(i%2?F2:F1):mix(i),V(r*Math.sin(ph),YA+0.02,tz*r*Math.cos(ph)),V(Math.sin(ph)*0.35,-1,tz*Math.cos(ph)*0.35),ln,o.mane?0.036:0.03); }
+    if(o.mane) for(let i=0;i<28;i++){ const ph=-Math.PI+i/28*Math.PI*2, r=col(ph,YT-0.02); LK(g,i%2?F1:F2,V(r*Math.sin(ph),YT,tz*r*Math.cos(ph)),V(Math.sin(ph)*0.8,-0.6,tz*Math.cos(ph)*0.8),0.1,0.034); }   // the mane's crown, standing out
+    // the shoulder pelts
+    const S=o.sh||1;
+    [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const gp=piece(ctx,A.sh), e=paulE(A,sd), rx=e.rx*(K._furS||1.5)*S, rz=e.rz*(K._furS||1.45)*S, top=e.top+0.07*S, ry=(top-e.bot)*0.95, cx=e.cx-sd*0.02;
+      const dome=(ph,th,of)=>{ const ww=1+0.035*Math.sin(ph*5+th*3); return V(cx+(rx+(of||0))*ww*Math.sin(th)*Math.sin(ph), top-ry+(ry+(of||0)*0.8)*Math.cos(th), (rz+(of||0))*ww*Math.sin(th)*Math.cos(ph)); };
+      const TH=Math.PI*0.5; mesh(gp,surf((u,v)=>dome(-Math.PI+u*Math.PI*2,TH*(1-v)),28,6,{smooth:true,two:0.006}),F1,'fur').userData.softHead=1;
+      if(o.spots) for(let i=0;i<7;i++){ const sp=mesh(gp,(()=>{ const s2=new THREE.SphereGeometry(1,8,5); s2.scale(0.018,0.004,0.014); return s2; })(),F2,'fur'); const ph=-Math.PI+i*0.9, th=0.5+(i%3)*0.25, p=dome(ph,th,0.004); sp.position.copy(p); sp.lookAt(p.clone().multiplyScalar(2).sub(V(cx,top-ry,0))); sp.rotateX(Math.PI/2); }
+      const NS=o.feathers?24:18; for(let i=0;i<NS;i++){ const ph=-Math.PI+i/NS*Math.PI*2+(i%2)*0.08, p=dome(ph,TH-0.02,0.002), d=V(Math.sin(ph)*0.45,-1,Math.cos(ph)*0.45); LK(gp,mix(i),p,d,(o.feathers?0.12:0.085)+(i%3)*0.02,o.feathers?0.03:0.036).userData.softHead=1; }
+      if(o.feathers) for(let row=0;row<2;row++) for(let i=0;i<14;i++){ const ph=-Math.PI+i/14*Math.PI*2+row*0.2, th=0.55+row*0.35, p=dome(ph,th,0.006+row*0.003); LK(gp,mix(i+row),p,p.clone().sub(V(cx,top-ry,0)).add(V(0,-0.12,0)),0.09,0.026).userData.softHead=1; }
+      if(sd>0&&o.head) head(gp,dome(Math.PI/2,0.35,0.02),o.head,F1,F2,F3,DK,EY); });
+    // the cloak, and a tail
+    if(o.cloak){ const CL=o.cloak, RC=0.32, cape=(ph,y)=>{ const v=(YA-y)/CL; return RC*(1.0+0.16*v)*(1+0.03*Math.sin(ph*7+v*3)); };
+      const cm=mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-CL*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y,tz*r*Math.cos(ph)); },20,8,{smooth:true,two:0.006}),F1,'fur'); cm.userData.soft=1;
+      if(o.spots) for(let i=0;i<12;i++){ const u=(i*0.37)%1, v=0.2+((i*0.53)%0.7), ph=Math.PI-1.2+2.4*u, y=YA+0.04-CL*(1-v), r=cape(ph,y)+0.004, sp=mesh(g,(()=>{ const s2=new THREE.SphereGeometry(1,8,5); s2.scale(0.02,0.016,0.004); return s2; })(),F2,'fur'); sp.position.set(r*Math.sin(ph),y,tz*r*Math.cos(ph)); sp.rotation.y=ph; sp.userData.soft=1; }
+      for(let i=0;i<22;i++){ const ph=Math.PI-1.3+2.6*i/21, y=YA+0.04-CL+0.04, r=cape(ph,y)+0.002; LK(g,mix(i),V(r*Math.sin(ph),y,tz*r*Math.cos(ph)),V(0,-1,-0.1),(o.feathers?0.13:0.1)+(i%3)*0.025,0.04); } }
+    if(o.tail){ const pts=bez(V(0,YA-0.02,-0.3),V(0.02,YA-0.25,-0.38),V(0.05,YA-0.45,-0.34),V(0.07,YA-0.62,-0.26),12); const n=pts.length, cut=Math.round(n*0.78);
+      const t1=mesh(g,sweep(pts.slice(0,cut+1),0.05,0.04,7,t=>0.55+0.45*Math.sin(Math.min(1,t*1.1)*Math.PI)),F1,'fur'); t1.userData.soft=1;
+      const t2=mesh(g,sweep(pts.slice(cut),0.05,0.04,7,t=>0.9*(1-t*0.85)),F3,'fur'); t2.userData.soft=1; } }
+  // the beast's head, worn on the shoulder, its snout to the fore
+  function head(par,at,kind,F1,F2,F3,DK,EY){ const hg=new THREE.Group(); hg.position.copy(at); par.add(hg); hg.userData.armor=par.userData.armor;
+    const sm=(a,b,c,mat,x,y,z,seg)=>{ const s2=new THREE.SphereGeometry(1,seg||12,8); s2.scale(a,b,c); const m=mesh(hg,s2,mat,'fur'); m.position.set(x||0,y||0,z||0); return m; };
+    const horn=(pts,r,mat)=>mesh(hg,sweep(pts,r,r,6,t=>1-0.8*t),mat,'fur');
+    if(kind==='bear'){ sm(0.075,0.06,0.08,F1); sm(0.04,0.034,0.06,F2,0,-0.01,0.075); sm(0.015,0.011,0.01,DK,0,0.003,0.132); [-1,1].forEach(q=>{ sm(0.022,0.024,0.012,F3,q*0.05,0.055,-0.01); sm(0.007,0.005,0.004,EY,q*0.03,0.022,0.06); }); }
+    if(kind==='wolf'){ sm(0.065,0.055,0.075,F1); sm(0.03,0.026,0.07,F2,0,-0.012,0.085); sm(0.012,0.009,0.009,DK,0,-0.004,0.152);
+      [-1,1].forEach(q=>{ const c=new THREE.ConeGeometry(0.022,0.06,4); const m=mesh(hg,c,F3,'fur'); m.position.set(q*0.035,0.07,-0.01); m.rotation.z=-q*0.25; sm(0.008,0.005,0.004,pelt('_amber',0xd8a030),q*0.028,0.02,0.055); }); }
+    if(kind==='fox'){ sm(0.055,0.046,0.06,F1); sm(0.024,0.02,0.06,F2,0,-0.012,0.07); sm(0.01,0.008,0.008,DK,0,-0.006,0.128);
+      [-1,1].forEach(q=>{ const c=new THREE.ConeGeometry(0.022,0.06,4); const m=mesh(hg,c,F1,'fur'); m.position.set(q*0.032,0.062,-0.005); m.rotation.z=-q*0.2; sm(0.016,0.014,0.01,F2,q*0.04,0.0,0.03); sm(0.007,0.004,0.004,pelt('_amber',0xd8a030),q*0.024,0.016,0.048); }); }
+    if(kind==='lion'){ sm(0.065,0.06,0.07,F1); sm(0.036,0.03,0.05,F1,0,-0.016,0.065); sm(0.014,0.01,0.01,DK,0,-0.004,0.112);
+      for(let i=0;i<14;i++){ const a=i/14*Math.PI*2; lock(hg,i%2?F2:F3,V(Math.cos(a)*0.06,Math.sin(a)*0.06,-0.02),V(Math.cos(a),Math.sin(a),-0.4),0.07,0.028); }
+      [-1,1].forEach(q=>sm(0.007,0.005,0.004,pelt('_amber',0xd8a030),q*0.028,0.02,0.058)); }
+    if(kind==='stag'){ sm(0.05,0.05,0.065,F1); sm(0.03,0.028,0.06,F1,0,-0.014,0.07); sm(0.012,0.009,0.009,DK,0,-0.005,0.125);
+      [-1,1].forEach(q=>{ const b=V(q*0.03,0.045,-0.01); horn([b,b.clone().add(V(q*0.04,0.07,-0.01)),b.clone().add(V(q*0.08,0.15,-0.04)),b.clone().add(V(q*0.1,0.22,-0.03))],0.008,pelt('_antler',0xd8c8a8));
+        horn([b.clone().add(V(q*0.045,0.08,-0.015)),b.clone().add(V(q*0.03,0.13,0.03))],0.006,pelt('_antler',0xd8c8a8)); horn([b.clone().add(V(q*0.08,0.15,-0.04)),b.clone().add(V(q*0.05,0.2,0.02))],0.005,pelt('_antler',0xd8c8a8));
+        sm(0.014,0.02,0.008,F2,q*0.05,0.04,-0.02); sm(0.007,0.006,0.004,EY,q*0.028,0.018,0.05); }); }
+    if(kind==='ram'){ sm(0.058,0.055,0.07,F1); sm(0.03,0.03,0.05,F2,0,-0.016,0.07); [-1,1].forEach(q=>{ const pts=[]; for(let k=0;k<=14;k++){ const a=k/14*Math.PI*1.6; pts.push(V(q*(0.05+0.035*Math.sin(a)),0.03+0.04*Math.cos(a)-0.01*k/14,-0.02-0.035*Math.sin(a*0.5))); } horn(pts,0.014,pelt('_horn',0x8a7a5e)); sm(0.006,0.005,0.004,EY,q*0.03,0.02,0.058); }); }
+    if(kind==='raven'){ sm(0.05,0.05,0.055,F1); const bk=mesh(hg,new THREE.ConeGeometry(0.018,0.08,6),pelt('_beak',0x2a2a2e),'fur'); bk.rotation.x=Math.PI/2; bk.position.set(0,-0.005,0.08); [-1,1].forEach(q=>sm(0.007,0.007,0.004,pelt('_ravenEye',0x9a8a40),q*0.03,0.015,0.04)); }
+    return hg; }
+  reg('cowl','guardian','Guardian bearskin',ctx=>furCowl(ctx,{k:'bear',c:[0x5a4130,0x6e5139,0x46322a],head:'bear',cloak:0.72}));
+  // the pelts, sold in the towns' shops (V246)
+  const PELTS=[
+    {id:'pelt_wolf',name:'Wolf pelt',o:{k:'wolf',c:[0x8a8c90,0xd8d6d0,0x55575c],head:'wolf',cloak:0.6},price:90},
+    {id:'pelt_snowbear',name:'Snow-bear pelt',o:{k:'sbear',c:[0xe6e2d6,0xf6f3ea,0xc6c0b0],head:'bear',cloak:0.72},price:140},
+    {id:'pelt_fox',name:'Fox stole',o:{k:'fox',c:[0xc0602a,0xf2eee6,0x7a3a1e],head:'fox',cloak:0,sh:0.85,tail:true},price:80},
+    {id:'pelt_lion',name:'Lion’s mane',o:{k:'lion',c:[0xc89a50,0x8a5a2a,0xa87838],head:'lion',cloak:0.6,mane:true},price:150},
+    {id:'pelt_stag',name:'Stag hide',o:{k:'stag',c:[0x8a5c38,0xe0cfa8,0x5a3a22],head:'stag',cloak:0.6,spots:true},price:110},
+    {id:'pelt_ram',name:'Ram fleece',o:{k:'ram',c:[0xd8ccb0,0xeee4cc,0xb8aa8a],head:'ram',cloak:0.5,sh:1.1},price:85},
+    {id:'pelt_raven',name:'Raven mantle',o:{k:'raven',c:[0x1e1e26,0x34343e,0x14141a],head:'raven',cloak:0.66,feathers:true},price:120},
+    {id:'pelt_bear',name:'Brown bearskin',o:{k:'bear',c:[0x5a4130,0x6e5139,0x46322a],head:'bear',cloak:0.72},price:120}];
+  PELTS.forEach(p=>{ P.cowl[p.id]={name:p.name,set:'Pelt',pelt:true,price:p.price,build:ctx=>furCowl(ctx,p.o)}; });
+  ARMOR.PELTS=PELTS.map(p=>({id:p.id,name:p.name,price:p.price}));
+  ARMOR.buyPelt=id=>{ const S=GAME.S, pc=P.cowl[id]; if(!pc) return 'no'; S.armorOwned=S.armorOwned||{}; if(S.armorOwned[id+'.cowl']) return 'no'; if((S.gold|0)<pc.price) return 'poor';
+    if(GAME.addGold) GAME.addGold(-pc.price); else S.gold-=pc.price; S.armorOwned[id+'.cowl']=1; S.armorPick=S.armorPick||{}; S.armorPick.cowl=id; if(S.armorOff) delete S.armorOff.cowl; ARMOR.tryOn('cowl',id); GAME.save&&GAME.save(); GAME.changed&&GAME.changed(); return 'ok'; };
   // bear's paws: heavy gauntlets with three curved claws over the knuckles and a spike on the back of the hand
   reg('gauntlets','guardian','Guardian claws',ctx=>{ const K=ctx.K, M=K.M, GD=GDm(M);
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g=piece(ctx,A.hand), {gc,n,t,y1,rr,back,Eg}=handE(A,sd);

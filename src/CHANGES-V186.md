@@ -632,3 +632,22 @@ After Oceanside harbour, as a beachfront town:
   - The smith's sheet has "⛨ Armour of the ten towns", which opens the Gear tab in shop mode: tap a piece to try it on (worn until the menu closes), and buy to keep it (`S.armorOwned`).
 - Soft cloth (`ARMOR.tick`, called each frame after the knight animates): skirts, robes and the fur cloak (`userData.soft`, plus everything on the skirt hinges) are pushed vertex by vertex out of a capsule on each thigh and shin. The shoulder pelts are pushed out of a sphere round the head. Untouched vertices return to their rest shape.
 - The bearskin, cleaned: smooth shaded pelts (no flat facets) with soft rounded locks at the hems instead of spiky cones, a smooth bear's head on the left shoulder, and a smooth fur cloak with long locks at its hem.
+
+## V246 — pelts of many beasts, no cloth cape, the shield made sturdier
+- `furCowl(ctx,o)` (armor_sets.js) is the bearskin's pattern made general: a collar, a pelt over each shoulder (on the arm joint, over any pauldrons), the beast's head on the left shoulder (`head()`: bear, wolf, fox, lion, stag with antlers, ram with curled horns, raven with beak), and a hide cloak of any length. Options: a mane, feathered locks, spots, a tail.
+- Eight pelts sold in every village shop under "🐾 Furs & pelts" (services.js). That opens the Gear screen in pelt mode to try them on and buy; owned pelts are kept in `S.armorOwned[id+'.cowl']` (`ARMOR.buyPelt`):
+
+| Pelt | Price |
+|---|---|
+| Wolf | 90 |
+| Snow-bear | 140 |
+| Fox stole with tail | 80 |
+| Lion's mane | 150 |
+| Stag hide | 110 |
+| Ram fleece | 85 |
+| Raven mantle | 120 |
+| Brown bearskin | 120 |
+
+- The Guardian bearskin now uses the same builder.
+- The hero's built-in cloth cape is gone for good (`capeP` hidden every frame in `ARMOR.tick`). It clipped through the fur cloaks and the saddle.
+- Shield: its meshes are never frustum-culled, and its painted face is double-sided. In tests (each armour set, swapping weapons, guard, menu, first person, riding) its visibility flags never dropped, so the reported disappearance is not yet pinned down.
