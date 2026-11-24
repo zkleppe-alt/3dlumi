@@ -651,3 +651,10 @@ After Oceanside harbour, as a beachfront town:
 - The Guardian bearskin now uses the same builder.
 - The hero's built-in cloth cape is gone for good (`capeP` hidden every frame in `ARMOR.tick`). It clipped through the fur cloaks and the saddle.
 - Shield: its meshes are never frustum-culled, and its painted face is double-sided. In tests (each armour set, swapping weapons, guard, menu, first person, riding) its visibility flags never dropped, so the reported disappearance is not yet pinned down.
+
+## V247 — test: clothes an artist made, skinned to the knight's own skeleton (engine/outfit3.js)
+- Quaternius's "Modular Character Outfits – Fantasy" (Standard, CC0; Zak's download). The male Ranger parts (body, arms, legs, buckled boots, hood, pauldron) and Peasant parts (body, arms, legs, feet) are in models/look3/outfits/, colour texture only, cut to 1024 px JPG (2.6 MB). Licence: models/look3/LICENSE-modular-character-outfits-fantasy.txt.
+- They are built for the Universal Base Characters' 65-bone skeleton, which BODY3 already puts under the hero. Each part is rebound to the hero's own bones (`F.B[name]`) with its own inverse bind matrices, so it moves with every clip and the rig-driven motion, bending like a real garment.
+- While a test outfit is worn, the code harness, plate shells and sculpt pieces are hidden, but the weapon, sheath, back slot and shield stay. The body is cut to what the clothes leave bare (head and hands, painted skin; `F.idx0` now keeps the full index in body3.hero), and the eyes and brows are shown.
+- ☰ System → "🧪 Test look" cycles off → Ranger → Peasant (saved in `klk3d_outfit3`, applied live). It needs the model files, so it works in the hosted game, not the artifact preview.
+- Free edition: only Ranger and Peasant (no knight). The full kit (12 outfits) is the paid Source edition.

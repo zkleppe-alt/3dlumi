@@ -198,6 +198,7 @@ const BODY3=(function(){
       paint(F,()=>0x2c2f36,'mail'); F.extra.forEach(o=>{ o.visible=false; });   // the helm, the gauntlets, the sabatons and the breastplate are the sculpt's
       // the plate on the limbs: thigh and greave, rerebrace and vambrace, each edged in gold — segmented, as on the sheet
       [['thigh',0.026],[['calf','boot'],0.024],['upperarm',0.022],['forearm',0.024],['foot',0.018]].forEach(([rg,d])=>shell(F,Array.isArray(rg)?rg:[rg],ST,d,rg==='foot'?4:10,{trim:GD,trimRings:2,any:true}));   // the sabatons too, on the body's own feet
+      F.idx0=F.body.geometry.index.clone();   /* V247: the whole body kept, for a skinned outfit to cut its own way (outfit3.js) */
       cut(F,['head','hand','foot','chest','belly']);   // under the helm, the gauntlets, the sabatons and the breastplate, nothing of the bare body
       // the poleyns and couters (knee and elbow cops) on the shin and forearm bones
       const cop=(bn,r,fwd,y)=>{ const b=F.B[bn]; if(!b) return; const g2=new THREE.Group(); const sp=new THREE.Mesh(new THREE.SphereGeometry(r,14,10),CS); sp.scale.set(1,1.1,0.75); const rg=new THREE.Mesh(new THREE.TorusGeometry(r*1.02,r*0.13,6,20),CG); g2.add(sp,rg); g2.userData.b3reg=bn; g2.traverse(o=>{ o.castShadow=true; });
