@@ -676,3 +676,10 @@ After Oceanside harbour, as a beachfront town:
 - The sabaton's leather ankle strap is now a steel collar under the greave's flare.
 - The cuisse wraps further round the thigh (±2.4 rad, was ±1.55), with only a narrow leather strip behind.
 - The body under the armour (BODY3 "mail", the backs of the knees and other gaps) is painted a mid steel-grey 0x4c535e instead of near-black, so gaps read as mail rather than holes.
+
+## V250 — athletic, body-fitted Templar legs
+- New `bodyRings()` in armor.js samples the skinned hero's own thigh/calf vertices (pivot-local), bins them into height × angle rings, and the plate is built around that shape instead of a straight tube.
+- Cuisse: wraps the real thigh (+ a front keel), leather strip behind.
+- Greave: follows the calf — swell behind (`K._calf`, default 0.028), shin line in front, drawn in to a slim ankle, then flares onto the instep; axis bends toward the foot.
+- Steel ankle cuff with two gold bands; ankle rivets moved onto it.
+- `K._legFit=false` falls back to the V249 closed boots.
