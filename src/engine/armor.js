@@ -215,9 +215,9 @@ const ARMOR=(function(){
     [[K.rig.L,1],[K.rig.R,-1]].forEach(([G,sd])=>{ const gh=piece(ctx,G.hip), gk=piece(ctx,G.knee);
       const Eh=bounds(G.hip,o=>/^(steel|gold)$/.test(o.userData.part),[[-0.105,-0.348,0.009],[0.101,-0.025,0.114]]);
       const RH=(Eh.max.x-Eh.min.x)/2+0.008, yt=Eh.max.y+0.01, yb=Eh.min.y+0.03;
-      mesh(gh,band((ph,y)=>RH*(0.92+0.08*(y-yb)/(yt-yb)),-1.55,1.55,yb,yt,8,3,{two:0.004,cz:0.0}),M.steel,'steel');                 // the cuisse
-      [yb,yt-0.016].forEach(y=>mesh(gh,band(()=>RH*(y>yb?1:0.93)+0.004,-1.55,1.55,y,y+0.016,12,1,{two:0.002}),GD,'gold'));
-      mesh(gh,band((ph,y)=>RH*0.9,Math.PI-1.6,Math.PI+1.6,yb,yt,6,2,{two:0.003}),M.boot,'leather');                                    // and its straps behind
+      mesh(gh,band((ph,y)=>RH*(0.92+0.08*(y-yb)/(yt-yb)),-2.4,2.4,yb,yt,12,3,{two:0.004,cz:0.0}),M.steel,'steel');                 // the cuisse
+      [yb,yt-0.016].forEach(y=>mesh(gh,band(()=>RH*(y>yb?1:0.93)+0.004,-2.4,2.4,y,y+0.016,16,1,{two:0.002}),GD,'gold'));
+      mesh(gh,band((ph,y)=>RH*0.9,Math.PI-0.85,Math.PI+0.85,yb,yt,6,2,{two:0.003}),M.boot,'leather');                                    // and its straps behind
       // the poleyn: a faceted point on the knee and a fan to the outside, gold-rimmed
       const pk=mesh(gk,facetSphere(0.06,0.062,0.052,6,4,0,Math.PI*0.6),M.steel,'steel'); pk.position.set(0,0.012,0.04); pk.rotation.x=Math.PI/2;
       const tip=mesh(gk,new THREE.ConeGeometry(0.03,0.04,6).toNonIndexed(),M.steel,'steel'); tip.position.set(0,0.012,0.1); tip.rotation.x=Math.PI/2; tip.geometry.computeVertexNormals();
@@ -225,12 +225,20 @@ const ARMOR=(function(){
       const fan=mesh(gk,facetSphere(0.04,0.05,0.014,6,4),M.steel,'steel'); fan.position.set(sd*0.055,0.01,0.01); fan.rotation.y=sd*0.5;
       // the greave: a keeled shell before, leather behind
       const Ek=bounds(G.knee,o=>!o.userData.sabaton&&/^(steel)$/.test(o.userData.part),[[-0.072,-0.36,-0.09],[0.084,0.075,0.12]]);
-      const gy1=-0.04, gy0=-0.345, R0=0.07, R1=0.056, rG=(ph,y)=>{ const v=(y-gy0)/(gy1-gy0); return R1+(R0-R1)*Math.sin(Math.min(1,v*1.15)*Math.PI/2)+0.006*Math.max(0,1-Math.abs(ph)/0.25); };
-      mesh(gk,band(rG,-1.75,1.75,gy0,gy1,10,4,{two:0.004}),M.steel,'steel');
-      mesh(gk,band((ph,y)=>rG(ph,y)-0.004,Math.PI-1.45,Math.PI+1.45,gy0,gy1,6,3,{two:0.003}),M.boot,'leather');
-      [-1.75,1.75].forEach(e=>mesh(gk,surf((u,v)=>{ const y=gy0+(gy1-gy0)*u, ph=e+(v-0.5)*0.16*(e>0?-1:1); const r=rG(ph,y)+0.004; return V(r*Math.sin(ph),y,r*Math.cos(ph)); },6,1,{two:0.002}),GD,'gold'));   // gold down its edges
-      mesh(gk,surf((u,v)=>{ const y=gy0+(gy1-0.03-gy0)*u, ph=(v-0.5)*0.07; const r=rG(0,y)+0.005; return V(r*Math.sin(ph),y,r*Math.cos(ph)); },6,1,{two:0.002}),GD,'gold');   // and its keel
-      mesh(gk,band((ph,y)=>rG(ph,gy1)+0.005,-1.75,1.75,gy1-0.016,gy1,12,1,{two:0.002}),GD,'gold'); }); };
+      /* V249: a closed greave, steel all round, running down over the ankle and flaring onto the sabaton's instep — an armoured
+         boot, not a shin guard: its axis bends from the knee to the ankle so its foot sits over the foot */
+      const Ef=bounds(G.knee,o=>o.userData.sabaton||o.userData.part==='leather',[[-0.072,-0.44,-0.06],[0.084,-0.34,0.213]]), acx=(Ef.min.x+Ef.max.x)/2, acz=Ef.min.z+0.05, fx0=(Ef.max.x-Ef.min.x)/2;
+      const gy1=0.0, gy0=Math.min(-0.33,Ef.max.y)-0.035, R0=0.07, R1=0.056;
+      const rG=(ph,y)=>{ const v=(y-gy0)/(gy1-gy0), calf=R1+(R0-R1)*Math.sin(Math.min(1,v*1.15)*Math.PI/2), flare=Math.max(0,0.16-v)/0.16, foot=Math.max(fx0+0.014,R1)*(1+0.25*Math.max(0,Math.cos(ph)));
+        return calf+(foot-calf)*flare*flare+0.006*Math.max(0,1-Math.abs(ph)/0.25)+(K._gvB!==undefined?K._gvB:0.02)*Math.max(0,-Math.cos(ph))*Math.sin(Math.min(1,v*1.3)*Math.PI); };   // room behind for the calf
+      const ax=y=>{ const v=Math.max(0,Math.min(1,(gy1-y)/(gy1-gy0))), t=Math.pow(v,2.2); return [acx*t,acz*t*0.6]; };
+      const G3=(ph,y,o)=>{ const r=rG(ph,y)+(o||0), [x,z]=ax(y); return V(x+r*Math.sin(ph),y,z+r*Math.cos(ph)); };
+      mesh(gk,surf((u,v)=>G3(-Math.PI+u*Math.PI*2,gy0+(gy1-gy0)*v),14,6,{two:0.004}),M.steel,'steel');
+      mesh(gk,surf((u,v)=>{ const y=gy0+0.02+(gy1-0.03-gy0)*u, ph=(v-0.5)*0.07; return G3(ph,y,0.005); },6,1,{two:0.002}),GD,'gold');   // the keel
+      mesh(gk,surf((u,v)=>{ const y=gy0+0.02+(gy1-0.03-gy0)*u, ph=Math.PI+(v-0.5)*0.07; return G3(ph,y,0.004); },6,1,{two:0.002}),GD,'gold');   // the hinge-seam behind
+      [gy1-0.016,gy0+0.006].forEach(y=>mesh(gk,surf((u,v)=>G3(-Math.PI+u*Math.PI*2,y+v*0.016,0.005),24,1,{two:0.002}),GD,'gold'));   // gold at its top and its foot
+      [-1,1].forEach(s=>{ const rv=mesh(gk,facetSphere(0.008,0.008,0.008,6,4),GD,'gold'); rv.position.copy(G3(s*Math.PI/2,gy0+0.05,0.006)); });   // the ankle rivets
+    }); };
 
   // ── SABATONS: lames over the foot to a blunt toe, a gold band at the ankle, a leather strap and sole ──
   T.sabatons=function(ctx){ const K=ctx.K, M=K.M, GD=M.goldD||M.gold;
@@ -242,7 +250,7 @@ const ARMOR=(function(){
       mesh(g,surf((u,v)=>foot(u,v),8,6,{flip:true}),M.steel,'steel');
       [0.28,0.46,0.64].forEach(v=>mesh(g,surf((u,w)=>foot(u,v+w*0.025,0.003),12,1,{two:0.002}),GD,'gold'));   // the lames' edges
       mesh(g,band(()=>x0+0.008,-Math.PI,Math.PI,yt-0.02,yt,12,1,{two:0.002,cx,cz:z0+0.05}),GD,'gold');                   // the ankle band
-      mesh(g,band(()=>x0+0.002,-Math.PI,Math.PI,yt-0.06,yt-0.02,10,1,{two:0.003,cx,cz:z0+0.05}),M.boot,'leather');      // the strap
+      mesh(g,band(()=>x0+0.004,-Math.PI,Math.PI,yt-0.06,yt+0.01,10,1,{two:0.003,cx,cz:z0+0.05}),M.steel,'steel');      // V249: a steel collar at the ankle (the greave closes over it)
       const so=mesh(g,new THREE.BoxGeometry(x0*2+0.006,0.016,L).toNonIndexed(),M.boot,'leather'); so.position.set(cx,ys+0.008,z0+L/2); }); };
 
   const PIECES={}; SLOTS.forEach(s=>PIECES[s]={templar:{name:'Templar '+NAMES[s].toLowerCase(),set:'Templar',build:T[s]}});

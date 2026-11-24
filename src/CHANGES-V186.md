@@ -669,3 +669,10 @@ After Oceanside harbour, as a beachfront town:
   - It re-fits when the wardrobe changes a piece (the slot signature). It takes about 3 s, so it's a test only.
 - `fitTo(F,geo)`: the Quaternius outfits (made for a lean body) are let out to the hero's broad Superhero body. In the shared bind space, each garment point inside or within 1.2 cm of the body is pushed out along the body's normal (spatial-hash nearest), the push is smoothed over the garment's edges in 4 passes that never let a point fall back inside, and the result is cached.
 - ☰ System → Test look now cycles: off → your armour skinned → Ranger → Peasant.
+
+## V249 — armoured boots, not shin guards (Templar legs)
+- The greave is now closed: steel all round (it was a front shell with leather behind), from the knee pivot down past the ankle. Its axis bends from the knee to the ankle's centre so the foot of it sits over the sabaton, where it flares onto the instep.
+- Gold on the greave: a keel before, a hinge-seam behind, bands at its top and foot, rivets at the ankle. It bulges behind for the calf (`K._gvB` 0.02), so the Superhero body's calf no longer pokes through.
+- The sabaton's leather ankle strap is now a steel collar under the greave's flare.
+- The cuisse wraps further round the thigh (±2.4 rad, was ±1.55), with only a narrow leather strip behind.
+- The body under the armour (BODY3 "mail", the backs of the knees and other gaps) is painted a mid steel-grey 0x4c535e instead of near-black, so gaps read as mail rather than holes.

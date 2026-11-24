@@ -195,7 +195,7 @@ const BODY3=(function(){
       // plate that bends with the body takes the rig's own steel and gold (so a livery or a worn piece recolours it)
       const sk=m=>{ const c=toon({color:m.color.clone(),skinning:true},true); c.userData.from=m; return c; };
       /* the lineup's steel and gold (toon colours: the old ones were made for shiny-metal shading and go white here) */ const STC=lin('#76818f'), GDC=lin('#c99a34'); const ST=toon({color:STC,skinning:true},true), GD=toon({color:GDC,skinning:true},true), CS=toon({color:STC},true), CG=toon({color:GDC},true); F.mats=[ST,GD];
-      paint(F,()=>0x2c2f36,'mail'); F.extra.forEach(o=>{ o.visible=false; });   // the helm, the gauntlets, the sabatons and the breastplate are the sculpt's
+      paint(F,()=>0x4c535e,'mail'); F.extra.forEach(o=>{ o.visible=false; });   // the helm, the gauntlets, the sabatons and the breastplate are the sculpt's
       // the plate on the limbs: thigh and greave, rerebrace and vambrace, each edged in gold — segmented, as on the sheet
       [['thigh',0.026],[['calf','boot'],0.024],['upperarm',0.022],['forearm',0.024],['foot',0.018]].forEach(([rg,d])=>shell(F,Array.isArray(rg)?rg:[rg],ST,d,rg==='foot'?4:10,{trim:GD,trimRings:2,any:true}));   // the sabatons too, on the body's own feet
       F.idx0=F.body.geometry.index.clone();   /* V247: the whole body kept, for a skinned outfit to cut its own way (outfit3.js) */

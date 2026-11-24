@@ -99,14 +99,14 @@ const OUTFIT3=(function(){
   async function wear(K,id){ const F=K&&K.userData.b3; if(!F||typeof F!=='object'||!F.idx0) return false; off(K); if(id==='skinned'){ const n=skinArmor(K); cur={K,id,made:[],hid:[],idxNow:F.body.geometry.index,extraVis:F.extra.map(o=>o.visible)}; K.userData.outfit3=id; return n>0; } const S=SETS[id]; if(!S) return false;
     let gl; try{ gl=await Promise.all(S.parts.map(load)); }catch(e){ console.warn('outfit3: could not load',e); return false; }
     const g=F.body.geometry, R=F.D.reg, out=new Set(S.cut), keep=[], ix=F.idx0; for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(out.has(R[a])&&out.has(R[b])&&out.has(R[c]))) keep.push(a,b,c); }
-    const idxNow=g.index; BODY3.paint(F,rg=>rg==='head'||rg==='hand'?0xd9a67c:0x2c2f36,'mail'); F.body.geometry.setIndex(keep);   // his face and hands in skin, not the steel-grey the harness wore beneath
+    const idxNow=g.index; BODY3.paint(F,rg=>rg==='head'||rg==='hand'?0xd9a67c:0x4c535e,'mail'); F.body.geometry.setIndex(keep);   // his face and hands in skin, not the steel-grey the harness wore beneath
     const made=[]; gl.forEach(gltf=>gltf.scene.traverse(m=>{ if(!m.isSkinnedMesh) return; const bones=m.skeleton.bones.map(b=>F.B[b.name]); if(bones.some(b=>!b)) return;
       const sk=new THREE.Skeleton(bones,m.skeleton.boneInverses.map(x=>x.clone())), src=m.material; if(src.map){ src.map.encoding=THREE.LinearEncoding; src.map.needsUpdate=true; } const mt=new THREE.MeshToonMaterial({color:0xffffff,map:src.map||null,gradientMap:ramp,skinning:true,side:THREE.DoubleSide});
       const sm=new THREE.SkinnedMesh(fitTo(F,m.geometry),mt); sm.userData.outfit3=true; sm.castShadow=true; sm.frustumCulled=false; sm.position.copy(F.body.position); sm.quaternion.copy(F.body.quaternion); sm.scale.copy(F.body.scale);
       F.body.parent.add(sm); sm.updateMatrixWorld(true); sm.bind(sk,F.body.bindMatrix.clone()); made.push(sm); }));
     const extraVis=F.extra.map(o=>o.visible); F.extra.forEach(o=>{ o.visible=true; });   // his eyes and brows, under the hood
     cur={K,id,made,hid:hideRest(K,F),idxNow,extraVis}; K.userData.outfit3=id; return true; }
-  function off(K){ unskinArmor(K); if(!cur) return; const F=K.userData.b3; cur.made.forEach(m=>m.parent&&m.parent.remove(m)); cur.hid.forEach(o=>{ o.visible=true; }); if(F&&F.body){ BODY3.paint(F,()=>0x2c2f36,'mail'); F.body.geometry.setIndex(cur.idxNow); }
+  function off(K){ unskinArmor(K); if(!cur) return; const F=K.userData.b3; cur.made.forEach(m=>m.parent&&m.parent.remove(m)); cur.hid.forEach(o=>{ o.visible=true; }); if(F&&F.body){ BODY3.paint(F,()=>0x4c535e,'mail'); F.body.geometry.setIndex(cur.idxNow); }
     if(F&&F.extra) F.extra.forEach((o,i)=>{ o.visible=cur.extraVis[i]; }); cur=null; K.userData.outfit3=null; if(typeof ARMOR!=='undefined') ARMOR.apply(); }
   function set(id){ want=id||null; try{ want?localStorage.setItem('klk3d_outfit3',want):localStorage.removeItem('klk3d_outfit3'); }catch(e){} const K=typeof ENGINE!=='undefined'&&ENGINE.K; if(!K) return; if(want) wear(K,want); else off(K); }
   // while worn, keep the harness off (the armour code re-dresses on menus, saves and loads)
