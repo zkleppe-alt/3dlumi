@@ -622,6 +622,15 @@ function buildKnight(){
       K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K.fp?(K._bwPF||[-1.5,0.45,0.15,-0.5,1.2,0]):(K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0]), m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
         m(AL.sh,'x',P[0]); m(AL.sh,'y',P[1]); m(AL.sh,'z',P[2]); m(AL.el,'x',P[3]); m(AL.el,'y',0); m(AL.el,'z',0); m(AL.hand,'x',P[4]); m(AL.hand,'y',0); m(AL.hand,'z',P[5]); } }
     if(K._bowRig) bowString(dt);
+    /* V251: a broken number in a limb's turn (NaN) used to stay for good — the springs and blends carry it from frame to frame — and
+       took the arm, its skinned sleeve and whatever it holds (the shield) out of sight. Any limb that has one is set back to rest. */
+    { let bad=null; for(const n of ['AL','AR','L','R']){ const A=K.rig[n]; for(const k in A){ const o=A[k]; if(!o||!o.isObject3D) continue; const q=o.quaternion, p=o.position;
+        if(!(isFinite(q.x)&&isFinite(q.y)&&isFinite(q.z)&&isFinite(q.w)&&isFinite(p.x)&&isFinite(p.y)&&isFinite(p.z))){ bad=bad||(n+'.'+k); o.quaternion.set(0,0,0,1); if(!(isFinite(p.x)&&isFinite(p.y)&&isFinite(p.z))) o.position.set(0,0,0); }
+        else { const l=q.lengthSq(); if(l<0.25||l>4){ if(l<1e-8) q.set(0,0,0,1); else q.normalize(); bad=bad||(n+'.'+k+' (unnormalised)'); } }
+        const sc=o.scale; if(!(isFinite(sc.x)&&isFinite(sc.y)&&isFinite(sc.z))||Math.abs(sc.x*sc.y*sc.z)<1e-6){ sc.set(1,1,1); bad=bad||(n+'.'+k+' (scale)'); } } }
+      [sArmR.x,sArmR.y,sArmR.z,sArmR.e,sArmL.x,sArmL.y,sArmL.z,sArmL.e,sHandR,sLean,sCape,sGx,sGy].forEach(o=>{ if(!isFinite(o.x)||!isFinite(o.v)){ o.x=0; o.v=0; bad=bad||'spring'; } });
+      ['_sr','_2h','_fpw','_fpA','_bwR','_rk','_g','shTurn','armOut'].forEach(k=>{ if(K[k]!==undefined&&typeof K[k]==='number'&&!isFinite(K[k])){ K[k]=k==='armOut'?0.1:0; bad=bad||k; } });
+      if(bad&&!K.npc&&!K._nanSaid){ K._nanSaid=true; try{ console.warn('[KLK] limb reset after a bad number:',bad,{mode,act:K._act&&K._act.n,st:K._st,w:K._wid,fam:K._fam,carry:K._carry}); }catch(e){} } }
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);
   };
   const _ia=new THREE.Vector3(), _ib=new THREE.Vector3(), _ic=new THREE.Vector3(), _iu=new THREE.Vector3(), _iw=new THREE.Vector3(), _ix=new THREE.Vector3(), _im=new THREE.Matrix4(), _iq=new THREE.Quaternion(), _iq2=new THREE.Quaternion(), _iX=new THREE.Vector3(1,0,0);

@@ -13,7 +13,7 @@ const OUTFIT3=(function(){
   const DIR='models/look3/outfits/', SETS={
     ranger:{name:'Ranger',parts:['Male_Ranger_Body','Male_Ranger_Arms','Male_Ranger_Legs','Male_Ranger_Feet_Boots','Male_Ranger_Head_Hood','Male_Ranger_Acc_Pauldron'],cut:['chest','belly','pelvis','upperarm','forearm','thigh','calf','foot']},
     peasant:{name:'Peasant',parts:['Male_Peasant_Body','Male_Peasant_Arms','Male_Peasant_Legs','Male_Peasant_Feet'],cut:['chest','belly','pelvis','upperarm','forearm','thigh','calf','foot']}};
-  const files={}; let cur=null, want=null; try{ want=localStorage.getItem('klk3d_outfit3')||null; }catch(e){}
+  const files={}; let cur=null, want=null; try{ want=localStorage.getItem('klk3d_outfit3')||null; if(want==='peasant') want=null; }catch(e){}   /* V252: the Peasant clothes are the plain look now */
   const load=n=>files[n]||(files[n]=new Promise((res,rej)=>new THREE.GLTFLoader().load(DIR+n+'.gltf',res,undefined,rej)));
   const ramp=(()=>{ const d=new Uint8Array([140,140,140,255, 210,210,210,255, 255,255,255,255]), t=new THREE.DataTexture(d,3,1,THREE.RGBAFormat); t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true; return t; })();
   // what the outfit hides while it's worn, to show again after
@@ -107,12 +107,92 @@ const OUTFIT3=(function(){
     const extraVis=F.extra.map(o=>o.visible); F.extra.forEach(o=>{ o.visible=true; });   // his eyes and brows, under the hood
     cur={K,id,made,hid:hideRest(K,F),idxNow,extraVis}; K.userData.outfit3=id; return true; }
   function off(K){ unskinArmor(K); if(!cur) return; const F=K.userData.b3; cur.made.forEach(m=>m.parent&&m.parent.remove(m)); cur.hid.forEach(o=>{ o.visible=true; }); if(F&&F.body){ BODY3.paint(F,()=>0x4c535e,'mail'); F.body.geometry.setIndex(cur.idxNow); }
-    if(F&&F.extra) F.extra.forEach((o,i)=>{ o.visible=cur.extraVis[i]; }); cur=null; K.userData.outfit3=null; if(typeof ARMOR!=='undefined') ARMOR.apply(); }
+    if(F&&F.extra) F.extra.forEach((o,i)=>{ o.visible=cur.extraVis[i]; }); cur=null; K.userData.outfit3=null; bSig=null; if(typeof ARMOR!=='undefined') ARMOR.apply(); }
   function set(id){ want=id||null; try{ want?localStorage.setItem('klk3d_outfit3',want):localStorage.removeItem('klk3d_outfit3'); }catch(e){} const K=typeof ENGINE!=='undefined'&&ENGINE.K; if(!K) return; if(want) wear(K,want); else off(K); }
   // while worn, keep the harness off (the armour code re-dresses on menus, saves and loads)
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K, F=K.userData.b3;
     if(want&&!cur&&F&&typeof F==='object'&&K.userData.armor) wear(K,want);
     if(cur&&cur.id==='skinned'){ const S=K.userData.armorS; if(S&&skinned&&sigOf(S)!==skinned.sig) skinArmor(K); }   // the wardrobe changed a piece: fit it again
     else if(cur) K.traverse(o=>{ if(o.isMesh&&o.visible&&o.userData&&o.userData.armor&&!o.userData.outfit3){ o.visible=false; cur.hid.push(o); } }); },500);
-  return { SETS, skinArmor, unskinArmor, set, wear, off, get worn(){ return cur&&cur.id; }, get want(){ return want; } };
+
+  // ═══ V252: THE PLAIN CLOTHES — Quaternius's Peasant (shirt and belt, sleeves and bracers, trousers, boots) and the Ranger's hood are what a
+  //  slot wears with its armour off. Each is skinned to the hero's own bones and let out to his broad build (fitTo), and shows only while
+  //  its slot is plain; the body is cut away beneath what is worn. The hood: up, the face in shadow, when he wears nothing but plain
+  //  clothes; down on his shoulders when he wears armour, and up again at will (the face then only shaded). Where the files can't be had
+  //  (the artifact, the classic look) the code-built plain clothes of armor_sets.js stand in. ═══
+  const BASEP={tabard:'Male_Peasant_Body',arms:'Male_Peasant_Arms',legs:'Male_Peasant_Legs',sabatons:'Male_Peasant_Feet',helm:'Male_Ranger_Head_Hood'};
+  const BCUT={tabard:['chest','belly'],arms:['upperarm','forearm'],legs:['pelvis','thigh','calf'],sabatons:['foot','boot']};
+  let bReady=false, bLoading=false, bGl=null, bSig=null;
+  const GS=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
+  function baseReady(K){ const F=K&&K.userData.b3; return bReady&&!!F&&typeof F==='object'&&!!F.idx0; }
+  function bLoad(){ if(bLoading) return; bLoading=true; const names=Object.values(BASEP);
+    Promise.all(names.map(load)).then(gl=>{ bGl={}; names.forEach((n,i)=>bGl[n]=gl[i]); bReady=true; rebase(); }).catch(e=>{ console.warn('outfit3: plain clothes could not load',e); }); }
+  function rebase(){ const K=typeof ENGINE!=='undefined'&&ENGINE.K, S=K&&K.userData.armorS; if(!S||!S.ids||typeof ARMOR==='undefined') return; ARMOR.SLOTS.forEach(sl=>{ if(S.ids[sl]==='base') ARMOR.wear(K,sl,'base'); }); bSig=null; }
+  // one garment, skinned to the hero
+  function garment(F,name,o){ const gltf=bGl[name]; let src=null; gltf.scene.traverse(m=>{ if(m.isSkinnedMesh&&!src) src=m; }); if(!src) return null;
+    const bones=src.skeleton.bones.map(b=>F.B[b.name]); if(bones.some(b=>!b)) return null;
+    const sk=new THREE.Skeleton(bones,src.skeleton.boneInverses.map(x=>x.clone())), sm0=src.material; if(sm0.map){ sm0.map.encoding=THREE.LinearEncoding; sm0.map.needsUpdate=true; }
+    let geo=fitTo(F,src.geometry); if(o&&o.down){ geo=hoodDown(geo,src.skeleton.bones.map(b=>b.name)); pushOut(F,geo,0.02); }
+    const mt=new THREE.MeshToonMaterial({color:0xffffff,map:(name===BASEP.helm&&sm0.map?dyed(sm0.map):sm0.map)||null,gradientMap:ramp,skinning:true,side:THREE.DoubleSide});
+    const sm=new THREE.SkinnedMesh(geo,mt); sm.userData.outfit3=true; sm.userData.garment=name+(o&&o.down?':down':''); sm.castShadow=true; sm.frustumCulled=false;
+    sm.position.copy(F.body.position); sm.quaternion.copy(F.body.quaternion); sm.scale.copy(F.body.scale); F.body.parent.add(sm); sm.updateMatrixWorld(true); sm.bind(sk,F.body.bindMatrix.clone()); sm.visible=false; return sm; }
+  // the hood thrown back: its crown folded down behind the neck onto the shoulders (bind space, the model's metres: he stands +y, faces +z);
+  //  the folded part rides the upper spine, not the head, so it stays put when he turns his head; the mantle round the throat is left as it is
+  function hoodDown(geo,names){ const g=geo.clone(), P=g.attributes.position, SI=g.attributes.skinIndex, SW=g.attributes.skinWeight, n=P.count;
+    const sp=['spine_05','spine_04','spine_03','neck_01'].map(nm=>names.indexOf(nm)).find(i=>i>=0), nk=names.indexOf('neck_01');
+    const y0=K_HD.y0, zP=K_HD.z0, A=K_HD.ang, top=1.87;
+    for(let i=0;i<n;i++){ let x=P.getX(i), y=P.getY(i), z=P.getZ(i); const t=Math.max(0,Math.min(1,(y-y0)/0.08)); if(t<=0) continue;
+      // fold about a line across the back of the neck; higher points fold the whole way, lower ones ease into it
+      const a=A*t*t*(3-2*t), dy=y-y0, dz=z-zP, c=Math.cos(a), s2=Math.sin(a); let ny=y0+dy*c+dz*s2, nz=zP-dy*s2+dz*c;
+      const sq=1-0.45*t; nz=zP+(nz-zP)*sq; x*=1+0.18*t;   // flattened against the back, a little wider over the shoulders
+      ny-=0.03*t*Math.max(0,(y-1.7)/(top-1.7));
+      P.setXYZ(i,x,ny,nz);
+      if(sp!==undefined&&sp>=0&&t>0.2){ const wN=nk>=0?0.35*(1-t):0; SI.setXYZW(i,sp,nk>=0?nk:sp,0,0); SW.setXYZW(i,1-wN,wN,0,0); } }
+    P.needsUpdate=true; SI.needsUpdate=true; SW.needsUpdate=true; g.computeVertexNormals(); return g; }
+  const K_HD={y0:1.58,z0:-0.06,ang:2.8};   // test hooks: OUTFIT3.HD
+  // any point inside the body (or nearer it than gap) set out along the body's surface to the gap (bind space)
+  function pushOut(F,g,gap){ const P=g.attributes.position, B=bodyIndex(F), R=F.D.reg, ok=q=>R[q]!=='head'; for(let i=0;i<P.count;i++){ const x=P.getX(i), y=P.getY(i), z=P.getZ(i), q=nearest(B,x,y,z,ok); if(q<0) continue;   /* out of the back and shoulders, not the head it no longer covers */
+      const nx=B.N[q*3], ny=B.N[q*3+1], nz=B.N[q*3+2], d=(x-B.P.getX(q))*nx+(y-B.P.getY(q))*ny+(z-B.P.getZ(q))*nz; if(d<gap){ const k=gap-d; P.setXYZ(i,x+nx*k,y+ny*k,z+nz*k); } }
+    P.needsUpdate=true; g.computeVertexNormals(); }
+  // the Ranger's green hood dyed the brown of the Peasant's clothes (a copy of the texture; greens only)
+  const dyeC=new Map(); function dyed(tex){ if(dyeC.has(tex)) return dyeC.get(tex); const im=tex.image; if(!im||!im.width) return tex;
+    const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const D=x.getImageData(0,0,cv.width,cv.height), d=D.data, c=new THREE.Color(), hsl={};
+    for(let i=0;i<d.length;i+=4){ c.setRGB(d[i]/255,d[i+1]/255,d[i+2]/255); c.getHSL(hsl); if(hsl.h>0.17&&hsl.h<0.5&&hsl.s>0.12){ c.setHSL(0.075,hsl.s*0.55,hsl.l*0.78); d[i]=c.r*255; d[i+1]=c.g*255; d[i+2]=c.b*255; } }
+    x.putImageData(D,0,0); const t=new THREE.CanvasTexture(cv); t.flipY=tex.flipY; t.encoding=tex.encoding; t.wrapS=tex.wrapS; t.wrapT=tex.wrapT; dyeC.set(tex,t); return t; }
+  function hoodState(S){ const armoured=ARMOR.SLOTS.some(sl=>sl!=='plume'&&S.worn[sl]&&S.ids&&S.ids[sl]&&S.ids[sl]!=='base'), G=GS();
+    const up=armoured?!!G.hoodArm:(G.hoodPlain!==false); return {armoured,up}; }
+  function hoodToggle(){ const K=typeof ENGINE!=='undefined'&&ENGINE.K, S=K&&K.userData.armorS; if(!S) return; const G=GS(), h=hoodState(S); if(h.armoured) G.hoodArm=!h.up; else G.hoodPlain=!h.up; bSig=null; bsync(); }
+  function bsync(){ if(typeof ENGINE==='undefined'||!ENGINE.K||typeof ARMOR==='undefined') return; const K=ENGINE.K, F=K.userData.b3, S=K.userData.armorS;
+    if(!F||typeof F!=='object'||!F.idx0||!S||!S.ids) return; if(!bReady){ if(BODY3&&!K.bare) bLoad(); return; }
+    const G=K.userData.garm||(K.userData.garm={}), on={}; for(const sl in BASEP) on[sl]=!cur&&!!S.worn[sl]&&S.ids[sl]==='base'&&!!(S.groups[sl]&&S.groups[sl].length&&S.groups[sl][0].userData.garmentSlot);
+    const hs=hoodState(S), shade=on.helm?(hs.up?(hs.armoured?'light':'deep'):'none'):'off', fpHide=!!(K._head&&!K._head.visible);
+    const want={}; for(const sl in BASEP){ if(!on[sl]) continue; want[sl==='helm'?BASEP.helm+(hs.up?'':':down'):BASEP[sl]]=true; }
+    for(const k in want) if(!G[k]){ const [nm,dn]=k.split(':'); G[k]=garment(F,nm,{down:dn==='down'}); }
+    for(const k in G){ const m=G[k]; if(!m) continue; const v=!!want[k]&&!(fpHide&&k.startsWith(BASEP.helm)); if(m.visible!==v) m.visible=v; }
+    const cut=new Set(); for(const sl in BCUT) if(on[sl]) BCUT[sl].forEach(r=>cut.add(r));
+    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base');
+    if(K._glint) K._glint.visible=shade==='deep'&&!fpHide&&!cur;
+    if(cur||sig===bSig) return; bSig=sig;
+    const R=F.D.reg, ix=F.idx0, keep=[]; if(cut.size){ for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(cut.has(R[a])&&cut.has(R[b])&&cut.has(R[c]))) keep.push(a,b,c); } }
+    paintBase(F,shade,on.gauntlets); F.body.geometry.setIndex(cut.size?keep:ix);
+    const showFace=shade!=='off', ek=shade==='deep'?0.1:shade==='light'?0.62:1; F.extra.forEach(o=>{ o.visible=showFace; const m=o.material; if(m&&m.color){ m.color.setScalar(ek); } });
+    glints(K,shade==='deep'); }
+  // the skin: the face (under the hood, shaded as the hood shades it) and the bare hands; the rest of him the mail-grey under any armour
+  const SKIN=0xd9a67c, MAIL=0x4c535e;
+  function paintBase(F,shade,bareHands){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):MAIL,'mail');
+    if(shade!=='deep'&&shade!=='light') return; const g=F.body.geometry, C=g.attributes.color, P=g.attributes.position, R=F.D.reg; let y0=1e9,y1=-1e9,z1=-1e9;
+    for(let j=0;j<P.count;j++) if(R[j]==='head'){ y0=Math.min(y0,P.getY(j)); y1=Math.max(y1,P.getY(j)); z1=Math.max(z1,P.getZ(j)); }
+    const sc=new THREE.Color(0x121118); if(ENGINE.renderer&&ENGINE.renderer.outputEncoding===THREE.sRGBEncoding) sc.convertSRGBToLinear();
+    for(let j=0;j<P.count;j++){ if(R[j]!=='head') continue; const v=Math.max(0,Math.min(1,(P.getY(j)-y0)/((y1-y0)||1))), e=Math.pow(v,0.8), m=shade==='deep'?0.86+0.12*e:0.12+0.4*e;   /* shadow, not skin: a cool dark laid over the face, deepest under the hood's brow */
+      C.setXYZ(j,C.getX(j)+(sc.r-C.getX(j))*m,C.getY(j)+(sc.g-C.getY(j))*m,C.getZ(j)+(sc.b-C.getZ(j))*m); } C.needsUpdate=true; }
+  // in the deep shadow of the hood, two faint lights where his eyes are
+  function glints(K,on){ const F=K.userData.b3; if(!K._glint){ if(!on) return; const eye=F.extra.find(o=>/eye/i.test(o.name))||F.extra[0]; if(!eye) return;
+      eye.geometry.computeBoundingBox(); const bb=eye.geometry.boundingBox, c=new THREE.Vector3(); bb.getCenter(c); const hw=(bb.max.x-bb.min.x)*0.27;
+      const hb=F.B.Head||F.B.head; if(!hb) return; const inv=new THREE.Matrix4().fromArray(eye.skeleton?eye.skeleton.boneInverses[eye.skeleton.bones.indexOf(hb)].elements:new THREE.Matrix4().elements);
+      const g=new THREE.Group(), mt=new THREE.MeshBasicMaterial({color:0x9a8a66,transparent:true,opacity:0.75,depthWrite:false});
+      [-1,1].forEach(sd=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.0075,8,6),mt); m.position.set(c.x+sd*hw,c.y,bb.max.z+0.004).applyMatrix4(eye.bindMatrix).applyMatrix4(inv); g.add(m); });
+      hb.add(g); K._glint=g; }
+    K._glint.visible=on&&!(K._head&&!K._head.visible); }
+  setInterval(()=>{ try{ bsync(); }catch(e){ if(window.DEBUG_ARMOR) console.error('outfit3 base',e); } },250);
+  return { SETS, skinArmor, unskinArmor, set, wear, off, baseReady, hoodToggle, hoodState:()=>{ const K=ENGINE.K, S=K&&K.userData.armorS; return S?hoodState(S):{}; }, bsync, HD:K_HD, get worn(){ return cur&&cur.id; }, get want(){ return want; } };
 })();

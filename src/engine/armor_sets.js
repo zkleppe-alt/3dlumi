@@ -378,43 +378,44 @@
   const CLOTH={};   // a few plain cloths, shared (toon twins are made of them like any other)
   const cl=(k,c)=>CLOTH[k]||(CLOTH[k]=new THREE.MeshPhongMaterial({color:c,shininess:4,specular:0x111111,side:THREE.DoubleSide}));
   const hoodC=()=>cl('hood',0x4b3d30), linen=()=>cl('linen',0x8f8068), breeches=()=>cl('breeches',0x3d352d);
-  const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build}; };
-  reg0('helm','Plain hood',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
+  const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build:ctx=>{   /* V252: where the artist's plain clothes can be had (OUTFIT3), they're worn instead */
+    if(slot!=='plume'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ctx.K)){ const g=piece(ctx,ctx.K.rig.torso); g.userData.garmentSlot=slot; return; } build(ctx); }}; };
+  reg0('helm','Hood',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
   reg0('plume','No crest',ctx=>{ piece(ctx,ctx.K.rig.plume); });
-  reg0('cowl','Hood’s collar',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);
+  reg0('cowl','None',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);
     const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y-0.035, y1=E.max.y, w=Math.max(Math.abs(E.min.x),E.max.x);
     mesh(g,band((ph,y)=>{ const v=(y-y0)/(y1-y0); return w*(1.55-0.95*Math.pow(v,0.7))*(1+0.025*Math.sin(ph*8)); },-Math.PI,Math.PI,y0,y1,28,5,{zk:0.9,smooth:true,two:0.004}),hoodC(),'scarf'); });
-  reg0('tabard','Plain tunic',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {y0,y1,ZK,CZ}=torsoE(K);
+  reg0('tabard','Shirt and belt',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {y0,y1,ZK,CZ}=torsoE(K);
     const r=(ph,y)=>chestR(y,y0,y1)+0.008+0.004*Math.sin(ph*6+y*20), at=(ph,y,o)=>{ const rr=r(ph,y)+(o||0); return V(rr*Math.sin(ph),y,CZ+ZK*rr*Math.cos(ph)); };
     mesh(g,band(r,-Math.PI,Math.PI,y0-0.02,y1,30,9,{zk:ZK,cz:CZ,smooth:true}),M.tunic,'tunic');
     // a slit at the throat, laced with a leather cord
     mesh(g,surf((u,v)=>{ const y=y1-0.1+0.09*v; return at((u*2-1)*0.05,y,0.002); },2,2),cl('dark',0x1a1612),'slit');
     for(let k=0;k<3;k++){ const y=y1-0.085+k*0.028; [-1,1].forEach(sd=>ribbon(g,u=>{ const a=at(-sd*0.06,y,0.005), b=at(sd*0.06,y+0.022,0.005); const p=a.clone().lerp(b,u); return [p.clone().add(V(0,-0.004,0)),p.clone().add(V(0,0.004,0))]; },2,M.boot,'leather')); } });
-  reg0('belt','Plain belt',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {ZK,CZ}=torsoE(K), RB=0.204;
+  reg0('belt','The shirt’s own',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {ZK,CZ}=torsoE(K), RB=0.204;
     mesh(g,band(()=>RB,-Math.PI,Math.PI,0.03,0.068,28,1,{zk:ZK,cz:CZ,two:0.003}),M.boot,'leather');
     const bk=mesh(g,new THREE.BoxGeometry(0.04,0.04,0.008).toNonIndexed(),cl('iron',0x5a5650),'steel'); bk.position.set(0,0.049,CZ+ZK*RB+0.004);
     const pg=new THREE.Group(); pg.position.set(RB*Math.sin(0.95)+0.012,0.0,CZ+ZK*RB*Math.cos(0.95)+0.01); pg.rotation.y=0.95; g.add(pg); pg.userData.armor=g.userData.armor;
     mesh(pg,new THREE.BoxGeometry(0.065,0.075,0.04).toNonIndexed(),M.boot,'leather').position.y=-0.02; });
-  reg0('skirt','Tunic skirt',ctx=>{ const K=ctx.K, M=K.M, {LF,LB}=skirtE(K);   // the tunic's skirt, to mid-thigh, split at the sides
+  reg0('skirt','None',ctx=>{ const K=ctx.K, M=K.M, {LF,LB}=skirtE(K);   // the tunic's skirt, to mid-thigh, split at the sides
     panel(ctx,K._skF,{p0:-1.45,p1:1.45,r0:0.2,r1:0.24,len:LF*0.62,teeth:1,dep:0,trim:false,mat:M.tunic});
     panel(ctx,K._skB,{p0:Math.PI-1.45,p1:Math.PI+1.45,r0:0.2,r1:0.24,len:LB*0.62,teeth:1,dep:0,trim:false,mat:M.tunic,zk:0.8}); });
-  reg0('pauldrons','Tunic shoulders',ctx=>{ const K=ctx.K, M=K.M;   // the tunic's shoulder, soft, over the top of the arm
+  reg0('pauldrons','None',ctx=>{ const K=ctx.K, M=K.M;   // the tunic's shoulder, soft, over the top of the arm
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g=piece(ctx,A.sh), e=paulE(A,sd), rx=e.rx*1.14, rz=e.rz*1.14, top=e.top+0.016, ry=(top-e.bot)*0.78;
       const dome=(ph,th)=>V(e.cx+rx*Math.sin(th)*Math.sin(ph), top-ry+ry*Math.cos(th), rz*Math.sin(th)*Math.cos(ph));
       mesh(g,surf((u,v)=>dome(-Math.PI+u*Math.PI*2,Math.PI*0.6*(1-v)),20,4,{smooth:true,two:0.004}),M.tunic,'tunic'); }); });
-  reg0('arms','Linen sleeves',ctx=>{ const K=ctx.K, M=K.M;   // full sleeves, gathered and rolled at the wrist
+  reg0('arms','Sleeves and bracers',ctx=>{ const K=ctx.K, M=K.M;   // full sleeves, gathered and rolled at the wrist
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g1=piece(ctx,A.sh), g2=piece(ctx,A.el);
       mesh(g1,band((ph,y)=>0.062+0.004*Math.sin(ph*5+y*30),-Math.PI,Math.PI,-0.25,-0.04,12,3,{smooth:true,two:0.003}),linen(),'tunic');
       mesh(g2,band((ph,y)=>0.058+0.004*Math.sin(ph*5+y*30),-Math.PI,Math.PI,-0.17,0.03,12,3,{smooth:true,two:0.003}),linen(),'tunic');
       mesh(g2,band(()=>0.064,-Math.PI,Math.PI,-0.2,-0.165,12,1,{smooth:true,two:0.003}),linen(),'tunic'); }); });
-  reg0('gauntlets','Leather wraps',ctx=>{ const K=ctx.K, M=K.M;   // the wrist bound in leather; the glove is the hand
+  reg0('gauntlets','Bare hands',ctx=>{ const K=ctx.K, M=K.M;   // the wrist bound in leather; the glove is the hand
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g=piece(ctx,A.hand), {gc,y1,rr}=handE(A,sd);
       mesh(g,band(()=>rr+0.003,-Math.PI,Math.PI,y1-0.045,y1-0.005,8,1,{two:0.003,cx:gc.x,cz:gc.z}),M.boot,'leather'); }); });
-  reg0('legs','Breeches',ctx=>{ const K=ctx.K;   // breeches to the knee, hose below
+  reg0('legs','Trousers',ctx=>{ const K=ctx.K;   // breeches to the knee, hose below
     [[K.rig.L,1],[K.rig.R,-1]].forEach(([G,sd])=>{ const gh=piece(ctx,G.hip), gk=piece(ctx,G.knee);
       mesh(gh,band((ph,y)=>0.09+0.012*(y+0.34)/0.34+0.004*Math.sin(ph*4+y*25),-Math.PI,Math.PI,-0.34,0.0,12,3,{smooth:true,two:0.003}),breeches(),'tunic');
       mesh(gk,band((ph,y)=>0.06+0.012*Math.min(1,(y+0.34)/0.3),-Math.PI,Math.PI,-0.34,0.04,12,3,{smooth:true,two:0.003}),breeches(),'tunic'); }); });
-  reg0('sabatons','Plain boots',ctx=>{ const K=ctx.K, M=K.M;   // soft leather, to the calf
+  reg0('sabatons','Boots',ctx=>{ const K=ctx.K, M=K.M;   // soft leather, to the calf
     [[K.rig.L,1],[K.rig.R,-1]].forEach(([G,sd])=>{ const g=piece(ctx,G.knee), e=footE(G), L=e.z1-e.z0;
       const foot=(u,v)=>{ const a=(u*2-1)*Math.PI/2, z=e.z0+L*v, nose=Math.pow(Math.max(0,(v-0.75)/0.25),1.5), w=e.x0*(1-0.35*nose), h=(e.yt-e.ys)*(1-0.6*v)*(1-0.3*nose)+0.012; return V(e.cx+w*Math.sin(a), e.ys+0.012+h*Math.cos(a), z); };
       mesh(g,surf(foot,10,6,{flip:true,smooth:true}),M.boot,'leather');

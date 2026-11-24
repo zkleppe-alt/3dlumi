@@ -2939,6 +2939,15 @@ function buildKnight(){
       K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K.fp?(K._bwPF||[-1.5,0.45,0.15,-0.5,1.2,0]):(K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0]), m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };
         m(AL.sh,'x',P[0]); m(AL.sh,'y',P[1]); m(AL.sh,'z',P[2]); m(AL.el,'x',P[3]); m(AL.el,'y',0); m(AL.el,'z',0); m(AL.hand,'x',P[4]); m(AL.hand,'y',0); m(AL.hand,'z',P[5]); } }
     if(K._bowRig) bowString(dt);
+    /* V251: a broken number in a limb's turn (NaN) used to stay for good — the springs and blends carry it from frame to frame — and
+       took the arm, its skinned sleeve and whatever it holds (the shield) out of sight. Any limb that has one is set back to rest. */
+    { let bad=null; for(const n of ['AL','AR','L','R']){ const A=K.rig[n]; for(const k in A){ const o=A[k]; if(!o||!o.isObject3D) continue; const q=o.quaternion, p=o.position;
+        if(!(isFinite(q.x)&&isFinite(q.y)&&isFinite(q.z)&&isFinite(q.w)&&isFinite(p.x)&&isFinite(p.y)&&isFinite(p.z))){ bad=bad||(n+'.'+k); o.quaternion.set(0,0,0,1); if(!(isFinite(p.x)&&isFinite(p.y)&&isFinite(p.z))) o.position.set(0,0,0); }
+        else { const l=q.lengthSq(); if(l<0.25||l>4){ if(l<1e-8) q.set(0,0,0,1); else q.normalize(); bad=bad||(n+'.'+k+' (unnormalised)'); } }
+        const sc=o.scale; if(!(isFinite(sc.x)&&isFinite(sc.y)&&isFinite(sc.z))||Math.abs(sc.x*sc.y*sc.z)<1e-6){ sc.set(1,1,1); bad=bad||(n+'.'+k+' (scale)'); } } }
+      [sArmR.x,sArmR.y,sArmR.z,sArmR.e,sArmL.x,sArmL.y,sArmL.z,sArmL.e,sHandR,sLean,sCape,sGx,sGy].forEach(o=>{ if(!isFinite(o.x)||!isFinite(o.v)){ o.x=0; o.v=0; bad=bad||'spring'; } });
+      ['_sr','_2h','_fpw','_fpA','_bwR','_rk','_g','shTurn','armOut'].forEach(k=>{ if(K[k]!==undefined&&typeof K[k]==='number'&&!isFinite(K[k])){ K[k]=k==='armOut'?0.1:0; bad=bad||k; } });
+      if(bad&&!K.npc&&!K._nanSaid){ K._nanSaid=true; try{ console.warn('[KLK] limb reset after a bad number:',bad,{mode,act:K._act&&K._act.n,st:K._st,w:K._wid,fam:K._fam,carry:K._carry}); }catch(e){} } }
     if(K.onAnim) K.onAnim(dt,t,a,rf,s);
   };
   const _ia=new THREE.Vector3(), _ib=new THREE.Vector3(), _ic=new THREE.Vector3(), _iu=new THREE.Vector3(), _iw=new THREE.Vector3(), _ix=new THREE.Vector3(), _im=new THREE.Matrix4(), _iq=new THREE.Quaternion(), _iq2=new THREE.Quaternion(), _iX=new THREE.Vector3(1,0,0);
@@ -5421,6 +5430,7 @@ const MENU=(function(){
           own.forEach(id=>{ const e=SYS.EQUIP[id], worn=S.equip[sl]===id; h+=`<button class="gm-item ${worn?'worn':''}" data-act="wear:${id}"><span>${e.emoji||'•'} ${E(e.name)}${e.type?` <span class="tag">[${e.type}]</span>`:''} <span class="ds">${statLine(e)}</span></span>${worn?'<i>worn — tap to take off</i>':''}</button>`; }); }
         else if(AR){ h+=sec((LOOK_IC[sl]||'')+' '+AR.NAMES[sl]); AR.options(sl).forEach(id=>{ const P=AR.PIECES[sl][id], on=AR.pick(sl)===id;
           h+=`<button class="gm-item ${on?'worn':''}" data-act="arpick:${sl}.${id}"><span>${E(P.name)} <span class="ds">${E(P.set)}${P.town!==undefined?' · from '+E(SYS.TOWN_DATA[P.town].name):''}</span></span>${on?'<i>worn</i>':''}</button>`; });
+          if(sl==='helm'&&AR.pick('helm')==='base'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ENGINE.K)){ const hs=OUTFIT3.hoodState(); h+=`<button class="gm-item" data-act="hood"><span>${hs.up?'🔼 Hood up':'🔽 Hood down'} <span class="ds">${hs.armoured?'with armour':'plain clothes'} · tap to put it ${hs.up?'down':'up'}</span></span></button>`; }   /* V252 */
           h+='<p class="gm-hint">Each skill tree earns its own set as you climb it; the towns’ sets are sold at Ironhold’s Great Forge.</p>'; }
         h+='</div>'; }
       const aog=GAME.aogWorn(); if(SYS.AOG_SET.some(id=>S.ownedGear[id])) h+=`<div class="inv-pick">${row('✝ Armor of God',`${aog} / ${SYS.AOG_SET.length} worn`+(aog===5?' — Stand firm':''))}</div>`;
@@ -5440,7 +5450,7 @@ const MENU=(function(){
     System(S){ const slot=GAME.slot, hh=Math.floor(S.dayFrac*24), mm=Math.floor((S.dayFrac*24-hh)*60), ap=hh<12?'AM':'PM', h12=((hh+11)%12)+1;
       let h=row('Playing',`Slot ${slot} · ${E(S.name)} · Lv ${S.level} · ${S.chapels}/10`)+row('Time',`☀️ Day ${S.day} · ${h12}:${String(mm).padStart(2,'0')}${ap} · ⏱ ${Math.floor(S.playMs/3600000)}H${String(Math.floor(S.playMs/60000)%60).padStart(2,'0')}M played`);
       h+=sec('View')+['classic','grand'].map(m=>`<button class="gm-item ${VIEWMODE.mode===m?'worn':''}" data-act="view:${m}"><span>${m==='classic'?'🗺 Classic — the 2D game’s proportions':'🏔 Grand — people at 0.45×, the world towering over them (outdoors, for testing)'}</span>${VIEWMODE.mode===m?'<i>✓</i>':''}</button>`).join('')
-        +(typeof OUTFIT3!=='undefined'?`<button class="gm-item ${OUTFIT3.want?'worn':''}" data-act="outfit3"><span>🧪 Test look: ${OUTFIT3.want==='skinned'?'your armour, fitted to the skeleton (skinned)':OUTFIT3.want?OUTFIT3.SETS[OUTFIT3.want].name+' outfit (skinned, by Quaternius)':'off — the usual armour'} <span class="ds">tap to cycle off → your armour skinned → Ranger → Peasant</span></span><i>${OUTFIT3.want?'on':'off'}</i></button>`:'')
+        +(typeof OUTFIT3!=='undefined'?`<button class="gm-item ${OUTFIT3.want?'worn':''}" data-act="outfit3"><span>🧪 Test look: ${OUTFIT3.want==='skinned'?'your armour, fitted to the skeleton (skinned)':OUTFIT3.want?OUTFIT3.SETS[OUTFIT3.want].name+' outfit (skinned, by Quaternius)':'off — the usual armour'} <span class="ds">tap to cycle off → your armour skinned → Ranger</span></span><i>${OUTFIT3.want?'on':'off'}</i></button>`:'')
         +`<button class="gm-item ${ENGINE.fp?'worn':''}" data-act="fpcam"><span>👁 Camera: ${ENGINE.fp?'first person — through his eyes':'third person — behind him'} <span class="ds">tap to switch · takes effect at once</span></span><i>${ENGINE.fp?'1st':'3rd'}</i></button>`
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
@@ -5553,7 +5563,8 @@ const MENU=(function(){
     else if(k==='arbuy'&&typeof ARMOR!=='undefined'){ const [id,sl]=v.split('.'), r=ARMOR.buy(id,sl); note=r==='ok'?'“A fine fit. It’s yours, knight.”':r==='poor'?'“That’ll want more gold than you carry.”':''; render(true); return; }
     else if(k==='armor'&&typeof ARMOR!=='undefined'){ S.armorOff=S.armorOff||{}; S.armorPick=S.armorPick||{}; const opts=ARMOR.options(v), cur=ARMOR.pick(v), seq=opts, nx=seq[(seq.indexOf(cur)+1)%seq.length];   /* V241: the wardrobe cycles what's earned, then off */
       delete S.armorOff[v]; S.armorPick[v]=nx; if(ENGINE.K) ARMOR.apply(); GAME.save(); render(true); return; }
-    else if(k==='outfit3'&&typeof OUTFIT3!=='undefined'){ const seq=[null,'skinned','ranger','peasant'], i=seq.indexOf(OUTFIT3.want); OUTFIT3.set(seq[(i+1)%seq.length]); render(true); return; }
+    else if(k==='hood'&&typeof OUTFIT3!=='undefined'){ OUTFIT3.hoodToggle(); render(true); return; }
+    else if(k==='outfit3'&&typeof OUTFIT3!=='undefined'){ const seq=[null,'skinned','ranger'], i=seq.indexOf(OUTFIT3.want); OUTFIT3.set(seq[(i+1)%seq.length]); render(true); return; }
     else if(k==='fpcam'){ ENGINE.fp=!ENGINE.fp; render(true); return; }
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }
@@ -24023,8 +24034,33 @@ const ARMOR=(function(){
   function toon(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||typeof BODY3==='undefined'||!BODY3.toonify) return; const tw=BODY3.toonify(K,F); if(!tw||!tw.length) return;
     const have=F._armTw||(F._armTw=new Set()), add=tw.filter(t=>!have.has(t)); if(!add.length) return; add.forEach(t=>have.add(t));
     const s0=F.sync; F.sync=()=>{ s0(); for(const t of add) if(!t.userData.fixed&&t.userData.src) t.color.copy(t.userData.src.color).multiplyScalar(t.userData.k||1); }; }
+  /* V253: FITTED TO THE BODY. The pieces were sized from the old sculpted knight, broader than the body BODY3 puts under him (the helm
+     twice his head's width). After a piece is built, the body under it is measured (its skinned points, in the piece's own joint frame,
+     within the piece's height) and the piece is drawn in round the limb's axis to sit just over it — every set alike. The helm and the
+     pauldrons shrink whole; the rest only in girth (their lengths are the joints'). Never enlarged. K._armFit=false turns it off. */
+  const FIT={helm:{m:0.022,u:'mid'},cowl:{m:0.02},tabard:{m:0.02},belt:{m:0.024,band:0.05},skirt:{m:0.02},pauldrons:{m:0.016,u:'top',k:1.2,band:0.1},arms:{m:0.014},gauntlets:{m:0.012},legs:{m:0.012},sabatons:{m:0.014}};
+  const _fv=new THREE.Vector3(), pct=(a,p)=>{ const b=Float32Array.from(a).sort(); return b[Math.max(0,Math.min(b.length-1,Math.floor((b.length-1)*p)))]; };
+  function bodyW(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.body.boneTransform||!F.D) return null; const now=performance.now();
+    if(K._fitW&&now-K._fitW.t<1500) return K._fitW; const body=F.body, P=body.geometry.attributes.position, R=F.D.reg, n=P.count, W=new Float32Array(n*3); K.updateMatrixWorld(true); body.skeleton.update();
+    for(let q=0;q<n;q++){ body.boneTransform(q,_fv); _fv.applyMatrix4(body.matrixWorld); W[q*3]=_fv.x; W[q*3+1]=_fv.y; W[q*3+2]=_fv.z; } return K._fitW={t:now,W,R,n}; }
+  function regsOf(K,p){ const r=K.rig; if(p===r.torso) return ['chest','belly','pelvis']; if(p===r.head) return ['head']; if(p===K._skF||p===K._skB) return ['pelvis','thigh'];
+    for(const A of [r.AL,r.AR]){ if(p===A.sh) return ['upperarm']; if(p===A.el) return ['forearm']; if(p===A.hand) return ['hand']; } for(const G of [r.L,r.R]){ if(p===G.hip) return ['thigh']; if(p===G.knee) return ['calf','boot','foot']; } return null; }
+  function fitGroups(K,slot,gs){ if(slot==='plume'&&K._helmFit&&K._armFit!==false){ const hf=K._helmFit; gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm down
+        K.updateMatrixWorld(true); const c=K.rig.head.localToWorld(_fv.copy(hf.c)); par.worldToLocal(c); g.scale.multiplyScalar(hf.s); g.position.sub(c).multiplyScalar(hf.s).add(c); g.userData.fitS=hf.s; }); return; }
+    if(slot==='helm') K._helmFit=null; const f=FIT[slot]; if(!f||K._armFit===false) return; const B=bodyW(K); if(!B) return; const r=K.rig;
+    gs.forEach(g=>{ const par=g.parent, regs=par&&regsOf(K,par); if(!regs||g.userData.garmentSlot) return; g.updateMatrixWorld(true);
+      const px=[],py=[],pz=[]; g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/500)); for(let i=0;i<A.count;i+=st){ _fv.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld); par.worldToLocal(_fv); px.push(_fv.x); py.push(_fv.y); pz.push(_fv.z); } });
+      if(px.length<8) return; const y0=pct(py,0.05)-(f.band||0.01), y1=pct(py,0.95)+(f.band||0.01), wide=par===r.torso||par===K._skF||par===K._skB, lim=wide?0.42:0.2, ok=new Set(regs), bx=[],by=[],bz=[];
+      for(let q=0;q<B.n;q++){ if(!ok.has(B.R[q])) continue; _fv.set(B.W[q*3],B.W[q*3+1],B.W[q*3+2]); par.worldToLocal(_fv); if(_fv.y<y0||_fv.y>y1||Math.abs(_fv.x)>lim||Math.abs(_fv.z)>lim) continue; bx.push(_fv.x); by.push(_fv.y); bz.push(_fv.z); }
+      if(bx.length<20) return;
+      const pw=pct(px,0.95)-pct(px,0.05), pd=pct(pz,0.95)-pct(pz,0.05), bw=(pct(bx,0.98)-pct(bx,0.02))*(f.k||1)+2*f.m, bd=(pct(bz,0.98)-pct(bz,0.02))*(f.k||1)+2*f.m;
+      if(pw<1e-3||pd<1e-3) return; const s=Math.max(0.5,Math.min(1,(bw/pw+bd/pd)/2)); g.userData.fitS=s; if(s>0.97){ if(slot==='helm') K._helmFit=null; return; }
+      const cx=(pct(bx,0.02)+pct(bx,0.98))/2, cz=(pct(bz,0.02)+pct(bz,0.98))/2, cy=f.u==='mid'?(pct(by,0.1)+pct(by,0.9))/2:f.u==='top'?pct(py,0.95):0;
+      if(slot==='helm'&&par===r.head) K._helmFit={s,c:new THREE.Vector3(cx,cy,cz)};
+      g.scale.set(g.scale.x*s,f.u?g.scale.y*s:g.scale.y,g.scale.z*s); g.position.x=cx+(g.position.x-cx)*s; g.position.z=cz+(g.position.z-cz)*s; if(f.u) g.position.y=cy+(g.position.y-cy)*s; }); }
   function wear(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
-    if(!id) return; const gs=build(K,slot,id); if(!gs) return; S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
+    if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
+    if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
   function set(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K); }
   function worn(K){ const S=state(K), o={}; SLOTS.forEach(s=>o[s]=S.worn[s]?(S.ids&&S.ids[s])||'templar':null); return o; }
   // put the hero in his harness: every slot, save those the wardrobe has taken off
@@ -24083,9 +24119,9 @@ const ARMOR=(function(){
       cam.position.set(mid.x+Math.sin(f)*d,mid.y+h*0.08,mid.z+Math.cos(f)*d); cam.lookAt(mid);
       const bg=sc.background, fog=sc.fog, fN=fog&&fog.near, fF=fog&&fog.far, fD=fog&&fog.density, hv=K._head&&K._head.visible, kv=K.visible, cc=R.getClearColor(new THREE.Color()), ca=R.getClearAlpha(), prevT=R.getRenderTarget(), sm=R.shadowMap.autoUpdate;
       const hid=[]; sc.children.forEach(o=>{ if(o!==K&&!o.isLight&&o.visible){ let has=false; if(o.isObject3D&&o.children.length){ let q=K.parent; while(q){ if(q===o){ has=true; break; } q=q.parent; } } if(!has){ o.visible=false; hid.push(o); } } });   /* the knight alone: the world set aside while he's drawn */
-      sc.background=null; if(fog){ if(fog.isFogExp2) fog.density=0; else { fog.near=1e4; fog.far=2e4; } }   /* fog thinned, not removed: shaders were built with it */ if(K._head) K._head.visible=true; K.visible=true; R.shadowMap.autoUpdate=false;
+      sc.background=null; if(fog){ if(fog.isFogExp2) fog.density=0; else { fog.near=1e4; fog.far=2e4; } }   /* fog thinned, not removed: shaders were built with it */ if(K._head) K._head.visible=true; K.visible=true; R.shadowMap.autoUpdate=false; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.bsync) try{ OUTFIT3.bsync(); }catch(e){}   /* the hood, shown though first person hides it */
       try{ R.setRenderTarget(rt); R.setClearColor(0x17161d,1); R.clear(); R.render(sc,cam); R.readRenderTargetPixels(rt,0,0,W,Hh,buf); }
-      finally{ hid.forEach(o=>o.visible=true); R.setRenderTarget(prevT); R.setClearColor(cc,ca); sc.background=bg; if(fog){ if(fog.isFogExp2) fog.density=fD; else { fog.near=fN; fog.far=fF; } } if(K._head) K._head.visible=hv; K.visible=kv; R.shadowMap.autoUpdate=sm; }
+      finally{ hid.forEach(o=>o.visible=true); R.setRenderTarget(prevT); R.setClearColor(cc,ca); sc.background=bg; if(fog){ if(fog.isFogExp2) fog.density=fD; else { fog.near=fN; fog.far=fF; } } if(K._head) K._head.visible=hv; K.visible=kv; R.shadowMap.autoUpdate=sm; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.bsync) try{ OUTFIT3.bsync(); }catch(e){} }
       const D=img.data; for(let y=0;y<Hh;y++){ const s0=(Hh-1-y)*W*4, d0=y*W*4; for(let x=0;x<W*4;x++) D[d0+x]=buf[s0+x]; } ctx2.putImageData(img,0,0); }
     function start(c){ if(!c) return; if(cv!==c){ cv=c; ctx2=c.getContext('2d'); img=null; rt&&(img=ctx2.createImageData(W,Hh));
         c.addEventListener('pointerdown',e=>{ drag={x:e.clientX,a:ang}; c.setPointerCapture&&c.setPointerCapture(e.pointerId); c.style.cursor='grabbing'; });
@@ -24481,43 +24517,44 @@ const ARMOR=(function(){
   const CLOTH={};   // a few plain cloths, shared (toon twins are made of them like any other)
   const cl=(k,c)=>CLOTH[k]||(CLOTH[k]=new THREE.MeshPhongMaterial({color:c,shininess:4,specular:0x111111,side:THREE.DoubleSide}));
   const hoodC=()=>cl('hood',0x4b3d30), linen=()=>cl('linen',0x8f8068), breeches=()=>cl('breeches',0x3d352d);
-  const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build}; };
-  reg0('helm','Plain hood',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
+  const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build:ctx=>{   /* V252: where the artist's plain clothes can be had (OUTFIT3), they're worn instead */
+    if(slot!=='plume'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ctx.K)){ const g=piece(ctx,ctx.K.rig.torso); g.userData.garmentSlot=slot; return; } build(ctx); }}; };
+  reg0('helm','Hood',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
   reg0('plume','No crest',ctx=>{ piece(ctx,ctx.K.rig.plume); });
-  reg0('cowl','Hood’s collar',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);
+  reg0('cowl','None',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);
     const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y-0.035, y1=E.max.y, w=Math.max(Math.abs(E.min.x),E.max.x);
     mesh(g,band((ph,y)=>{ const v=(y-y0)/(y1-y0); return w*(1.55-0.95*Math.pow(v,0.7))*(1+0.025*Math.sin(ph*8)); },-Math.PI,Math.PI,y0,y1,28,5,{zk:0.9,smooth:true,two:0.004}),hoodC(),'scarf'); });
-  reg0('tabard','Plain tunic',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {y0,y1,ZK,CZ}=torsoE(K);
+  reg0('tabard','Shirt and belt',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {y0,y1,ZK,CZ}=torsoE(K);
     const r=(ph,y)=>chestR(y,y0,y1)+0.008+0.004*Math.sin(ph*6+y*20), at=(ph,y,o)=>{ const rr=r(ph,y)+(o||0); return V(rr*Math.sin(ph),y,CZ+ZK*rr*Math.cos(ph)); };
     mesh(g,band(r,-Math.PI,Math.PI,y0-0.02,y1,30,9,{zk:ZK,cz:CZ,smooth:true}),M.tunic,'tunic');
     // a slit at the throat, laced with a leather cord
     mesh(g,surf((u,v)=>{ const y=y1-0.1+0.09*v; return at((u*2-1)*0.05,y,0.002); },2,2),cl('dark',0x1a1612),'slit');
     for(let k=0;k<3;k++){ const y=y1-0.085+k*0.028; [-1,1].forEach(sd=>ribbon(g,u=>{ const a=at(-sd*0.06,y,0.005), b=at(sd*0.06,y+0.022,0.005); const p=a.clone().lerp(b,u); return [p.clone().add(V(0,-0.004,0)),p.clone().add(V(0,0.004,0))]; },2,M.boot,'leather')); } });
-  reg0('belt','Plain belt',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {ZK,CZ}=torsoE(K), RB=0.204;
+  reg0('belt','The shirt’s own',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {ZK,CZ}=torsoE(K), RB=0.204;
     mesh(g,band(()=>RB,-Math.PI,Math.PI,0.03,0.068,28,1,{zk:ZK,cz:CZ,two:0.003}),M.boot,'leather');
     const bk=mesh(g,new THREE.BoxGeometry(0.04,0.04,0.008).toNonIndexed(),cl('iron',0x5a5650),'steel'); bk.position.set(0,0.049,CZ+ZK*RB+0.004);
     const pg=new THREE.Group(); pg.position.set(RB*Math.sin(0.95)+0.012,0.0,CZ+ZK*RB*Math.cos(0.95)+0.01); pg.rotation.y=0.95; g.add(pg); pg.userData.armor=g.userData.armor;
     mesh(pg,new THREE.BoxGeometry(0.065,0.075,0.04).toNonIndexed(),M.boot,'leather').position.y=-0.02; });
-  reg0('skirt','Tunic skirt',ctx=>{ const K=ctx.K, M=K.M, {LF,LB}=skirtE(K);   // the tunic's skirt, to mid-thigh, split at the sides
+  reg0('skirt','None',ctx=>{ const K=ctx.K, M=K.M, {LF,LB}=skirtE(K);   // the tunic's skirt, to mid-thigh, split at the sides
     panel(ctx,K._skF,{p0:-1.45,p1:1.45,r0:0.2,r1:0.24,len:LF*0.62,teeth:1,dep:0,trim:false,mat:M.tunic});
     panel(ctx,K._skB,{p0:Math.PI-1.45,p1:Math.PI+1.45,r0:0.2,r1:0.24,len:LB*0.62,teeth:1,dep:0,trim:false,mat:M.tunic,zk:0.8}); });
-  reg0('pauldrons','Tunic shoulders',ctx=>{ const K=ctx.K, M=K.M;   // the tunic's shoulder, soft, over the top of the arm
+  reg0('pauldrons','None',ctx=>{ const K=ctx.K, M=K.M;   // the tunic's shoulder, soft, over the top of the arm
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g=piece(ctx,A.sh), e=paulE(A,sd), rx=e.rx*1.14, rz=e.rz*1.14, top=e.top+0.016, ry=(top-e.bot)*0.78;
       const dome=(ph,th)=>V(e.cx+rx*Math.sin(th)*Math.sin(ph), top-ry+ry*Math.cos(th), rz*Math.sin(th)*Math.cos(ph));
       mesh(g,surf((u,v)=>dome(-Math.PI+u*Math.PI*2,Math.PI*0.6*(1-v)),20,4,{smooth:true,two:0.004}),M.tunic,'tunic'); }); });
-  reg0('arms','Linen sleeves',ctx=>{ const K=ctx.K, M=K.M;   // full sleeves, gathered and rolled at the wrist
+  reg0('arms','Sleeves and bracers',ctx=>{ const K=ctx.K, M=K.M;   // full sleeves, gathered and rolled at the wrist
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g1=piece(ctx,A.sh), g2=piece(ctx,A.el);
       mesh(g1,band((ph,y)=>0.062+0.004*Math.sin(ph*5+y*30),-Math.PI,Math.PI,-0.25,-0.04,12,3,{smooth:true,two:0.003}),linen(),'tunic');
       mesh(g2,band((ph,y)=>0.058+0.004*Math.sin(ph*5+y*30),-Math.PI,Math.PI,-0.17,0.03,12,3,{smooth:true,two:0.003}),linen(),'tunic');
       mesh(g2,band(()=>0.064,-Math.PI,Math.PI,-0.2,-0.165,12,1,{smooth:true,two:0.003}),linen(),'tunic'); }); });
-  reg0('gauntlets','Leather wraps',ctx=>{ const K=ctx.K, M=K.M;   // the wrist bound in leather; the glove is the hand
+  reg0('gauntlets','Bare hands',ctx=>{ const K=ctx.K, M=K.M;   // the wrist bound in leather; the glove is the hand
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g=piece(ctx,A.hand), {gc,y1,rr}=handE(A,sd);
       mesh(g,band(()=>rr+0.003,-Math.PI,Math.PI,y1-0.045,y1-0.005,8,1,{two:0.003,cx:gc.x,cz:gc.z}),M.boot,'leather'); }); });
-  reg0('legs','Breeches',ctx=>{ const K=ctx.K;   // breeches to the knee, hose below
+  reg0('legs','Trousers',ctx=>{ const K=ctx.K;   // breeches to the knee, hose below
     [[K.rig.L,1],[K.rig.R,-1]].forEach(([G,sd])=>{ const gh=piece(ctx,G.hip), gk=piece(ctx,G.knee);
       mesh(gh,band((ph,y)=>0.09+0.012*(y+0.34)/0.34+0.004*Math.sin(ph*4+y*25),-Math.PI,Math.PI,-0.34,0.0,12,3,{smooth:true,two:0.003}),breeches(),'tunic');
       mesh(gk,band((ph,y)=>0.06+0.012*Math.min(1,(y+0.34)/0.3),-Math.PI,Math.PI,-0.34,0.04,12,3,{smooth:true,two:0.003}),breeches(),'tunic'); }); });
-  reg0('sabatons','Plain boots',ctx=>{ const K=ctx.K, M=K.M;   // soft leather, to the calf
+  reg0('sabatons','Boots',ctx=>{ const K=ctx.K, M=K.M;   // soft leather, to the calf
     [[K.rig.L,1],[K.rig.R,-1]].forEach(([G,sd])=>{ const g=piece(ctx,G.knee), e=footE(G), L=e.z1-e.z0;
       const foot=(u,v)=>{ const a=(u*2-1)*Math.PI/2, z=e.z0+L*v, nose=Math.pow(Math.max(0,(v-0.75)/0.25),1.5), w=e.x0*(1-0.35*nose), h=(e.yt-e.ys)*(1-0.6*v)*(1-0.3*nose)+0.012; return V(e.cx+w*Math.sin(a), e.ys+0.012+h*Math.cos(a), z); };
       mesh(g,surf(foot,10,6,{flip:true,smooth:true}),M.boot,'leather');
@@ -24648,7 +24685,7 @@ const OUTFIT3=(function(){
   const DIR='models/look3/outfits/', SETS={
     ranger:{name:'Ranger',parts:['Male_Ranger_Body','Male_Ranger_Arms','Male_Ranger_Legs','Male_Ranger_Feet_Boots','Male_Ranger_Head_Hood','Male_Ranger_Acc_Pauldron'],cut:['chest','belly','pelvis','upperarm','forearm','thigh','calf','foot']},
     peasant:{name:'Peasant',parts:['Male_Peasant_Body','Male_Peasant_Arms','Male_Peasant_Legs','Male_Peasant_Feet'],cut:['chest','belly','pelvis','upperarm','forearm','thigh','calf','foot']}};
-  const files={}; let cur=null, want=null; try{ want=localStorage.getItem('klk3d_outfit3')||null; }catch(e){}
+  const files={}; let cur=null, want=null; try{ want=localStorage.getItem('klk3d_outfit3')||null; if(want==='peasant') want=null; }catch(e){}   /* V252: the Peasant clothes are the plain look now */
   const load=n=>files[n]||(files[n]=new Promise((res,rej)=>new THREE.GLTFLoader().load(DIR+n+'.gltf',res,undefined,rej)));
   const ramp=(()=>{ const d=new Uint8Array([140,140,140,255, 210,210,210,255, 255,255,255,255]), t=new THREE.DataTexture(d,3,1,THREE.RGBAFormat); t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true; return t; })();
   // what the outfit hides while it's worn, to show again after
@@ -24742,14 +24779,94 @@ const OUTFIT3=(function(){
     const extraVis=F.extra.map(o=>o.visible); F.extra.forEach(o=>{ o.visible=true; });   // his eyes and brows, under the hood
     cur={K,id,made,hid:hideRest(K,F),idxNow,extraVis}; K.userData.outfit3=id; return true; }
   function off(K){ unskinArmor(K); if(!cur) return; const F=K.userData.b3; cur.made.forEach(m=>m.parent&&m.parent.remove(m)); cur.hid.forEach(o=>{ o.visible=true; }); if(F&&F.body){ BODY3.paint(F,()=>0x4c535e,'mail'); F.body.geometry.setIndex(cur.idxNow); }
-    if(F&&F.extra) F.extra.forEach((o,i)=>{ o.visible=cur.extraVis[i]; }); cur=null; K.userData.outfit3=null; if(typeof ARMOR!=='undefined') ARMOR.apply(); }
+    if(F&&F.extra) F.extra.forEach((o,i)=>{ o.visible=cur.extraVis[i]; }); cur=null; K.userData.outfit3=null; bSig=null; if(typeof ARMOR!=='undefined') ARMOR.apply(); }
   function set(id){ want=id||null; try{ want?localStorage.setItem('klk3d_outfit3',want):localStorage.removeItem('klk3d_outfit3'); }catch(e){} const K=typeof ENGINE!=='undefined'&&ENGINE.K; if(!K) return; if(want) wear(K,want); else off(K); }
   // while worn, keep the harness off (the armour code re-dresses on menus, saves and loads)
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K, F=K.userData.b3;
     if(want&&!cur&&F&&typeof F==='object'&&K.userData.armor) wear(K,want);
     if(cur&&cur.id==='skinned'){ const S=K.userData.armorS; if(S&&skinned&&sigOf(S)!==skinned.sig) skinArmor(K); }   // the wardrobe changed a piece: fit it again
     else if(cur) K.traverse(o=>{ if(o.isMesh&&o.visible&&o.userData&&o.userData.armor&&!o.userData.outfit3){ o.visible=false; cur.hid.push(o); } }); },500);
-  return { SETS, skinArmor, unskinArmor, set, wear, off, get worn(){ return cur&&cur.id; }, get want(){ return want; } };
+
+  // ═══ V252: THE PLAIN CLOTHES — Quaternius's Peasant (shirt and belt, sleeves and bracers, trousers, boots) and the Ranger's hood are what a
+  //  slot wears with its armour off. Each is skinned to the hero's own bones and let out to his broad build (fitTo), and shows only while
+  //  its slot is plain; the body is cut away beneath what is worn. The hood: up, the face in shadow, when he wears nothing but plain
+  //  clothes; down on his shoulders when he wears armour, and up again at will (the face then only shaded). Where the files can't be had
+  //  (the artifact, the classic look) the code-built plain clothes of armor_sets.js stand in. ═══
+  const BASEP={tabard:'Male_Peasant_Body',arms:'Male_Peasant_Arms',legs:'Male_Peasant_Legs',sabatons:'Male_Peasant_Feet',helm:'Male_Ranger_Head_Hood'};
+  const BCUT={tabard:['chest','belly'],arms:['upperarm','forearm'],legs:['pelvis','thigh','calf'],sabatons:['foot','boot']};
+  let bReady=false, bLoading=false, bGl=null, bSig=null;
+  const GS=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
+  function baseReady(K){ const F=K&&K.userData.b3; return bReady&&!!F&&typeof F==='object'&&!!F.idx0; }
+  function bLoad(){ if(bLoading) return; bLoading=true; const names=Object.values(BASEP);
+    Promise.all(names.map(load)).then(gl=>{ bGl={}; names.forEach((n,i)=>bGl[n]=gl[i]); bReady=true; rebase(); }).catch(e=>{ console.warn('outfit3: plain clothes could not load',e); }); }
+  function rebase(){ const K=typeof ENGINE!=='undefined'&&ENGINE.K, S=K&&K.userData.armorS; if(!S||!S.ids||typeof ARMOR==='undefined') return; ARMOR.SLOTS.forEach(sl=>{ if(S.ids[sl]==='base') ARMOR.wear(K,sl,'base'); }); bSig=null; }
+  // one garment, skinned to the hero
+  function garment(F,name,o){ const gltf=bGl[name]; let src=null; gltf.scene.traverse(m=>{ if(m.isSkinnedMesh&&!src) src=m; }); if(!src) return null;
+    const bones=src.skeleton.bones.map(b=>F.B[b.name]); if(bones.some(b=>!b)) return null;
+    const sk=new THREE.Skeleton(bones,src.skeleton.boneInverses.map(x=>x.clone())), sm0=src.material; if(sm0.map){ sm0.map.encoding=THREE.LinearEncoding; sm0.map.needsUpdate=true; }
+    let geo=fitTo(F,src.geometry); if(o&&o.down){ geo=hoodDown(geo,src.skeleton.bones.map(b=>b.name)); pushOut(F,geo,0.02); }
+    const mt=new THREE.MeshToonMaterial({color:0xffffff,map:(name===BASEP.helm&&sm0.map?dyed(sm0.map):sm0.map)||null,gradientMap:ramp,skinning:true,side:THREE.DoubleSide});
+    const sm=new THREE.SkinnedMesh(geo,mt); sm.userData.outfit3=true; sm.userData.garment=name+(o&&o.down?':down':''); sm.castShadow=true; sm.frustumCulled=false;
+    sm.position.copy(F.body.position); sm.quaternion.copy(F.body.quaternion); sm.scale.copy(F.body.scale); F.body.parent.add(sm); sm.updateMatrixWorld(true); sm.bind(sk,F.body.bindMatrix.clone()); sm.visible=false; return sm; }
+  // the hood thrown back: its crown folded down behind the neck onto the shoulders (bind space, the model's metres: he stands +y, faces +z);
+  //  the folded part rides the upper spine, not the head, so it stays put when he turns his head; the mantle round the throat is left as it is
+  function hoodDown(geo,names){ const g=geo.clone(), P=g.attributes.position, SI=g.attributes.skinIndex, SW=g.attributes.skinWeight, n=P.count;
+    const sp=['spine_05','spine_04','spine_03','neck_01'].map(nm=>names.indexOf(nm)).find(i=>i>=0), nk=names.indexOf('neck_01');
+    const y0=K_HD.y0, zP=K_HD.z0, A=K_HD.ang, top=1.87;
+    for(let i=0;i<n;i++){ let x=P.getX(i), y=P.getY(i), z=P.getZ(i); const t=Math.max(0,Math.min(1,(y-y0)/0.08)); if(t<=0) continue;
+      // fold about a line across the back of the neck; higher points fold the whole way, lower ones ease into it
+      const a=A*t*t*(3-2*t), dy=y-y0, dz=z-zP, c=Math.cos(a), s2=Math.sin(a); let ny=y0+dy*c+dz*s2, nz=zP-dy*s2+dz*c;
+      const sq=1-0.45*t; nz=zP+(nz-zP)*sq; x*=1+0.18*t;   // flattened against the back, a little wider over the shoulders
+      ny-=0.03*t*Math.max(0,(y-1.7)/(top-1.7));
+      P.setXYZ(i,x,ny,nz);
+      if(sp!==undefined&&sp>=0&&t>0.2){ const wN=nk>=0?0.35*(1-t):0; SI.setXYZW(i,sp,nk>=0?nk:sp,0,0); SW.setXYZW(i,1-wN,wN,0,0); } }
+    P.needsUpdate=true; SI.needsUpdate=true; SW.needsUpdate=true; g.computeVertexNormals(); return g; }
+  const K_HD={y0:1.58,z0:-0.06,ang:2.8};   // test hooks: OUTFIT3.HD
+  // any point inside the body (or nearer it than gap) set out along the body's surface to the gap (bind space)
+  function pushOut(F,g,gap){ const P=g.attributes.position, B=bodyIndex(F), R=F.D.reg, ok=q=>R[q]!=='head'; for(let i=0;i<P.count;i++){ const x=P.getX(i), y=P.getY(i), z=P.getZ(i), q=nearest(B,x,y,z,ok); if(q<0) continue;   /* out of the back and shoulders, not the head it no longer covers */
+      const nx=B.N[q*3], ny=B.N[q*3+1], nz=B.N[q*3+2], d=(x-B.P.getX(q))*nx+(y-B.P.getY(q))*ny+(z-B.P.getZ(q))*nz; if(d<gap){ const k=gap-d; P.setXYZ(i,x+nx*k,y+ny*k,z+nz*k); } }
+    P.needsUpdate=true; g.computeVertexNormals(); }
+  // the Ranger's green hood dyed the brown of the Peasant's clothes (a copy of the texture; greens only)
+  const dyeC=new Map(); function dyed(tex){ if(dyeC.has(tex)) return dyeC.get(tex); const im=tex.image; if(!im||!im.width) return tex;
+    const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const D=x.getImageData(0,0,cv.width,cv.height), d=D.data, c=new THREE.Color(), hsl={};
+    for(let i=0;i<d.length;i+=4){ c.setRGB(d[i]/255,d[i+1]/255,d[i+2]/255); c.getHSL(hsl); if(hsl.h>0.17&&hsl.h<0.5&&hsl.s>0.12){ c.setHSL(0.075,hsl.s*0.55,hsl.l*0.78); d[i]=c.r*255; d[i+1]=c.g*255; d[i+2]=c.b*255; } }
+    x.putImageData(D,0,0); const t=new THREE.CanvasTexture(cv); t.flipY=tex.flipY; t.encoding=tex.encoding; t.wrapS=tex.wrapS; t.wrapT=tex.wrapT; dyeC.set(tex,t); return t; }
+  function hoodState(S){ const armoured=ARMOR.SLOTS.some(sl=>sl!=='plume'&&S.worn[sl]&&S.ids&&S.ids[sl]&&S.ids[sl]!=='base'), G=GS();
+    const up=armoured?!!G.hoodArm:(G.hoodPlain!==false); return {armoured,up}; }
+  function hoodToggle(){ const K=typeof ENGINE!=='undefined'&&ENGINE.K, S=K&&K.userData.armorS; if(!S) return; const G=GS(), h=hoodState(S); if(h.armoured) G.hoodArm=!h.up; else G.hoodPlain=!h.up; bSig=null; bsync(); }
+  function bsync(){ if(typeof ENGINE==='undefined'||!ENGINE.K||typeof ARMOR==='undefined') return; const K=ENGINE.K, F=K.userData.b3, S=K.userData.armorS;
+    if(!F||typeof F!=='object'||!F.idx0||!S||!S.ids) return; if(!bReady){ if(BODY3&&!K.bare) bLoad(); return; }
+    const G=K.userData.garm||(K.userData.garm={}), on={}; for(const sl in BASEP) on[sl]=!cur&&!!S.worn[sl]&&S.ids[sl]==='base'&&!!(S.groups[sl]&&S.groups[sl].length&&S.groups[sl][0].userData.garmentSlot);
+    const hs=hoodState(S), shade=on.helm?(hs.up?(hs.armoured?'light':'deep'):'none'):'off', fpHide=!!(K._head&&!K._head.visible);
+    const want={}; for(const sl in BASEP){ if(!on[sl]) continue; want[sl==='helm'?BASEP.helm+(hs.up?'':':down'):BASEP[sl]]=true; }
+    for(const k in want) if(!G[k]){ const [nm,dn]=k.split(':'); G[k]=garment(F,nm,{down:dn==='down'}); }
+    for(const k in G){ const m=G[k]; if(!m) continue; const v=!!want[k]&&!(fpHide&&k.startsWith(BASEP.helm)); if(m.visible!==v) m.visible=v; }
+    const cut=new Set(); for(const sl in BCUT) if(on[sl]) BCUT[sl].forEach(r=>cut.add(r));
+    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base');
+    if(K._glint) K._glint.visible=shade==='deep'&&!fpHide&&!cur;
+    if(cur||sig===bSig) return; bSig=sig;
+    const R=F.D.reg, ix=F.idx0, keep=[]; if(cut.size){ for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(cut.has(R[a])&&cut.has(R[b])&&cut.has(R[c]))) keep.push(a,b,c); } }
+    paintBase(F,shade,on.gauntlets); F.body.geometry.setIndex(cut.size?keep:ix);
+    const showFace=shade!=='off', ek=shade==='deep'?0.1:shade==='light'?0.62:1; F.extra.forEach(o=>{ o.visible=showFace; const m=o.material; if(m&&m.color){ m.color.setScalar(ek); } });
+    glints(K,shade==='deep'); }
+  // the skin: the face (under the hood, shaded as the hood shades it) and the bare hands; the rest of him the mail-grey under any armour
+  const SKIN=0xd9a67c, MAIL=0x4c535e;
+  function paintBase(F,shade,bareHands){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):MAIL,'mail');
+    if(shade!=='deep'&&shade!=='light') return; const g=F.body.geometry, C=g.attributes.color, P=g.attributes.position, R=F.D.reg; let y0=1e9,y1=-1e9,z1=-1e9;
+    for(let j=0;j<P.count;j++) if(R[j]==='head'){ y0=Math.min(y0,P.getY(j)); y1=Math.max(y1,P.getY(j)); z1=Math.max(z1,P.getZ(j)); }
+    const sc=new THREE.Color(0x121118); if(ENGINE.renderer&&ENGINE.renderer.outputEncoding===THREE.sRGBEncoding) sc.convertSRGBToLinear();
+    for(let j=0;j<P.count;j++){ if(R[j]!=='head') continue; const v=Math.max(0,Math.min(1,(P.getY(j)-y0)/((y1-y0)||1))), e=Math.pow(v,0.8), m=shade==='deep'?0.86+0.12*e:0.12+0.4*e;   /* shadow, not skin: a cool dark laid over the face, deepest under the hood's brow */
+      C.setXYZ(j,C.getX(j)+(sc.r-C.getX(j))*m,C.getY(j)+(sc.g-C.getY(j))*m,C.getZ(j)+(sc.b-C.getZ(j))*m); } C.needsUpdate=true; }
+  // in the deep shadow of the hood, two faint lights where his eyes are
+  function glints(K,on){ const F=K.userData.b3; if(!K._glint){ if(!on) return; const eye=F.extra.find(o=>/eye/i.test(o.name))||F.extra[0]; if(!eye) return;
+      eye.geometry.computeBoundingBox(); const bb=eye.geometry.boundingBox, c=new THREE.Vector3(); bb.getCenter(c); const hw=(bb.max.x-bb.min.x)*0.27;
+      const hb=F.B.Head||F.B.head; if(!hb) return; const inv=new THREE.Matrix4().fromArray(eye.skeleton?eye.skeleton.boneInverses[eye.skeleton.bones.indexOf(hb)].elements:new THREE.Matrix4().elements);
+      const g=new THREE.Group(), mt=new THREE.MeshBasicMaterial({color:0x9a8a66,transparent:true,opacity:0.75,depthWrite:false});
+      [-1,1].forEach(sd=>{ const m=new THREE.Mesh(new THREE.SphereGeometry(0.0075,8,6),mt); m.position.set(c.x+sd*hw,c.y,bb.max.z+0.004).applyMatrix4(eye.bindMatrix).applyMatrix4(inv); g.add(m); });
+      hb.add(g); K._glint=g; }
+    K._glint.visible=on&&!(K._head&&!K._head.visible); }
+  setInterval(()=>{ try{ bsync(); }catch(e){ if(window.DEBUG_ARMOR) console.error('outfit3 base',e); } },250);
+  return { SETS, skinArmor, unskinArmor, set, wear, off, baseReady, hoodToggle, hoodState:()=>{ const K=ENGINE.K, S=K&&K.userData.armorS; return S?hoodState(S):{}; }, bsync, HD:K_HD, get worn(){ return cur&&cur.id; }, get want(){ return want; } };
 })();
 
 // ── engine/village3.js ──

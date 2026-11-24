@@ -683,3 +683,27 @@ After Oceanside harbour, as a beachfront town:
 - Greave: follows the calf — swell behind (`K._calf`, default 0.028), shin line in front, drawn in to a slim ankle, then flares onto the instep; axis bends toward the foot.
 - Steel ankle cuff with two gold bands; ankle rivets moved onto it.
 - `K._legFit=false` falls back to the V249 closed boots.
+
+## V251 — the left arm and shield no longer vanish
+- Zak's report (laptop, Chrome, short sword, Peasant test look): all of a sudden the left arm — sleeve, hand — and the shield on it were gone, drawn or not, and stayed gone. Everything that vanished hangs from the left-arm pivots, so the likely cause is a broken number (NaN) in the arm's turn, which the arm's springs and pose blends then carried from frame to frame for good. Not reproduced headless.
+- knight.js, end of `K.animate`: every limb pivot (AL, AR, L, R) is checked each frame — a non-finite turn or position is set back to rest, an unnormalised turn renormalised, a zero/NaN scale reset; the arm springs and the pose blends (`_sr`, `_2h`, `_fpw`, `_fpA`, `_bwR`, `_rk`, `_g`, `shTurn`, `armOut`) are cleared if broken. Tested: NaN injected into the left arm recovers in a frame.
+- The first time it fires for the hero it writes `[KLK] limb reset after a bad number:` with the limb and what he was doing to the browser console (F12), to find the root cause.
+
+## V252 — plain clothes from the artist's kit; the Ranger's hood, up or down
+- With a slot's armour off (☰ → Gear → Look → "Plain"), the hero now wears Quaternius's Peasant clothes instead of the code-built plain pieces: **tabard → shirt and belt** (Male_Peasant_Body), **arms → sleeves and bracers** (Male_Peasant_Arms), **legs → trousers** (Male_Peasant_Legs), **sabatons → boots** (Male_Peasant_Feet). Cowl, belt, skirt, pauldrons and gauntlets wear nothing when plain (bare hands). The superhero build is kept: each garment is skinned to his own bones and let out to his body (`fitTo`).
+- **The helm slot's plain piece is the Ranger's hood**, dyed from green to the Peasant's brown (`dyed()`, greens only, a canvas copy of the texture).
+  - All plain: **hood up, face in shadow**. A cool dark (0x121118) is laid over the face, deepest under the brow, with two faint eye-lights (`K._glint`, on the Head bone).
+  - Any armour worn: **hood down** by default, folded back onto the shoulders (`hoodDown()`: crown folded about the back of the neck, `OUTFIT3.HD` y0 1.58, z0 -0.06, 2.8 rad, carried by the upper spine, pushed out over the back but not the head). Up again at will: the face is then only shaded.
+  - ☰ → Gear → Look → Great Helm (when Plain) → "Hood up / Hood down" toggles it, remembered separately for the plain look (`S.hoodPlain`, default up) and with armour (`S.hoodArm`, default down).
+- The body is cut away under whatever plain garments are worn (chest/belly, upper arm/forearm, pelvis/thigh/calf, foot/boot) and painted skin at the face (hood) and hands (bare). The hood hides in first person; the Gear preview shows it.
+- engine/outfit3.js (`baseReady`, `bsync` every 250 ms, `garment`, `hoodDown`, `pushOut`, `dyed`, `paintBase`, `glints`, `hoodToggle`); armor_sets.js `reg0` builds an empty marker group when the garments are ready (`userData.garmentSlot`) and the old code-built clothes otherwise (artifact, classic look); plain piece names updated. Peasant is no longer in System → Test look (off / your armour skinned / Ranger).
+
+## V253 — every armour set fitted to the body
+- The code-built pieces were sized from the old sculpted knight and stood far off the BODY3 body (the helm twice the head's width, pauldrons 2.5× the arm).
+- armor.js `fitGroups()` runs after every piece is built, for every set (Templar, the three skill-tree sets, the ten town sets, pelts):
+  - It measures the body under the piece: the skinned points of that joint's regions, in the piece's joint frame, within the piece's height.
+  - The piece is drawn in round the limb's axis to the body's width plus a margin (`FIT`: helm 0.022, pauldrons 0.016 over 1.2× the arm, tabard 0.02, belt 0.024, arms 0.014, gauntlets 0.012, legs 0.012, sabatons 0.014).
+  - Helm and pauldrons shrink whole (about the head's middle, the pauldron's top); the rest only in girth. Never enlarged, never below half.
+  - The crest follows the helm (`K._helmFit`); changing the helm re-seats it.
+  - `K._armFit=false` turns fitting off; each group records `userData.fitS`.
+- Typical factors: Templar helm 0.68, tabard 0.79, belt 0.67, pauldrons 0.64, sabatons 0.76; V250 legs already fitted (1.0).

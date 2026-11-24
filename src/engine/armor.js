@@ -310,8 +310,33 @@ const ARMOR=(function(){
   function toon(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||typeof BODY3==='undefined'||!BODY3.toonify) return; const tw=BODY3.toonify(K,F); if(!tw||!tw.length) return;
     const have=F._armTw||(F._armTw=new Set()), add=tw.filter(t=>!have.has(t)); if(!add.length) return; add.forEach(t=>have.add(t));
     const s0=F.sync; F.sync=()=>{ s0(); for(const t of add) if(!t.userData.fixed&&t.userData.src) t.color.copy(t.userData.src.color).multiplyScalar(t.userData.k||1); }; }
+  /* V253: FITTED TO THE BODY. The pieces were sized from the old sculpted knight, broader than the body BODY3 puts under him (the helm
+     twice his head's width). After a piece is built, the body under it is measured (its skinned points, in the piece's own joint frame,
+     within the piece's height) and the piece is drawn in round the limb's axis to sit just over it — every set alike. The helm and the
+     pauldrons shrink whole; the rest only in girth (their lengths are the joints'). Never enlarged. K._armFit=false turns it off. */
+  const FIT={helm:{m:0.022,u:'mid'},cowl:{m:0.02},tabard:{m:0.02},belt:{m:0.024,band:0.05},skirt:{m:0.02},pauldrons:{m:0.016,u:'top',k:1.2,band:0.1},arms:{m:0.014},gauntlets:{m:0.012},legs:{m:0.012},sabatons:{m:0.014}};
+  const _fv=new THREE.Vector3(), pct=(a,p)=>{ const b=Float32Array.from(a).sort(); return b[Math.max(0,Math.min(b.length-1,Math.floor((b.length-1)*p)))]; };
+  function bodyW(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.body.boneTransform||!F.D) return null; const now=performance.now();
+    if(K._fitW&&now-K._fitW.t<1500) return K._fitW; const body=F.body, P=body.geometry.attributes.position, R=F.D.reg, n=P.count, W=new Float32Array(n*3); K.updateMatrixWorld(true); body.skeleton.update();
+    for(let q=0;q<n;q++){ body.boneTransform(q,_fv); _fv.applyMatrix4(body.matrixWorld); W[q*3]=_fv.x; W[q*3+1]=_fv.y; W[q*3+2]=_fv.z; } return K._fitW={t:now,W,R,n}; }
+  function regsOf(K,p){ const r=K.rig; if(p===r.torso) return ['chest','belly','pelvis']; if(p===r.head) return ['head']; if(p===K._skF||p===K._skB) return ['pelvis','thigh'];
+    for(const A of [r.AL,r.AR]){ if(p===A.sh) return ['upperarm']; if(p===A.el) return ['forearm']; if(p===A.hand) return ['hand']; } for(const G of [r.L,r.R]){ if(p===G.hip) return ['thigh']; if(p===G.knee) return ['calf','boot','foot']; } return null; }
+  function fitGroups(K,slot,gs){ if(slot==='plume'&&K._helmFit&&K._armFit!==false){ const hf=K._helmFit; gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm down
+        K.updateMatrixWorld(true); const c=K.rig.head.localToWorld(_fv.copy(hf.c)); par.worldToLocal(c); g.scale.multiplyScalar(hf.s); g.position.sub(c).multiplyScalar(hf.s).add(c); g.userData.fitS=hf.s; }); return; }
+    if(slot==='helm') K._helmFit=null; const f=FIT[slot]; if(!f||K._armFit===false) return; const B=bodyW(K); if(!B) return; const r=K.rig;
+    gs.forEach(g=>{ const par=g.parent, regs=par&&regsOf(K,par); if(!regs||g.userData.garmentSlot) return; g.updateMatrixWorld(true);
+      const px=[],py=[],pz=[]; g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/500)); for(let i=0;i<A.count;i+=st){ _fv.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld); par.worldToLocal(_fv); px.push(_fv.x); py.push(_fv.y); pz.push(_fv.z); } });
+      if(px.length<8) return; const y0=pct(py,0.05)-(f.band||0.01), y1=pct(py,0.95)+(f.band||0.01), wide=par===r.torso||par===K._skF||par===K._skB, lim=wide?0.42:0.2, ok=new Set(regs), bx=[],by=[],bz=[];
+      for(let q=0;q<B.n;q++){ if(!ok.has(B.R[q])) continue; _fv.set(B.W[q*3],B.W[q*3+1],B.W[q*3+2]); par.worldToLocal(_fv); if(_fv.y<y0||_fv.y>y1||Math.abs(_fv.x)>lim||Math.abs(_fv.z)>lim) continue; bx.push(_fv.x); by.push(_fv.y); bz.push(_fv.z); }
+      if(bx.length<20) return;
+      const pw=pct(px,0.95)-pct(px,0.05), pd=pct(pz,0.95)-pct(pz,0.05), bw=(pct(bx,0.98)-pct(bx,0.02))*(f.k||1)+2*f.m, bd=(pct(bz,0.98)-pct(bz,0.02))*(f.k||1)+2*f.m;
+      if(pw<1e-3||pd<1e-3) return; const s=Math.max(0.5,Math.min(1,(bw/pw+bd/pd)/2)); g.userData.fitS=s; if(s>0.97){ if(slot==='helm') K._helmFit=null; return; }
+      const cx=(pct(bx,0.02)+pct(bx,0.98))/2, cz=(pct(bz,0.02)+pct(bz,0.98))/2, cy=f.u==='mid'?(pct(by,0.1)+pct(by,0.9))/2:f.u==='top'?pct(py,0.95):0;
+      if(slot==='helm'&&par===r.head) K._helmFit={s,c:new THREE.Vector3(cx,cy,cz)};
+      g.scale.set(g.scale.x*s,f.u?g.scale.y*s:g.scale.y,g.scale.z*s); g.position.x=cx+(g.position.x-cx)*s; g.position.z=cz+(g.position.z-cz)*s; if(f.u) g.position.y=cy+(g.position.y-cy)*s; }); }
   function wear(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
-    if(!id) return; const gs=build(K,slot,id); if(!gs) return; S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
+    if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
+    if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
   function set(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K); }
   function worn(K){ const S=state(K), o={}; SLOTS.forEach(s=>o[s]=S.worn[s]?(S.ids&&S.ids[s])||'templar':null); return o; }
   // put the hero in his harness: every slot, save those the wardrobe has taken off
@@ -370,9 +395,9 @@ const ARMOR=(function(){
       cam.position.set(mid.x+Math.sin(f)*d,mid.y+h*0.08,mid.z+Math.cos(f)*d); cam.lookAt(mid);
       const bg=sc.background, fog=sc.fog, fN=fog&&fog.near, fF=fog&&fog.far, fD=fog&&fog.density, hv=K._head&&K._head.visible, kv=K.visible, cc=R.getClearColor(new THREE.Color()), ca=R.getClearAlpha(), prevT=R.getRenderTarget(), sm=R.shadowMap.autoUpdate;
       const hid=[]; sc.children.forEach(o=>{ if(o!==K&&!o.isLight&&o.visible){ let has=false; if(o.isObject3D&&o.children.length){ let q=K.parent; while(q){ if(q===o){ has=true; break; } q=q.parent; } } if(!has){ o.visible=false; hid.push(o); } } });   /* the knight alone: the world set aside while he's drawn */
-      sc.background=null; if(fog){ if(fog.isFogExp2) fog.density=0; else { fog.near=1e4; fog.far=2e4; } }   /* fog thinned, not removed: shaders were built with it */ if(K._head) K._head.visible=true; K.visible=true; R.shadowMap.autoUpdate=false;
+      sc.background=null; if(fog){ if(fog.isFogExp2) fog.density=0; else { fog.near=1e4; fog.far=2e4; } }   /* fog thinned, not removed: shaders were built with it */ if(K._head) K._head.visible=true; K.visible=true; R.shadowMap.autoUpdate=false; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.bsync) try{ OUTFIT3.bsync(); }catch(e){}   /* the hood, shown though first person hides it */
       try{ R.setRenderTarget(rt); R.setClearColor(0x17161d,1); R.clear(); R.render(sc,cam); R.readRenderTargetPixels(rt,0,0,W,Hh,buf); }
-      finally{ hid.forEach(o=>o.visible=true); R.setRenderTarget(prevT); R.setClearColor(cc,ca); sc.background=bg; if(fog){ if(fog.isFogExp2) fog.density=fD; else { fog.near=fN; fog.far=fF; } } if(K._head) K._head.visible=hv; K.visible=kv; R.shadowMap.autoUpdate=sm; }
+      finally{ hid.forEach(o=>o.visible=true); R.setRenderTarget(prevT); R.setClearColor(cc,ca); sc.background=bg; if(fog){ if(fog.isFogExp2) fog.density=fD; else { fog.near=fN; fog.far=fF; } } if(K._head) K._head.visible=hv; K.visible=kv; R.shadowMap.autoUpdate=sm; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.bsync) try{ OUTFIT3.bsync(); }catch(e){} }
       const D=img.data; for(let y=0;y<Hh;y++){ const s0=(Hh-1-y)*W*4, d0=y*W*4; for(let x=0;x<W*4;x++) D[d0+x]=buf[s0+x]; } ctx2.putImageData(img,0,0); }
     function start(c){ if(!c) return; if(cv!==c){ cv=c; ctx2=c.getContext('2d'); img=null; rt&&(img=ctx2.createImageData(W,Hh));
         c.addEventListener('pointerdown',e=>{ drag={x:e.clientX,a:ang}; c.setPointerCapture&&c.setPointerCapture(e.pointerId); c.style.cursor='grabbing'; });
