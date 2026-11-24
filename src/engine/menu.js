@@ -114,7 +114,7 @@ const MENU=(function(){
     System(S){ const slot=GAME.slot, hh=Math.floor(S.dayFrac*24), mm=Math.floor((S.dayFrac*24-hh)*60), ap=hh<12?'AM':'PM', h12=((hh+11)%12)+1;
       let h=row('Playing',`Slot ${slot} · ${E(S.name)} · Lv ${S.level} · ${S.chapels}/10`)+row('Time',`☀️ Day ${S.day} · ${h12}:${String(mm).padStart(2,'0')}${ap} · ⏱ ${Math.floor(S.playMs/3600000)}H${String(Math.floor(S.playMs/60000)%60).padStart(2,'0')}M played`);
       h+=sec('View')+['classic','grand'].map(m=>`<button class="gm-item ${VIEWMODE.mode===m?'worn':''}" data-act="view:${m}"><span>${m==='classic'?'🗺 Classic — the 2D game’s proportions':'🏔 Grand — people at 0.45×, the world towering over them (outdoors, for testing)'}</span>${VIEWMODE.mode===m?'<i>✓</i>':''}</button>`).join('')
-        +(typeof OUTFIT3!=='undefined'?`<button class="gm-item ${OUTFIT3.want?'worn':''}" data-act="outfit3"><span>🧪 Test look: ${OUTFIT3.want?OUTFIT3.SETS[OUTFIT3.want].name+' outfit (skinned, by Quaternius)':'off — the usual armour'} <span class="ds">tap to cycle off → Ranger → Peasant</span></span><i>${OUTFIT3.want?'on':'off'}</i></button>`:'')
+        +(typeof OUTFIT3!=='undefined'?`<button class="gm-item ${OUTFIT3.want?'worn':''}" data-act="outfit3"><span>🧪 Test look: ${OUTFIT3.want==='skinned'?'your armour, fitted to the skeleton (skinned)':OUTFIT3.want?OUTFIT3.SETS[OUTFIT3.want].name+' outfit (skinned, by Quaternius)':'off — the usual armour'} <span class="ds">tap to cycle off → your armour skinned → Ranger → Peasant</span></span><i>${OUTFIT3.want?'on':'off'}</i></button>`:'')
         +`<button class="gm-item ${ENGINE.fp?'worn':''}" data-act="fpcam"><span>👁 Camera: ${ENGINE.fp?'first person — through his eyes':'third person — behind him'} <span class="ds">tap to switch · takes effect at once</span></span><i>${ENGINE.fp?'1st':'3rd'}</i></button>`
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
@@ -227,7 +227,7 @@ const MENU=(function(){
     else if(k==='arbuy'&&typeof ARMOR!=='undefined'){ const [id,sl]=v.split('.'), r=ARMOR.buy(id,sl); note=r==='ok'?'“A fine fit. It’s yours, knight.”':r==='poor'?'“That’ll want more gold than you carry.”':''; render(true); return; }
     else if(k==='armor'&&typeof ARMOR!=='undefined'){ S.armorOff=S.armorOff||{}; S.armorPick=S.armorPick||{}; const opts=ARMOR.options(v), cur=ARMOR.pick(v), seq=opts, nx=seq[(seq.indexOf(cur)+1)%seq.length];   /* V241: the wardrobe cycles what's earned, then off */
       delete S.armorOff[v]; S.armorPick[v]=nx; if(ENGINE.K) ARMOR.apply(); GAME.save(); render(true); return; }
-    else if(k==='outfit3'&&typeof OUTFIT3!=='undefined'){ const seq=[null,'ranger','peasant'], i=seq.indexOf(OUTFIT3.want); OUTFIT3.set(seq[(i+1)%seq.length]); render(true); return; }
+    else if(k==='outfit3'&&typeof OUTFIT3!=='undefined'){ const seq=[null,'skinned','ranger','peasant'], i=seq.indexOf(OUTFIT3.want); OUTFIT3.set(seq[(i+1)%seq.length]); render(true); return; }
     else if(k==='fpcam'){ ENGINE.fp=!ENGINE.fp; render(true); return; }
     else if(k==='goal'){ S.goalOff=!S.goalOff; GAME.save(); render(true); return; }
     else if(k==='keys'){ toggle(false); if(typeof KEYS!=='undefined') KEYS.open(); return; }

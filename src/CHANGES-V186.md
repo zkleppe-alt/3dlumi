@@ -658,3 +658,14 @@ After Oceanside harbour, as a beachfront town:
 - While a test outfit is worn, the code harness, plate shells and sculpt pieces are hidden, but the weapon, sheath, back slot and shield stay. The body is cut to what the clothes leave bare (head and hands, painted skin; `F.idx0` now keeps the full index in body3.hero), and the eyes and brows are shown.
 - ☰ System → "🧪 Test look" cycles off → Ranger → Peasant (saved in `klk3d_outfit3`, applied live). It needs the model files, so it works in the hosted game, not the artifact preview.
 - Free edition: only Ranger and Peasant (no knight). The full kit (12 outfits) is the paid Source edition.
+
+## V248 — the Templar harness skinned to the skeleton; the Ranger let out to the hero's build (outfit3.js, still a test)
+- `OUTFIT3.skinArmor(K)`: the worn code-built pieces become skinned garments on the BODY3 skeleton. Covered: tabard, cowl, belt, skirt, pauldrons, arms, legs, sabatons; the helm, crest and gauntlets stay rigid on their pivots.
+  - For each vertex, the up-to-6 nearest body points (posed and skinned now) are found, limited to the regions that piece may follow (`ALLOW`); a leg piece or a skirt's side only takes from its own leg.
+  - Their bone weights are blended by nearness, keeping the top 4.
+  - The vertex's bind-pose position is found by undoing that blended skin matrix, so it stands exactly where the rigid piece stood and bends with the body from then on.
+  - Skirts are carried mostly by the pelvis (85% at the centre; at the sides 62% at the waist, easing toward the thigh at the hem).
+  - A vertex with no near point falls back to wider regions, then to the pelvis: an unweighted vertex collapses to the origin, which first showed as black spikes.
+  - It re-fits when the wardrobe changes a piece (the slot signature). It takes about 3 s, so it's a test only.
+- `fitTo(F,geo)`: the Quaternius outfits (made for a lean body) are let out to the hero's broad Superhero body. In the shared bind space, each garment point inside or within 1.2 cm of the body is pushed out along the body's normal (spatial-hash nearest), the push is smoothed over the garment's edges in 4 passes that never let a point fall back inside, and the result is cached.
+- ☰ System → Test look now cycles: off → your armour skinned → Ranger → Peasant.
