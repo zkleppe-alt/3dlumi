@@ -156,7 +156,7 @@ const ARMOR=(function(){
   // ── COWL: the navy hood worn down — rolled folds round the throat, a point draped over the chest, the hood fallen at the back ──
   /* V256: the Templar's cowl is now his hood — the artist's hood (the plain one's) dyed navy; its old navy scarf rolls round the throat
      with the cuirass (T.tabard). Without the artist's files, the old cowl as before. */
-  T.cowl=function(ctx){ const K=ctx.K; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(K)){ const g=piece(ctx,K.rig.torso); g.userData.garmentSlot='cowl'; g.userData.hoodTint='navy'; g.userData.fitted=true; return; } return T.cowl0(ctx); };
+  T.cowl=function(ctx){ const K=ctx.K; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(K)){ const g=piece(ctx,K.rig.torso); g.userData.garmentSlot='cowl'; g.userData.hoodTint='navy'; g.userData.fitted=true; g.hoodStyle={id:'templar',cloth:K.M.tunic,trim:K.M.gold,mark:K.M.cross||K.M.trim||K.M.gold,emblem:'jcross'}; return; }   /* V268: in the tabard's navy, gold-edged, the cross on the back */ return T.cowl0(ctx); };
   T.cowl0=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), SC=M.scarf||M.tunic;
     const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]); const y0=E.min.y-0.004, y1=E.max.y+0.006, w=Math.max(Math.abs(E.min.x),E.max.x);
     const r=(ph,y)=>{ const v=(y-y0)/(y1-y0); const base=w*(1.32-0.62*Math.pow(v,0.8)); return base*(1+0.035*Math.sin(ph*7+v*5)+0.05*Math.max(0,Math.sin(v*Math.PI*3))); };   // its folds and rolls

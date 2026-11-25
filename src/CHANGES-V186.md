@@ -1008,3 +1008,27 @@ Zak: the hood down should hang over the back like a real hood; pulled up it shou
 - **The Templar's navy hood never appeared.** It was built before the hood model had loaded and fell back for good to the old code-built cowl (the "messy" blue on the chest). When the model arrives, the set's hood is now built again (`rebase`).
 - **Pauldrons swinging out with a raised arm.** Pauldrons, and pelts on the shoulder, now ride a half joint (`halfJ`) that turns 60% of the way with the upper arm, so they don't swing out when he raises it.
 - **Armour on bones:** the previous pivot is kept as `g._pivot`, no longer in `userData` (where it would be serialised).
+
+## V268 — each set's hood in the set's own colours
+
+Zak: match the set hoods to their sets; the Templar hood should follow the Templar's design and colours.
+- A set now names its hood's look (`g.hoodStyle`: cloth, trim, mark, emblem). outfit3.js builds that hood in the set's cloth, with a band of its trim round the face opening and the hem, and its mark on the back of the crown.
+  - The hood keeps the artist's folds as a grey detail map (`greyTex`).
+  - Trim: the model is a closed shell with rolled rims, so the edges are found by where they lie (`hoodEdge`): points within about 4.8 cm of the face, and the hem.
+    - Triangles there go to a second material group (`splitTrim`).
+    - Small stray patches of trim can appear at the crown.
+  - The mark (`emblemMesh`) is a small skinned patch of the hood's own triangles round the back of the crown, placed by the hood worn up. It follows the hood down, upside down on the folded pouch.
+    - Drawn marks (`markTex`): Jerusalem cross, leaf, eye, feather.
+    - It's left off during the 0.9 s up/down animation.
+  - Colours are copied from the set's materials each sync, so a livery recolours it.
+  - Hoods without a style (plain brown) are unchanged.
+- The styled hoods:
+
+| Set | Hood |
+|---|---|
+| Templar | the tabard's blue, gold trim, gold Jerusalem cross |
+| Thornwarden | moss, the set's trim, a leaf |
+| Shade | ash, the set's trim, an eye |
+| Ranger's Watch | brown, the livery's trim, a feather |
+
+- The town sets' shrouds now take the hood's cloth and trim.
