@@ -174,16 +174,16 @@ const OUTFIT3=(function(){
     for(const k in want) if(!G[k]){ const [nm,tn,dn]=k.split(':'); G[k]=nm===HOOD?garment(F,nm,{tint:tn,down:dn==='down'||dn==='over',over:dn==='over'}):garment(F,nm); }
     for(const k in G){ const m=G[k]; if(!m) continue; const v=!!want[k]&&!(fpHide&&k.startsWith(HOOD)); if(m.visible!==v) m.visible=v; }
     const cut=new Set(); for(const sl in BCUT) if(on[sl]) BCUT[sl].forEach(r=>cut.add(r));
-    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base')+'|'+on.arms;
+    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base')+'|'+on.arms+'|'+(on.legs&&!on.sabatons);
     if(K._glint) K._glint.visible=shade==='deep'&&!fpHide&&!cur;
     if(cur||sig===bSig) return; bSig=sig;
     const R=F.D.reg, ix=F.idx0, keep=[]; if(cut.size){ for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(cut.has(R[a])&&cut.has(R[b])&&cut.has(R[c]))) keep.push(a,b,c); } }
-    paintBase(F,shade,on.gauntlets,on.arms); F.body.geometry.setIndex(cut.size?keep:ix);
+    paintBase(F,shade,on.gauntlets,on.arms,on.legs&&!on.sabatons); F.body.geometry.setIndex(cut.size?keep:ix);
     const showFace=shade!=='off', ek=shade==='deep'?0.1:shade==='light'?0.62:1; F.extra.forEach(o=>{ o.visible=showFace; const m=o.material; if(m&&m.color){ m.color.setScalar(ek); } });
     glints(K,shade==='deep'); }
   // the skin: the face (under the hood, shaded as the hood shades it) and the bare hands; the rest of him the mail-grey under any armour
-  const SKIN=0xd9a67c, MAIL=0x4c535e;
-  function paintBase(F,shade,bareHands,bareArms){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):rg==='forearm'?(bareArms?SKIN:MAIL):MAIL,'mail');   /* the Peasant's sleeves end at the elbow: a bare forearm under the bracer */
+  const SKIN=0xd9a67c, MAIL=0x4c535e, HOSE=0x5a4a3a;
+  function paintBase(F,shade,bareHands,bareArms,hose){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):rg==='forearm'?(bareArms?SKIN:MAIL):(hose&&(rg==='calf'||rg==='boot'||rg==='foot'))?HOSE:MAIL,'mail');   /* V260: breeches and other shoes: woollen hose on the calf */   /* the Peasant's sleeves end at the elbow: a bare forearm under the bracer */
     if(shade!=='deep'&&shade!=='light') return; const g=F.body.geometry, C=g.attributes.color, P=g.attributes.position, R=F.D.reg; let y0=1e9,y1=-1e9,z1=-1e9;
     for(let j=0;j<P.count;j++) if(R[j]==='head'){ y0=Math.min(y0,P.getY(j)); y1=Math.max(y1,P.getY(j)); z1=Math.max(z1,P.getZ(j)); }
     const sc=new THREE.Color(0x0b0b10); if(ENGINE.renderer&&ENGINE.renderer.outputEncoding===THREE.sRGBEncoding) sc.convertSRGBToLinear();

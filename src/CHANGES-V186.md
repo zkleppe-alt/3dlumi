@@ -773,3 +773,31 @@ Zak's answers: breastplate *under* the tabard; pelts become hoods; with a helm t
   - A pelt point inside the surface plus a gap (0.016 world) moves out along its ray onto it.
   - The fur's underside (faces whose normal points inward) stays a fur's thickness (0.007) inside its top, so the two layers don't z-fight.
 - Each pass starts from the pelt's own shape and normals (`drape0`, `drapeN`), so taking the pauldrons off restores it. The cloth's resting shape (`rest`) follows, and the cloth sim restarts.
+
+## V259 — armour measured on a posed body; the tabard flows into the skirt
+- **Misplaced plates** (Zak's Gear-preview photos: forearm plates across his back, pieces off the body). At load the armour could be built before BODY3 had posed the body even once, so the body was measured in its T-pose (arms straight out), and plates fitted to that sat out sideways and behind him in the real pose.
+  - `bodySync(K)` now runs BODY3's `F.sync()` (skeleton from the knight's joints) and updates matrices before every measurement: `bodyRings`, `bodyW`, `regY`, `limbFrame`.
+  - Tested by forcing the body's skeleton to its bind pose, then rebuilding the whole harness: every piece lands on the body.
+- **Tabard and skirt as one cloth.**
+  - The tabard's front panel runs on down to the skirt's hem (-0.3), flaring a little with a dagged gold hem. It stands in for the skirt's centre front panel, which `skirtSync()` hides while a long-front tabard is worn (on tabard/skirt `set`).
+  - The back panel reaches -0.14 over the skirt's back panel.
+  - Both panels and their gold edges hang as cloth (`userData.soft`) below `clothPin` (0.07, the belt); above it they're held fast (cloth weight 1).
+
+## V260 — the leg kit: legs and feet rebuilt from his own legs
+Zak: rebuild the leg armour and footwear to match the body, so other styles of boots, leg armour and shoes can be made from it.
+- armor.js `legSeg()`: each segment (thigh on the hip joint, shin and foot on the knee joint) measured ring by ring from the posed body (`regY` + `bodyRings`) along the joint's own -y. `limbFrame`, used for the arms, flipped on a bent knee.
+- `legKit(ctx, style)` builds the legs slot:
+  - Always: a **greave** closed round the shin (cut low behind for the bend of the knee, a keel, gold at its foot, its top and mid-front) and a **poleyn** (a cup over the knee sized to it, a gold rim, a fan to the outside).
+  - `'plate'` also: the **cuisse**, steel round the front and sides of the thigh (±2.35 rad, gap 0.022), leather behind, gold at its foot and edges.
+- `footKit(ctx, style)` builds the sabatons slot:
+  - A shell round the foot from heel to toe with a sole and a closed toe.
+  - `'sabaton'`: steel, a pointed toe, three gilt lames, a steel collar at the ankle.
+  - `'tall'`: leather to below the knee, a turned-down cuff, a strap.
+  - `'ankle'`: leather to above the ankle, a strap.
+  - `'shoes'`: leather shoes.
+  - Leather and soles use their own Lambert materials, because the knight's 'boot' material counts as metal to the toon shading and turned steel-grey.
+- The Templar legs and sabatons are now `legKit('plate')` and `footKit('sabaton')`; the old builders remain as `T.legs0`/`T.sabatons0` (fallback without the body).
+- New common pieces, every knight's from the start (`common:true` in `earned`):
+  - Legs: **Greaves**.
+  - Feet: **Tall leather boots**, **Ankle boots**, **Shoes**.
+- Plain trousers with other footwear: the calf is painted as woollen hose (0x5a4a3a) instead of mail.
