@@ -206,7 +206,7 @@ const ARMOR=(function(){
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g1=piece(ctx,A.sh), g2=piece(ctx,A.el);
       const tube=(g,y0,y1,r0,r1,mat,o)=>mesh(g,band((ph,y)=>r0+(r1-r0)*(y-y0)/(y1-y0),-Math.PI,Math.PI,y0,y1,8,o&&o.nv||2,{two:0.003,cz:o&&o.cz||0}),mat,'steel');
       const ring=(g,y,r,w)=>mesh(g,band(()=>r,-Math.PI,Math.PI,y,y+w,16,1,{two:0.002}),GD,'gold');
-      tube(g1,-0.235,-0.085,0.058,0.066,M.steel); ring(g1,-0.235,0.061,0.014);                       // the rerebrace
+      tube(g1,-0.235,-0.012,0.058,0.07,M.steel,{nv:3}); ring(g1,-0.235,0.061,0.014); ring(g1,-0.1,0.066,0.01);   // the rerebrace, up under the pauldron (V255)
       tube(g2,-0.2,-0.03,0.056,0.066,M.steel,{nv:3}); ring(g2,-0.045,0.068,0.016); ring(g2,-0.12,0.064,0.01);   // the vambrace, banded
       mesh(g2,band(()=>0.06,-Math.PI,Math.PI,-0.205,-0.18,16,1,{two:0.002,yf:(ph,y)=>y}),GD,'gold');   // its cuff
       { const s=new THREE.Shape(); s.moveTo(-0.022,0); s.lineTo(0.022,0); s.lineTo(0,0.03); s.closePath(); const m=mesh(g2,new THREE.ExtrudeGeometry(s,{depth:0.006,bevelEnabled:false}).toNonIndexed(),GD,'gold'); m.geometry.computeVertexNormals(); m.position.set(sd*0.064,-0.03,0); m.rotation.y=sd*Math.PI/2; }   // the point on its top
@@ -295,7 +295,7 @@ const ARMOR=(function(){
     if(slot==='belt') kids(r.torso,o=>o.userData.part==='leather');
     if(slot==='skirt'){ kids(K._skF,()=>true); kids(K._skB,()=>true); kids(r.torso,o=>o.userData.part==='mail'); }   /* V242: and the old mail skirt beneath */
     if(slot==='pauldrons') [r.AL,r.AR].forEach(A=>kids(A.sh,o=>/^(paul|gold)$/.test(o.userData.part)));
-    if(slot==='arms'){ [r.AL,r.AR].forEach(A=>{ kids(A.sh,o=>o.userData.part==='steel'); kids(A.el,()=>true); }); regs(['forearm','lowerarm_l','lowerarm_r']); regs(['upperarm'],true);   /* the old rerebrace's steel stays beneath, filling the shoulder under the pauldron; only its gold edge goes */ }
+    if(slot==='arms'){ [r.AL,r.AR].forEach(A=>{ kids(A.sh,o=>o.userData.part==='steel'); kids(A.el,()=>true); }); regs(['forearm','lowerarm_l','lowerarm_r']); regs(['upperarm']);   /* the old rerebrace's steel stays beneath, filling the shoulder under the pauldron; only its gold edge goes */ }
     if(slot==='gauntlets') [r.AL,r.AR].forEach(A=>kids(A.hand,o=>/^(steel|gold)$/.test(o.userData.part)));
     if(slot==='legs'){ [r.L,r.R].forEach(G=>{ kids(G.hip,()=>true); kids(G.knee,o=>!o.userData.sabaton&&o.userData.part!=='leather'); }); regs(['thigh','calf','boot','calf_l','calf_r']); }
     if(slot==='sabatons'){ [r.L,r.R].forEach(G=>kids(G.knee,o=>o.userData.sabaton||o.userData.part==='leather')); regs(['foot']); }
@@ -326,12 +326,12 @@ const ARMOR=(function(){
      along its ray from the limb's axis so the shell lies a set gap over the body, and whatever stood proud of the shell — keels, ridges,
      gilt bands, rivets, flares, a hem — stands just as proud after. Above or below the body it hangs past (a helm's crown, a pauldron's
      dome, a tabard's hem) the piece keeps its own shape, set in by as much as its nearest ring was. Every set alike. */
-  const CONF={tabard:{gap:0.012,box:0.32},belt:{gap:0.045,box:0.32},arms:{gap:0.012,box:0.13}};
+  const CONF={cowl:{gap:0.03,box:0.32,only:'torso'},tabard:{gap:0.012,box:0.32},belt:{gap:0.045,box:0.32},arms:{gap:0.007,box:0.13}};
   /* the domes (helm, pauldrons) and the ends (gauntlets, sabatons) aren't tubes: sized whole to the body part, centred on it, then let down
      onto it until they rest a gap above it (SETTLE) */
-  const SETTLE={helm:{gap:0.016,lift:0.08,xz:true},pauldrons:{gap:0.012,lift:0.06},gauntlets:{gap:0.006,lift:0.03,xz:true},sabatons:{gap:0.006,lift:0.03}};
+  const SETTLE={helm:{gap:0.016,lift:0.08,xz:true},pauldrons:{gap:0.012,lift:0.06,z:true},gauntlets:{gap:0.006,lift:0.03,xz:true},sabatons:{gap:0.006,lift:0.03,xz:true}};
   const _cm=new THREE.Matrix4(), _ci=new THREE.Matrix4();
-  function conform(K,slot,g){ const cf=CONF[slot], par=g.parent, regs=regsOf(K,par); if(!cf||!regs) return false; g.updateMatrixWorld(true);
+  function conform(K,slot,g){ const cf=CONF[slot], par=g.parent, regs=regsOf(K,par); if(!cf||!regs) return false; if(cf.only==='torso'&&par!==K.rig.torso) return false;   /* a pelt on the arms isn't fitted round them */ g.updateMatrixWorld(true);
     const ms=[]; g.traverse(m=>{ if(m.isMesh&&m.geometry&&m.geometry.attributes.position&&!m.isSkinnedMesh) ms.push(m); }); if(!ms.length) return false;
     // the piece's points in its joint's frame
     _ci.copy(par.matrixWorld).invert(); const L=[]; let N=0; ms.forEach(m=>{ const M=new THREE.Matrix4().multiplyMatrices(_ci,m.matrixWorld), A=m.geometry.attributes.position, P=new Float32Array(A.count*3);
@@ -360,20 +360,24 @@ const ARMOR=(function(){
   // let a piece down onto the body: over each patch of the body it covers, how far its underside stands above the body's top there;
   //  the piece is moved up or down so the closest of those is `gap`
   function settle(K,slot,g){ const st=SETTLE[slot], par=g.parent, regs=regsOf(K,par), B=bodyW(K); if(!st||!regs||!B) return null; g.updateMatrixWorld(true);
-    const lim=0.22, ok=new Set(slot==='pauldrons'?['upperarm','chest']:regs), C=0.015, top=new Map(), key=(x,z)=>Math.floor(x/C)+','+Math.floor(z/C); let bx=0,bz=0,bn=0;
+    const lim=0.22, ok=new Set(slot==='pauldrons'?['upperarm','chest']:slot==='sabatons'?['foot']:regs), C=0.015, top=new Map(), key=(x,z)=>Math.floor(x/C)+','+Math.floor(z/C); let bx=0,bz=0,bn=0;
     for(let q=0;q<B.n;q++){ if(!ok.has(B.R[q])) continue; _fv.set(B.W[q*3],B.W[q*3+1],B.W[q*3+2]); par.worldToLocal(_fv); if(Math.abs(_fv.x)>lim||Math.abs(_fv.z)>lim||Math.abs(_fv.y)>0.45) continue;
-      const k=key(_fv.x,_fv.z), t=top.get(k); if(t===undefined||_fv.y>t) top.set(k,_fv.y); if(B.R[q]===regs[0]){ bx+=_fv.x; bz+=_fv.z; bn++; } }
+      const k=key(_fv.x,_fv.z), t=top.get(k); if(t===undefined||_fv.y>t) top.set(k,_fv.y); if(B.R[q]===(slot==='sabatons'?'foot':regs[0])){ bx+=_fv.x; bz+=_fv.z; bn++; } }
     if(!top.size) return null; const p0=g.position.clone();
     const pts=[]; g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st2=Math.max(1,Math.floor(A.count/600)); _cm.multiplyMatrices(_ci.copy(par.matrixWorld).invert(),m.matrixWorld);
       for(let i=0;i<A.count;i+=st2){ _fv.fromBufferAttribute(A,i).applyMatrix4(_cm); pts.push(_fv.x,_fv.y,_fv.z); } });
+    if(st.z){ let zs=0,zn=0; for(let q=0;q<B.n;q++){ if(B.R[q]!=='upperarm') continue; _fv.set(B.W[q*3],B.W[q*3+1],B.W[q*3+2]); par.worldToLocal(_fv); if(_fv.y<-0.1||Math.abs(_fv.x)>0.15||Math.abs(_fv.z)>0.15) continue; zs+=_fv.z; zn++; }
+      if(zn>10){ const zz=[]; for(let i=0;i<pts.length;i+=3) zz.push(pts[i+2]); const dz=zs/zn-(pct(zz,0.05)+pct(zz,0.95))/2; g.position.z+=dz; for(let i=0;i<pts.length;i+=3) pts[i+2]+=dz; } }
     if(st.xz&&bn){ const xs=[],zs=[]; for(let i=0;i<pts.length;i+=3){ xs.push(pts[i]); zs.push(pts[i+2]); } const dx=bx/bn-(pct(xs,0.05)+pct(xs,0.95))/2, dz=bz/bn-(pct(zs,0.05)+pct(zs,0.95))/2; g.position.x+=dx; g.position.z+=dz; for(let i=0;i<pts.length;i+=3){ pts[i]+=dx; pts[i+2]+=dz; } }
-    const cl=[]; for(let i=0;i<pts.length;i+=3){ const t=top.get(key(pts[i],pts[i+2])); if(t!==undefined&&pts[i+1]>t-0.004) cl.push(pts[i+1]-t); }
-    if(cl.length>=4){ const gap=(K._fitGap&&K._fitGap[slot]!==undefined)?K._fitGap[slot]:st.gap; g.position.y+=Math.max(-0.08,Math.min(0.04,gap-pct(cl,0.03))); }
+    // over each patch of body it covers, the piece's roof (its highest point there) must clear the body's top by the gap
+    const roof=new Map(); for(let i=0;i<pts.length;i+=3){ const k=key(pts[i],pts[i+2]), r0=roof.get(k); if(r0===undefined||pts[i+1]>r0) roof.set(k,pts[i+1]); }
+    const cl=[]; roof.forEach((ry,k)=>{ const t=top.get(k); if(t!==undefined) cl.push(ry-t); });
+    if(cl.length>=4){ const gap=(K._fitGap&&K._fitGap[slot]!==undefined)?K._fitGap[slot]:st.gap; g.position.y+=Math.max(-0.08,Math.min(0.08,gap-pct(cl,0.04))); }
     return g.position.clone().sub(p0); }
   function fitGroups(K,slot,gs){ if(slot==='plume'&&K._armFit!==false){ const hf=K._helmFit; if(hf) gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm: its size, and where it came to rest
         K.updateMatrixWorld(true); const c=K.rig.head.localToWorld(_fv.copy(hf.c)); par.worldToLocal(c); g.scale.multiplyScalar(hf.s); g.position.sub(c).multiplyScalar(hf.s).add(c);
         if(hf.d){ const a=K.rig.head.localToWorld(new THREE.Vector3()), b=K.rig.head.localToWorld(hf.d.clone()); par.worldToLocal(a); par.worldToLocal(b); g.position.add(b.sub(a)); } g.userData.fitS='follows'; }); return; }
-    if(CONF[slot]&&K._armFit!==false&&K._conform!==false){ if(slot==='helm') K._helmTop=null; let any=false; gs.forEach(g=>{ if(g.userData.garmentSlot) return; try{ if(conform(K,slot,g)) any=true; }catch(e){ if(window.DEBUG_ARMOR) console.error('conform',slot,e); } }); if(any) return; }
+    if(CONF[slot]&&K._armFit!==false&&K._conform!==false){ if(slot==='helm') K._helmTop=null; let any=false; gs.forEach(g=>{ if(g.userData.garmentSlot) return; try{ if(conform(K,slot,g)) any=true; }catch(e){ if(window.DEBUG_ARMOR) console.error('conform',slot,e); } }); gs=gs.filter(g=>g.userData.fitS!=='conform'); if(!gs.length) return; }   /* the rest (a pelt's shoulder pieces) are sized as before */
     if(slot==='helm') K._helmFit=null; const f=FIT[slot]; if(!f||K._armFit===false) return; const B=bodyW(K); if(!B) return; const r=K.rig;
     gs.forEach(g=>{ const par=g.parent, regs=par&&regsOf(K,par); if(!regs||g.userData.garmentSlot) return; g.updateMatrixWorld(true);
       const px=[],py=[],pz=[]; g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/500)); for(let i=0;i<A.count;i+=st){ _fv.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld); par.worldToLocal(_fv); px.push(_fv.x); py.push(_fv.y); pz.push(_fv.z); } });
@@ -381,7 +385,7 @@ const ARMOR=(function(){
       for(let q=0;q<B.n;q++){ if(!ok.has(B.R[q])) continue; _fv.set(B.W[q*3],B.W[q*3+1],B.W[q*3+2]); par.worldToLocal(_fv); if(_fv.y<y0||_fv.y>y1||Math.abs(_fv.x)>lim||Math.abs(_fv.z)>lim) continue; bx.push(_fv.x); by.push(_fv.y); bz.push(_fv.z); }
       if(bx.length<20) return;
       const pw=pct(px,0.95)-pct(px,0.05), pd=pct(pz,0.95)-pct(pz,0.05), bw=(pct(bx,0.98)-pct(bx,0.02))*(f.k||1)+2*f.m, bd=(pct(bz,0.98)-pct(bz,0.02))*(f.k||1)+2*f.m;
-      if(pw<1e-3||pd<1e-3) return; const s=Math.max(0.5,Math.min(1,(bw/pw+bd/pd)/2)); g.userData.fitS=s; if(s>0.97){ if(slot==='helm') K._helmFit=null; if(SETTLE[slot]&&K._settle!==false){ try{ const d=settle(K,slot,g); if(d&&slot==='helm') K._helmFit={s:1,c:new THREE.Vector3(),d}; }catch(e){} } return; }
+      if(pw<1e-3||pd<1e-3) return; const s=Math.max(0.5,Math.min(1,SETTLE[slot]?Math.max(bw/pw,bd/pd):(bw/pw+bd/pd)/2));   /* a dome or an end must enclose the part both ways: the larger of the two */ g.userData.fitS=s; if(s>0.97){ if(slot==='helm') K._helmFit=null; if(SETTLE[slot]&&K._settle!==false){ try{ const d=settle(K,slot,g); if(d&&slot==='helm') K._helmFit={s:1,c:new THREE.Vector3(),d}; }catch(e){} } return; }
       const cx=(pct(bx,0.02)+pct(bx,0.98))/2, cz=(pct(bz,0.02)+pct(bz,0.98))/2, cy=f.u==='mid'?(pct(by,0.1)+pct(by,0.9))/2:f.u==='top'?pct(py,0.95):0;
       if(slot==='helm'&&par===r.head) K._helmFit={s,c:new THREE.Vector3(cx,cy,cz)};
       g.scale.set(g.scale.x*s,f.u?g.scale.y*s:g.scale.y,g.scale.z*s); g.position.x=cx+(g.position.x-cx)*s; g.position.z=cz+(g.position.z-cz)*s; if(f.u) g.position.y=cy+(g.position.y-cy)*s;

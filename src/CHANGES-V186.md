@@ -723,3 +723,12 @@ Zak: "sized down, but doesn't sit on the body like real armor". armor.js now fit
 - The torso's body regions now include 'thigh' (on this body the hips are labelled thigh). Without it the belt was fitted to the crotch.
 - Skirts and the cowl keep the V253 girth scale.
 - Test hooks: `K._conform=false`, `K._settle=false`, `K._fitGap={slot:gap}`, `K._armFit=false` (none); `userData.fitS` says what was done.
+
+## V255 — fitting fixes from Zak's play-test photos
+- **Helm low, head out the back and top.** Domes and ends (helm, pauldrons, gauntlets, sabatons) are now sized to *enclose* the part: the larger of the width and depth ratios, not their average. They're then settled by their **roof**: over each patch of body they cover, the piece's highest point must clear the body's top by the gap. Before, any low point counted. Helm now 0.76, raised to clear the crown.
+- **Feet through the boots.** Sabatons enclose the foot (0.86), are centred on the foot (not the calf) and settle against the foot alone.
+- **Pauldrons low and forward.** Centred front-to-back over the top of the upper arm (`SETTLE.pauldrons.z`) and settled by their roof over the shoulder.
+- **Grey "undershirt" over the shoulders and biceps.** That was BODY3's upper-arm plate shell, left showing once the pauldrons were fitted. The Templar rerebrace now runs up under the pauldron (-0.235 → -0.012, with a second gold band), and the arms slot hides the whole upper-arm shell.
+- **Vambraces off the arm.** Arm gap 0.012 → 0.007.
+- **The blue bib on the chest.** That was the Templar cowl, never fitted. The cowl is now ring-fitted to the torso (gap 0.03, over the tabard). Cowl groups on the arms (pelts' shoulder pieces) are left to the girth scale.
+- Ring-fit groups that can't be fitted now fall back to the girth scale one by one, not all or nothing.
