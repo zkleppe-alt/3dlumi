@@ -23781,6 +23781,7 @@ const ARMOR=(function(){
   // ── V250: the body's own shape round a limb, sampled from the skinned hero as he stands — so plate can be made to fit his build:
   //  rings of his skin round the limb's axis (in the joint's frame), each ring's centre and its radius at every angle ──
   const _bv=new THREE.Vector3();
+  let HEFT=0; const setHeft=h=>{ HEFT=h||0; };   /* V264: a set's weight — heavier sets stand their plate further off the body (recipes set it while building) */
   /* V259: before the body is measured, its skeleton is posed from the knight's joints now (BODY3's sync) — at load the armour can be
      built before the body has been posed once, and the body's arms were measured in its T-pose: plates out sideways, behind his back */
   function bodySync(K){ const F=K&&K.userData.b3; if(F&&typeof F==='object'&&F.sync){ try{ F.sync(); }catch(e){} } if(K) K.updateMatrixWorld(true); }
@@ -23811,7 +23812,7 @@ const ARMOR=(function(){
   function headBox(K,gap){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; bodySync(K); const hd=K.rig.head, body=F.body, R=F.D.reg, P=body.geometry.attributes.position; body.skeleton.update();
     const pts=[]; for(let q=0;q<P.count;q++){ if(R[q]!=='head') continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); hd.worldToLocal(_bv); if(_bv.length()>0.3) continue; pts.push(_bv.clone()); }
     if(pts.length<40) return null; const ys=pts.map(p=>p.y).sort((a,b)=>a-b), y0=ys[Math.floor(ys.length*0.02)], y1=ys[ys.length-1], H=y1-y0, sk=pts.filter(p=>p.y>y0+0.3*H);   // the skull, above the jaw
-    const b=new THREE.Box3().setFromPoints(sk); b.min.y=y0; b.max.y=y1; b.expandByScalar(gap||0); return b; }
+    const b=new THREE.Box3().setFromPoints(sk); b.min.y=y0; b.max.y=y1; b.expandByScalar((gap||0)+HEFT*0.008); return b; }
   T.helm=function(ctx){ const K=ctx.K; K._helmFit=null; if(K._armFit!==false&&!ctx.style0){ const hb=headBox(K,0.018); if(hb){ ctx.headBox=hb; } } return T.helmGreat(ctx); };
   function helmKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.helm||M.steel, MA=leatherM(K,0x6a6e74), LA=leatherM(K,0x2e2018), hb=headBox(K,0.016); if(!hb) return false; K._helmFit=null;
     const head=K.rig.head, g=piece(ctx,head); g.userData.fitted=true; const c=hb.getCenter(new THREE.Vector3()), XR=(hb.max.x-hb.min.x)/2, ZR=(hb.max.z-hb.min.z)/2, YB=hb.min.y, YT=hb.max.y, H=YT-YB;
@@ -23911,7 +23912,7 @@ const ARMOR=(function(){
     const top=ph=>{ const c=Math.abs(Math.cos(ph)), f=Math.cos(ph)>0?yF:yBk; return yS+(f-yS)*Math.pow(c,1.6); };
     const smoothR=(ph,y)=>{ let s=0; for(const d of [-0.2,-0.1,0,0.1,0.2]) s+=TR.r(ph+d,y)*(d===0?2:1); return s/6; };   // plate doesn't follow every muscle
     const keel=ph=>0.008*Math.max(0,1-Math.abs(Math.atan2(Math.sin(ph),Math.cos(ph)))/0.3);
-    const R=(ph,y,o)=>smoothR(ph,Math.max(yB,y))+0.014+keel(ph)*(y>0.3?1:0)+0.012*Math.max(0,(0.26-y)/0.06)+(o||0);
+    const R=(ph,y,o)=>smoothR(ph,Math.max(yB,y))+0.014+HEFT*0.02+keel(ph)*(y>0.3?1:0)+0.012*Math.max(0,(0.26-y)/0.06)+(o||0);
     const at=(ph,y,o)=>{ const [cx,cz]=TR.c(Math.max(yB,Math.min(0.6,y))), r=R(ph,y,o); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
     const pl=surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=yB+(top(ph)-yB)*v; return at(ph,y); },40,12,{smooth:true,two:0.004});
     const rib=(fn,n,mat,part,w)=>mesh(g,surf((u,v)=>fn(u,v),n,1,{two:0.002}),mat,part);
@@ -23964,7 +23965,7 @@ const ARMOR=(function(){
   function skirtKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, to=K.rig.torso, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.steel, MA=leatherM(K,0x6a6e74), LA=leatherM(K,0x2e2018);
     const TR=bodyRings(K,to,['pelvis','thigh'],-0.25,0.12,10,32,0.32); if(!TR) return false; const g=piece(ctx,to); g.userData.fitted=true;
     const yT=0.07, sm=(ph,y)=>{ let s2=0; for(const d of [-0.2,-0.1,0,0.1,0.2]) s2+=TR.r(ph+d,y)*(d===0?2:1); return s2/6; };
-    const at=(ph,y,o2)=>{ const yy=Math.max(-0.25,Math.min(0.12,y)), [cx,cz]=TR.c(Math.min(yT,yy)), r=sm(ph,Math.max(yy,-0.02))+(o2||0)+0.045*Math.max(0,(yT-y)/0.3); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };   // flaring a little as it falls
+    const at=(ph,y,o2)=>{ const yy=Math.max(-0.25,Math.min(0.12,y)), [cx,cz]=TR.c(Math.min(yT,yy)), r=sm(ph,Math.max(yy,-0.02))+(o2||0)+HEFT*0.022+(0.045+HEFT*0.01)*Math.max(0,(yT-y)/0.3); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };   // flaring a little as it falls
     const soft=m=>{ m.userData.soft=1; m.userData.clothPin=yT-0.005; return m; };
     if(style==='tassets'){ const NL=o.lames||4; [-1,1].forEach(sd=>{ const c=sd*0.55; for(let k=0;k<NL;k++){ const y1=yT-k*0.06, y0=y1-0.075, gp=0.03+k*0.005;
         soft(mesh(g,surf((u,v)=>{ const ph=c-0.55+1.1*u, y=y0+(y1-y0)*v; return at(ph,y,gp); },10,2,{smooth:true,two:0.004}),ST,'steel'));
@@ -24070,7 +24071,7 @@ const ARMOR=(function(){
      a flared cuff), 'gloves' (leather), 'wraps' (linen bands). ── */
   function armSeg(K,pivot,regs,g,cutTop,cutEnd){ const L=limbFrame(K,pivot,regs,g); if(!L) return null; const y1=-L.t0-(cutTop||0), y0=-L.t1+(cutEnd||0), RR=bodyRings(K,L.f,regs,y0,y1,8,20,0.13); if(!RR) return null;
     const sm=(ph,y)=>{ let s2=0; for(const d of [-0.3,-0.15,0,0.15,0.3]) s2+=RR.r(ph+d,y)*(d===0?2:1); return s2/6; };
-    return {f:L.f,y0,y1,RR,sm,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+gap; return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
+    const hf=HEFT*0.011; return {f:L.f,y0,y1,RR,sm,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+Math.max(0.003,gap+hf); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
   const ring=(Sg,y,w,gap,mat,part,p0,p1)=>mesh(Sg.f,surf((u,v)=>Sg.at((p0===undefined?-Math.PI:p0)+((p1===undefined?Math.PI:p1)-(p0===undefined?-Math.PI:p0))*u,y+w*v,gap),24,1,{two:0.002}),mat,part);
   const tube=(Sg,y0,y1,gap,mat,part,flare,nv)=>mesh(Sg.f,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=y0+(y1-y0)*v; return Sg.at(ph,y,gap+(flare?flare(v,ph):0)); },22,nv||6,{smooth:true,two:0.003}),mat,part);
   function undo(ctx,made){ made.forEach(g=>{ if(g.parent) g.parent.remove(g); const i2=ctx.groups.indexOf(g); if(i2>=0) ctx.groups.splice(i2,1); }); }
@@ -24119,7 +24120,7 @@ const ARMOR=(function(){
     const R2=(el,az)=>{ const fe=Math.max(0,Math.min(NE-1,el/EM*NE-0.5)), e0=Math.floor(fe), e1=Math.min(NE-1,e0+1), te=fe-e0, fa=((az+Math.PI)/(Math.PI*2))*NA-0.5, a0=((Math.floor(fa)%NA)+NA)%NA, a1=(a0+1)%NA, ta=fa-Math.floor(fa), v=(e,a)=>r[e*NA+a];
       return (v(e0,a0)*(1-ta)+v(e0,a1)*ta)*(1-te)+(v(e1,a0)*(1-ta)+v(e1,a1)*ta)*te; };
     const outAz=Math.atan2(sd,0);   // the outside of the arm (+x for the left)
-    return {c,R2,at:(el,az,gap)=>{ const r0=R2(el,az)+gap, se=Math.sin(el); return V(c.x+r0*se*Math.sin(az),c.y+r0*Math.cos(el),c.z+r0*se*Math.cos(az)); }, outAz}; }
+    return {c,R2,at:(el,az,gap)=>{ const r0=R2(el,az)+gap+HEFT*0.018, se=Math.sin(el); return V(c.x+r0*se*Math.sin(az),c.y+r0*Math.cos(el),c.z+r0*se*Math.cos(az)); }, outAz}; }
   function shoulderKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.paul||M.steel, LE=o.leather||leatherM(K,0x5b3b22), LA=leatherM(K,0x2e2018); const made=[]; let ok=true;
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ if(!ok) return; const g=piece(ctx,A.sh); g.userData.fitted=true; made.push(g); const S=shoulderShape(K,A,sd); if(!S){ ok=false; return; }
       const reach=(az,full,inner)=>{ const c=Math.cos(az-S.outAz); return inner+(full-inner)*(0.5+0.5*c); };   // how far down: furthest on the outside
@@ -24184,7 +24185,7 @@ const ARMOR=(function(){
   function legSeg(K,pivot,regs,g){ const Y=regY(K,pivot,regs,0.2); if(!Y) return null; const f=new THREE.Group(); f.userData.armor=g.userData.armor; g.add(f);
     const y0=Math.max(Y[0],-0.6), y1=Math.min(Y[1],0.02), RR=bodyRings(K,pivot,regs,y0,y1,10,24,0.2); if(!RR) return null; const L={f};
     const sm=(ph,y)=>{ let s2=0; for(const d of [-0.26,-0.13,0,0.13,0.26]) s2+=RR.r(ph+d,y)*(d===0?2:1); return s2/6; };
-    return {f:L.f,y0,y1,RR,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+gap; return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
+    const hf=HEFT*0.012; return {f:L.f,y0,y1,RR,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+Math.max(0.003,gap+hf); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
   function legKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, GD=M.goldD||M.gold, ST=o.steel||M.steel, LE=o.leather||leatherM(K,0x5b3b22); let ok=true; const made=[];
     [[K.rig.L,1],[K.rig.R,-1]].forEach(([Gp,sd])=>{ if(!ok) return; const g1=piece(ctx,Gp.hip), g2=piece(ctx,Gp.knee); g1.userData.fitted=g2.userData.fitted=true; made.push(g1,g2);
       const T=legSeg(K,Gp.hip,['thigh'],g1), Sn=legSeg(K,Gp.knee,['calf','boot'],g2); if(!T||!Sn){ ok=false; return; }
@@ -24562,7 +24563,7 @@ const ARMOR=(function(){
     return {start,stop,get angle(){ return ang; }}; })();
   // trying a piece on (the smithy): worn for the preview only, until bought or the menu closes
   function tryOn(slot,id){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; wear(ENGINE.K,slot,id); }
-  const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds,mantle,shroud,fighting,leatherM,headBox,shoulderShape,armSeg,legSeg,bodyRings,regY};
+  const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds,mantle,shroud,fighting,setHeft,leatherM,headBox,shoulderShape,armSeg,legSeg,bodyRings,regY};
   // V262: the kits, by name, for recipes (armor_recipes.js): KIT.x(ctx,style,o) → true when built
   const KIT={leg:legKit,foot:footKit,arm:armKit,hand:handKit,shoulder:shoulderKit,helm:helmKit,skirt:skirtKit,
     great:(ctx,st,o)=>{ ctx.helmFlat=!!(o&&o.flat); T.helm(ctx); return true; },
@@ -25246,15 +25247,15 @@ const ARMOR=(function(){
     guardian:{helm:['great','great',{flat:true},['helmCross']],tabard:['torso','cuirass',{},['breastCross']],skirt:['skirt','tassets',{lames:4}],pauldrons:['shoulder','heavy',{bulk:0.05}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}]},
     psalmist:{cowl:['none',null,{},[cape({kind:'shroud',mat:()=>mat('psShroud',{color:0xf1ece0,shininess:6,side:THREE.DoubleSide}),trim:true,hem:-0.55,top:0.6,rag:0,open:0.3,flare:0.05})]],tabard:['torso','robe',{},['crossPendant']],pauldrons:['shoulder','feather',{}],arms:['arm','mail',{}],gauntlets:['hand','gloves',{}],legs:['leg','greaves',{}],sabatons:['foot','ankle',{}],skirt:null},
     hearth:{helm:['helm','kettle',{}],tabard:['torso','gambeson',{cloth:LE(0xc7b48c)}],skirt:['skirt','kilt',{}],pauldrons:['shoulder','leather',{}],arms:['arm','bracers',{}],gauntlets:['hand','gloves',{}],legs:null,sabatons:['foot','ankle',{}],motif:{tabard:['wheat']}},
-    ironforged:{helm:['helm','barbute',{rivets:true}],tabard:['torso','cuirass',{}],skirt:['skirt','mail',{}],pauldrons:['shoulder','heavy',{bulk:0.045}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}],motif:{tabard:['hammers']}},
+    ironforged:{cowl:null,helm:['helm','barbute',{rivets:true}],tabard:['torso','cuirass',{}],skirt:['skirt','mail',{}],pauldrons:['shoulder','heavy',{bulk:0.045}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}],motif:{tabard:['hammers']}},
     tidecaller:{cowl:null,helm:['helm','sallet',{},['fin']],tabard:['torso','scale',{cloth:'$tunic',scale:'$steel'}],skirt:null,pauldrons:['shoulder','spaulder',{},['shells']],arms:['arm','vambraces',{}],gauntlets:['hand','gloves',{}],legs:['leg','greaves',{}],sabatons:['foot','tall',{}]},
     thornwarden:{cowl:['hood','moss'],helm:null,tabard:['torso','jerkin',{cloth:'$tunic'}],skirt:['skirt','kilt',{}],pauldrons:['shoulder','leather',{},['leaves']],arms:['arm','bracers',{},['thorns']],gauntlets:['hand','gloves',{}],legs:null,sabatons:['foot','tall',{}]},
     sandstrider:{cowl:null,helm:['helm','turban',{}],tabard:['torso','robe',{cloth:'$tunic',stole:'$scarf'}],skirt:null,pauldrons:null,arms:['arm','bracers',{}],gauntlets:['hand','wraps',{}],legs:['none',null],sabatons:['foot','shoes',{}],belt:['none',null,{},['sash']]},
-    crystalborn:{helm:['helm','bascinet',{},['crown']],tabard:['torso','templar',{}],skirt:['skirt','tassets',{}],pauldrons:['shoulder','round',{},['shards']],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}]},
-    emberforged:{helm:['great','great',{},['horns']],tabard:['torso','cuirass',{}],skirt:['skirt','tassets',{}],pauldrons:['shoulder','spiked',{bulk:0.045}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}]},
+    crystalborn:{cowl:null,helm:['helm','bascinet',{},['crown']],tabard:['torso','templar',{}],skirt:['skirt','tassets',{}],pauldrons:['shoulder','round',{},['shards']],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}]},
+    emberforged:{cowl:null,helm:['great','great',{},['horns']],tabard:['torso','cuirass',{}],skirt:['skirt','tassets',{}],pauldrons:['shoulder','spiked',{bulk:0.045}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}]},
     tempest:{helm:['helm','sallet',{},['helmWings']],tabard:['torso','templar',{}],skirt:['skirt','tassets',{lames:3}],pauldrons:['shoulder','round',{}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}],motif:{tabard:['bolt']}},
     shade:{cowl:['hood','ash'],helm:null,tabard:['torso','jerkin',{cloth:'$tunic'}],skirt:null,pauldrons:['shoulder','spaulder',{}],arms:['arm','bracers',{}],gauntlets:['hand','gloves',{}],legs:['leg','greaves',{}],sabatons:['foot','tall',{}],motif:{tabard:['tatters']}},
-    archangel:{helm:['great','great',{},['halo']],tabard:['torso','templar',{}],skirt:['skirt','tassets',{}],pauldrons:['shoulder','heavy',{bulk:0.045}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}],motif:{cowl:['wings']}},
+    archangel:{cowl:['none',null,{},['wings']],helm:['great','great',{},['halo']],tabard:['torso','templar',{}],skirt:['skirt','tassets',{}],pauldrons:['shoulder','heavy',{bulk:0.045}],arms:['arm','plate',{}],gauntlets:['hand','gauntlet',{}],legs:['leg','plate',{}],sabatons:['foot','sabaton',{}]},
   };
   KIT.none=()=>true;
   // ── V263: THE EARNED LIVERIES as sets: put on with the livery at the wardrobe glass (armor.js liverySync), each piece yours once the
@@ -25272,6 +25273,8 @@ const ARMOR=(function(){
   });
   const LVN={lv_gilt:'Sunfall Gilt',lv_stormward:'Stormward',lv_fallen:'Fallen',lv_robby:"Robby's Demise",lv_champion:"Champion's",lv_ranger:"Ranger's Watch",lv_glory:'Armour of God',lv_deepwater:'Deepwater'};
   Object.keys(LVN).forEach(id=>ARMOR.SLOTS.forEach(slot=>{ if(!P[slot][id]&&(R[id][slot]!==undefined||(R[id].motif&&R[id].motif[slot]))) P[slot][id]={name:LVN[id]+' '+ARMOR.NAMES[slot].toLowerCase(),set:LVN[id],livery:id.slice(3),build:ctx=>P[slot].templar.build(ctx)}; }));
+  // V264: how heavily each set is built — its plate stands that much further off him (0 = the kit's own fit)
+  const HEFT={guardian:1.6,ironforged:1.3,lv_robby:1.3,emberforged:1.1,archangel:0.9,lv_glory:0.9,lv_champion:0.8,lv_fallen:0.8,crystalborn:0.6,lv_stormward:0.6,lv_gilt:0.6,tempest:0.4,striker:-0.25,tidecaller:-0.1,psalmist:0.2,hearth:0.4,lv_deepwater:0.1};
   const PAL={striker:null,guardian:null,psalmist:null}; Object.assign(PAL,ARMOR.TOWN_PAL||{});
   // the liveries' own metals and trims (the toon shading keeps the knight's own steel one colour, so each livery set brings its plate)
   const LVMET={gilt:[0xe2c26a,0xfff0b0],glory:[0xecc85a,0xffffff],champion:[0xf4f6fa,0xd8a828],fallen:[0x4a4650,0xb02734],robby:[0x2a2028,0xb0141c],deepwater:[0xe8e6e0,0x2a8a8a],stormward:[0xd4d9e2,0x7fd0ff],ranger:[0xb8c0cc,0xd4a93e]};
@@ -25281,8 +25284,8 @@ const ARMOR=(function(){
     ARMOR.SLOTS.forEach(slot=>{ const old=P[slot][id]; if(!old) return; const r=rc[slot], extra=(rc.motif&&rc.motif[slot])||[]; if(r===undefined&&!extra.length) return;
       const b0=old.build; old.build=ctx=>{ const K2=pal?Object.create(ctx.K):ctx.K; if(pal) K2.M=Object.assign({},ctx.K.M,pal); const c2=pal?Object.assign({},ctx,{K:K2}):ctx;
         if(r===null){ if(slot!=='cowl'&&slot!=='skirt'&&P[slot].base) P[slot].base.build(c2); }   /* the slot left plain in this set: the plain clothes (or nothing, for a hood or skirt) */
-        else if(r){ const o={}; Object.entries(r[2]||{}).forEach(([k,v])=>{ o[k]=typeof v==='string'&&v[0]==='$'?K2.M[v.slice(1)]:v; }); let ok=false; try{ ok=ctx.K._armFit!==false&&KIT[r[0]](c2,r[1],o); }catch(e){ console.warn('armour recipe',id,slot,e); ok=false; }
-          if(!ok){ c2.groups.splice(0); b0(c2); } (r[3]||[]).forEach(m=>{ try{ (typeof m==='function'?m:MO[m])(c2); }catch(e){ console.warn('motif',m,e); } }); }
+        else if(r){ const o={}; Object.entries(r[2]||{}).forEach(([k,v])=>{ o[k]=typeof v==='string'&&v[0]==='$'?K2.M[v.slice(1)]:v; }); let ok=false; H.setHeft(HEFT[id]||0); try{ ok=ctx.K._armFit!==false&&KIT[r[0]](c2,r[1],o); }catch(e){ console.warn('armour recipe',id,slot,e); ok=false; }
+          if(!ok){ c2.groups.splice(0); b0(c2); } (r[3]||[]).forEach(m=>{ try{ (typeof m==='function'?m:MO[m])(c2); }catch(e){ console.warn('motif',m,e); } }); H.setHeft(0); }
         else b0(c2);
         extra.forEach(m=>{ try{ MO[m](c2); }catch(e){ console.warn('motif',m,e); } });
         if(c2!==ctx) ctx.groups=c2.groups; };
