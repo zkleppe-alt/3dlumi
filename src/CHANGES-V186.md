@@ -1032,3 +1032,54 @@ Zak: match the set hoods to their sets; the Templar hood should follow the Templ
 | Ranger's Watch | brown, the livery's trim, a feather |
 
 - The town sets' shrouds now take the hood's cloth and trim.
+
+## V269 — the belt kit: over the tabard, gear that swings, the scabbard at the hip
+
+Zak chose: a belt kit, the belt worn over the tabard, gear hanging from it, and the sword's scabbard hung on the hip from the belt.
+
+**Where the belt sits** (armor.js `beltKit`, `beltRing`)
+- It's measured on the posed body round the torso joint: belly, pelvis and the hips, from y 0.06 up. Taking the thighs from lower down threw the ring off with the stride.
+- A sword belt sits at the top of the hips (y 0.1). A sash or cord sits at the waist (`o.y`).
+- It's let out over what's worn there, so it cinches it instead of hiding under it:
+  - the tabard, robe or coat, measured where they hang;
+  - the skirt — tassets and mail skirts hang from the belt, so with one on, the belt sits on its top edge;
+  - not capes or shrouds (`userData.mantle`), which hang over it.
+- It's built again when the tabard or skirt changes.
+
+**Styles**
+- `sword`: studded leather and a gilt buckle; its tongue hangs and swings.
+- `war`: plaques with bosses.
+- `plain`: optional studs.
+- `sash`: wound cloth, knotted, two tails.
+- `cord`: a two-strand twisted rope, a knot, tasselled ends.
+- `o.slung` tilts a belt lower on the left hip.
+
+**Gear**
+- Each piece hangs on a pivot that swings with the belt's acceleration (a damped spring, `beltSwing` in `ARMOR.tick`): pouches, a satchel, a dagger in its sheath, a hunting horn, the buckle's tongue, the sash tails and the cord's tassels.
+- Listed per set as `kind@angle`.
+
+**The scabbard**
+- Sword, war and plain belts carry a leather frog at the left hip.
+- While such a belt is worn, the one-handed sword's scabbard (the knight's sheath pivot) hangs from it nearly upright (rest −2.82 rad, outward tilt −0.3) and outside whatever he wears. It goes back to where it was when the belt comes off.
+
+**Each set's belt** (armor_recipes.js `BELTS`)
+
+| Set | Belt |
+|---|---|
+| Templar | studded sword belt, two pouches and a dagger |
+| Striker | slung red-brown sword belt, a dagger |
+| Guardian | war belt, pouches and a horn |
+| Psalmist | gold cord, a satchel |
+| Hearthward | studded belt, a pouch and a horn |
+| Ironforged, Crystalborn | iron war belts with gold bosses |
+| Emberforged | war belt |
+| Tidecaller | sea sash |
+| Thornwarden | cord, a horn and a pouch |
+| Tempest | sword belt |
+| Shade | dark cord, a dagger |
+| Archangel, Deepwater | sashes |
+| Sunfall Gilt, Fallen, Robby's Demise, Armour of God | war belts |
+| Stormward, Champion's (white) | sword belts |
+| Ranger's Watch | studded belt, slung, pouches and a horn |
+
+- Sandstrider keeps its sash. The old belts remain as fallbacks (`T.belt0`).

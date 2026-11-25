@@ -151,6 +151,24 @@
   const LVN={lv_gilt:'Sunfall Gilt',lv_stormward:'Stormward',lv_fallen:'Fallen',lv_robby:"Robby's Demise",lv_champion:"Champion's",lv_ranger:"Ranger's Watch",lv_glory:'Armour of God',lv_deepwater:'Deepwater'};
   Object.keys(LVN).forEach(id=>ARMOR.SLOTS.forEach(slot=>{ if(!P[slot][id]&&(R[id][slot]!==undefined||(R[id].motif&&R[id].motif[slot]))) P[slot][id]={name:LVN[id]+' '+ARMOR.NAMES[slot].toLowerCase(),set:LVN[id],livery:id.slice(3),build:ctx=>P[slot].templar.build(ctx)}; }));
   // V264: how heavily each set is built — its plate stands that much further off him (0 = the kit's own fit)
+  /* V269: every set's belt from the belt kit — cinched over its tabard or robe, its gear hanging and swinging, the frog at the left hip */
+  const BELTS={
+    striker:['sword',{strap:0x5a2414,slung:0.035,gear:['dagger@-2.15','pouch@-0.95']}],
+    guardian:['war',{strap:0x2e1d10,gear:['pouch@-0.95','horn@-1.85','pouch@0.95']}],
+    psalmist:['cord',{y:0.15,cloth:'$goldD',tassel:'$goldD',knot:-0.6,gear:['satchel@-1.6']}],
+    hearth:['plain',{strap:0x6a4526,studs:true,gear:['pouch@-1.0','horn@-2.0']}],
+    ironforged:['war',{strap:0x231a14,metal:'$steel',boss:'$gold',gear:['pouch@-0.95','pouch@0.95']}],
+    tidecaller:['sash',{y:0.13,cloth:'$scarf',knot:-0.8,gear:['pouch@-2.0']}],
+    thornwarden:['cord',{y:0.12,cloth:'$scarf',tassel:'$gold',knot:-0.7,gear:['horn@-1.7','pouch@-2.4']}],
+    crystalborn:['war',{strap:0x2a2c3a,metal:'$steel',boss:'$gold'}],
+    emberforged:['war',{strap:0x1a1210,metal:'$gold'}],
+    tempest:['sword',{strap:0x1e2a44,gear:['pouch@-1.0']}],
+    shade:['cord',{y:0.12,cloth:'$scarf',tassel:'$gold',knot:-0.75,gear:['dagger@-2.2']}],
+    archangel:['sash',{y:0.14,cloth:'$tunic',knot:-0.7}],
+    lv_gilt:['war',{strap:0x4a3418}], lv_stormward:['sword',{strap:0x1e2a44,gear:['pouch@-1.0']}], lv_fallen:['war',{strap:0x161218,gear:['dagger@-2.2']}],
+    lv_robby:['war',{strap:0x140c0e,gear:['dagger@-2.2']}], lv_champion:['sword',{strap:0xe6e0d4,gear:['pouch@-1.0']}],
+    lv_ranger:['plain',{strap:0x5a3a1e,studs:true,slung:0.03,gear:['pouch@-0.95','horn@-1.8','pouch@-2.5']}], lv_glory:['war',{strap:0x4a3418}], lv_deepwater:['sash',{y:0.13,cloth:'$tunic',knot:-0.8}] };
+  Object.entries(BELTS).forEach(([id,[st,o]])=>{ if(R[id]&&R[id].belt===undefined) R[id].belt=['belt',st,o]; });
   const HEFT={guardian:1.6,ironforged:1.3,lv_robby:1.3,emberforged:1.1,archangel:0.9,lv_glory:0.9,lv_champion:0.8,lv_fallen:0.8,crystalborn:0.6,lv_stormward:0.6,lv_gilt:0.6,tempest:0.4,striker:-0.25,tidecaller:-0.1,psalmist:0.2,hearth:0.4,lv_deepwater:0.1};
   const PAL={striker:null,guardian:null,psalmist:null}; Object.assign(PAL,ARMOR.TOWN_PAL||{});
   // the liveries' own metals and trims (the toon shading keeps the knight's own steel one colour, so each livery set brings its plate)
