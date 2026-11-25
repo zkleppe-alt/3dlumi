@@ -286,7 +286,7 @@
   /* V246: PELTS — the bearskin's pattern for any beast: a collar of fur at the neck, a pelt over each shoulder (on the arm's own joint,
      riding whatever pauldrons are worn), the beast's head on the left shoulder, and a cloak of its hide down the back. o: {c:[main,light,dark],
      head:'bear'|'wolf'|'fox'|'lion'|'stag'|'ram'|'raven', cloak:length (0 for none), sh:shoulder size, mane, feathers, tail, spots} */
-  function furCowl(ctx,o){ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to), F1=pelt(o.k+'1',o.c[0]), F2=pelt(o.k+'2',o.c[1]), F3=pelt(o.k+'3',o.c[2]), DK=pelt('_nose',0x161210), EY=pelt('_eye',0x0c0a08);
+  function furCowl(ctx,o){ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to), hp={up:[],down:[]}; g.userData.pelt=o.head||'pelt'; g.userData.hoodParts=hp; F1=pelt(o.k+'1',o.c[0]), F2=pelt(o.k+'2',o.c[1]), F3=pelt(o.k+'3',o.c[2]), DK=pelt('_nose',0x161210), EY=pelt('_eye',0x0c0a08);
     const E=bounds(to,q=>q.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y;
     const LK=(par,mat,pos,dir,len,wid)=>o.feathers?(()=>{ let f=new THREE.SphereGeometry(1,8,5); f.scale(wid*0.9,len/2,0.006); f.translate(0,-len/2,0); const m=mesh(par,f,mat,'fur'); m.position.copy(pos); m.quaternion.setFromUnitVectors(V(0,-1,0),dir.clone().normalize()); m.userData.soft=1; return m; })():lock(par,mat,pos,dir,len,wid);
     const mix=i=>i%3?F1:(i%2?F2:F3);
@@ -303,7 +303,26 @@
       if(o.spots) for(let i=0;i<7;i++){ const sp=mesh(gp,(()=>{ const s2=new THREE.SphereGeometry(1,8,5); s2.scale(0.018,0.004,0.014); return s2; })(),F2,'fur'); const ph=-Math.PI+i*0.9, th=0.5+(i%3)*0.25, p=dome(ph,th,0.004); sp.position.copy(p); sp.lookAt(p.clone().multiplyScalar(2).sub(V(cx,top-ry,0))); sp.rotateX(Math.PI/2); }
       const NS=o.feathers?24:18; for(let i=0;i<NS;i++){ const ph=-Math.PI+i/NS*Math.PI*2+(i%2)*0.08, p=dome(ph,TH-0.02,0.002), d=V(Math.sin(ph)*0.45,-1,Math.cos(ph)*0.45); LK(gp,mix(i),p,d,(o.feathers?0.12:0.085)+(i%3)*0.02,o.feathers?0.03:0.036).userData.softHead=1; }
       if(o.feathers) for(let row=0;row<2;row++) for(let i=0;i<14;i++){ const ph=-Math.PI+i/14*Math.PI*2+row*0.2, th=0.55+row*0.35, p=dome(ph,th,0.006+row*0.003); LK(gp,mix(i+row),p,p.clone().sub(V(cx,top-ry,0)).add(V(0,-0.12,0)),0.09,0.026).userData.softHead=1; }
-      if(sd>0&&o.head) head(gp,dome(Math.PI/2,0.35,0.02),o.head,F1,F2,F3,DK,EY); });
+      if(sd>0&&o.head){ head(gp,dome(Math.PI/2,0.35,0.02),o.head,F1,F2,F3,DK,EY); hp.down.push(gp.children[gp.children.length-1]); } });
+    // V256/257: the hood — the beast's own head worn over his (after Zak's references: Hunt's wolf, the grizzly): its skull is the hood's
+    //  crown, its brow and snout jut out over his forehead like a visor with its teeth showing, his face open below; the pelt falls down
+    //  both sides of his face to the shoulders and the mantle. Over a helm it is cut larger.
+    if(o.head&&typeof ARMOR!=='undefined'&&ARMOR.regY){ const hd=K.rig.head, HY=ARMOR.regY(K,hd,['head'],0.2), S0=K.userData.armorS, helmed=!!(S0&&S0.worn.helm&&S0.ids&&S0.ids.helm&&S0.ids.helm!=='base');
+      const H=HY?HY[1]-HY[0]:0, yb=HY?HY[0]+0.4*H:0, ybr=HY?HY[0]+0.76*H:0, yt=HY?HY[1]:0, HR=HY?ARMOR.bodyRings(K,hd,['head'],yb,yt,6,16,0.2):null;
+      if(HR){ const gh=piece(ctx,hd); gh.userData.fitted=true; hp.up.push(gh); const ex=helmed?0.045:0, top=yt+0.035+ex*1.2, gap=0.026+ex, yN=HY[0]-0.03;
+        const ys=ph=>yb+(ybr-0.01-yb)*Math.pow(Math.max(0,Math.cos(ph)),1.2);   // the face left open below the brow
+        const at=(ph,v,of)=>{ const y0=ys(ph), y=y0+(top-y0)*v, k=v<0.55?1:Math.pow(Math.max(0,Math.cos((v-0.55)/0.45*Math.PI/2)),0.7), yy=Math.min(y,yt), [cx,cz]=HR.c(yy), r=k*(HR.r(ph,yy)+gap+(of||0))*(1+0.035*Math.sin(ph*7+v*5)); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
+        mesh(gh,surf((u,v)=>at(-Math.PI+u*Math.PI*2,v),28,8,{smooth:true,two:0.006}),F1,'fur');
+        // the pelt falling from it, framing his face and down onto the shoulders, widening as it goes
+        const PH0=0.62; mesh(gh,surf((u,v)=>{ const ph=PH0+(Math.PI*2-2*PH0)*u, p=at(ph,0), t=1-v, [cx,cz]=HR.c(yb), dx=p.x-cx, dz=p.z-cz, L=Math.hypot(dx,dz)||1, w=1+t*(0.55+0.25*Math.abs(Math.sin(ph)));
+          return V(cx+dx*w, p.y-(p.y-yN)*t, cz+dz*w*(Math.cos(ph)<0?1.05:0.9)); },22,4,{smooth:true,two:0.006}),F1,'fur');
+        for(let i=0;i<30;i++){ const u=i/29, ph=PH0+(Math.PI*2-2*PH0)*u, p=at(ph,0), [cx,cz]=HR.c(yb), dx=p.x-cx, dz=p.z-cz, w=1.55+0.25*Math.abs(Math.sin(ph)), q=V(cx+dx*w,yN+0.01,cz+dz*w);
+          LK(gh,mix(i),q,V(dx*0.6,-1,dz*0.6),0.06+(i%3)*0.02,0.032); }   // its ragged foot
+        // the beast's head: its skull the crown, brow and snout out over his forehead
+        const [hx,hz]=HR.c(Math.min(yt,ybr+0.04)), fr=HR.r(0,ybr)+gap, W=(HR.r(Math.PI/2,ybr)+gap)/0.075;
+        head(gh,V(hx,ybr+0.035+ex*0.5,hz+fr*0.32),o.head,F1,F2,F3,DK,EY); const hh=gh.children[gh.children.length-1]; hh.scale.set(W*1.02,W*0.82,W*1.05); hh.rotation.x=-0.06;
+        if(/bear|wolf|lion|fox/.test(o.head)){ const TT=pelt('_tooth',0xeee6cf), sz=o.head==='bear'||o.head==='lion'?1:0.8;   // the teeth of the upper jaw, over his brow
+          [[-0.022,0.026],[0.022,0.026],[-0.011,0.012],[0,0.011],[0.011,0.012]].forEach(([x,l])=>{ const c=new THREE.ConeGeometry(0.0055*sz,l*sz,5).toNonIndexed(); c.rotateX(Math.PI); const m=mesh(hh,c,TT,'fur'); m.position.set(x*sz,-0.04*sz-l*sz/2+0.004,0.1*sz+(o.head==='bear'?0:0.02)); }); } } }
     // the cloak, and a tail
     if(o.cloak){ const CL=o.cloak, RC=0.32, cape=(ph,y)=>{ const v=(YA-y)/CL; return RC*(1.0+0.16*v)*(1+0.03*Math.sin(ph*7+v*3)); };
       const cm=mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-CL*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y,tz*r*Math.cos(ph)); },20,8,{smooth:true,two:0.006}),F1,'fur'); cm.userData.soft=1;
@@ -380,9 +399,9 @@
   const hoodC=()=>cl('hood',0x4b3d30), linen=()=>cl('linen',0x8f8068), breeches=()=>cl('breeches',0x3d352d);
   const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build:ctx=>{   /* V252: where the artist's plain clothes can be had (OUTFIT3), they're worn instead */
     if(slot!=='plume'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ctx.K)){ const g=piece(ctx,ctx.K.rig.torso); g.userData.garmentSlot=slot; return; } build(ctx); }}; };
-  reg0('helm','Hood',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
+  reg0('helm','Bare head',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
   reg0('plume','No crest',ctx=>{ piece(ctx,ctx.K.rig.plume); });
-  reg0('cowl','None',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);
+  reg0('cowl','Hood',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);
     const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y-0.035, y1=E.max.y, w=Math.max(Math.abs(E.min.x),E.max.x);
     mesh(g,band((ph,y)=>{ const v=(y-y0)/(y1-y0); return w*(1.55-0.95*Math.pow(v,0.7))*(1+0.025*Math.sin(ph*8)); },-Math.PI,Math.PI,y0,y1,28,5,{zk:0.9,smooth:true,two:0.004}),hoodC(),'scarf'); });
   reg0('tabard','Shirt and belt',ctx=>{ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), {y0,y1,ZK,CZ}=torsoE(K);

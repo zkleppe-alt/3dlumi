@@ -14,7 +14,7 @@
 const ARMOR=(function(){
   const V=(x,y,z)=>new THREE.Vector3(x||0,y||0,z||0);
   const SLOTS=['helm','plume','cowl','tabard','belt','skirt','pauldrons','arms','gauntlets','legs','sabatons'];
-  const NAMES={helm:'Great helm',plume:'Plume',cowl:'Cowl',tabard:'Tabard & breastplate',belt:'Belt & pouches',skirt:'Skirt',pauldrons:'Pauldrons',arms:'Vambraces',gauntlets:'Gauntlets',legs:'Greaves & cuisses',sabatons:'Sabatons'};
+  const NAMES={helm:'Great helm',plume:'Plume',cowl:'Hood',tabard:'Tabard & breastplate',belt:'Belt & pouches',skirt:'Skirt',pauldrons:'Pauldrons',arms:'Vambraces',gauntlets:'Gauntlets',legs:'Greaves & cuisses',sabatons:'Sabatons'};
 
   // ── geometry helpers ──
   // a surface from f(u,v)→Vector3, u around (left to right as seen from outside), v up; flat-shaded unless smooth
@@ -113,7 +113,10 @@ const ARMOR=(function(){
       mesh(g,sweep(pts,0.026-0.006*Math.abs(s),0.011,6,t=>Math.pow(1-t,0.6)*0.95+0.05),i%3===1?M.plumeHi:M.plume,'hair'); } };
 
   // ── COWL: the navy hood worn down — rolled folds round the throat, a point draped over the chest, the hood fallen at the back ──
-  T.cowl=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), SC=M.scarf||M.tunic;
+  /* V256: the Templar's cowl is now his hood — the artist's hood (the plain one's) dyed navy; its old navy scarf rolls round the throat
+     with the cuirass (T.tabard). Without the artist's files, the old cowl as before. */
+  T.cowl=function(ctx){ const K=ctx.K; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(K)){ const g=piece(ctx,K.rig.torso); g.userData.garmentSlot='cowl'; g.userData.hoodTint='navy'; g.userData.fitted=true; return; } return T.cowl0(ctx); };
+  T.cowl0=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), SC=M.scarf||M.tunic;
     const E=bounds(to,o=>o.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]); const y0=E.min.y-0.004, y1=E.max.y+0.006, w=Math.max(Math.abs(E.min.x),E.max.x);
     const r=(ph,y)=>{ const v=(y-y0)/(y1-y0); const base=w*(1.32-0.62*Math.pow(v,0.8)); return base*(1+0.035*Math.sin(ph*7+v*5)+0.05*Math.max(0,Math.sin(v*Math.PI*3))); };   // its folds and rolls
     mesh(g,band(r,-Math.PI,Math.PI,y0,y1,40,7,{zk:1.02,cz:0.005,smooth:true,two:0.004}),SC,'scarf');
@@ -128,7 +131,42 @@ const ARMOR=(function(){
 
   // ── TABARD over the breastplate: navy, gold down the sides, a scalloped gold hem, the cross on the breast, gilt bosses where the
   //  pauldron straps fasten ──
-  T.tabard=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), GD=M.goldD||M.gold;
+  /* V256: THE CUIRASS UNDER THE TABARD (Zak's breastplate reference). A breastplate and backplate as one shell slid on over the head,
+     made from his own torso (bodyRings): high at the throat front and back, cut away under the arms, a little flared at the waist, a keel
+     down the breast, gold-edged; strapped at the sides in leather. The navy scarf of the reference rolled round the throat. Over it the
+     tabard: a front and a back panel of navy hanging from the shoulders past the hips — so the steel shows at the shoulders and the
+     sides — gold down their edges, a scalloped hem, the Jerusalem cross on the breast. ── */
+  T.tabard=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, GD=M.goldD||M.gold;
+    const TR=bodyRings(K,to,['chest','belly','pelvis','thigh'],-0.12,0.64,19,32,0.32), NR=bodyRings(K,to,['head'],0.6,0.7,3,16,0.16);
+    if(!TR||K._cuirass===false) return T.tabard0(ctx);
+    const g=piece(ctx,to); g.userData.fitted=true;
+    const yB=0.2, yS=0.47, yF=0.595, yBk=0.615;   // the plate's foot, the armholes, the throat in front and behind
+    const top=ph=>{ const c=Math.abs(Math.cos(ph)), f=Math.cos(ph)>0?yF:yBk; return yS+(f-yS)*Math.pow(c,1.6); };
+    const smoothR=(ph,y)=>{ let s=0; for(const d of [-0.2,-0.1,0,0.1,0.2]) s+=TR.r(ph+d,y)*(d===0?2:1); return s/6; };   // plate doesn't follow every muscle
+    const keel=ph=>0.008*Math.max(0,1-Math.abs(Math.atan2(Math.sin(ph),Math.cos(ph)))/0.3);
+    const R=(ph,y,o)=>smoothR(ph,Math.max(yB,y))+0.014+keel(ph)*(y>0.3?1:0)+0.012*Math.max(0,(0.26-y)/0.06)+(o||0);
+    const at=(ph,y,o)=>{ const [cx,cz]=TR.c(Math.max(yB,Math.min(0.6,y))), r=R(ph,y,o); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
+    const pl=surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=yB+(top(ph)-yB)*v; return at(ph,y); },40,12,{smooth:true,two:0.004});
+    mesh(g,pl,M.steel,'steel');
+    const rib=(fn,n,mat,part,w)=>mesh(g,surf((u,v)=>fn(u,v),n,1,{two:0.002}),mat,part);
+    rib((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=top(ph)-0.016+v*0.016; return at(ph,y,0.004); },64,GD,'gold');   // the gilt edge round the throat and the armholes
+    rib((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=yB+v*0.016; return at(ph,y,0.004); },48,GD,'gold');             // and round the foot
+    [-1,1].forEach(sd=>[0.3,0.39].forEach(y=>{ const ph=sd*Math.PI/2, m=mesh(g,new THREE.BoxGeometry(0.012,0.022,0.07).toNonIndexed(),M.boot,'leather'); m.position.copy(at(ph,y,0.006)); m.rotation.y=ph;   // side straps and buckles
+      const bk=mesh(g,new THREE.BoxGeometry(0.008,0.026,0.018).toNonIndexed(),GD,'gold'); bk.position.copy(at(ph,y,0.012)); bk.rotation.y=ph; }));
+    // the scarf: navy, rolled round the throat and lying on the plate's top
+    if(NR){ const [nx,nz]=NR.c(0.63), SC=M.scarf||M.tunic, y0=0.575, y1=0.66;
+      mesh(g,band((ph,y)=>{ const v=(y-y0)/(y1-y0); return NR.r(ph,0.63)+0.022+0.03*Math.pow(1-v,1.5)+0.006*Math.sin(ph*6+v*4); },-Math.PI,Math.PI,y0,y1,36,5,{cx:nx,cz:nz,smooth:true,two:0.004}),SC,'scarf'); }
+    // the tabard: front and back panels over the plate, hanging past the hips
+    const yH=-0.11, tabR=(ph,y)=>R(ph,y,0.01+(y<yB?0.012*(yB-y)/(yB-yH):0)), TW=0.78, TS=M.tunic;
+    const atT=(ph,y,o)=>{ const [cx,cz]=TR.c(Math.max(yB,Math.min(0.6,y))), r=tabR(ph,y)+(o||0); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
+    [0,Math.PI].forEach(c=>{ const yt=ph=>Math.min(top(ph),c?yBk:yF)+0.004;
+      mesh(g,surf((u,v)=>{ const ph=c-TW+2*TW*u, y=yH+(yt(ph)-yH)*v; return atT(ph,y); },16,14,{smooth:true,two:0.003}),TS,'tunic');
+      [-1,1].forEach(sd=>rib((u,v)=>{ const ph=c+sd*(TW-0.03)+(v-0.5)*0.05, y=yH+0.02+(yt(c+sd*TW)-yH-0.03)*u; return atT(ph,y,0.003); },12,GD,'gold'));   // gold down its edges
+      rib((u,v)=>{ const ph=c-TW+2*TW*u, sc=0.024*tri(u*6); return atT(ph,yH+v*(0.02+sc),0.004); },36,GD,'gold');   // the scalloped hem
+      rib((u,v)=>{ const ph=c-TW+2*TW*u; return atT(ph,yt(ph)-0.018+v*0.016,0.003); },18,GD,'gold'); });   // the neckline
+    jerusalem(g,M.cross||GD,TR.c(0.42)[0],0.4,0.82,(x,y)=>{ const [cx,cz]=TR.c(y), r=tabR(0,y); return cz+Math.sqrt(Math.max(0,r*r-(x-cx)*(x-cx))); });
+    ctx.R=(ph,y)=>tabR(ph,y); ctx.ZK=1; ctx.CZ=TR.c(0.3)[1]; };
+  T.tabard0=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), GD=M.goldD||M.gold;
     const E=bounds(to,o=>/^(tunic|steel)$/.test(o.userData.part),[[-0.279,0.061,-0.168],[0.279,0.469,0.157]]);
     const y0=E.min.y-0.012, y1=E.max.y+0.004, W=0.25, ZK=(E.max.z-E.min.z)/2/0.232+0.03, CZ=(E.max.z+E.min.z)/2;
     const prof=[[0.0,0.182],[0.15,0.205],[0.4,0.232],[0.6,0.228],[0.8,0.2],[0.92,0.15],[1.0,0.12]], R=(y)=>{ const v=Math.max(0,Math.min(1,(y-y0)/(y1-y0))); for(let i=1;i<prof.length;i++) if(v<=prof[i][0]){ const [a,ra]=prof[i-1],[b,rb]=prof[i], t=(v-a)/(b-a); return ra+(rb-ra)*(t*t*(3-2*t)); } return 0.12; };
@@ -202,7 +240,45 @@ const ARMOR=(function(){
       const rv=mesh(g,facetSphere(0.012,0.012,0.012,8,5),M.paul,'paul'); rv.position.copy(bp).addScaledVector(nrm,0.008); }); };
 
   // ── ARMS: a rerebrace on the upper arm, a couter at the elbow, a vambrace on the forearm — faceted, gold-banded, a point at its top ──
+  /* V256: the arm plates made from his own arms (bodyRings, as the greaves): a rerebrace closed round the upper arm from under the
+     pauldron to above the elbow, a vambrace closed round the forearm from below the elbow to the wrist — each a clean plate a hair over
+     the arm, gold at its ends, a point on the vambrace's top; the couter cupped over the elbow ── */
+  function regY(K,pivot,regs,box){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; const body=F.body, R=F.D.reg, P=body.geometry.attributes.position, ok=new Set(regs), ys=[];
+    K.updateMatrixWorld(true); body.skeleton.update(); for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); pivot.worldToLocal(_bv); if(Math.abs(_bv.x)>box||Math.abs(_bv.z)>box||Math.abs(_bv.y)>0.5) continue; ys.push(_bv.y); }
+    if(ys.length<30) return null; ys.sort((a,b)=>a-b); return [ys[Math.floor(ys.length*0.03)],ys[Math.floor(ys.length*0.97)]]; }
+  // the limb's own axis: the body's points of that region (in the joint's frame), their mean and main direction (from the joint outward);
+  //  a frame set on it whose -y runs down the limb, so rings can be measured square to the limb whatever the joint's own axes are
+  function limbFrame(K,pivot,regs,g){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; const body=F.body, R=F.D.reg, P=body.geometry.attributes.position, ok=new Set(regs), pts=[];
+    K.updateMatrixWorld(true); body.skeleton.update(); for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); pivot.worldToLocal(_bv); if(_bv.length()>0.45) continue; pts.push(_bv.clone()); }
+    if(pts.length<40) return null; const m=new THREE.Vector3(); pts.forEach(p=>m.add(p)); m.divideScalar(pts.length);
+    const C=[0,0,0,0,0,0,0,0,0]; pts.forEach(p=>{ const d=[p.x-m.x,p.y-m.y,p.z-m.z]; for(let a=0;a<3;a++) for(let b=0;b<3;b++) C[a*3+b]+=d[a]*d[b]; });
+    let d=new THREE.Vector3(0,-1,0); for(let it=0;it<30;it++){ const x=C[0]*d.x+C[1]*d.y+C[2]*d.z, y=C[3]*d.x+C[4]*d.y+C[5]*d.z, z=C[6]*d.x+C[7]*d.y+C[8]*d.z; d.set(x,y,z).normalize(); }
+    if(d.dot(m)<0) d.negate();   // outward, from the joint toward the limb's end
+    const o=m.clone().addScaledVector(d,-m.dot(d)), f=new THREE.Group(); f.userData.armor=g.userData.armor; f.position.copy(o); f.quaternion.setFromUnitVectors(V(0,-1,0),d); g.add(f); f.updateMatrixWorld(true);
+    const ts=pts.map(p=>p.clone().sub(o).dot(d)).sort((a,b)=>a-b); return {f,t0:ts[Math.floor(ts.length*0.04)],t1:ts[Math.floor(ts.length*0.96)]}; }
   T.arms=function(ctx){ const K=ctx.K, M=K.M, GD=M.goldD||M.gold;
+    if(K._armFit===false||K._cuirass===false) return T.arms0(ctx);
+    const made=[]; let ok=true;
+    [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ if(!ok) return; const g1=piece(ctx,A.sh), g2=piece(ctx,A.el); g1.userData.fitted=g2.userData.fitted=true; made.push(g1,g2);
+      const LU=limbFrame(K,A.sh,['upperarm'],g1), LF=limbFrame(K,A.el,['forearm'],g2); if(!LU||!LF){ ok=false; return; }
+      // in each limb frame the limb runs down -y from y=-t0 (its top) to y=-t1 (its end)
+      const u1=-LU.t0-0.035, u0=-LU.t1+0.035, f1=-LF.t0-0.03, f0=-LF.t1+0.022;
+      const UR=bodyRings(K,LU.f,['upperarm'],u0,u1,8,20,0.13), FR=bodyRings(K,LF.f,['forearm'],f0,f1,8,20,0.13); if(!UR||!FR){ ok=false; return; }
+      const sm=(RR,ph,y)=>{ let s2=0; for(const d of [-0.3,-0.15,0,0.15,0.3]) s2+=RR.r(ph+d,y)*(d===0?2:1); return s2/6; };
+      const tubeAt=(RR,gap)=>(ph,y,o)=>{ const [cx,cz]=RR.c(y), r=sm(RR,ph,y)+gap+(o||0); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
+      const plate=(g,at,y0,y1,flare)=>{ mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=y0+(y1-y0)*v; return at(ph,y,flare(v)); },22,6,{smooth:true,two:0.003}),M.steel,'steel');
+        [[y0,0],[y1-0.012,1]].forEach(([y,fv])=>mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2; return at(ph,y+v*0.012,0.004+flare(fv)); },24,1,{two:0.002}),GD,'gold')); };
+      const atU=tubeAt(UR,0.009), atF=tubeAt(FR,0.008);
+      plate(LU.f,atU,u0,u1,v=>0.006*v);                                                  // the rerebrace, a little wider toward the shoulder
+      mesh(LU.f,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2; return atU(ph,(u0+u1)/2+v*0.008,0.006); },24,1,{two:0.002}),GD,'gold');   // a band round its middle
+      plate(LF.f,atF,f0,f1,v=>0.008*v*v);                                                // the vambrace, flaring to the elbow
+      // the couter: a cup on the point of the elbow, gold-rimmed, a fan to the outside — at the forearm's top, behind
+      const er=sm(FR,Math.PI,f1)+0.012, top=f1+0.02, [ex,ez]=FR.c(f1);
+      const cp=mesh(LF.f,facetSphere(er*0.85,er*0.8,er*0.65,8,5,0,Math.PI*0.55),M.steel,'steel'); cp.position.set(ex,top,ez-er*0.5); cp.rotation.x=-Math.PI/2;
+      const rim=mesh(LF.f,new THREE.TorusGeometry(er*0.8,0.005,4,12).toNonIndexed(),GD,'gold'); rim.position.set(ex,top,ez-er*0.52);
+      const fan=mesh(LF.f,facetSphere(er*0.7,er*0.65,0.011,8,4),M.steel,'steel'); fan.position.set(ex+sd*er*0.9,top,ez-er*0.1); fan.rotation.y=sd*0.5; });
+    if(!ok){ made.forEach(g=>{ if(g.parent) g.parent.remove(g); const i2=ctx.groups.indexOf(g); if(i2>=0) ctx.groups.splice(i2,1); }); return T.arms0(ctx); } };
+  T.arms0=function(ctx){ const K=ctx.K, M=K.M, GD=M.goldD||M.gold;
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ const g1=piece(ctx,A.sh), g2=piece(ctx,A.el);
       const tube=(g,y0,y1,r0,r1,mat,o)=>mesh(g,band((ph,y)=>r0+(r1-r0)*(y-y0)/(y1-y0),-Math.PI,Math.PI,y0,y1,8,o&&o.nv||2,{two:0.003,cz:o&&o.cz||0}),mat,'steel');
       const ring=(g,y,r,w)=>mesh(g,band(()=>r,-Math.PI,Math.PI,y,y+w,16,1,{two:0.002}),GD,'gold');
@@ -326,12 +402,12 @@ const ARMOR=(function(){
      along its ray from the limb's axis so the shell lies a set gap over the body, and whatever stood proud of the shell — keels, ridges,
      gilt bands, rivets, flares, a hem — stands just as proud after. Above or below the body it hangs past (a helm's crown, a pauldron's
      dome, a tabard's hem) the piece keeps its own shape, set in by as much as its nearest ring was. Every set alike. */
-  const CONF={cowl:{gap:0.03,box:0.32,only:'torso'},tabard:{gap:0.012,box:0.32},belt:{gap:0.045,box:0.32},arms:{gap:0.007,box:0.13}};
+  const CONF={cowl:{gap:0.03,box:0.32,only:'torso'},tabard:{gap:0.012,box:0.32},belt:{gap:0.04,box:0.32},arms:{gap:0.007,box:0.13}};
   /* the domes (helm, pauldrons) and the ends (gauntlets, sabatons) aren't tubes: sized whole to the body part, centred on it, then let down
      onto it until they rest a gap above it (SETTLE) */
   const SETTLE={helm:{gap:0.016,lift:0.08,xz:true},pauldrons:{gap:0.012,lift:0.06,z:true},gauntlets:{gap:0.006,lift:0.03,xz:true},sabatons:{gap:0.006,lift:0.03,xz:true}};
   const _cm=new THREE.Matrix4(), _ci=new THREE.Matrix4();
-  function conform(K,slot,g){ const cf=CONF[slot], par=g.parent, regs=regsOf(K,par); if(!cf||!regs) return false; if(cf.only==='torso'&&par!==K.rig.torso) return false;   /* a pelt on the arms isn't fitted round them */ g.updateMatrixWorld(true);
+  function conform(K,slot,g){ const cf=CONF[slot], par=g.parent, regs=regsOf(K,par); if(!cf||!regs) return false; if(cf.only==='torso'&&par!==K.rig.torso) return false; if(g.userData.pelt) return false;   /* a pelt's collar and cloak keep their bulk */   /* a pelt on the arms isn't fitted round them */ g.updateMatrixWorld(true);
     const ms=[]; g.traverse(m=>{ if(m.isMesh&&m.geometry&&m.geometry.attributes.position&&!m.isSkinnedMesh) ms.push(m); }); if(!ms.length) return false;
     // the piece's points in its joint's frame
     _ci.copy(par.matrixWorld).invert(); const L=[]; let N=0; ms.forEach(m=>{ const M=new THREE.Matrix4().multiplyMatrices(_ci,m.matrixWorld), A=m.geometry.attributes.position, P=new Float32Array(A.count*3);
@@ -374,7 +450,7 @@ const ARMOR=(function(){
     const cl=[]; roof.forEach((ry,k)=>{ const t=top.get(k); if(t!==undefined) cl.push(ry-t); });
     if(cl.length>=4){ const gap=(K._fitGap&&K._fitGap[slot]!==undefined)?K._fitGap[slot]:st.gap; g.position.y+=Math.max(-0.08,Math.min(0.08,gap-pct(cl,0.04))); }
     return g.position.clone().sub(p0); }
-  function fitGroups(K,slot,gs){ if(slot==='plume'&&K._armFit!==false){ const hf=K._helmFit; if(hf) gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm: its size, and where it came to rest
+  function fitGroups(K,slot,gs){ gs=gs.filter(g=>!g.userData.fitted); if(!gs.length) return; if(slot==='plume'&&K._armFit!==false){ const hf=K._helmFit; if(hf) gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm: its size, and where it came to rest
         K.updateMatrixWorld(true); const c=K.rig.head.localToWorld(_fv.copy(hf.c)); par.worldToLocal(c); g.scale.multiplyScalar(hf.s); g.position.sub(c).multiplyScalar(hf.s).add(c);
         if(hf.d){ const a=K.rig.head.localToWorld(new THREE.Vector3()), b=K.rig.head.localToWorld(hf.d.clone()); par.worldToLocal(a); par.worldToLocal(b); g.position.add(b.sub(a)); } g.userData.fitS='follows'; }); return; }
     if(CONF[slot]&&K._armFit!==false&&K._conform!==false){ if(slot==='helm') K._helmTop=null; let any=false; gs.forEach(g=>{ if(g.userData.garmentSlot) return; try{ if(conform(K,slot,g)) any=true; }catch(e){ if(window.DEBUG_ARMOR) console.error('conform',slot,e); } }); gs=gs.filter(g=>g.userData.fitS!=='conform'); if(!gs.length) return; }   /* the rest (a pelt's shoulder pieces) are sized as before */
@@ -392,6 +468,7 @@ const ARMOR=(function(){
       if(SETTLE[slot]&&K._settle!==false){ try{ const d=settle(K,slot,g); if(d&&slot==='helm'&&K._helmFit) K._helmFit.d=d; if(d) g.userData.fitS=+s.toFixed(2)+' ↓'+d.y.toFixed(3); }catch(e){ if(window.DEBUG_ARMOR) console.error('settle',slot,e); } } }); }
   function wear(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
     if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
+    if(slot==='helm'&&S.groups.cowl&&S.groups.cowl[0]&&S.groups.cowl[0].userData.hoodParts&&!wear._in){ wear._in=true; try{ const on=S.worn.cowl; wear(K,'cowl',S.ids.cowl); if(!on) set(K,'cowl',false); } finally{ wear._in=false; } }   /* a pelt's hood re-cut to the new helm */
     if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
   function set(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K); }
   function worn(K){ const S=state(K), o={}; SLOTS.forEach(s=>o[s]=S.worn[s]?(S.ids&&S.ids[s])||'templar':null); return o; }
@@ -425,14 +502,40 @@ const ARMOR=(function(){
   function softList(K,S){ const list=[]; for(const slot in S.groups){ (S.groups[slot]||[]).forEach(g=>{ if(!g.visible) return; const sk=g.parent===K._skF||g.parent===K._skB;
       g.traverse(m=>{ if(!m.isMesh||!(sk||m.userData.soft||m.userData.softHead)) return; if(!m.userData.rest){ m.userData.rest=m.geometry.attributes.position.array.slice(); m.frustumCulled=false; } list.push(m); }); }); }
     return list; }
-  function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return;
+  // V256: a pelt worn in the Hood slot is a hood too: up, the beast's head over his own (over the helm too, if he wishes); down, on his shoulder.
+  //  Up or down as the plain hood (☰ → Gear → Hood → Hood up/down: one choice for plain clothes, one with armour).
+  function hoodUpNow(S){ const G=(typeof GAME!=='undefined'&&GAME.S)||{}, armoured=SLOTS.some(sl=>sl!=='plume'&&sl!=='cowl'&&S.worn[sl]&&S.ids&&S.ids[sl]&&S.ids[sl]!=='base'); return armoured?!!G.hoodArm:(G.hoodPlain!==false); }
+  function hoodSync(K){ const S=K&&K.userData.armorS, cg=S&&S.groups.cowl&&S.groups.cowl[0], hp=cg&&cg.userData.hoodParts; if(!hp) return; const up=hoodUpNow(S), fp=!!(K._head&&!K._head.visible);
+    hp.up.forEach(o=>{ const v=up&&!fp; if(o.visible!==v) o.visible=v; }); hp.down.forEach(o=>{ if(o.visible!==!up) o.visible=!up; }); }
+  /* V256: CLOTH. Skirts, robes and fur cloaks hang and swing: every point of the cloth is a little mass, held toward where it would hang
+     on the body (its rest place, carried by the hips) — firmly at the belt, loosely at the hem — so it lags behind as he moves, swings past,
+     and settles; gravity draws it down; it is kept out of his legs (the leg capsules) and never strays far from where it belongs. The weights
+     are by height down the whole piece (its group), so the gilt edges and hems move with the cloth they're sewn to. */
+  const _cw=new THREE.Vector3(), _cv=new THREE.Vector3();
+  function clothInit(m){ const g=m.parent, R=m.userData.rest; let y0=Infinity,y1=-Infinity; const top=[];
+    (g.userData.clothY||(g.userData.clothY=(()=>{ g.traverse(q=>{ if(!q.isMesh) return; const P=q.userData.rest||q.geometry.attributes.position.array; for(let i=1;i<P.length;i+=3){ _cv.set(P[i-1],P[i],P[i+1]).applyMatrix4(q.matrix); if(_cv.y<y0) y0=_cv.y; if(_cv.y>y1) y1=_cv.y; } }); return [y0,y1]; })()));
+    const [Y0,Y1]=g.userData.clothY, n=R.length/3, H=new Float32Array(n); for(let i=0;i<n;i++){ _cv.set(R[i*3],R[i*3+1],R[i*3+2]).applyMatrix4(m.matrix); H[i]=Math.max(0,Math.min(1,(Y1-_cv.y)/((Y1-Y0)||1))); } m.userData.clothH=H; }
+  function cloth(m,A,R,dt,sc){ if(!m.userData.clothH) clothInit(m); const H=m.userData.clothH, n=H.length; let X=m.userData.clothX, Xp=m.userData.clothP;
+    if(!X){ X=m.userData.clothX=new Float32Array(n*3); Xp=m.userData.clothP=new Float32Array(n*3); for(let i=0;i<n;i++){ _cw.set(R[i*3],R[i*3+1],R[i*3+2]).applyMatrix4(m.matrixWorld); X[i*3]=Xp[i*3]=_cw.x; X[i*3+1]=Xp[i*3+1]=_cw.y; X[i*3+2]=Xp[i*3+2]=_cw.z; } }
+    const f=dt*60, damp=Math.pow(0.9,f), g=-0.5*sc*dt*dt*9.8*0.35, far=0.16*sc;
+    for(let i=0;i<n;i++){ const h=H[i], j=i*3; _cw.set(R[j],R[j+1],R[j+2]).applyMatrix4(m.matrixWorld);   // where it would hang
+      const k=1-Math.pow(1-(0.95-0.83*Math.pow(h,0.9)),f);   // firm at the belt, loose at the hem (per 60th of a second)
+      let x=X[j], y=X[j+1], z=X[j+2]; const vx=(x-Xp[j])*damp, vy=(y-Xp[j+1])*damp, vz=(z-Xp[j+2])*damp; Xp[j]=x; Xp[j+1]=y; Xp[j+2]=z;
+      x+=vx; y+=vy+g*h; z+=vz; x+=(_cw.x-x)*k; y+=(_cw.y-y)*k; z+=(_cw.z-z)*k;
+      let dx=x-_cw.x, dy=y-_cw.y, dz=z-_cw.z; const L=Math.sqrt(dx*dx+dy*dy+dz*dz), lim=far*(0.15+h); if(L>lim){ if(L>lim*6){ x=_cw.x; y=_cw.y; z=_cw.z; Xp[j]=x; Xp[j+1]=y; Xp[j+2]=z; } else { const q=lim/L; x=_cw.x+dx*q; y=_cw.y+dy*q; z=_cw.z+dz*q; } }
+      _cw.set(x,y,z); for(const C of CAPS){ _ab.subVectors(C.b,C.a); const t=Math.max(0,Math.min(1,_d.subVectors(_cw,C.a).dot(_ab)/Math.max(1e-6,_ab.lengthSq()))); _p.copy(C.a).addScaledVector(_ab,t); _d.subVectors(_cw,_p); const D=_d.length();
+        if(D<C.r) _cw.copy(_p).addScaledVector(D>1e-5?_d.multiplyScalar(1/D):_d.set(0,0,1),C.r); }
+      X[j]=_cw.x; X[j+1]=_cw.y; X[j+2]=_cw.z; _cw.applyMatrix4(_inv); A[j]=_cw.x; A[j+1]=_cw.y; A[j+2]=_cw.z; } }
+  function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return; hoodSync(K);
     if(K.rig&&K.rig.capeP&&K.rig.capeP.visible) K.rig.capeP.visible=false;   /* V246: no cloth cape on the hero — it fought every other cloak (and the saddle) */
     if(K.herald&&!K.herald._robust){ K.herald._robust=true; K.herald.group.traverse(m=>{ if(m.isMesh){ m.frustumCulled=false; if(m.material&&m.userData.part==='face'){ m.material.side=THREE.DoubleSide; m.material.needsUpdate=true; } } }); }   /* V246: the shield is never culled */ if(!S.soft||S.softDirty){ S.soft=softList(K,S); S.softDirty=false; } const list=S.soft; if(!list.length) return;
     K.updateMatrixWorld(true); K.getWorldScale(_sc); const sc=_sc.y||1, r=K.rig;
     [r.L,r.R].forEach((G,i)=>{ const T=CAPS[i*2], Sh=CAPS[i*2+1]; G.hip.getWorldPosition(T.a); G.knee.getWorldPosition(T.b); T.r=0.1*sc; Sh.a.copy(T.b); G.knee.localToWorld(Sh.b.set(0,-0.34,0.03)); Sh.r=0.078*sc; });
     r.head.localToWorld(HEAD.c.set(0,0.03,0)); HEAD.r=0.17*sc;
-    for(const m of list){ if(!m.visible||(m.parent&&!m.parent.visible)) continue; const pos=m.geometry.attributes.position, A=pos.array, R=m.userData.rest, head=!!m.userData.softHead; let dirty=false;
+    const now=performance.now(), dt=Math.min(0.05,Math.max(0.004,((now-(S.clothT||now))/1000)||0.016)); S.clothT=now;
+    for(const m of list){ if(!m.visible||(m.parent&&!m.parent.visible)){ m.userData.clothX=null; continue; } const pos=m.geometry.attributes.position, A=pos.array, R=m.userData.rest, head=!!m.userData.softHead; let dirty=false;
       _inv.copy(m.matrixWorld).invert();
+      if(!head&&K._cloth!==false){ cloth(m,A,R,dt,sc); pos.needsUpdate=true; continue; }
       for(let i=0;i<A.length;i+=3){ _w.set(R[i],R[i+1],R[i+2]).applyMatrix4(m.matrixWorld); let hit=false;
         if(head){ _d.subVectors(_w,HEAD.c); const L=_d.length(); if(L<HEAD.r){ _w.copy(HEAD.c).addScaledVector(L>1e-5?_d.multiplyScalar(1/L):_d.set(0,1,0),HEAD.r); hit=true; } }
         else for(const C of CAPS){ _ab.subVectors(C.b,C.a); const t=Math.max(0,Math.min(1,_d.subVectors(_w,C.a).dot(_ab)/Math.max(1e-6,_ab.lengthSq()))); _p.copy(C.a).addScaledVector(_ab,t); _d.subVectors(_w,_p); const L=_d.length();
@@ -465,5 +568,5 @@ const ARMOR=(function(){
   // trying a piece on (the smithy): worn for the preview only, until bought or the menu closes
   function tryOn(slot,id){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; wear(ENGINE.K,slot,id); }
   const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds};
-  return { preview, tryOn, shop:false, tick, SLOTS, NAMES, PIECES, TREES, TIER, H, set, wear, worn, dress, apply, covered, earned, options, pick };
+  return { preview, tryOn, shop:false, tick, hoodSync, hoodUpNow, regY, bodyRings, SLOTS, NAMES, PIECES, TREES, TIER, H, set, wear, worn, dress, apply, covered, earned, options, pick };
 })();

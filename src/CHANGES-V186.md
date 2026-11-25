@@ -732,3 +732,35 @@ Zak: "sized down, but doesn't sit on the body like real armor". armor.js now fit
 - **Vambraces off the arm.** Arm gap 0.012 → 0.007.
 - **The blue bib on the chest.** That was the Templar cowl, never fitted. The cowl is now ring-fitted to the torso (gap 0.03, over the tabard). Cowl groups on the arms (pelts' shoulder pieces) are left to the girth scale.
 - Ring-fit groups that can't be fitted now fall back to the girth scale one by one, not all or nothing.
+
+## V256 — the Templar cleaned up: cuirass under the tabard, clean arm plates, the Hood slot, skirts that flow
+Zak's answers: breastplate *under* the tabard; pelts become hoods; with a helm the player chooses hood up or down; skirts "flow like cloth".
+- **Cuirass under the tabard** (armor.js `T.tabard`; the old one is `T.tabard0`, used without the body).
+  - Breastplate and backplate as one shell slid over the head, made from the torso's own rings (`bodyRings`, smoothed so it reads as plate).
+  - High at the throat (front 0.595, back 0.615), cut away under the arms (0.47), flared at the foot (0.2), a keel down the breast.
+  - Gilt edges at throat, armholes and foot; leather side straps with gilt buckles.
+  - The reference's navy scarf rolls round the throat.
+  - Over it the tabard: front and back navy panels (±0.78 rad) hanging past the hips, gold edges, scalloped hems, the Jerusalem cross on the breast. Steel shows at the shoulders and sides.
+- **Clean arm plates** (`T.arms`; old `T.arms0`). The body's arm doesn't run down the joint's axis, so `limbFrame()` finds each segment's own axis from the body's points (main direction outward from the joint).
+  - Rerebrace and vambrace are closed plates a hair over the arm (gap 0.009 / 0.008), made from rings measured square to that axis. They have gold ends, a gold band, a point on the vambrace, and the couter cupped on the elbow.
+- **The cowl is now the Hood slot** (`NAMES.cowl` 'Hood').
+  - The plain hood (Ranger's, brown) moved here from the helm slot; the helm's plain piece is now a bare head.
+  - The Templar's hood is the same hood dyed navy (`dyed(tex,tint)`, tints brown/navy/crimson/ash/moss/sand).
+  - A cloth hood can't go up over a helm: it stays down, and the menu says so.
+  - Hood down over armour sits further out (`:over`, gap 0.055) so it shows above the plate.
+  - Every pelt is a hood too (`furCowl` → `hoodParts`). Up: a fur hood over his head, made from the head's rings, with the beast's head on its crown and the face left open. Over a helm it's cut larger; changing the helm re-cuts it. Down: the beast's head on his shoulder as before.
+  - ☰ → Gear → Hood → "Hood up / Hood down" works for cloth and pelts, remembered separately for plain clothes (`hoodPlain`) and with armour (`hoodArm`). `ARMOR.hoodSync` keeps pelts in step each frame.
+- **Plain clothes:** the Peasant sleeves end at the elbow, so the forearm is no longer cut away; it's painted skin under the bracer. The deep hood shadow is darker and even (0x0b0b10).
+- **Cloth** (`cloth()` in `ARMOR.tick`). Skirts, robes and fur cloaks are simulated per vertex (Verlet):
+  - Each point is held toward where it would hang, firmly at the belt (0.95 per 60th s) and loosely at the hem (0.12), with momentum (damping 0.9), a little gravity, and kept out of the leg capsules.
+  - It never strays more than 0.16·(0.15+h) from its place, and snaps back if far off (teleports).
+  - Weights are by height down the whole piece, so gilt edges move with their cloth. `K._cloth=false` turns it off.
+
+## V257 — the beast hoods, after Zak's references (Hunt: Showdown's wolf, the grizzly)
+- A pelt's hood (up) is the beast's own head worn over his:
+  - Its skull is the hood's crown, scaled to his head (wider when over a helm).
+  - Its brow and snout jut out over his forehead like a visor, his face open below.
+  - Bear, wolf, lion and fox show the upper jaw's teeth (two canines, three incisors) over his brow.
+  - The pelt falls from the hood down both sides of his face and the back to his shoulders, widening, with a ragged foot of locks.
+- Replaces V256's fur cap with a small head on top. Hood down is unchanged (the beast's head on his shoulder).
+- Smoke note: V256's run showed one error, at the shop interior (`Cannot read properties of null (reading 'trim')`), in code not touched here. It did not recur on the V257 run (0 errors), so it's treated as flaky; watch for it.

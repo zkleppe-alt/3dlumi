@@ -120,8 +120,8 @@ const OUTFIT3=(function(){
   //  its slot is plain; the body is cut away beneath what is worn. The hood: up, the face in shadow, when he wears nothing but plain
   //  clothes; down on his shoulders when he wears armour, and up again at will (the face then only shaded). Where the files can't be had
   //  (the artifact, the classic look) the code-built plain clothes of armor_sets.js stand in. ═══
-  const BASEP={tabard:'Male_Peasant_Body',arms:'Male_Peasant_Arms',legs:'Male_Peasant_Legs',sabatons:'Male_Peasant_Feet',helm:'Male_Ranger_Head_Hood'};
-  const BCUT={tabard:['chest','belly'],arms:['upperarm','forearm'],legs:['pelvis','thigh','calf'],sabatons:['foot','boot']};
+  const BASEP={tabard:'Male_Peasant_Body',arms:'Male_Peasant_Arms',legs:'Male_Peasant_Legs',sabatons:'Male_Peasant_Feet',cowl:'Male_Ranger_Head_Hood'}, HOOD=BASEP.cowl;   /* V256: the hood is the Hood slot's (once the cowl) */
+  const BCUT={tabard:['chest','belly'],arms:['upperarm'],legs:['pelvis','thigh','calf'],sabatons:['foot','boot']};
   let bReady=false, bLoading=false, bGl=null, bSig=null;
   const GS=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
   function baseReady(K){ const F=K&&K.userData.b3; return bReady&&!!F&&typeof F==='object'&&!!F.idx0; }
@@ -132,9 +132,9 @@ const OUTFIT3=(function(){
   function garment(F,name,o){ const gltf=bGl[name]; let src=null; gltf.scene.traverse(m=>{ if(m.isSkinnedMesh&&!src) src=m; }); if(!src) return null;
     const bones=src.skeleton.bones.map(b=>F.B[b.name]); if(bones.some(b=>!b)) return null;
     const sk=new THREE.Skeleton(bones,src.skeleton.boneInverses.map(x=>x.clone())), sm0=src.material; if(sm0.map){ sm0.map.encoding=THREE.LinearEncoding; sm0.map.needsUpdate=true; }
-    let geo=fitTo(F,src.geometry); if(o&&o.down){ geo=hoodDown(geo,src.skeleton.bones.map(b=>b.name)); pushOut(F,geo,0.02); }
-    const mt=new THREE.MeshToonMaterial({color:0xffffff,map:(name===BASEP.helm&&sm0.map?dyed(sm0.map):sm0.map)||null,gradientMap:ramp,skinning:true,side:THREE.DoubleSide});
-    const sm=new THREE.SkinnedMesh(geo,mt); sm.userData.outfit3=true; sm.userData.garment=name+(o&&o.down?':down':''); sm.castShadow=true; sm.frustumCulled=false;
+    let geo=fitTo(F,src.geometry); if(o&&o.down){ geo=hoodDown(geo,src.skeleton.bones.map(b=>b.name)); pushOut(F,geo,o.over?0.055:0.02); }
+    const mt=new THREE.MeshToonMaterial({color:0xffffff,map:(name===HOOD&&sm0.map?dyed(sm0.map,(o&&o.tint)||'brown'):sm0.map)||null,gradientMap:ramp,skinning:true,side:THREE.DoubleSide});
+    const sm=new THREE.SkinnedMesh(geo,mt); sm.userData.outfit3=true; sm.userData.garment=name+(o&&o.tint?':'+o.tint:'')+(o&&o.down?':down':''); sm.castShadow=true; sm.frustumCulled=false;
     sm.position.copy(F.body.position); sm.quaternion.copy(F.body.quaternion); sm.scale.copy(F.body.scale); F.body.parent.add(sm); sm.updateMatrixWorld(true); sm.bind(sk,F.body.bindMatrix.clone()); sm.visible=false; return sm; }
   // the hood thrown back: its crown folded down behind the neck onto the shoulders (bind space, the model's metres: he stands +y, faces +z);
   //  the folded part rides the upper spine, not the head, so it stays put when he turns his head; the mantle round the throat is left as it is
@@ -155,35 +155,39 @@ const OUTFIT3=(function(){
       const nx=B.N[q*3], ny=B.N[q*3+1], nz=B.N[q*3+2], d=(x-B.P.getX(q))*nx+(y-B.P.getY(q))*ny+(z-B.P.getZ(q))*nz; if(d<gap){ const k=gap-d; P.setXYZ(i,x+nx*k,y+ny*k,z+nz*k); } }
     P.needsUpdate=true; g.computeVertexNormals(); }
   // the Ranger's green hood dyed the brown of the Peasant's clothes (a copy of the texture; greens only)
-  const dyeC=new Map(); function dyed(tex){ if(dyeC.has(tex)) return dyeC.get(tex); const im=tex.image; if(!im||!im.width) return tex;
+  const DYE={brown:[0.075,0.55,0.78],navy:[0.62,0.95,0.6],crimson:[0.99,0.8,0.62],ash:[0.6,0.08,0.72],moss:[0.25,0.5,0.7],sand:[0.1,0.4,1.0]};   // hue, ×saturation, ×lightness
+  const dyeC=new Map(); function dyed(tex,tint){ const D0=DYE[tint]||DYE.brown, key=tex.uuid+':'+tint; if(dyeC.has(key)) return dyeC.get(key); const im=tex.image; if(!im||!im.width) return tex;
     const cv=document.createElement('canvas'); cv.width=im.width; cv.height=im.height; const x=cv.getContext('2d'); x.drawImage(im,0,0); const D=x.getImageData(0,0,cv.width,cv.height), d=D.data, c=new THREE.Color(), hsl={};
-    for(let i=0;i<d.length;i+=4){ c.setRGB(d[i]/255,d[i+1]/255,d[i+2]/255); c.getHSL(hsl); if(hsl.h>0.17&&hsl.h<0.5&&hsl.s>0.12){ c.setHSL(0.075,hsl.s*0.55,hsl.l*0.78); d[i]=c.r*255; d[i+1]=c.g*255; d[i+2]=c.b*255; } }
-    x.putImageData(D,0,0); const t=new THREE.CanvasTexture(cv); t.flipY=tex.flipY; t.encoding=tex.encoding; t.wrapS=tex.wrapS; t.wrapT=tex.wrapT; dyeC.set(tex,t); return t; }
-  function hoodState(S){ const armoured=ARMOR.SLOTS.some(sl=>sl!=='plume'&&S.worn[sl]&&S.ids&&S.ids[sl]&&S.ids[sl]!=='base'), G=GS();
-    const up=armoured?!!G.hoodArm:(G.hoodPlain!==false); return {armoured,up}; }
-  function hoodToggle(){ const K=typeof ENGINE!=='undefined'&&ENGINE.K, S=K&&K.userData.armorS; if(!S) return; const G=GS(), h=hoodState(S); if(h.armoured) G.hoodArm=!h.up; else G.hoodPlain=!h.up; bSig=null; bsync(); }
+    for(let i=0;i<d.length;i+=4){ c.setRGB(d[i]/255,d[i+1]/255,d[i+2]/255); c.getHSL(hsl); if(hsl.h>0.17&&hsl.h<0.5&&hsl.s>0.12){ c.setHSL(D0[0],Math.min(1,hsl.s*D0[1]),Math.min(1,hsl.l*D0[2])); d[i]=c.r*255; d[i+1]=c.g*255; d[i+2]=c.b*255; } }
+    x.putImageData(D,0,0); const t=new THREE.CanvasTexture(cv); t.flipY=tex.flipY; t.encoding=tex.encoding; t.wrapS=tex.wrapS; t.wrapT=tex.wrapT; dyeC.set(key,t); return t; }
+  function hoodState(S){ const armoured=ARMOR.SLOTS.some(sl=>sl!=='plume'&&sl!=='cowl'&&S.worn[sl]&&S.ids&&S.ids[sl]&&S.ids[sl]!=='base'), G=GS();
+    const helmOn=!!(S.worn.helm&&S.ids&&S.ids.helm&&S.ids.helm!=='base'), up=armoured?!!G.hoodArm:(G.hoodPlain!==false); return {armoured,up,helmOn}; }
+  function hoodToggle(){ const K=typeof ENGINE!=='undefined'&&ENGINE.K, S=K&&K.userData.armorS; if(!S) return; const G=GS(), h=hoodState(S); if(h.armoured) G.hoodArm=!h.up; else G.hoodPlain=!h.up; bSig=null; bsync(); if(ARMOR.hoodSync) ARMOR.hoodSync(K); }
   function bsync(){ if(typeof ENGINE==='undefined'||!ENGINE.K||typeof ARMOR==='undefined') return; const K=ENGINE.K, F=K.userData.b3, S=K.userData.armorS;
     if(!F||typeof F!=='object'||!F.idx0||!S||!S.ids) return; if(!bReady){ if(BODY3&&!K.bare) bLoad(); return; }
-    const G=K.userData.garm||(K.userData.garm={}), on={}; for(const sl in BASEP) on[sl]=!cur&&!!S.worn[sl]&&S.ids[sl]==='base'&&!!(S.groups[sl]&&S.groups[sl].length&&S.groups[sl][0].userData.garmentSlot);
-    const hs=hoodState(S), shade=on.helm?(hs.up?(hs.armoured?'light':'deep'):'none'):'off', fpHide=!!(K._head&&!K._head.visible);
-    const want={}; for(const sl in BASEP){ if(!on[sl]) continue; want[sl==='helm'?BASEP.helm+(hs.up?'':':down'):BASEP[sl]]=true; }
-    for(const k in want) if(!G[k]){ const [nm,dn]=k.split(':'); G[k]=garment(F,nm,{down:dn==='down'}); }
-    for(const k in G){ const m=G[k]; if(!m) continue; const v=!!want[k]&&!(fpHide&&k.startsWith(BASEP.helm)); if(m.visible!==v) m.visible=v; }
+    const G=K.userData.garm||(K.userData.garm={}), on={}, g0=sl=>S.groups[sl]&&S.groups[sl].length?S.groups[sl][0]:null;
+    for(const sl in BASEP) on[sl]=!cur&&!!S.worn[sl]&&!!(g0(sl)&&g0(sl).userData.garmentSlot===sl)&&(sl==='cowl'||S.ids[sl]==='base');
+    const hs=hoodState(S), cg=g0('cowl'), tint=(cg&&cg.userData.hoodTint)||'brown', hoodUp=hs.up&&!hs.helmOn, peltUp=!!(cg&&cg.userData.pelt&&S.worn.cowl&&hs.up&&!cur);
+    const headBare=!cur&&(!S.worn.helm||(S.ids.helm==='base'&&!!(g0('helm')&&g0('helm').userData.garmentSlot)));
+    const shade=!headBare?'off':(on.cowl&&hoodUp?(hs.armoured?'light':'deep'):peltUp?'light':'none'), fpHide=!!(K._head&&!K._head.visible);
+    const want={}; for(const sl in BASEP){ if(!on[sl]) continue; want[sl==='cowl'?HOOD+':'+tint+(hoodUp?'':(hs.armoured||hs.helmOn?':over':':down')):BASEP[sl]]=true; }
+    for(const k in want) if(!G[k]){ const [nm,tn,dn]=k.split(':'); G[k]=nm===HOOD?garment(F,nm,{tint:tn,down:dn==='down'||dn==='over',over:dn==='over'}):garment(F,nm); }
+    for(const k in G){ const m=G[k]; if(!m) continue; const v=!!want[k]&&!(fpHide&&k.startsWith(HOOD)); if(m.visible!==v) m.visible=v; }
     const cut=new Set(); for(const sl in BCUT) if(on[sl]) BCUT[sl].forEach(r=>cut.add(r));
-    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base');
+    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base')+'|'+on.arms;
     if(K._glint) K._glint.visible=shade==='deep'&&!fpHide&&!cur;
     if(cur||sig===bSig) return; bSig=sig;
     const R=F.D.reg, ix=F.idx0, keep=[]; if(cut.size){ for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(cut.has(R[a])&&cut.has(R[b])&&cut.has(R[c]))) keep.push(a,b,c); } }
-    paintBase(F,shade,on.gauntlets); F.body.geometry.setIndex(cut.size?keep:ix);
+    paintBase(F,shade,on.gauntlets,on.arms); F.body.geometry.setIndex(cut.size?keep:ix);
     const showFace=shade!=='off', ek=shade==='deep'?0.1:shade==='light'?0.62:1; F.extra.forEach(o=>{ o.visible=showFace; const m=o.material; if(m&&m.color){ m.color.setScalar(ek); } });
     glints(K,shade==='deep'); }
   // the skin: the face (under the hood, shaded as the hood shades it) and the bare hands; the rest of him the mail-grey under any armour
   const SKIN=0xd9a67c, MAIL=0x4c535e;
-  function paintBase(F,shade,bareHands){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):MAIL,'mail');
+  function paintBase(F,shade,bareHands,bareArms){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):rg==='forearm'?(bareArms?SKIN:MAIL):MAIL,'mail');   /* the Peasant's sleeves end at the elbow: a bare forearm under the bracer */
     if(shade!=='deep'&&shade!=='light') return; const g=F.body.geometry, C=g.attributes.color, P=g.attributes.position, R=F.D.reg; let y0=1e9,y1=-1e9,z1=-1e9;
     for(let j=0;j<P.count;j++) if(R[j]==='head'){ y0=Math.min(y0,P.getY(j)); y1=Math.max(y1,P.getY(j)); z1=Math.max(z1,P.getZ(j)); }
-    const sc=new THREE.Color(0x121118); if(ENGINE.renderer&&ENGINE.renderer.outputEncoding===THREE.sRGBEncoding) sc.convertSRGBToLinear();
-    for(let j=0;j<P.count;j++){ if(R[j]!=='head') continue; const v=Math.max(0,Math.min(1,(P.getY(j)-y0)/((y1-y0)||1))), e=Math.pow(v,0.8), m=shade==='deep'?0.86+0.12*e:0.12+0.4*e;   /* shadow, not skin: a cool dark laid over the face, deepest under the hood's brow */
+    const sc=new THREE.Color(0x0b0b10); if(ENGINE.renderer&&ENGINE.renderer.outputEncoding===THREE.sRGBEncoding) sc.convertSRGBToLinear();
+    for(let j=0;j<P.count;j++){ if(R[j]!=='head') continue; const v=Math.max(0,Math.min(1,(P.getY(j)-y0)/((y1-y0)||1))), e=Math.pow(v,0.8), m=shade==='deep'?0.94+0.05*e:0.12+0.4*e;   /* shadow, not skin: a cool dark laid over the face, deepest under the hood's brow */
       C.setXYZ(j,C.getX(j)+(sc.r-C.getX(j))*m,C.getY(j)+(sc.g-C.getY(j))*m,C.getZ(j)+(sc.b-C.getZ(j))*m); } C.needsUpdate=true; }
   // in the deep shadow of the hood, two faint lights where his eyes are
   function glints(K,on){ const F=K.userData.b3; if(!K._glint){ if(!on) return; const eye=F.extra.find(o=>/eye/i.test(o.name))||F.extra[0]; if(!eye) return;
