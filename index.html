@@ -24703,7 +24703,8 @@ const ARMOR=(function(){
      does — the vambrace twists with the forearm, the gauntlet with the wrist, the tabard's front and the skirt follow the thighs — so
      they can't slide off or be walked through. The rigid original stays in place, hidden from the camera (layers), for measuring
      and for everything that shows or hides it (its twin mirrors its visibility). Helms, crests, belts and hoods stay rigid on bones. */
-  const SKINREG={tabard:['chest','belly','pelvis','thigh'],skirt:['pelvis','thigh'],pauldrons:['upperarm','chest'],arms:['upperarm','forearm'],gauntlets:['hand','forearm'],legs:['thigh','calf','boot'],sabatons:['foot','boot','calf']};
+  /* V272: only the cloth is skinned with blended weights; hard plate rides its bone whole (onBones), as real armour does — blended plate melted */
+  const SKINREG={tabard:['chest','belly','pelvis','thigh'],skirt:['pelvis','thigh']}, INVIS=new THREE.MeshBasicMaterial({visible:false});
   let _bw=null;
   function bodyWorld(K){ const F=K.userData.b3, body=F.body, sk=body.skeleton, G=body.geometry, nb=G.attributes.position.count; bodySync(K); sk.update();
     if(_bw&&_bw.F===F&&_bw.t===performance.now()) return _bw;
@@ -24739,7 +24740,7 @@ const ARMOR=(function(){
         geo.setAttribute('skinIndex',new THREE.Float32BufferAttribute(si,4)); geo.setAttribute('skinWeight',new THREE.Float32BufferAttribute(sw,4)); geo.computeVertexNormals();
         const mats=(Array.isArray(m.material)?m.material:[m.material]).map(x=>{ const c=x.clone(); c.skinning=true; c.needsUpdate=true; if(x.color) c.userData.src=x; return c; });
         const tw=new THREE.SkinnedMesh(geo,Array.isArray(m.material)?mats:mats[0]); tw.frustumCulled=false; tw.castShadow=m.castShadow; tw.userData.twin=true; tw.userData.part=m.userData.part; tw.renderOrder=m.renderOrder;
-        m.parent.add(tw); tw.updateMatrixWorld(true); tw.bind(sk,body.bindMatrix.clone()); m.userData.skinTwin=tw; m.layers.disableAll(); m.castShadow=false; }); }); }
+        m.parent.add(tw); tw.updateMatrixWorld(true); tw.bind(sk,body.bindMatrix.clone()); m.userData.skinTwin=tw; m.userData.matOrig=m.material; m.material=INVIS; m.castShadow=false; }); }); }   // the rigid original drawn by no camera (a hidden material, not a layer: the gear preview sees every layer)
   /* V266: each finished piece is moved off the rig's pivot onto the body bone that carries the skin under it (the bone most weighted at
      the body points nearest the piece), keeping its place. The body's bones don't turn about the same centres as the rig's pivots
      (the spine bends in three bones, the arms hang from the collar), so plates on the pivots slid off the body in a swing or a stride. */

@@ -1128,3 +1128,13 @@ Zak's photos showed the shield sticking sideways off his back, legs through the 
 **Fixes**
 - **Shield sideways on the back.** knight.js `shieldHome` placed it right, but the guard blend (and releasing the shield) re-turned the shield mount every frame for one-handed weapons. Both now only touch it while it's on the arm.
 - **Fuller breastplate.** The cuirass stands 1.6 cm further off the body and is domed over the breast (up to +2 cm). Cloth coats are +0.6 cm.
+
+## V272 — hard plate stays hard
+
+Zak's Gear-screen photos of V271: "the skins seem melted together and kinda sloppy", with dotted gold edges everywhere.
+- **Melting.** V271 gave every armour vertex blended weights from the body points nearest it. That's right for cloth, but it bent hard plate like rubber: pauldrons melted into the chest, rerebraces into the torso.
+  - Games weight each hard plate wholly to one bone.
+  - Now only the tabard and skirt are skinned with blended weights (`SKINREG`). They still follow the thighs, so the legs don't pass through.
+  - Pauldrons, arms, gauntlets, legs and sabatons ride their bone whole again (`onBones`; pauldrons on the 60% half-joint).
+- **Dotted edges.** The rigid originals were hidden from the camera by `layers`, but the Gear preview draws every layer, so both copies drew and z-fought.
+  - They're now hidden by an invisible material (`INVIS`; the real one kept as `userData.matOrig`).
