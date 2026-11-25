@@ -1083,3 +1083,23 @@ Zak chose: a belt kit, the belt worn over the tabard, gear hanging from it, and 
 | Ranger's Watch | studded belt, slung, pouches and a horn |
 
 - Sandstrider keeps its sash. The old belts remain as fallbacks (`T.belt0`).
+
+## V270 — Zak's play-test: hood cowls, the hood down, the shield on the back, belts that hang, armour that settles
+
+1. **Every hood has a cowl** (armor.js `hoodCowl`).
+   - It's a short capelet in the hood's own cloth and trim.
+   - It runs from the throat (lower in front) out over the shoulders. It's pointed a little before and behind, and its hem sits about at the top of the arms.
+   - It's draped over whatever pauldrons he wears (`drape()` now also takes groups flagged `drapeMe`).
+   - It stays on with the hood down, and the hood lies on it.
+   - It's added by the Templar hood, the set hoods (`KIT.hood`) and the plain hood.
+2. **Armour loose after loading** (not reproduced here: new game, loading a save, slow body and clothes loads, walking and swinging all measured clean).
+   - About 2.5 s after the knight is first dressed on his body, everything is put on once more (`resettle`). That's what re-equipping by hand did.
+   - If the hoods and clothes haven't come yet, it waits for them, up to 20 s.
+3. **The shield goes on his back whenever the weapon is put away**, with any weapon (`K._shS`, `shieldHome`). It comes back to the arm when he draws, guards or raises it.
+4. **The hood down** opens out across the shoulder blades and lies flatter on the back, the cowl included.
+   - Fold: 2.9 rad, sag 0.05, spread 0.3.
+5. **Belts**
+   - **Snugger:** they're measured on the tabard's and skirt's resting shape (`userData.rest`), not where the cloth had swung to, over a narrower band (±0.028).
+   - **Hanging gear** (`beltSwing`): pouches, satchel, dagger, horn, tongue, sash tails and tassels.
+     - Each is a small pendulum in the world: its bob falls under gravity and lags behind the belt's motion, and the piece turns to point at it.
+     - So it hangs plumb when he leans and swings when he strides. It never goes into his body or above the horizontal.

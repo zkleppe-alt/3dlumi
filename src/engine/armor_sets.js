@@ -398,7 +398,7 @@
   const cl=(k,c)=>CLOTH[k]||(CLOTH[k]=new THREE.MeshPhongMaterial({color:c,shininess:4,specular:0x111111,side:THREE.DoubleSide}));
   const hoodC=()=>cl('hood',0x4b3d30), linen=()=>cl('linen',0x8f8068), breeches=()=>cl('breeches',0x3d352d);
   const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build:ctx=>{   /* V252: where the artist's plain clothes can be had (OUTFIT3), they're worn instead */
-    if(slot!=='plume'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ctx.K)){ const g=piece(ctx,ctx.K.rig.torso); g.userData.garmentSlot=slot; if(slot==='cowl'&&ARMOR.H.shroud&&ctx.K._shroud!==false) ARMOR.H.shroud(ctx,'brown'); return; } build(ctx); }}; };   /* V263: the plain hood wears its shroud */
+    if(slot!=='plume'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ctx.K)){ const g=piece(ctx,ctx.K.rig.torso); g.userData.garmentSlot=slot; if(slot==='cowl'&&ARMOR.H.shroud&&ctx.K._shroud!==false) ARMOR.H.shroud(ctx,'brown'); if(slot==='cowl'&&ARMOR.H.hoodCowl) ARMOR.H.hoodCowl(ctx); return; } build(ctx); }}; };   /* V263: the plain hood wears its shroud */
   reg0('helm','Bare head',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
   reg0('plume','No crest',ctx=>{ piece(ctx,ctx.K.rig.plume); });
   reg0('cowl','Hood',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);

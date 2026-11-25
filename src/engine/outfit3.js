@@ -196,7 +196,7 @@ const OUTFIT3=(function(){
      crown is let out round the helm (the helm measured the same way, through the head bone), smoothed, so the cloth lies over it.
      A toggle plays: both hands go up and draw it over (or push it back), the hood swinging with them (hoodAnim). */
   const OUTFIT3_DBG={};
-  const K_HD={y0:1.585,z0:-0.085,ang:2.75,bw:0.11,sag:0.1,gap:0.012};   // test hooks: OUTFIT3.HD (bind space, the model's metres: he stands +y, faces +z)
+  const K_HD={y0:1.585,z0:-0.075,ang:2.9,bw:0.11,sag:0.05,gap:0.008,spread:0.3};   // test hooks: OUTFIT3.HD (bind space, the model's metres: he stands +y, faces +z)
   const sm3=t=>t<=0?0:t>=1?1:t*t*(3-2*t);
   // a matrix taking world points into the garment's bind space, through one bone (as a vertex wholly weighted to it would be)
   function toBind(F,bone,names,invs){ const bi=names.indexOf(bone), b=F.B[bone]; if(bi<0||!b) return null; try{ F.sync&&F.sync(); }catch(e){} F.body.parent.updateMatrixWorld(true);
@@ -222,7 +222,7 @@ const OUTFIT3=(function(){
     for(let i=0;i<n;i++){ let x=P0[i*3], y=P0[i*3+1], z=P0[i*3+2]; const t=T[i];
       if(t>0){ const a=A*t, dy=y-y0, dz=z-zP, c=Math.cos(a), s2=Math.sin(a); let ny=y0+dy*c+dz*s2, nz=zP-dy*s2+dz*c;
         const far=Math.max(0,y0-ny); ny-=K_HD.sag*k*t*far*1.2; nz-=0.03*k*t;      // the crown sags into a pouch, standing a little off the back
-        x*=1+0.12*k*t*(1-Math.abs(x)*2);                                        // and spreads a little across the shoulder blades
+        x*=1+K_HD.spread*k*t*Math.max(0,1-Math.abs(x)*3);                       // and spreads out across the shoulder blades, lying open
         if(prof&&k>0.3){ const zb=prof(x,ny)-gap*(1+t); if(nz>zb) nz=nz+(zb-nz)*Math.min(1,(k-0.3)/0.4); }
         y=ny; z=nz; }
       P[i*3]=x; P[i*3+1]=y; P[i*3+2]=z; } }

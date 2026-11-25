@@ -126,7 +126,7 @@ function buildKnight(){
   /* V232: with a bow or a two-handed weapon the shield rides on his back, slung between the shoulders (the weapon, when it's
      put away, goes across it); K._sbP/_sbR tune where. shieldHome() moves it there or back to the arm as the weapon changes. */
   const shBack=pivot(0,0.24,-0.32,torso);
-  function shieldHome(){ const back=!!K._shB; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,0];
+  function shieldHome(){ const back=!!K._shB||!!K._shS; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,0];
       shM.position.set(p[0],p[1],p[2]); shM.rotation.set(r[0],r[1],r[2]); sh.rotation.set(q[0],q[1],q[2]); }
     else if(shM.parent!==AL.el){ AL.el.add(shM); shM.position.set(K.shX,K.shY,0); shM.rotation.set(0,K.shRY,0); sh.rotation.set(0,0,0); } shM.visible=true; }
   function kite(s){ const p=new THREE.Shape(); p.moveTo(0,0.26*s); p.quadraticCurveTo(0.2*s,0.26*s,0.2*s,0.12*s); p.quadraticCurveTo(0.18*s,-0.12*s,0,-0.34*s);
@@ -584,6 +584,7 @@ function buildKnight(){
     const armBusy=swing>=0||K.raise>0||K.guarding||K.alert||K.charge>0||K.spinT>=0||!!K._bow;   /* V226: drawing a bow brings it to hand */
     if(armBusy){ K._idle=0; if(K._st!=='drawn') drawNow(); }
     else if(K._carry!=='none'&&K._st==='drawn'&&(K._idle=(K._idle||0)+dt)>4&&mode!=='sit'){ K._st='sheathing'; K._shT=0; }
+    { const sS=!K.npc&&K._st==='sheathed'&&!K.guarding&&!(K.raise>0); if(sS!==!!K._shS){ K._shS=sS; shieldHome(); } }   /* V270: the weapon put away, the shield goes on his back; drawn (or guarding), back on the arm */
     if(K._st==='sheathing'){ K._shT+=dt/(K._carry==='hip'?1.25:0.6); const u=Math.min(1,K._shT), e=Math.sin(u*Math.PI);
       if(K._carry==='hip'){ const r=Math.sin(Math.min(1,u*1.6)*Math.PI/2)*(u<0.76?1:1-smooth01((u-0.76)/0.24)); AR.sh.rotation.x+=-0.42*r+0.18*smooth01((u-0.5)/0.24)*(u<0.8?1:0); AR.sh.rotation.z+=(0.62+K.armOut)*r; AR.sh.rotation.y+=0.5*r; AR.el.rotation.x+=-0.85*r; AR.hand.rotation.x=AR.hand.rotation.x*(1-r)+1.2*r; torso.rotation.y+=0.16*r; head.rotation.y+=0.3*r; head.rotation.x+=0.18*r; }   // reach across, look down to the scabbard
       else { AR.sh.rotation.x+=-2.3*e; AR.sh.rotation.z+=0.35*e; AR.el.rotation.x+=-1.0*e; }                                                                  // up and over the shoulder
