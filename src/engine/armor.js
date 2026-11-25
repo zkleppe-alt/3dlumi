@@ -319,10 +319,61 @@ const ARMOR=(function(){
   function bodyW(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.body.boneTransform||!F.D) return null; const now=performance.now();
     if(K._fitW&&now-K._fitW.t<1500) return K._fitW; const body=F.body, P=body.geometry.attributes.position, R=F.D.reg, n=P.count, W=new Float32Array(n*3); K.updateMatrixWorld(true); body.skeleton.update();
     for(let q=0;q<n;q++){ body.boneTransform(q,_fv); _fv.applyMatrix4(body.matrixWorld); W[q*3]=_fv.x; W[q*3+1]=_fv.y; W[q*3+2]=_fv.z; } return K._fitW={t:now,W,R,n}; }
-  function regsOf(K,p){ const r=K.rig; if(p===r.torso) return ['chest','belly','pelvis']; if(p===r.head) return ['head']; if(p===K._skF||p===K._skB) return ['pelvis','thigh'];
+  function regsOf(K,p){ const r=K.rig; if(p===r.torso) return ['chest','belly','pelvis','thigh'];   /* the hips are 'thigh' on this body */ if(p===r.head) return ['head']; if(p===K._skF||p===K._skB) return ['pelvis','thigh'];
     for(const A of [r.AL,r.AR]){ if(p===A.sh) return ['upperarm']; if(p===A.el) return ['forearm']; if(p===A.hand) return ['hand']; } for(const G of [r.L,r.R]){ if(p===G.hip) return ['thigh']; if(p===G.knee) return ['calf','boot','foot']; } return null; }
-  function fitGroups(K,slot,gs){ if(slot==='plume'&&K._helmFit&&K._armFit!==false){ const hf=K._helmFit; gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm down
-        K.updateMatrixWorld(true); const c=K.rig.head.localToWorld(_fv.copy(hf.c)); par.worldToLocal(c); g.scale.multiplyScalar(hf.s); g.position.sub(c).multiplyScalar(hf.s).add(c); g.userData.fitS=hf.s; }); return; }
+  /* V254: EACH PIECE FITTED TO HIS BODY. Not a shrink but a re-seat, piece by piece: round the piece's own joint, ring by ring up its
+     length, the body's outer surface is measured (bodyRings) and so is the piece's inner face (its shell); every point of the piece is moved
+     along its ray from the limb's axis so the shell lies a set gap over the body, and whatever stood proud of the shell — keels, ridges,
+     gilt bands, rivets, flares, a hem — stands just as proud after. Above or below the body it hangs past (a helm's crown, a pauldron's
+     dome, a tabard's hem) the piece keeps its own shape, set in by as much as its nearest ring was. Every set alike. */
+  const CONF={tabard:{gap:0.012,box:0.32},belt:{gap:0.045,box:0.32},arms:{gap:0.012,box:0.13}};
+  /* the domes (helm, pauldrons) and the ends (gauntlets, sabatons) aren't tubes: sized whole to the body part, centred on it, then let down
+     onto it until they rest a gap above it (SETTLE) */
+  const SETTLE={helm:{gap:0.016,lift:0.08,xz:true},pauldrons:{gap:0.012,lift:0.06},gauntlets:{gap:0.006,lift:0.03,xz:true},sabatons:{gap:0.006,lift:0.03}};
+  const _cm=new THREE.Matrix4(), _ci=new THREE.Matrix4();
+  function conform(K,slot,g){ const cf=CONF[slot], par=g.parent, regs=regsOf(K,par); if(!cf||!regs) return false; g.updateMatrixWorld(true);
+    const ms=[]; g.traverse(m=>{ if(m.isMesh&&m.geometry&&m.geometry.attributes.position&&!m.isSkinnedMesh) ms.push(m); }); if(!ms.length) return false;
+    // the piece's points in its joint's frame
+    _ci.copy(par.matrixWorld).invert(); const L=[]; let N=0; ms.forEach(m=>{ const M=new THREE.Matrix4().multiplyMatrices(_ci,m.matrixWorld), A=m.geometry.attributes.position, P=new Float32Array(A.count*3);
+      for(let i=0;i<A.count;i++){ _fv.fromBufferAttribute(A,i).applyMatrix4(M); P[i*3]=_fv.x; P[i*3+1]=_fv.y; P[i*3+2]=_fv.z; } L.push({m,M,P}); N+=A.count; });
+    const ys=[]; L.forEach(o=>{ for(let i=1;i<o.P.length;i+=3) ys.push(o.P[i]); }); let y0=pct(ys,0.02), y1=pct(ys,0.98); if(cf.minY!==undefined) y0=Math.max(y0,cf.minY); if(y1-y0<0.02) return false;
+    const NY=Math.max(4,Math.min(16,Math.round((y1-y0)/0.03))), NA=24, BR=bodyRings(K,par,regs,y0,y1,NY,NA,cf.box); if(!BR) return false;
+    // the piece's shell: the inner face of it, ring by ring
+    const bins=Array.from({length:NY*NA},()=>[]), bi=(ph,y)=>{ const b=Math.max(0,Math.min(NY-1,Math.floor((y-y0)/(y1-y0)*NY))), a=Math.floor(((ph+Math.PI)/(Math.PI*2))*NA)%NA; return b*NA+a; };
+    L.forEach(o=>{ for(let i=0;i<o.P.length;i+=3){ const [cx,cz]=BR.c(o.P[i+1]), dx=o.P[i]-cx, dz=o.P[i+2]-cz; bins[bi(Math.atan2(dx,dz),o.P[i+1])].push(Math.hypot(dx,dz)); } });
+    const sh=new Float32Array(NY*NA); for(let k=0;k<sh.length;k++) sh[k]=bins[k].length?pct(bins[k],0.3):0;
+    for(let pass=0;pass<NA+NY;pass++){ let left=0; for(let b=0;b<NY;b++) for(let a=0;a<NA;a++){ if(sh[b*NA+a]) continue; const n=[sh[b*NA+(a+1)%NA],sh[b*NA+(a+NA-1)%NA],b>0?sh[(b-1)*NA+a]:0,b<NY-1?sh[(b+1)*NA+a]:0].filter(x=>x>0); if(n.length) sh[b*NA+a]=n.reduce((q,x)=>q+x,0)/n.length; else left++; } if(!left) break; }
+    { const s2=sh.slice(); for(let b=0;b<NY;b++) for(let a=0;a<NA;a++){ const v=[sh[b*NA+a]*2,sh[b*NA+(a+1)%NA],sh[b*NA+(a+NA-1)%NA]]; s2[b*NA+a]=v.reduce((q,x)=>q+x,0)/4; } sh.set(s2); }
+    const shR=(ph,y)=>{ const f=Math.max(0,Math.min(NY-1,(y-y0)/(y1-y0)*NY-0.5)), i=Math.floor(f), t=f-i, j=Math.min(NY-1,i+1), gg=((ph+Math.PI)/(Math.PI*2))*NA-0.5, a0=((Math.floor(gg)%NA)+NA)%NA, a1=(a0+1)%NA, u=gg-Math.floor(gg);
+      const ri=sh[i*NA+a0]+(sh[i*NA+a1]-sh[i*NA+a0])*u, rj=sh[j*NA+a0]+(sh[j*NA+a1]-sh[j*NA+a0])*u; return ri+(rj-ri)*t; };
+    const gap=(K._fitGap&&K._fitGap[slot]!==undefined)?K._fitGap[slot]:cf.gap;
+    // each point moved along its ray: the shell onto the body (+ the gap), its relief kept
+    const top=slot==='helm'?{y:-1e9}:null;
+    L.forEach(o=>{ const A=o.m.geometry.attributes.position, Mi=new THREE.Matrix4().copy(o.M).invert();
+      for(let i=0;i<A.count;i++){ const x=o.P[i*3], y=o.P[i*3+1], z=o.P[i*3+2], yc=Math.max(y0,Math.min(y1,y)), [cx,cz]=BR.c(yc), dx=x-cx, dz=z-cz, r=Math.hypot(dx,dz); if(r<1e-5) continue;
+        const ph=Math.atan2(dx,dz), want=BR.r(ph,yc)+gap, dr=Math.min(0.012,(want-shR(ph,yc))*(cf.k||1)), rn=Math.max(r*0.25,r+dr);   /* drawn in to the body; let out only a little where it cut in */
+        if(top&&y>top.y){ top.y=y; top.p=new THREE.Vector3(x,y,z); top.n=new THREE.Vector3(cx+dx/r*rn,y,cz+dz/r*rn); }
+        _fv.set(cx+dx/r*rn,y,cz+dz/r*rn).applyMatrix4(Mi); A.setXYZ(i,_fv.x,_fv.y,_fv.z); }
+      A.needsUpdate=true; o.m.geometry.computeVertexNormals(); o.m.geometry.computeBoundingSphere(); if(o.m.userData.rest) o.m.userData.rest=A.array.slice(); });
+    if(top&&top.p) K._helmTop={d:top.n.clone().sub(top.p)};
+    g.userData.fitS='conform'; return true; }
+  // let a piece down onto the body: over each patch of the body it covers, how far its underside stands above the body's top there;
+  //  the piece is moved up or down so the closest of those is `gap`
+  function settle(K,slot,g){ const st=SETTLE[slot], par=g.parent, regs=regsOf(K,par), B=bodyW(K); if(!st||!regs||!B) return null; g.updateMatrixWorld(true);
+    const lim=0.22, ok=new Set(slot==='pauldrons'?['upperarm','chest']:regs), C=0.015, top=new Map(), key=(x,z)=>Math.floor(x/C)+','+Math.floor(z/C); let bx=0,bz=0,bn=0;
+    for(let q=0;q<B.n;q++){ if(!ok.has(B.R[q])) continue; _fv.set(B.W[q*3],B.W[q*3+1],B.W[q*3+2]); par.worldToLocal(_fv); if(Math.abs(_fv.x)>lim||Math.abs(_fv.z)>lim||Math.abs(_fv.y)>0.45) continue;
+      const k=key(_fv.x,_fv.z), t=top.get(k); if(t===undefined||_fv.y>t) top.set(k,_fv.y); if(B.R[q]===regs[0]){ bx+=_fv.x; bz+=_fv.z; bn++; } }
+    if(!top.size) return null; const p0=g.position.clone();
+    const pts=[]; g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st2=Math.max(1,Math.floor(A.count/600)); _cm.multiplyMatrices(_ci.copy(par.matrixWorld).invert(),m.matrixWorld);
+      for(let i=0;i<A.count;i+=st2){ _fv.fromBufferAttribute(A,i).applyMatrix4(_cm); pts.push(_fv.x,_fv.y,_fv.z); } });
+    if(st.xz&&bn){ const xs=[],zs=[]; for(let i=0;i<pts.length;i+=3){ xs.push(pts[i]); zs.push(pts[i+2]); } const dx=bx/bn-(pct(xs,0.05)+pct(xs,0.95))/2, dz=bz/bn-(pct(zs,0.05)+pct(zs,0.95))/2; g.position.x+=dx; g.position.z+=dz; for(let i=0;i<pts.length;i+=3){ pts[i]+=dx; pts[i+2]+=dz; } }
+    const cl=[]; for(let i=0;i<pts.length;i+=3){ const t=top.get(key(pts[i],pts[i+2])); if(t!==undefined&&pts[i+1]>t-0.004) cl.push(pts[i+1]-t); }
+    if(cl.length>=4){ const gap=(K._fitGap&&K._fitGap[slot]!==undefined)?K._fitGap[slot]:st.gap; g.position.y+=Math.max(-0.08,Math.min(0.04,gap-pct(cl,0.03))); }
+    return g.position.clone().sub(p0); }
+  function fitGroups(K,slot,gs){ if(slot==='plume'&&K._armFit!==false){ const hf=K._helmFit; if(hf) gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm: its size, and where it came to rest
+        K.updateMatrixWorld(true); const c=K.rig.head.localToWorld(_fv.copy(hf.c)); par.worldToLocal(c); g.scale.multiplyScalar(hf.s); g.position.sub(c).multiplyScalar(hf.s).add(c);
+        if(hf.d){ const a=K.rig.head.localToWorld(new THREE.Vector3()), b=K.rig.head.localToWorld(hf.d.clone()); par.worldToLocal(a); par.worldToLocal(b); g.position.add(b.sub(a)); } g.userData.fitS='follows'; }); return; }
+    if(CONF[slot]&&K._armFit!==false&&K._conform!==false){ if(slot==='helm') K._helmTop=null; let any=false; gs.forEach(g=>{ if(g.userData.garmentSlot) return; try{ if(conform(K,slot,g)) any=true; }catch(e){ if(window.DEBUG_ARMOR) console.error('conform',slot,e); } }); if(any) return; }
     if(slot==='helm') K._helmFit=null; const f=FIT[slot]; if(!f||K._armFit===false) return; const B=bodyW(K); if(!B) return; const r=K.rig;
     gs.forEach(g=>{ const par=g.parent, regs=par&&regsOf(K,par); if(!regs||g.userData.garmentSlot) return; g.updateMatrixWorld(true);
       const px=[],py=[],pz=[]; g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/500)); for(let i=0;i<A.count;i+=st){ _fv.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld); par.worldToLocal(_fv); px.push(_fv.x); py.push(_fv.y); pz.push(_fv.z); } });
@@ -330,10 +381,11 @@ const ARMOR=(function(){
       for(let q=0;q<B.n;q++){ if(!ok.has(B.R[q])) continue; _fv.set(B.W[q*3],B.W[q*3+1],B.W[q*3+2]); par.worldToLocal(_fv); if(_fv.y<y0||_fv.y>y1||Math.abs(_fv.x)>lim||Math.abs(_fv.z)>lim) continue; bx.push(_fv.x); by.push(_fv.y); bz.push(_fv.z); }
       if(bx.length<20) return;
       const pw=pct(px,0.95)-pct(px,0.05), pd=pct(pz,0.95)-pct(pz,0.05), bw=(pct(bx,0.98)-pct(bx,0.02))*(f.k||1)+2*f.m, bd=(pct(bz,0.98)-pct(bz,0.02))*(f.k||1)+2*f.m;
-      if(pw<1e-3||pd<1e-3) return; const s=Math.max(0.5,Math.min(1,(bw/pw+bd/pd)/2)); g.userData.fitS=s; if(s>0.97){ if(slot==='helm') K._helmFit=null; return; }
+      if(pw<1e-3||pd<1e-3) return; const s=Math.max(0.5,Math.min(1,(bw/pw+bd/pd)/2)); g.userData.fitS=s; if(s>0.97){ if(slot==='helm') K._helmFit=null; if(SETTLE[slot]&&K._settle!==false){ try{ const d=settle(K,slot,g); if(d&&slot==='helm') K._helmFit={s:1,c:new THREE.Vector3(),d}; }catch(e){} } return; }
       const cx=(pct(bx,0.02)+pct(bx,0.98))/2, cz=(pct(bz,0.02)+pct(bz,0.98))/2, cy=f.u==='mid'?(pct(by,0.1)+pct(by,0.9))/2:f.u==='top'?pct(py,0.95):0;
       if(slot==='helm'&&par===r.head) K._helmFit={s,c:new THREE.Vector3(cx,cy,cz)};
-      g.scale.set(g.scale.x*s,f.u?g.scale.y*s:g.scale.y,g.scale.z*s); g.position.x=cx+(g.position.x-cx)*s; g.position.z=cz+(g.position.z-cz)*s; if(f.u) g.position.y=cy+(g.position.y-cy)*s; }); }
+      g.scale.set(g.scale.x*s,f.u?g.scale.y*s:g.scale.y,g.scale.z*s); g.position.x=cx+(g.position.x-cx)*s; g.position.z=cz+(g.position.z-cz)*s; if(f.u) g.position.y=cy+(g.position.y-cy)*s;
+      if(SETTLE[slot]&&K._settle!==false){ try{ const d=settle(K,slot,g); if(d&&slot==='helm'&&K._helmFit) K._helmFit.d=d; if(d) g.userData.fitS=+s.toFixed(2)+' ↓'+d.y.toFixed(3); }catch(e){ if(window.DEBUG_ARMOR) console.error('settle',slot,e); } } }); }
   function wear(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
     if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
     if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }

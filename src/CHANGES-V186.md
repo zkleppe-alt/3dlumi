@@ -707,3 +707,19 @@ After Oceanside harbour, as a beachfront town:
   - The crest follows the helm (`K._helmFit`); changing the helm re-seats it.
   - `K._armFit=false` turns fitting off; each group records `userData.fitS`.
 - Typical factors: Templar helm 0.68, tabard 0.79, belt 0.67, pauldrons 0.64, sabatons 0.76; V250 legs already fitted (1.0).
+
+## V254 — each piece seated on the body, not just shrunk
+Zak: "sized down, but doesn't sit on the body like real armor". armor.js now fits each piece by its kind, for every set:
+- **Tubes: the ring fit** (`conform`, `CONF`) for the tabard/breastplate (gap 0.012), belt (0.045, over the tabard), and rerebraces/vambraces (0.012).
+  - Round the piece's joint, ring by ring, it measures the body's outer surface (`bodyRings`) and the piece's inner face (30th-percentile radius per bin).
+  - Every point moves along its ray so the inner face lies the gap over the body.
+  - Keels, ridges, gilt bands, rivets and hems keep their relief. Past the body's ends the piece keeps its own shape, set in by its nearest ring.
+  - Pieces are drawn in freely, but let out by at most 0.012.
+  - The legs were already built this way (V250).
+- **Domes and ends: size, centre, settle** (`SETTLE`) for the helm, pauldrons, gauntlets and sabatons.
+  - Sized whole as in V253; the helm and gauntlets are centred on the head or hand.
+  - Over each patch of body they cover, the underside's height above the body's top is measured, and the piece moves up or down until the closest is the gap: helm 0.016, pauldrons 0.012, gauntlets/sabatons 0.006.
+  - The crest follows the helm's size and its move.
+- The torso's body regions now include 'thigh' (on this body the hips are labelled thigh). Without it the belt was fitted to the crotch.
+- Skirts and the cowl keep the V253 girth scale.
+- Test hooks: `K._conform=false`, `K._settle=false`, `K._fitGap={slot:gap}`, `K._armFit=false` (none); `userData.fitS` says what was done.
