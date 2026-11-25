@@ -682,7 +682,7 @@ const ARMOR=(function(){
     return g; }
   const SHROUD={brown:0x5e4229,moss:0x34492a,ash:0x26242c,navy:0x1f2b52,crimson:0x5a1c1c,sand:0xb89a6a,white:0xe8e2d2};
   function shroud(ctx,tint,o){ const K=ctx.K, helmOn=Kx=>{ const S=Kx.userData.armorS, hg=S&&S.groups.helm&&S.groups.helm[0]; return !!(S&&S.worn.helm&&hg&&!hg.userData.garmentSlot); };
-    return mantle(ctx,Object.assign({kind:'shroud',mat:leatherM(K,SHROUD[tint]||SHROUD.brown),hem:-0.42,top:0.6,rag:0.015,back:Kx=>{ const S=Kx.userData.armorS; return !S||!hoodUpNow(S)||helmOn(Kx); }},o||{})); }
+    return mantle(ctx,Object.assign({kind:'shroud',mat:leatherM(K,SHROUD[tint]||SHROUD.brown),hem:-0.42,top:0.6,rag:0.015,back:Kx=>{ const S=Kx.userData.armorS; return !S||!hoodUpNow(S); }   /* V267: the hood goes up over a helm too */},o||{})); }
   // V263: putting on an earned livery (the wardrobe glass) puts on its armour set, once; you may change pieces after
   function liverySync(K){ const G=SG(), lv=G.livery||'azure'; if(G._lvArm===lv) return; const had=G._lvArm; G._lvArm=lv; if(had===undefined) return; const id='lv_'+lv;
     if(SLOTS.some(sl=>PIECES[sl][id])){ G.armorPick=G.armorPick||{}; G.armorOff=G.armorOff||{}; SLOTS.forEach(sl=>{ if(PIECES[sl][id]){ G.armorPick[sl]=id; delete G.armorOff[sl]; } }); apply(); } }
@@ -723,7 +723,11 @@ const ARMOR=(function(){
       const ok=inn(r.L&&r.L.hip,r.R&&r.R.hip)?/thigh|calf|foot|ball/i:inn(r.AL&&r.AL.sh,r.AR&&r.AR.sh)?/upperarm|lowerarm|hand|thumb|index|middle|ring|pinky/i:inn(r.head,K._head)?/head|neck/i:/spine|pelvis|neck|clavicle/i;   // a piece rides a bone of its own limb
       let best=-1,bw=0; W.forEach((w,bi)=>{ if(w>bw&&bones[bi]&&ok.test(bones[bi].name)){ bw=w; best=bi; } }); const bone=bones[best]; if(!bone) return;
       let hp=false; for(let o=g.parent;o&&o!==K;o=o.parent) if(o===K._head){ hp=true; break; } g.userData.headP=hp;   // hidden with the head pivot in first person
-      g.userData.pivot=g.parent; bone.attach(g); g.userData.bone=bone.name; }); }
+      g._pivot=g.parent;
+      if((slot==='pauldrons'||slot==='cowl')&&/upperarm/i.test(bone.name)&&bone.parent){   /* V267: a pauldron (or a pelt on the shoulder) turns only part of the way with the arm, so a raised arm doesn't swing it out */
+        const J=new THREE.Object3D(); J.name='halfJ_'+bone.name; J.position.copy(bone.position); J.quaternion.copy(bone.quaternion); J.scale.copy(bone.scale); bone.parent.add(J); J.updateMatrixWorld(true); J.attach(g);
+        const S=state(K); (S.halfJ||(S.halfJ=[])).push({J,bone,q0:bone.quaternion.clone(),f:slot==='pauldrons'?0.6:0.6,g}); g.userData.bone=J.name; return; }
+      bone.attach(g); g.userData.bone=bone.name; }); }
   function wear(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
     if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
     if(slot==='helm'&&S.groups.cowl&&S.groups.cowl[0]&&S.groups.cowl[0].userData.hoodParts&&!wear._in){ wear._in=true; try{ const on=S.worn.cowl; wear(K,'cowl',S.ids.cowl); if(!on) set(K,'cowl',false); } finally{ wear._in=false; } }   /* a pelt's hood re-cut to the new helm */
@@ -815,6 +819,7 @@ const ARMOR=(function(){
         if(D<C.r) _cw.copy(_p).addScaledVector(D>1e-5?_d.multiplyScalar(1/D):_d.set(0,0,1),C.r); }
       X[j]=_cw.x; X[j+1]=_cw.y; X[j+2]=_cw.z; _cw.applyMatrix4(_inv); A[j]=_cw.x; A[j+1]=_cw.y; A[j+2]=_cw.z; } }
   function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return; hoodSync(K);
+    if(S.halfJ){ S.halfJ=S.halfJ.filter(h=>{ if(!h.g.parent){ h.J.parent&&h.J.parent.remove(h.J); return false; } h.J.position.copy(h.bone.position); h.J.quaternion.copy(h.q0).slerp(h.bone.quaternion,h.f); return true; }); }
     if(K._head){ const hv=K._head.visible; for(const sl in S.groups) (S.groups[sl]||[]).forEach(g=>{ if(!g.userData.headP) return; if(!hv&&g.visible){ g.visible=false; g.userData.fpHid=1; } else if(hv&&g.userData.fpHid){ g.visible=true; delete g.userData.fpHid; } }); }
     if(K._og&&K._armFit!==false){ for(const k in K._og.crests){ const c=K._og.crests[k]; if(c.visible) c.visible=false; } const w=K._og.wings(); if(w&&w.visible) w.visible=false; }   /* V263: the old livery crests and wings: the livery sets carry their own now */
     liverySync(K);

@@ -979,3 +979,32 @@ Zak: vary the armours, the Guardian heavier and thicker, so the difference reads
   - `K._onBones=false` turns this off.
 - **Gloves:** the hand's and forearm's axis now points away from the joint above it. The point-sum test could flip a gauntlet backwards.
 - **Messy first load:** if the armour was put on before the body model arrived (a slow load gave up after 16 s and used the unfitted builders), the whole harness is now refitted once the body comes (`armorB`).
+
+## V267 — the hood over the helm, the hood down on the back, and drawing it up
+
+Zak: the hood down should hang over the back like a real hood; pulled up it should go over helmets too. It couldn't be seen at all with the Templar helm on.
+
+**Hood up over a helm** (outfit3.js `overHelm`)
+- The cloth hood now goes up over any helm.
+- The helm is measured where it stands, carried into the hood's bind space through the head bone (`toBind`). Its outline is taken as an envelope round the middle of the head, 10 × 20 bins, holes filled, smoothed.
+- The hood's crown is let out just enough to clear it (gap 0.01, at most +0.07), so it frames the great helm's face.
+- The crest is hidden while a cloth hood is up over a helm. A crest with no helm under it is hidden too.
+- The shroud no longer throws back just because a helm is worn.
+- The menu note "stays down under a helm" is gone.
+
+**Hood down** (`hoodDown`, `foldInto`, `backProf`)
+- Only the hood proper folds: the points the head bone carries (`foldW`). The mantle round the neck stays where it is. This removes the old crumple and the horn that rose by the neck.
+- The crown swings back about a line behind the neck (2.75 rad) and sags into a pouch between the shoulder blades.
+- It's laid on whatever is on his back. The body plus the worn tabard, pauldrons, belt and helm are measured where they stand (through the upper spine) into a grid of the hindmost depth, filled and eased. The cloth stays 1–2.4 cm off that surface.
+- The folded part rides the upper spine.
+- A hood is rebuilt when the armour under it changes, and old hood meshes are let go.
+
+**The gesture** (`hoodToggle`, `hoodStep`, knight.js `K._hoodG`)
+- Toggling the hood plays a 0.9 s move. The right hand rises behind the neck, passes over the crown (higher over a helm) and comes down at the brow, or the reverse to push it back.
+- The arm is placed by IK with the elbow kept forward. The hood folds in step with the hand, through a mesh refolded every frame.
+- Test hooks: `K._hoodG.fix` holds the gesture at one moment; `K._hoodTwo` uses both hands.
+
+**Fixes**
+- **The Templar's navy hood never appeared.** It was built before the hood model had loaded and fell back for good to the old code-built cowl (the "messy" blue on the chest). When the model arrives, the set's hood is now built again (`rebase`).
+- **Pauldrons swinging out with a raised arm.** Pauldrons, and pelts on the shoulder, now ride a half joint (`halfJ`) that turns 60% of the way with the upper arm, so they don't swing out when he raises it.
+- **Armour on bones:** the previous pivot is kept as `g._pivot`, no longer in `userData` (where it would be serialised).

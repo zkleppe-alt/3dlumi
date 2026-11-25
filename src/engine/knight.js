@@ -618,6 +618,9 @@ function buildKnight(){
     /* V236: a two-handed hilt really is held in both hands — the left hand is solved onto the grip just below the right, whatever the clip or the stance has the arms doing */
     { const ac=K._act&&K._act.n, want=K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&!(K.spinT>=0)&&!(K.charge>0)&&mode!=='sit'&&mode!=='ride'&&mode!=='lyre'&&mode!=='climb'&&mode!=='fish'&&ac!=='drawBack'&&ac!=='draw'&&!(K.dash>0)?1:0;
       K._2h=(K._2h||0)+(want-(K._2h||0))*Math.min(1,dt*14); if(!K.fp&&(K._rk||0)>0.01&&!((K._g||0)>(K._rk||0))&&!ac) readyTwo(Math.min(1,K._rk)); if(K._2h>0.01) twoHand(Math.min(1,K._2h*1.15)); }
+    /* V267: the hood drawn up or pushed back — both hands rise to it, pass over the crown (or from the brow back), and come down */
+    if(K._hoodG&&!K.fp){ const H=K._hoodG, t=H.fix!=null?H.fix:(performance.now()-H.t0)/H.dur; if(t>=1||t<0) K._hoodG=null; else { const w=Math.min(1,t*5,(1-t)*5), sm=x=>x<=0?0:x>=1?1:x*x*(3-2*x), p=sm((t-0.18)/0.64), a=H.up?p:1-p, hy=H.helm?0.06:0;
+        [[AR,-1]].concat(K._hoodTwo?[[AL,1]]:[]).forEach(([Arm,sd])=>{ const y=0.64+hy+(0.2+hy*0.5)*Math.sin(Math.PI*0.5*Math.min(1,a*1.6))-0.04*a, z=-0.15+0.24*a; solveArm(Arm,_ia.set(sd*(0.1+0.03*Math.sin(Math.PI*a)),y,z),[sd*0.45,-0.35,1],w); }); } }   /* the elbow forward, not flung out */
     /* V236: a bow at rest is carried upright in the left hand at his side, not dangling tip-down from the fist */
     { const want=K._fam==='bow'&&sword.parent===AL.hand&&K._st==='drawn'&&!K._bow&&swing<0&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&!K._act?1:0;
       K._bwR=(K._bwR||0)+(want-(K._bwR||0))*Math.min(1,dt*10); if(K._bwR>0.01){ const b=K._bwR, P=K.fp?(K._bwPF||[-1.5,0.45,0.15,-0.5,1.2,0]):(K._bwP||[-0.25,0.1,0.18,-1.2,1.2,0]), m=(o,k,v)=>{ o.rotation[k]+=(v-o.rotation[k])*b; };

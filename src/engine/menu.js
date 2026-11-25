@@ -96,7 +96,7 @@ const MENU=(function(){
         else if(AR){ h+=sec((LOOK_IC[sl]||'')+' '+AR.NAMES[sl]); AR.options(sl).forEach(id=>{ const P=AR.PIECES[sl][id], on=AR.pick(sl)===id;
           h+=`<button class="gm-item ${on?'worn':''}" data-act="arpick:${sl}.${id}"><span>${E(P.name)} <span class="ds">${E(P.set)}${P.town!==undefined?' · from '+E(SYS.TOWN_DATA[P.town].name):''}</span></span>${on?'<i>worn</i>':''}</button>`; });
           { const S2=ENGINE.K.userData.armorS, cg=sl==='cowl'&&S2&&S2.groups.cowl&&S2.groups.cowl[0];   /* V256: the Hood slot's up/down — the cloth hood, and every pelt's */
-            if(cg&&(cg.userData.garmentSlot||cg.userData.hoodParts)&&typeof OUTFIT3!=='undefined'&&OUTFIT3.hoodState){ const hs=OUTFIT3.hoodState(), cloth=!!cg.userData.garmentSlot, blocked=cloth&&hs.helmOn&&hs.up;
+            if(cg&&(cg.userData.garmentSlot||cg.userData.hoodParts)&&typeof OUTFIT3!=='undefined'&&OUTFIT3.hoodState){ const hs=OUTFIT3.hoodState(), cloth=!!cg.userData.garmentSlot, blocked=false;   /* V267: the hood goes up over a helm */
               h+=`<button class="gm-item" data-act="hood"><span>${hs.up?'🔼 Hood up':'🔽 Hood down'} <span class="ds">${hs.armoured?'with armour':'plain clothes'} · tap to put it ${hs.up?'down':'up'}${blocked?' · stays down under a helm':''}</span></span></button>`; } }
           h+='<p class="gm-hint">Each skill tree earns its own set as you climb it; the towns’ sets are sold at Ironhold’s Great Forge.</p>'; }
         h+='</div>'; }
