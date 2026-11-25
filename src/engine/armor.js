@@ -335,7 +335,9 @@ const ARMOR=(function(){
     if(pts.length<40) return null; const m=new THREE.Vector3(); pts.forEach(p=>m.add(p)); m.divideScalar(pts.length);
     const C=[0,0,0,0,0,0,0,0,0]; pts.forEach(p=>{ const d=[p.x-m.x,p.y-m.y,p.z-m.z]; for(let a=0;a<3;a++) for(let b=0;b<3;b++) C[a*3+b]+=d[a]*d[b]; });
     let d=new THREE.Vector3(0,-1,0); for(let it=0;it<30;it++){ const x=C[0]*d.x+C[1]*d.y+C[2]*d.z, y=C[3]*d.x+C[4]*d.y+C[5]*d.z, z=C[6]*d.x+C[7]*d.y+C[8]*d.z; d.set(x,y,z).normalize(); }
-    { let sum=0; pts.forEach(p=>{ sum+=p.dot(d); }); if(sum<0) d.negate(); }   // outward, from the joint toward the limb's end (by where its points lie)
+    { const pp=pivot.parent, toPar=pp?pivot.worldToLocal(pp.getWorldPosition(new THREE.Vector3())):null;
+      if(toPar&&toPar.length()>0.02&&(regs.includes('hand')||regs.includes('forearm'))){ if(d.dot(toPar)>0) d.negate(); }   /* V266: a hand or forearm points away from the joint above it (the point-sum flipped gloves backwards) */
+      else { let sum=0; pts.forEach(p=>{ sum+=p.dot(d); }); if(sum<0) d.negate(); } }   // outward, from the joint toward the limb's end (by where its points lie)
     const o=m.clone().addScaledVector(d,-m.dot(d)), f=new THREE.Group(); f.userData.armor=g.userData.armor; f.position.copy(o); f.quaternion.setFromUnitVectors(V(0,-1,0),d); g.add(f); f.updateMatrixWorld(true);
     const ts=pts.map(p=>p.clone().sub(o).dot(d)).sort((a,b)=>a-b); return {f,t0:ts[Math.floor(ts.length*0.04)],t1:ts[Math.floor(ts.length*0.96)]}; }
   /* V261: THE ARM AND HAND KIT (as the leg kit): each segment found along its own axis (limbFrame — the body's arms don't run down their
@@ -588,7 +590,7 @@ const ARMOR=(function(){
   // ── wearing ──
   function state(K){ return K.userData.armorS||(K.userData.armorS={worn:{},groups:{},hid:{}}); }
   function build(K,slot,id){ const S=state(K), P=PIECES[slot]&&PIECES[slot][id]; if(!P) return null; const ctx={K,slot,groups:[]}; try{ P.build(ctx); }catch(e){ ctx.groups.forEach(g=>g.parent&&g.parent.remove(g)); if(window.DEBUG_ARMOR) console.error('ARMOR',slot,e); return null; } return ctx.groups; }
-  function show(K,slot,on){ const S=state(K); S.softDirty=true; (S.groups[slot]||[]).forEach(g=>{ g.visible=on; });
+  function show(K,slot,on){ const S=state(K); S.softDirty=true; (S.groups[slot]||[]).forEach(g=>{ g.visible=on; delete g.userData.fpHid; });
     const cov=on?covered(K,slot):(S.hid[slot]||[]); if(on){ S.hid[slot]=cov; cov.forEach(o=>{ if(!o.userData.armorHid){ o.userData.armorHid=1; o.userData.armorWas=o.visible; } o.visible=false; }); }
     else { cov.forEach(o=>{ if(o.userData.armorHid){ o.visible=o.userData.armorWas!==false; delete o.userData.armorHid; } }); S.hid[slot]=[]; } }
   function toon(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||typeof BODY3==='undefined'||!BODY3.toonify) return; const tw=BODY3.toonify(K,F); if(!tw||!tw.length) return;
@@ -704,10 +706,28 @@ const ARMOR=(function(){
       if(slot==='helm'&&par===r.head) K._helmFit={s,c:new THREE.Vector3(cx,cy,cz)};
       g.scale.set(g.scale.x*s,f.u?g.scale.y*s:g.scale.y,g.scale.z*s); g.position.x=cx+(g.position.x-cx)*s; g.position.z=cz+(g.position.z-cz)*s; if(f.u) g.position.y=cy+(g.position.y-cy)*s;
       if(SETTLE[slot]&&K._settle!==false){ try{ const d=settle(K,slot,g); if(d&&slot==='helm'&&K._helmFit) K._helmFit.d=d; if(d) g.userData.fitS=+s.toFixed(2)+' ↓'+d.y.toFixed(3); }catch(e){ if(window.DEBUG_ARMOR) console.error('settle',slot,e); } } }); }
+  /* V266: each finished piece is moved off the rig's pivot onto the body bone that carries the skin under it (the bone most weighted at
+     the body points nearest the piece), keeping its place. The body's bones don't turn about the same centres as the rig's pivots
+     (the spine bends in three bones, the arms hang from the collar), so plates on the pivots slid off the body in a swing or a stride. */
+  let _bp=null;
+  function bodyPts(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.body.boneTransform) return null; const body=F.body, G=body.geometry, P=G.attributes.position;
+    bodySync(K); body.skeleton.update(); body.updateMatrixWorld(true); const st=2, n=Math.ceil(P.count/st), X=new Float32Array(n*3), I=new Int32Array(n); const v=new THREE.Vector3();
+    for(let q=0,k=0;q<P.count;q+=st,k++){ body.boneTransform(q,v); v.applyMatrix4(body.matrixWorld); X[k*3]=v.x; X[k*3+1]=v.y; X[k*3+2]=v.z; I[k]=q; } return {X,I,n,body}; }
+  function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
+    gs.forEach(g=>{ if(!g.parent||g.userData.garmentSlot||g.parent===K._skF||g.parent===K._skB) return; g.updateMatrixWorld(true); const pts=[];
+      g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/40)); for(let i=0;i<A.count;i+=st) pts.push(v.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld).clone()); });
+      if(!pts.length) return; const W=new Map();
+      pts.forEach(p=>{ let bd=1e9,bk=-1; for(let k=0;k<B.n;k++){ const dx=B.X[k*3]-p.x, dy=B.X[k*3+1]-p.y, dz=B.X[k*3+2]-p.z, d=dx*dx+dy*dy+dz*dz; if(d<bd){ bd=d; bk=k; } } if(bk<0) return; const q=B.I[bk];
+        for(let c=0;c<4;c++){ const w=SW.array[q*4+c]; if(w>0){ const bi=SI.array[q*4+c]; W.set(bi,(W.get(bi)||0)+w); } } });
+      const r=K.rig, P0=g.parent, inn=(...ps)=>ps.some(q=>q&&(q===P0||(()=>{ for(let o=P0;o&&o!==K;o=o.parent) if(o===q) return true; return false; })()));
+      const ok=inn(r.L&&r.L.hip,r.R&&r.R.hip)?/thigh|calf|foot|ball/i:inn(r.AL&&r.AL.sh,r.AR&&r.AR.sh)?/upperarm|lowerarm|hand|thumb|index|middle|ring|pinky/i:inn(r.head,K._head)?/head|neck/i:/spine|pelvis|neck|clavicle/i;   // a piece rides a bone of its own limb
+      let best=-1,bw=0; W.forEach((w,bi)=>{ if(w>bw&&bones[bi]&&ok.test(bones[bi].name)){ bw=w; best=bi; } }); const bone=bones[best]; if(!bone) return;
+      let hp=false; for(let o=g.parent;o&&o!==K;o=o.parent) if(o===K._head){ hp=true; break; } g.userData.headP=hp;   // hidden with the head pivot in first person
+      g.userData.pivot=g.parent; bone.attach(g); g.userData.bone=bone.name; }); }
   function wear(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
     if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
     if(slot==='helm'&&S.groups.cowl&&S.groups.cowl[0]&&S.groups.cowl[0].userData.hoodParts&&!wear._in){ wear._in=true; try{ const on=S.worn.cowl; wear(K,'cowl',S.ids.cowl); if(!on) set(K,'cowl',false); } finally{ wear._in=false; } }   /* a pelt's hood re-cut to the new helm */
-    if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
+    if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ try{ onBones(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR bones',slot,e); } S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
   function set(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
     if(slot==='pauldrons'||slot==='cowl') try{ drape(K); }catch(e){ if(window.DEBUG_ARMOR) console.error('drape',e); }
     if(slot==='tabard'||slot==='skirt') skirtSync(K); }
@@ -750,12 +770,14 @@ const ARMOR=(function(){
     for(const id in TREES) for(const slot in TIER){ const k=id+'.'+slot; if(!S.armorEarned[k]&&S.skills[TREES[id]+TIER[slot]]&&PIECES[slot]&&PIECES[slot][id]){ S.armorEarned[k]=1; fresh.push(PIECES[slot][id].name); } }
     if(fresh.length&&typeof UI!=='undefined'&&UI.toast&&!noteEarned.quiet) UI.toast('🛡 Armour earned: '+fresh.join(', ')+' — try it on in ☰ System → Armour',3200); noteEarned.quiet=false; }
   noteEarned.quiet=true;
-  function dress(K){ SLOTS.forEach(s=>wear(K,s,pick(s))); K.userData.armor=true; }
+  const hasBody=K=>{ const b=K.userData.b3; return !!(b&&typeof b==='object'&&b.body); };
+  function dress(K){ K.userData.armorB=hasBody(K); SLOTS.forEach(s=>wear(K,s,pick(s))); K.userData.armor=true; }
   function apply(){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K, off=SG().armorOff||{}, S=state(K); SLOTS.forEach(s=>{ const id=pick(s); if((S.ids&&S.ids[s])!==id||!S.groups[s]) wear(K,s,id); else set(K,s,true); }); }
   // the hero, once his body has come (the plate shells it makes are among what the harness covers)
   let lastOff='';
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K;
     try{ noteEarned(); }catch(e){}
+    if(K.userData.armor&&!K.userData.armorB&&hasBody(K)){ try{ dress(K); }catch(e){} lastOff=''; return; }   /* V266: dressed before the body came (a slow load): fit it all again to the body */
     if(K.userData.armor){ const S=SG(), off=JSON.stringify([S.armorOff||{},S.armorPick||{},S.armorEarned||{},S.skills||{}]); if(off!==lastOff){ lastOff=off; try{ apply(); }catch(e){} } return; }   // a loaded save, or the wardrobe
     if(K.bare||!K.rig||!K.M) return;
     const b=K.userData.b3, waiting=b==='loading'||(K.sculpted&&b===undefined&&typeof BODY3!=='undefined'&&BODY3.on&&!K._armWait); if(waiting){ K._armT=(K._armT||0)+1; if(K._armT<40) return; }
@@ -793,6 +815,7 @@ const ARMOR=(function(){
         if(D<C.r) _cw.copy(_p).addScaledVector(D>1e-5?_d.multiplyScalar(1/D):_d.set(0,0,1),C.r); }
       X[j]=_cw.x; X[j+1]=_cw.y; X[j+2]=_cw.z; _cw.applyMatrix4(_inv); A[j]=_cw.x; A[j+1]=_cw.y; A[j+2]=_cw.z; } }
   function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return; hoodSync(K);
+    if(K._head){ const hv=K._head.visible; for(const sl in S.groups) (S.groups[sl]||[]).forEach(g=>{ if(!g.userData.headP) return; if(!hv&&g.visible){ g.visible=false; g.userData.fpHid=1; } else if(hv&&g.userData.fpHid){ g.visible=true; delete g.userData.fpHid; } }); }
     if(K._og&&K._armFit!==false){ for(const k in K._og.crests){ const c=K._og.crests[k]; if(c.visible) c.visible=false; } const w=K._og.wings(); if(w&&w.visible) w.visible=false; }   /* V263: the old livery crests and wings: the livery sets carry their own now */
     liverySync(K);
     if(K.rig&&K.rig.capeP&&K.rig.capeP.visible) K.rig.capeP.visible=false;   /* V246: no cloth cape on the hero — it fought every other cloak (and the saddle) */

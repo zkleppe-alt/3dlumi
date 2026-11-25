@@ -66,20 +66,27 @@ function surfWave(o){
       pa.setXYZ(k,x,y,z); uv.setXY(k,(x+t*W.peel*0.5)/16,(z-t*2.5)/16);
       const hh=y/Math.max(0.5,W.A0), up=z>=0&&z<W.F?1-z/W.F:0, c=CT;
       if(z<0) c.copy(cBack).lerp(cDeep,clamp(-z/18,0,1)); else c.copy(cDeep).lerp(cFace,clamp(hh*1.4,0,1)).lerp(cLip,clamp((up-0.75)*3,0,1)*clamp(hh,0,1));
+      if(W.openNow>0.05&&x>-10&&x<3.5&&z>0){ const R=lipR(x)*W.openNow; if(z<R){ c.multiplyScalar(1-0.55*clamp(R/(W.F*0.5),0,1)*(0.6+0.4*Math.sin(Math.PI*z/R))); } }
       const fz=broken*Math.exp(-Math.pow((z-W.F*0.45)/(W.F*0.9+2),2)); const lipFoam=x>=0&&x<5&&Math.abs(z)<0.8?(1-x/5)*0.8:0; c.lerp(cFoam,clamp(Math.max(fz,lipFoam),0,1));
       wcol[k*3]=c.r; wcol[k*3+1]=c.g; wcol[k*3+2]=c.b; } }
     pa.needsUpdate=true; uv.needsUpdate=true; wgeo.attributes.color.needsUpdate=true; wgeo.computeVertexNormals(); }
   // the lip, pitching over the face when the wave is hollow: a curl surface from x′ = -9 … +3
-  const LU=36, LV=14, lgeo=new THREE.PlaneGeometry(1,1,LU,LV), lcol=new Float32Array((LU+1)*(LV+1)*3); lgeo.setAttribute('color',new THREE.BufferAttribute(lcol,3));
-  const lip=new THREE.Mesh(lgeo,new THREE.MeshPhongMaterial({vertexColors:true,map:rip,shininess:40,specular:0x2a4a60,side:THREE.DoubleSide,transparent:true,opacity:0.9,depthWrite:false})); lip.frustumCulled=false; scene.add(lip);
-  const lipR=x=>{ const k=clamp((3-x)/3.2,0,1); return k*W.F*0.52; };                 // how far the lip has thrown out, by x′
+  const LU=40, LV=20, lgeo=new THREE.PlaneGeometry(1,1,LU,LV), lcol=new Float32Array((LU+1)*(LV+1)*3); lgeo.setAttribute('color',new THREE.BufferAttribute(lcol,3));
+  const lip=new THREE.Mesh(lgeo,new THREE.MeshBasicMaterial({vertexColors:true,map:rip,side:THREE.FrontSide,transparent:true,opacity:0.95,depthWrite:false})); lip.frustumCulled=false; lip.renderOrder=2; scene.add(lip);
+  const lipIn=new THREE.Mesh(lgeo,new THREE.MeshBasicMaterial({vertexColors:true,map:rip,color:0x587886,side:THREE.BackSide,transparent:true,opacity:0.97,depthWrite:false})); lipIn.frustumCulled=false; lipIn.renderOrder=1; scene.add(lipIn);   // V266: unlit, so the tube's inside stays dark
+  // V266: a real tube — the lip throws from the crest, out and over, and lands on the face's foot; the mouth opens at the curl
+  const lipR=x=>{ const k=clamp((3.5-x)/4,0,1); return k*k*(3-2*k)*W.F*0.78; };           // how far out the lip lands, by x′
+  const bez=(a,b,c,d,u)=>{ const m=1-u; return m*m*m*a+3*m*m*u*b+3*m*u*u*c+u*u*u*d; };
+  const cLipIn=new THREE.Color(0x0e4656), cGlass=new THREE.Color(0x40bcc4);
   function shapeLip(t,open){ const pa=lgeo.attributes.position, uv=lgeo.attributes.uv; let k=0;
-    for(let j=0;j<=LV;j++){ const v=j/LV; for(let i=0;i<=LU;i++,k++){ const x=-9+12*i/LU, R=lipR(x)*open, A=Ax(Math.max(0,x))*1.02, a=v*Math.PI*1.05;
-      // up from the crest, over and down toward the face: a circle of radius R/2 hung from the crest, forward
-      const cz=R*0.5, cy=A-0.05+R*0.02, z=cz-Math.cos(a)*R*0.5, y=cy+Math.sin(a)*R*0.62-(a>Math.PI/2?(a-Math.PI/2)*R*0.25:0);
-      const wob=0.06*Math.sin(x*2.3+t*7+v*4); pa.setXYZ(k,x,y+wob,z); uv.setXY(k,(x+t*3)/10,(v*5-t*3)/10);
-      const c=cFace.clone().lerp(cLip,0.4+0.4*v).lerp(cFoam,v>0.82?(v-0.82)*5:x<-6?(-6-x)/3:0); lcol[k*3]=c.r; lcol[k*3+1]=c.g; lcol[k*3+2]=c.b; } }
-    pa.needsUpdate=true; uv.needsUpdate=true; lgeo.attributes.color.needsUpdate=true; lgeo.computeVertexNormals(); lip.visible=open>0.05; }
+    for(let j=0;j<=LV;j++){ const v=j/LV; for(let i=0;i<=LU;i++,k++){ const x=-10+13.5*i/LU, R=lipR(x)*open, A=Ax(Math.max(0,x));
+      // crest (0,A) → up and out → over → down onto the face at z=R
+      const yl=hAt(x,R)-0.05, z=bez(0,R*0.3,R*0.92,R,v), y=bez(A,A+R*0.42,A+R*0.12,yl,v);
+      const wob=0.05*Math.sin(x*2.3+t*7+v*5)*v; pa.setXYZ(k,x,y+wob,z); uv.setXY(k,(x+t*4)/9,(v*4-t*3.5)/9);
+      // thin glassy water at the throw, thick and white where it lands, white-water behind the curl
+      const c=CT.copy(cLipIn).lerp(cGlass,Math.sin(v*Math.PI)*0.9).lerp(cFoam,clamp(Math.max((v-0.8)*4,(-6.5-x)/3.5,(x>1.8?(x-1.8)/1.7:0)*0.6),0,1));
+      lcol[k*3]=c.r; lcol[k*3+1]=c.g; lcol[k*3+2]=c.b; } }
+    pa.needsUpdate=true; uv.needsUpdate=true; lgeo.attributes.color.needsUpdate=true; lgeo.computeVertexNormals(); lip.visible=lipIn.visible=open>0.05; }
   // spray and foam: one pool of little white sprites
   const sprayTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=32; const g=c.getContext('2d'), gr=g.createRadialGradient(16,16,0,16,16,16); gr.addColorStop(0,'rgba(255,255,255,1)'); gr.addColorStop(0.5,'rgba(240,250,255,.6)'); gr.addColorStop(1,'rgba(240,250,255,0)'); g.fillStyle=gr; g.fillRect(0,0,32,32); return new THREE.CanvasTexture(c); })();
   const POOL=[]; for(let i=0;i<160;i++){ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:sprayTex,transparent:true,depthWrite:false,opacity:0})); sp.visible=false; scene.add(sp); POOL.push({sp,life:0,v:new THREE.Vector3()}); }
@@ -148,8 +155,8 @@ function surfWave(o){
     // spray off the tail on a hard carve
     if(turnRate>1.2&&g.v>6&&Math.random()<turnRate*0.25) puff(g.x-cs*0.8,riderY()+0.2,zOf(g.s)+sn*0.4,-cs*2+(Math.random()-0.5),1.5+Math.random()*2,1+Math.random()*1.5,0.45,0.7);
     // the barrel: covered when the lip is thrown over you
-    const open=W.hollow?lipOpen():0, covered=open>0.4&&g.x<1.2&&g.x>-8&&g.s>0.2&&g.s<0.75;
-    if(covered){ if(!g.tube){ call('COVERED! — hold your line','#8ef0ff'); } g.tube+=dt; g.tubeBank+=dt*(110+40*Math.max(0,-g.x)); if(Math.random()<0.4) puff(g.x+1,riderY()+1.4,zOf(g.s)-0.6,3+Math.random()*2,(Math.random()-0.5),1,0.4,0.5); }
+    const open=W.hollow?lipOpen():0, covered=open>0.4&&g.x<1.2&&g.x>-8&&g.s>0.15&&g.s<0.85&&zOf(g.s)<lipR(g.x)*open*0.95;
+    if(covered){ if(!g.tube){ call('COVERED! — hold your line','#8ef0ff'); } g.tube+=dt; g.tubeBank+=dt*(110+40*Math.max(0,-g.x)); if(Math.random()<0.7) puff(1.5+Math.random(),Ax(0)*0.55+Math.random()*0.6,W.F*0.4+Math.random(),5+Math.random()*3,(Math.random()-0.2)*1.5,0.5,0.5,0.6); }
     else if(g.tube){ if(g.x>=0.8){ const pts=Math.round(g.tubeBank)+60; g.barrelsMade++; trick(TR.barrel+' '+g.tube.toFixed(1)+'s',pts); call('MADE IT OUT! '+TR.barrel,'#8ef0ff'); } g.tube=0; g.tubeBank=0; }
     // the whitewater: fall behind it and you're taken (deep in the barrel it takes you too)
     if(g.x<(covered?-8:-1.6)){ wipeout(covered?'THE BARREL CLOSED ON YOU':'CAUGHT BY THE WHITEWATER'); return; }
@@ -170,7 +177,7 @@ function surfWave(o){
         if(g.phase==='lineup'){ g.swell+=dt/3.4; if(inp.pressed.A){ g.paddle=Math.min(1,g.paddle+0.16); } g.paddle=Math.max(0,g.paddle-dt*0.22);
           if(inp.pressed.B&&g.swell<0.25){ results(); draw(dt); return; }
           if(g.swell>=1){ if(g.paddle>=0.5){ g.phase='pop'; g.popT=0; call('POP UP!','#fff2c8'); } else { call('THE WAVE ROLLED UNDER YOU','#e0563a'); g.wavesRidden++; g.phase='fade'; g.fadeT=1.2; } } }
-        else if(g.phase==='pop'){ g.popT+=dt; const r=1-g.popT/1.1; g.popRing=r;
+        else if(g.phase==='pop'){ g.popT+=dt; const r=1-g.popT/2.1; g.popRing=r;
           if(inp.pressed.A||r<=-0.15){ const e=Math.abs(r-0.18), q=r<=-0.15?0:e<0.1?2:e<0.24?1:0;
             g.phase='ride'; g.x=4.5; g.s=0.95; g.th=-1.15; g.v=q===2?9:q===1?7:4.5; if(q) trick(TR.drop,q===2?80:40); else call('A WOBBLY DROP','#f0a050'); } }
         else if(g.phase==='ride') ride(dt,inp);
@@ -179,7 +186,10 @@ function surfWave(o){
         draw(dt); },
       camera(cam,dt){ if(!g) return; const k=Math.min(1,dt*3.5); let px,py,pz,lx,ly,lz;
         if(g.phase==='lineup'||g.phase==='pop'||g.phase==='results'){ const sw=g.phase==='results'?0.5:clamp(g.swell,0,1); px=-3; py=2.6+sw*1.2; pz=W.F+12; lx=4; ly=1.2+sw*1.5; lz=0; }
-        else { const rx=g.phase==='wipe'&&g.fall?g.fall.x:g.x, rz=zOf(g.s), ry=hAt(rx,rz); px=rx-7.5; py=ry*0.55+2.6; pz=W.F+8.5; lx=rx+4.5; ly=ry*0.6+0.8; lz=rz-1.5; }
+        else { const rx=g.phase==='wipe'&&g.fall?g.fall.x:g.x, rz=zOf(g.s), ry=hAt(rx,rz); px=rx-7.5; py=ry*0.55+2.6; pz=W.F+8.5; lx=rx+4.5; ly=ry*0.6+0.8; lz=rz-1.5;
+          // V266: in the barrel the camera swings round to the mouth and looks back up the tube at you
+          g.camT=clamp((g.camT||0)+(g.tube&&g.phase==='ride'?dt*2.6:-dt*1.4),0,1); const e=g.camT*g.camT*(3-2*g.camT);
+          if(e>0){ const cx=Math.min(rx+4.4,2.0), R=lipR(cx)*Math.max(0.5,lipOpen()), zc=R*0.55, cy=(Ax(Math.max(0,cx))+hAt(cx,zc))*0.5+0.1; px+=(cx-px)*e; py+=(cy-py)*e; pz+=(zc-pz)*e; lx+=(rx-5-lx)*e; ly+=(ry+0.55-ly)*e; lz+=(rz*0.85-lz)*e; } }
         camP.set(px,py,pz); cam.position.lerp(camP,k); camL.lerp(camT.set(lx,ly,lz),k); cam.lookAt(camL); sky.position.set(cam.position.x,0,cam.position.z*0.2); } } };
   const camP=new THREE.Vector3(), camL=new THREE.Vector3(0,1,0), camT=new THREE.Vector3();
   const qB=new THREE.Quaternion(), M4=new THREE.Matrix4(), vF=new THREE.Vector3(), vU=new THREE.Vector3(), vR=new THREE.Vector3();
@@ -187,7 +197,7 @@ function surfWave(o){
   function draw(dt){ const t=g.t;
     // between waves the swell builds; out on the ride the wave stands full
     const grow=g.phase==='lineup'?0.35+0.65*clamp(g.swell,0,1):g.phase==='fade'?Math.max(0.35,g.fadeT/1.6):g.phase==='results'?0.35:1;
-    const A0=W.A0; W.A0=A0*grow; shapeWave(t); shapeLip(t,(g.phase==='ride'||g.phase==='wipe')?lipOpen():0); W.A0=A0;
+    const A0=W.A0, op=(g.phase==='ride'||g.phase==='wipe')?lipOpen():0; W.openNow=op; W.A0=A0*grow; shapeWave(t); shapeLip(t,op); W.A0=A0;
     flatTex.offset.set(t*W.peel*0.5/12.9,t*2.5/12.9);
     puffs(dt);
     // whitewater spray along the broken section, and the curl's feathering lip

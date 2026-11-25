@@ -952,3 +952,30 @@ Zak: vary the armours, the Guardian heavier and thicker, so the difference reads
 - The horse now follows the course by itself. The stick picks your lane, for passing and drafting; there's no more hand-steering through every bend.
 - Stride windows: perfect ±0.11, good ±0.24 of a stride (they were ±0.06 and ±0.14).
 - The jump window is about 1.6× wider, and **JUMP NOW!** lights up in the HUD while you're in it.
+
+## V266 — the barrel is a barrel; armour that stays on through the swing
+
+**Surf (surf.js):**
+- **The tube:** the lip now throws from the crest out over the face and lands at its foot (about 0.78 of the face), so the curl is a closed tube. The mouth opens toward the shoulder and it closes into whitewater behind.
+  - Unlit materials keep the inside of the curl dark teal and the outside glassy.
+  - The face inside the tube is shaded darker, and spray blows out of the mouth while you're covered.
+  - You count as covered when you're under where the lip lands.
+- **Tube camera:** while you're covered, the camera swings into the mouth of the tube and looks back up the barrel at you. It swings back out when you leave.
+- **Pop-up:** the timing bar now lasts 2.1 s instead of 1.1 s, so there's time to read it.
+
+**Armour (armor.js), from Zak's report:** armour not sticking, gloves flipped backwards, pieces separating when moving or attacking, and a messy first load until re-equipped.
+- **Pieces ride the body's own bones** (`onBones`). Each finished piece moves off the rig pivot onto the BODY3 bone that carries the skin under it, keeping its place. The bone is chosen as the most weighted one at the body points nearest the piece, limited to the piece's own limb: legs ride thigh/calf/foot, arms ride upper arm/forearm/hand, the head rides head/neck, and the torso rides spine/pelvis.
+  - Why: the body's spine bends across three bones and its arms hang from the collar, so plates on the rig's pivots slid off during swings and strides.
+  - Measured mean gap from piece to body, idle → mid-swing, in cm:
+
+| Piece | Before | After |
+|---|---|---|
+| Gauntlets | 1.5 → 4.6 | 0.8 → 0.8 |
+| Pauldrons | 3.1 → 5.5 | 2.5 → 2.3 |
+| Arms | 2.7 → 3.6 | 1.4 → 1.3 |
+
+  - The skirt stays on its cloth hinges.
+  - Head pieces still hide with the head in first person (`headP`/`fpHid`).
+  - `K._onBones=false` turns this off.
+- **Gloves:** the hand's and forearm's axis now points away from the joint above it. The point-sum test could flip a gauntlet backwards.
+- **Messy first load:** if the armour was put on before the body model arrived (a slow load gave up after 16 s and used the unfitted builders), the whole harness is now refitted once the body comes (`armorB`).
