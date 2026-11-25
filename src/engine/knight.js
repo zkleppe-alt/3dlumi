@@ -483,7 +483,7 @@ function buildKnight(){
     // the guard, eased in and out (~0.1 s): upper arm forward and in, forearm level across the chest, the shield squarely
     //  in front of him with its point down; a slight crouch and the torso turned shield-side into the blow
     K._g=(K._g||0)+((K.guarding?1:0)-(K._g||0))*Math.min(1,dt*16); const gk=K._g, ik=1-gk, mixv=(a,b)=>a*ik+b*gk; const rest=-(AL.sh.rotation.x+AL.el.rotation.x);
-    if(!K._shB){ AL.sh.rotation.x=mixv(AL.sh.rotation.x,-1.22); AL.sh.rotation.y=mixv(0,0.15); AL.sh.rotation.z=mixv(AL.sh.rotation.z,-0.22);
+    if(!K._shB&&shM.parent===AL.el){ AL.sh.rotation.x=mixv(AL.sh.rotation.x,-1.22);   /* V271: not while it rides on his back */ AL.sh.rotation.y=mixv(0,0.15); AL.sh.rotation.z=mixv(AL.sh.rotation.z,-0.22);
     AL.el.rotation.x=mixv(AL.el.rotation.x,0); AL.el.rotation.z=mixv(0,-1.5);
     sh.rotation.z=mixv(rest,Math.PI/2); shM.rotation.y=mixv(K.shRY,Math.PI/2); shM.position.y=mixv(K.shY,K.shY+0.01); shM.position.x=mixv(K.shX,K.shX+0.007); }
     if(gk>0.01){ torso.rotation.y-=0.22*gk; hips.position.y-=0.03*gk; torso.rotation.x+=0.08*gk; L.knee.rotation.x+=0.25*gk; R.knee.rotation.x+=0.25*gk; }
@@ -611,7 +611,7 @@ function buildKnight(){
     /* V239: a one-handed blade out, the shield is HELD — the forearm across his front, the shield turned to face the foe (canted a touch outward
        in third person, square on in first person), its rim near his chin. Not while guarding, swinging or busy. */
     { const want=!K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)&&!K._act&&shM.parent===AL.el&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&mode!=='lyre'?1:0;
-      K._sr=(K._sr||0)+(want-(K._sr||0))*Math.min(1,dt*10); if(K._sr>0.01) holdShield(Math.min(1,K._sr*1.1)); else if(K._srOn){ shM.rotation.set(0,Math.PI/2,0); K._srOn=false; } }
+      K._sr=(K._sr||0)+(want-(K._sr||0))*Math.min(1,dt*10); if(K._sr>0.01) holdShield(Math.min(1,K._sr*1.1)); else if(K._srOn){ if(shM.parent===AL.el) shM.rotation.set(0,Math.PI/2,0); K._srOn=false; } }
     /* V239: first person, bow or crossbow up — the left arm out with the bow upright before your eye (canted a touch), the right fist drawn to the cheek;
        the crossbow's stock to the shoulder. Placed by IK in his own frame, whatever the archer's clip has done to his shoulders. */
     { const want=K.fp&&K._fam==='bow'&&sword.parent===AL.hand&&(K._bow||K.guarding)?1:0; K._fpA=(K._fpA||0)+(want-(K._fpA||0))*Math.min(1,dt*14);

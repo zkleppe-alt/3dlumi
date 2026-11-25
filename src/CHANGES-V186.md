@@ -1103,3 +1103,28 @@ Zak chose: a belt kit, the belt worn over the tabard, gear hanging from it, and 
    - **Hanging gear** (`beltSwing`): pouches, satchel, dagger, horn, tongue, sash tails and tassels.
      - Each is a small pendulum in the world: its bob falls under gravity and lags behind the belt's motion, and the piece turns to point at it.
      - So it hangs plumb when he leans and swings when he strides. It never goes into his body or above the horizontal.
+
+## V271 — armour skinned to the body (the way the big games do it); the shield flat on the back; a fuller breastplate
+
+Zak's photos showed the shield sticking sideways off his back, legs through the tabard's front, and the gauntlets and vambraces sitting wrong. He asked how Skyrim, Zelda and Assassin's Creed do it, and for a thicker breastplate.
+
+**How those games do it.** Every armour piece is made for one base body and skinned to the same skeleton. Each vertex carries bone weights, so it bends exactly as the skin under it does. Body parts the armour covers are hidden, so nothing pokes through. Long cloth (tabards, skirts) gets its weights split between the hips and the thighs, or cloth physics with leg colliders. Customisation works because every piece shares that body and skeleton. That's the step this version adds.
+
+**`skinGroups` (armor.js)**
+- After the kit builds and fits a piece (so every set and style stays customisable), each of its meshes gets a skinned twin. Each vertex takes the weights of the nearest body points:
+  - only from the regions that piece may follow (`SKINREG`);
+  - a leg's plate only from its own leg;
+  - tabard and skirt are carried by the pelvis at the waist, easing to the thighs at the hem (side panels 70%→28% pelvis, centre 90%→65%).
+- Its bind-pose place is found by undoing the blended bones.
+- The twin bends with the body:
+  - vambraces twist with the forearm, gauntlets with the wrist;
+  - pauldrons ride the upper arm and chest;
+  - the tabard's front and the skirt follow the thighs.
+- The rigid original stays where it is, hidden from the camera (`layers`), for measuring and for everything that shows or hides it. The twin mirrors its visibility and its colours (`tick`).
+- Skinned slots: tabard, skirt, pauldrons, arms, gauntlets, legs, sabatons.
+- Still rigid on their bones: helms, crests, the belt and its gear, and hoods, cowls and capes (on the cloth sim).
+- Skinned meshes leave the cloth sim. `K._skinArmor=false` turns this off.
+
+**Fixes**
+- **Shield sideways on the back.** knight.js `shieldHome` placed it right, but the guard blend (and releasing the shield) re-turned the shield mount every frame for one-handed weapons. Both now only touch it while it's on the arm.
+- **Fuller breastplate.** The cuirass stands 1.6 cm further off the body and is domed over the breast (up to +2 cm). Cloth coats are +0.6 cm.
