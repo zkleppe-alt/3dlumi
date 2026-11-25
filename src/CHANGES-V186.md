@@ -920,3 +920,35 @@ Zak: vary the armours, the Guardian heavier and thicker, so the difference reads
 | 0 | everything else, and the Templar |
 
 - Ironforged, Crystalborn and Emberforged wear no cloth hood (the navy hood had shown as a bib on the breast). Archangel's Hood slot carries only its wings.
+- Smoke note: the occasional `in:shop:0 … reading 'trim'` is three.js r128's `getProgramInfoLog(…).trim()` / `getShaderInfoLog(…).trim()`: the log is null when the WebGL context is lost, which the headless software renderer does under memory pressure. It isn't game code. It wasn't reproduced in 12 shop visits.
+
+## V265 — minigames: a new surf, a fair joust, a rideable steeplechase
+
+**Surfing → Saltmere Point (engine/surf.js, new, our own code).** No free surf sim had a licence we could use: tsunami-surf is GPL-2.0, and the others have no licence at all. So the surf is rebuilt from scratch as a 3D point break that peels along the shore.
+- **Lineup:** tap RIDE to paddle as the swell rises, and fill the meter past the line before it arrives.
+- **Pop-up:** tap RIDE as the ring reaches the green. A clean pop keeps your speed.
+- **Ride:** the stick points the board. Dropping down the face gives speed, and climbing costs it. Staying near the curl gives drive, and falling behind it into the whitewater wipes you out.
+- **Turns** score themselves: bottom turn, snap off the lip, and cutback (*Turn of Repentance*).
+- **Airs:** hit the lip fast to launch. Each tap of RIDE spins 180°, holding STALL grabs, and you must land facing down the line.
+- **Barrels:** on hollow waves the lip throws over the face. Hold STALL to sit back into it. Points build while you're covered and are paid only if you get out.
+- **Combos:** chained tricks raise the multiplier from ×1 to ×5. The combo banks after a pause or when the wave ends, and a wipeout loses it.
+- The tiers, rewards and `surfBest` are unchanged (Driftwood up to The Narrow Way). The waves vary in height, hollowness and peel speed, and the last wave of the set is always hollow.
+
+**Jousting (lists.js): was nearly impossible, now fair.**
+- Strike window: good was 14–60 and is now 8–84; perfect was 28–44 and is now 26–54.
+- The last 130 units of the charge run at 40% speed, so the strike is a decision instead of a reflex.
+- Pressing before the window no longer wastes your strike. You get "NOT YET" and the strike waits.
+- The shield sways about half as far and half as fast. The aim ring no longer drifts. With the stick left alone it settles toward the shield, and it turns green when you're on target.
+- A solid hit spoils his lance: you take half damage, or 80% on a glancing hit. Foe damage dropped from 42·skill to 30·skill, and a tie on the passes now goes to you.
+- HUD: "STRIKE NOW!" shows in the green zone.
+
+**Foot bouts (duel, melee, ladder):**
+- A lunge now hits for ×1.5 its share (it was ×2).
+- The parry window went from 220 ms to 320 ms.
+- Holding guard now has to last 5 s before you yield (it was 3 s).
+- The Keep Champion has 12 swings of health (it was 16).
+
+**Steeplechase (race.js):**
+- The horse now follows the course by itself. The stick picks your lane, for passing and drafting; there's no more hand-steering through every bend.
+- Stride windows: perfect ±0.11, good ±0.24 of a stride (they were ±0.06 and ±0.14).
+- The jump window is about 1.6× wider, and **JUMP NOW!** lights up in the HUD while you're in it.

@@ -7,7 +7,7 @@
 //  raceLevel({id, course:'stormgate', exit}) → level
 // ════════════════════════════════════════════════════════════════
 function raceLevel(spec){
-  const SC=SYS.SC, COURSE=SC.courses.find(c=>c.key===spec.course), PERFECT=SC.perfect, GOOD=SC.good, TAKEOFF=SC.takeoff, TAU=Math.PI*2, s=0.08;
+  const SC=SYS.SC, COURSE=SC.courses.find(c=>c.key===spec.course), PERFECT=Math.max(SC.perfect,0.11), GOOD=Math.max(SC.good,0.24), TAKEOFF=SC.takeoff, TAU=Math.PI*2, s=0.08;
   const clamp=(v,a,b)=>Math.max(a,Math.min(b,v)), ang=a=>{ while(a>Math.PI) a-=TAU; while(a<-Math.PI) a+=TAU; return a; };
   const h32=(x,y)=>{ let h=(x*374761393+y*668265263)>>>0; h=(h^(h>>>13))*1274126177>>>0; return (h^(h>>>16))>>>0; };
   // ── the course, as build() makes it ──
@@ -99,7 +99,7 @@ function raceLevel(spec){
     const p0=pointAt(C,meD);
     R={mount:m,top,rivals,finishOrder:[],laps:COURSE.laps,total:C.len*COURSE.laps,t:0,phase:'countdown',count:3,countT:0,camAng:p0.ang,bank,
       stats:{perfect:0,good:0,miss:0,clean:0,bad:0,hit:0,draft:0},
-      P:{x:p0.x-Math.sin(p0.ang)*meLane,y:p0.y+Math.cos(p0.ang)*meLane,h:p0.ang,v:0,lean:0,prog:meD,idx:p0.i,lap:1,stamina:1,tired:false,sinceUrge:9,ph:0.75,lastTap:-1,air:0,stagger:0,jumpsDone:{},draft:false,place:4,finished:false}};
+      P:{x:p0.x-Math.sin(p0.ang)*meLane,y:p0.y+Math.cos(p0.ang)*meLane,h:p0.ang,v:0,lean:0,prog:meD,idx:p0.i,lap:1,stamina:1,tired:false,sinceUrge:9,ph:0.75,lastTap:-1,laneT:meLane,air:0,stagger:0,jumpsDone:{},draft:false,place:4,finished:false}};
     call(R.P,'3','#fff2c8'); }
   const strideLen=()=>0.62-0.08*R.mount.speed;
   function urge(){ const P=R.P, top=R.top, cyc=Math.floor(P.ph), f=P.ph-cyc, e=Math.min(f,1-f), tgt=f>0.5?cyc+1:cyc;
@@ -111,7 +111,7 @@ function raceLevel(spec){
     if(P.stamina<=0.0001){ P.tired=true; call(P,'OUT OF BREATH!','#e0563a'); } }
   function nextJumpAhead(P,lim){ let best=null,bd=1e9; C.jumps.forEach(j=>{ const lapBase=Math.floor(P.prog/C.len)*C.len; let d=lapBase+j.d; if(d<P.prog-8) d+=C.len;
       const key=j.n+':'+Math.floor(d/C.len); if(P.jumpsDone[key]) return; const ahead=d-P.prog; if(ahead<bd&&ahead<lim){ bd=ahead; best={j,d,key}; } }); return best; }
-  function jump(){ const P=R.P; if(P.air>0) return; const J=nextJumpAhead(P,140), win=0.06+0.08*R.mount.jump;
+  function jump(){ const P=R.P; if(P.air>0) return; const J=nextJumpAhead(P,140), win=0.11+0.1*R.mount.jump;
     if(!J){ P.air=0.32; P.stamina=Math.max(0,P.stamina-0.02); return; }
     const e=((J.d-TAKEOFF)-P.prog)/Math.max(30,P.v); P.air=0.45;
     if(Math.abs(e)<=win*0.45){ P.jumpsDone[J.key]='clean'; P.v*=1.05; R.stats.clean++; call(P,'PERFECT JUMP!','#fff2c8'); }
@@ -122,13 +122,15 @@ function raceLevel(spec){
     if(R.phase==='countdown'){ R.countT+=dt; if(R.countT>=0.8){ R.countT=0; R.count--; if(R.count<=0){ R.phase='race'; call(P,'THEY’RE OFF!','#fff2c8'); } else call(P,String(R.count),'#fff2c8'); } return; }
     if(R.phase!=='race') return; R.t+=dt;
     if(inp.pressed.A) urge(); if(inp.pressed.B) jump();
-    const steer=(P.air>0||P.stagger>0)?0:Math.sign(Math.round(inp.x*1.4)); P.lean+=(steer-P.lean)*Math.min(1,dt*8);
-    P.h=ang(P.h+steer*1.6*(0.55+0.45*Math.min(1,P.v/(top*0.6)))*dt);
-    const N=near(C,P.x,P.y,P.idx); P.idx=N.i; P.lat=N.lat;
+    // V265: the horse knows the course — it follows the turf by itself; the stick picks your lane (to pass, to draft)
+    const N=near(C,P.x,P.y,P.idx); P.idx=N.i; P.lat=N.lat; const laneLim=C.W/2-7, ix=Math.abs(inp.x)>0.15?inp.x:0;
+    if(!(P.air>0||P.stagger>0)) P.laneT=clamp(P.laneT+ix*46*dt,-laneLim,laneLim);
+    const look=pointAt(C,N.d+Math.max(14,P.v*0.35)), want=ang(look.ang+clamp((P.laneT-N.lat)*0.035,-0.55,0.55)), turn=clamp(ang(want-P.h),-2.6*dt,2.6*dt);
+    const steer=Math.abs(turn)>0.004?Math.sign(turn)*Math.min(1,Math.abs(turn)/(1.6*dt)):0; P.lean+=(steer-P.lean)*Math.min(1,dt*8); P.h=ang(P.h+turn);
     P.draft=false; for(const rv of R.rivals){ const gap=rv.prog-P.prog; if(gap>6&&gap<48&&Math.abs(rv.lane-N.lat)<14){ P.draft=true; break; } } if(P.draft) R.stats.draft+=dt;
     P.sinceUrge+=dt; if(P.sinceUrge>0.6) P.stamina=Math.min(1,P.stamina+dt*0.10*(0.6+0.8*R.mount.stamina)*(P.draft?2:1));
     if(P.tired&&P.stamina>=0.3){ P.tired=false; call(P,'SECOND WIND','#5fd36a'); }
-    let cruise=top*(P.tired?0.72:0.8)*(steer?0.93:1)*(P.draft?1.03:1); if(P.stagger>0){ P.stagger-=dt; cruise*=0.5; }
+    let cruise=top*(P.tired?0.72:0.8)*(ix?0.97:1)*(P.draft?1.03:1); if(P.stagger>0){ P.stagger-=dt; cruise*=0.5; }
     P.v+=(cruise-P.v)*Math.min(1,dt*(P.v>cruise?0.9:0.7)); P.ph+=dt/strideLen(); if(P.air>0) P.air-=dt;
     P.x+=Math.cos(P.h)*P.v*dt; P.y+=Math.sin(P.h)*P.v*dt;
     const lim=C.W/2-4; if(Math.abs(N.lat)>lim){ const out=Math.abs(N.lat)-lim; P.x-=-Math.sin(N.ang)*Math.sign(N.lat)*out; P.y-=Math.cos(N.ang)*Math.sign(N.lat)*out; P.v*=0.985; }
@@ -169,8 +171,9 @@ function raceLevel(spec){
       const f=P.ph-Math.floor(P.ph), nj=nextJumpAhead(P,1e9), ord=['1st','2nd','3rd','4th'][P.place-1];
       hud.innerHTML=`<div class="bars"><div class="bar"><small>LAP ${P.lap}/${R.laps} · ${ord} · ${fmt(R.t*1000)}</small><div class="meter"><i style="left:0;width:${(P.stamina*100).toFixed(0)}%;background:${P.tired?'#e0563a':P.draft?'#6aaae0':'#5fd36a'}"></i></div></div></div>
         <div class="meter" style="height:14px"><i style="left:0;width:${GOOD*100}%;background:#2f7a3a"></i><i style="right:0;width:${GOOD*100}%;background:#2f7a3a"></i><i style="left:0;width:${PERFECT*100}%;background:#bff5c4"></i><i style="right:0;width:${PERFECT*100}%;background:#bff5c4"></i><i style="left:calc(${(f*100).toFixed(1)}% - 2px);width:4px;background:#f2c14e"></i></div>
-        <small style="display:block;margin-top:4px">${P.draft?'DRAFTING · ':''}${nj?'NEXT FENCE: '+nj.j.kind.toUpperCase()+' · '+Math.max(0,Math.round(nj.d-TAKEOFF-P.prog))+' to the line':''}</small>`; },
+        <small style="display:block;margin-top:4px">${P.draft?'DRAFTING · ':''}${nj?(()=>{ const to=nj.d-TAKEOFF-P.prog, e=to/Math.max(30,P.v), w=0.11+0.1*R.mount.jump, now=Math.abs(e)<=w&&P.air<=0;
+          return now?'<b style="color:#bff5c4">JUMP NOW!</b> · '+nj.j.kind.toUpperCase():'NEXT FENCE: '+nj.j.kind.toUpperCase()+' · '+Math.max(0,Math.round(to))+' to the line'; })():''}</small>`; },
     camera(cam,dt){ if(!R){ cam.position.set(C.line[0][0]*s-6,8,C.line[0][1]*s+10); cam.lookAt(C.line[0][0]*s,0,C.line[0][1]*s); return; }
       const P=R.P, a=R.camAng; W3.set(P.x*s-Math.cos(a)*7,3.4,P.y*s-Math.sin(a)*7); cam.position.lerp(W3,Math.min(1,dt*6)); T3.set(P.x*s+Math.cos(a)*6,1.2,P.y*s+Math.sin(a)*6); cam.lookAt(T3); } };
-  lv.spawn={x:0,z:0}; lv.ground=()=>0;
+  lv.spawn={x:0,z:0}; lv.ground=()=>0; lv._dbg=()=>({R,C,begin});
   return lv; }

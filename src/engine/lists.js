@@ -24,8 +24,8 @@ function listsLevel(spec){
   const PAL=SYS.LISTS_PAL[spec.keep], TH=SYS.TOURNEY_THEMES[spec.keep], FOE=SYS.LISTS_FOE, h=hexn;
   const WAVE_FOES=['A Hedge Knight','A Squire of the Marches','A Sellsword','A Knight of the Vale','A Tourney Veteran','A Knight Errant'];
   const LADDER_FOES=['Squire Bartholomew','Ser Aldwin the Bold','Ser Percival','Dame Cordelia','The Grand Champion'];
-  const PX=1/16, RA=7.6, REACH=26*PX, CONTACT=13*PX, PARRY_MS=220, GUARD_CUT=0.30, YIELD_MS=3000;
-  const JOUST_GAP=360, JOUST_SPEED=4.2, SWEET=[14,60], PERFECT=[28,44], JS=0.1, LANE=60;
+  const PX=1/16, RA=7.6, REACH=26*PX, CONTACT=13*PX, PARRY_MS=320, GUARD_CUT=0.30, YIELD_MS=5000;
+  const JOUST_GAP=360, JOUST_SPEED=4.2, SWEET=[8,84], PERFECT=[26,54], SLOWMO=130, JS=0.1, LANE=60;
   const scene=new THREE.Scene(); scene.background=new THREE.Color(h(PAL.sky[0])); scene.fog=new THREE.Fog(h(PAL.sky[1]),40,110);
   const lv={id:spec.id,name:TH.name,scene,anim:[],folk:[],spots:[],cam:{pitch:0.3,dist:6,min:6,max:6},zone:()=>''};
   scene.add(new THREE.HemisphereLight(0xfff4e0,0x6a5a40,0.7)); const sun=new THREE.DirectionalLight(0xfff0d8,0.8); sun.position.set(-20,40,20); sun.castShadow=true; sun.shadow.mapSize.set(1536,1536);
@@ -63,7 +63,7 @@ function listsLevel(spec){
     if(T.mode==='waves'){ const n=1+T.round, sz=FOE.waves?{hits:3+0.5*T.round,dmg:0.05+0.01*T.round}:null;
       for(let i=0;i<n;i++){ const a=T.round>1?i/n*Math.PI*2+0.4:-Math.PI/2+(n>1?(i/(n-1)-0.5)*1.6:0), r=T.round>1?RA*0.75:RA*0.55; list.push({x:Math.cos(a)*r,z:Math.sin(a)*r,title:WAVE_FOES[(T.round-1+i)%WAVE_FOES.length],spd:0.55+0.05*T.round,hits:sz.hits,share:sz.dmg}); } }
     else if(T.mode==='ladder'){ const r=T.round; list.push({x:0,z:-RA*0.15,title:LADDER_FOES[Math.min(r-1,4)],spd:0.74+0.13*r,hits:5+1.0*r,share:0.06+0.014*r}); }
-    else list.push({x:0,z:-RA*0.15,title:'The Keep Champion',spd:0.9,hits:16,share:0.12});
+    else list.push({x:0,z:-RA*0.15,title:'The Keep Champion',spd:0.9,hits:12,share:0.11});
     T.foes=list.map((o,i)=>{ const m=foeKnight(i+T.round); scene.add(m); const hp=Math.max(10,Math.round(swing*o.hits));
       return Object.assign(o,{m,hp,maxHp:hp,dmg:Math.max(1,Math.round(pm*o.share)),ai:Math.random()*60,wind:0,lunge:0,cd:0,knock:0,kx:0,kz:0,stagger:0,recover:0,hurt:0,clangs:0,alive:true,_l:false,face:0}); }); }
   function start(mode){ const S=GAME.S; T={mode,round:1,pmax:S.maxHp,php:S.maxHp,foes:[],swing:0,combo:0,comboT:0,pound:0,guard:false,guardT:0,parry:0,inv:0,rest:false,px:0,pz:RA*0.35,heading:-Math.PI/2,t:0,J:null,done:false};
@@ -80,21 +80,27 @@ function listsLevel(spec){
     lanceMe=Cy(0.05,0.07,4.2,6,0xe8e0cf,0,0,0,group(0,0,0,meHorse)); lanceMe.rotation.x=Math.PI/2; lanceMe.position.set(0.45,2.0,1.6);
     lanceFoe=Cy(0.05,0.07,4.2,6,h(fc.trim),0,0,0,group(0,0,0,foeHorse)); lanceFoe.rotation.x=Math.PI/2; lanceFoe.position.set(0.45,2.0,1.6);
     scene.add(ring,shieldMark); call('LOWER YOUR LANCE!'); }
-  const jShield=J=>[Math.sin(J.t*0.05+J.pass*1.7)*0.45,Math.sin(J.t*0.037+J.pass)*0.25];
+  // V265: the shield sways gently and slowly; the aim ring settles toward it when you leave the stick alone
+  const jShield=J=>[Math.sin(J.t*0.022+J.pass*1.7)*0.28,Math.sin(J.t*0.017+J.pass)*0.14];
   function joustTick(f,inp){ const J=T.J; J.t+=f;
-    if(J.phase==='charge'){ J.braced=!!inp.held.B; const k=0.035*f; J.aimX+=inp.x*k; J.aimY+=inp.y*k;
-      J.aimX+=Math.sin(J.t*0.11)*0.006*f; J.aimY+=Math.cos(J.t*0.16)*0.005*f; J.aimX=Math.max(-1,Math.min(1,J.aimX)); J.aimY=Math.max(-1,Math.min(1,J.aimY));
-      if(inp.pressed.A&&!J.struck){ const g=J.gap, timing=(g>=PERFECT[0]&&g<=PERFECT[1])?1:(g>=SWEET[0]&&g<=SWEET[1])?0.65:0, sh=jShield(J), miss=Math.hypot(J.aimX-sh[0],J.aimY-sh[1]), aim=Math.max(0,1-miss/0.55);
-        J.struck={timing,aim,dmg:Math.round(48*timing*aim*(J.braced?0.66:1))}; }
-      J.gap-=JOUST_SPEED*f*Math.min(1,0.4+J.t/40);
-      if(J.gap<=0){ const mine=J.struck?J.struck.dmg:0, pat=[1,0.75,1][(J.pass-1)%3], his=Math.round(42*J.skill*pat*(J.braced?0.34:1));
+    if(J.phase==='charge'){ J.braced=!!inp.held.B; const k=0.03*f, sh0=jShield(J), still=Math.abs(inp.x)<0.15&&Math.abs(inp.y)<0.15;
+      J.aimX+=inp.x*k; J.aimY+=inp.y*k; if(still&&!J.struck){ const pull=1-Math.pow(0.975,f); J.aimX+=(sh0[0]-J.aimX)*pull; J.aimY+=(sh0[1]-J.aimY)*pull; }
+      J.aimX=Math.max(-1,Math.min(1,J.aimX)); J.aimY=Math.max(-1,Math.min(1,J.aimY));
+      // a press before the window is only a twitch of the lance: it costs nothing, the strike waits
+      if(inp.pressed.A&&!J.struck){ const g=J.gap;
+        if(g>SWEET[1]){ if(g<SWEET[1]+160&&!J.early){ J.early=1; call('NOT YET — WAIT FOR THE GREEN','#cfd6e0'); } }
+        else { const timing=(g>=PERFECT[0]&&g<=PERFECT[1])?1:(g>=SWEET[0])?0.75:0, sh=jShield(J), miss=Math.hypot(J.aimX-sh[0],J.aimY-sh[1]), aim=Math.max(0.3,1-Math.max(0,miss-0.12)/0.75);
+          J.struck={timing,aim,dmg:Math.round(46*timing*aim*(J.braced?0.7:1))}; if(timing===1) call('PERFECT!','#fff2c8'); } }
+      // the moment of the meeting runs slow, so the strike is a choice and not a reflex
+      const slow=J.gap<SLOWMO&&J.gap>0?0.4:1; J.slow=slow; J.gap-=JOUST_SPEED*f*slow*Math.min(1,0.4+J.t/40);
+      if(J.gap<=0){ const mine=J.struck?J.struck.dmg:0, pat=[1,0.75,1][(J.pass-1)%3], spoil=mine>=30?0.5:mine>0?0.8:1, his=Math.round(30*J.skill*pat*spoil*(J.braced?0.4:1));
         J.foe=Math.max(0,J.foe-mine); J.me=Math.max(0,J.me-his);
-        const said=mine>=38?'SQUARE ON THE SHIELD! HIS LANCE SHATTERS':mine>=18?'A SOLID HIT':mine>0?'A GLANCING BLOW':J.struck?(J.struck.timing?'MISSED HIS SHIELD':'TOO EARLY — OR TOO LATE'):'YOU NEVER STRUCK';
+        const said=mine>=36?'SQUARE ON THE SHIELD! HIS LANCE SHATTERS':mine>=18?'A SOLID HIT':mine>0?'A GLANCING BLOW':J.struck?(J.struck.timing?'MISSED HIS SHIELD':'TOO EARLY — OR TOO LATE'):'YOU NEVER STRUCK';
         J.phase='pass'; J.wait=90; J.gap=0; call(said,mine>=38?'#fff2c8':mine>0?'#5fd36a':'#e0563a'); spark(LANE-1.1,2.0,joustZ().foe+0.6,mine>0?0xf2c14e:0xffffff); } }
     else if(J.phase==='pass'){ J.wait-=f; J.gap-=JOUST_SPEED*f;
-      if(J.wait<=0){ if(J.foe<=0||J.me<=0||J.pass>=J.passes){ J.phase='done'; J.wait=80; J.won=J.foe<J.me;
+      if(J.wait<=0){ if(J.foe<=0||J.me<=0||J.pass>=J.passes){ J.phase='done'; J.wait=80; J.won=J.foe<=J.me;
           call(J.won?(J.foe<=0?'UNHORSED! THE LISTS ARE YOURS':'YOU WIN ON THE PASSES'):(J.me<=0?'UNHORSED!':'HE WINS ON THE PASSES'),J.won?'#fff2c8':'#e0563a'); }
-        else { J.pass++; J.phase='charge'; J.gap=JOUST_GAP; J.struck=null; J.t=0; call('PASS '+J.pass+' OF '+J.passes); } } }
+        else { J.pass++; J.phase='charge'; J.gap=JOUST_GAP; J.struck=null; J.early=0; J.t=0; call('PASS '+J.pass+' OF '+J.passes); } } }
     else if(J.phase==='done'){ J.wait-=f; if(J.wait<=0){ const won=J.won; endJoust();
         if(T.mode==='ladder'){ if(won) restCard(); else finish(false); } else finish(won); } } }
   function joustZ(){ const J=T.J, ridden=(JOUST_GAP-(J.phase==='done'?0:J.gap))/2, me=18-ridden*JS; return {me, foe:me-Math.max(-60,J.gap)*JS}; }
@@ -141,7 +147,7 @@ function listsLevel(spec){
         const vx=T.px-fo.x, vz=T.pz-fo.z, d=Math.hypot(vx,vz)||1, sp=fo.spd*PX;
         if(fo.wind){} else if(fo.ai<100){ const tg=Math.atan2(vz,vx)+Math.PI/2; fo.x+=(Math.cos(tg)*sp*0.7+vx/d*0.25*PX)*f; fo.z+=(Math.sin(tg)*sp*0.7+vz/d*0.25*PX)*f; }
         else if(d>0.55){ fo.x+=vx/d*sp*2.1*f; fo.z+=vz/d*sp*2.1*f; }
-        if(d<CONTACT+0.25&&fo.cd<=0&&T.inv<=0&&fo.lunge){ let dmg=fo.dmg*2;
+        if(d<CONTACT+0.25&&fo.cd<=0&&T.inv<=0&&fo.lunge){ let dmg=Math.round(fo.dmg*1.5);
           if(T.guard&&T.parry>0){ dmg=0; fo.cd=70; T.inv=30; fo.kx=-vx/d*9*PX; fo.kz=-vz/d*9*PX; fo.knock=10; fo.wind=fo.lunge=0; fo.ai=0; fo.stagger=50; call('PARRIED! STRIKE NOW','#fff2c8'); }
           else if(T.guard) dmg=Math.max(1,Math.round(dmg*GUARD_CUT));
           if(dmg>0) T.php-=dmg; fo.cd=Math.max(fo.cd,50); T.inv=Math.max(T.inv,40); } }
@@ -183,12 +189,12 @@ function listsLevel(spec){
         meHorse.position.set(LANE+1.1,0,z.me); meHorse.rotation.y=Math.PI; meHorse.userData.gallop(t,gal,0); K.animate(dt,'idle'); K.guarding=J.braced;
         foeHorse.position.set(LANE-1.1,0,z.foe); foeHorse.rotation.y=0; foeHorse.userData.gallop(t+1,gal,0); foeRider.animate(dt,'idle');
         const sh=jShield(J), base=new THREE.Vector3(LANE-0.8,2.0,z.foe+0.4); shieldMark.position.set(base.x+sh[0]*0.6,base.y-sh[1]*0.6,base.z); ring.position.set(base.x+J.aimX*0.6,base.y-J.aimY*0.6,base.z+0.05);
-        ring.visible=shieldMark.visible=J.phase==='charge'&&J.gap<300; ring.material=glow(J.struck?0xa89878:0xfff2c8);
+        ring.visible=shieldMark.visible=J.phase==='charge'&&J.gap<300; { const m=Math.hypot(J.aimX-sh[0],J.aimY-sh[1]); ring.material=glow(J.struck?0xa89878:m<0.18?0x7af08a:0xfff2c8); }
         lanceMe.rotation.y=0.12-J.aimX*0.05; lanceMe.rotation.x=Math.PI/2+J.aimY*0.08;
         const op=Math.max(0.35,Math.min(1,(JOUST_GAP-J.gap)/120)), toX=g=>(1-Math.max(0,Math.min(JOUST_GAP,g))/JOUST_GAP)*100;
         hud.innerHTML=bars(J.me,100,J.foe,100,J.name.toUpperCase()+' · PASS '+J.pass+'/'+J.passes)
           +`<small>THE JOUST${T.mode==='ladder'?' · BOUT 1/5':''}${J.braced?' · BRACED':''}</small>`
-          +(J.phase==='charge'?`<div class="meter" style="margin-top:6px;opacity:${op}"><i style="left:${toX(SWEET[1])}%;width:${toX(SWEET[0])-toX(SWEET[1])}%;background:#2f7a3a"></i><i style="left:${toX(PERFECT[1])}%;width:${toX(PERFECT[0])-toX(PERFECT[1])}%;background:#bff5c4"></i><i style="left:calc(${toX(J.gap)}% - 2px);width:4px;background:${J.struck?'#a89878':'#f2c14e'}"></i></div><small>${J.struck?'STRUCK':'STRIKE AS YOU MEET'}</small>`:'');
+          +(J.phase==='charge'?`<div class="meter" style="margin-top:6px;opacity:${op}"><i style="left:${toX(SWEET[1])}%;width:${toX(SWEET[0])-toX(SWEET[1])}%;background:#2f7a3a"></i><i style="left:${toX(PERFECT[1])}%;width:${toX(PERFECT[0])-toX(PERFECT[1])}%;background:#bff5c4"></i><i style="left:calc(${toX(J.gap)}% - 2px);width:4px;background:${J.struck?'#a89878':'#f2c14e'}"></i></div><small style="${!J.struck&&J.gap<=SWEET[1]?'color:#bff5c4;font-weight:700':''}">${J.struck?'STRUCK':J.gap<=SWEET[1]?'STRIKE NOW!':'AIM THE RING ON HIS SHIELD · STRIKE IN THE GREEN'}</small>`:'');
         return; }
       footTick(f,dt,inp); if(!T||T.done) return;
       const tgt=T.foes.find(fo=>fo.alive)||T.foes[0];
@@ -199,5 +205,5 @@ function listsLevel(spec){
       const hx=Math.cos(T.heading), hz=Math.sin(T.heading), lk=locked(), side=lk?2.1:1.2, back=lk?4.8:4.6; C3.set(T.px-hx*back-hz*side,lk?3.3:2.9,T.pz-hz*back+hx*side); cam.position.lerp(C3,Math.min(1,dt*(lk?6:4)));
       const tg=lk&&T.foes.find(f=>f.alive); if(tg) L3.set((T.px+tg.x)/2,1.1,(T.pz+tg.z)/2); else L3.set(T.px+hx*2.5,1.1,T.pz+hz*2.5); cam.lookAt(L3); },
     pet:false };
-  lv.spawn={x:0,z:3}; lv.ground=()=>0; lv.onLeave=()=>cleanup();
+  lv.spawn={x:0,z:3}; lv.ground=()=>0; lv.onLeave=()=>cleanup(); lv._dbg=()=>T;
   return lv; }

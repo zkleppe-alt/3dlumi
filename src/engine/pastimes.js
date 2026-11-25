@@ -133,77 +133,7 @@ function pastimes(world,D){
       world.spots.push({x:x+0.5,z:y+0.5,r:1.6,label:'Surf',who:'The surf',action:()=>{ surfFrom={x:P.x,z:P.z,face:P.face+Math.PI}; ENGINE.go('surf'); }}); }); }
   let surfFrom=null;
   ENGINE.add({id:'surf',lazy:()=>surfLevel()});
-  function surfLevel(){ const scene=new THREE.Scene(); scene.background=new THREE.Color(0x5a3a7a); scene.fog=new THREE.Fog(0x8a5a7a,30,60);
-    const SW=16, SH=9, X=x=>x-SW/2, Y=y=>SH-y;    // the 2D game's screen, laid on the x–y plane
-    const sky=new THREE.Mesh(new THREE.PlaneGeometry(60,30),new THREE.MeshBasicMaterial({vertexColors:true,fog:false})); { const c=[], col=new THREE.Color(); const pa=sky.geometry.attributes.position;
-      for(let i=0;i<pa.count;i++){ const f=(pa.getY(i)+15)/30; col.set(0xc98a6a).lerp(new THREE.Color(0x2a1a4a),f); c.push(col.r,col.g,col.b); } sky.geometry.setAttribute('color',new THREE.Float32BufferAttribute(c,3)); }
-    sky.position.set(0,6,-14); scene.add(sky);
-    const sun=new THREE.Mesh(new THREE.CircleGeometry(0.75,24),new THREE.MeshBasicMaterial({color:0xf4c87a,fog:false})); sun.position.set(X(SW*0.72),Y(SH*0.36),-13); scene.add(sun);
-    scene.add(new THREE.HemisphereLight(0xffe0c8,0x203050,0.8)); const dl=new THREE.DirectionalLight(0xffd8b0,0.6); dl.position.set(4,6,8); scene.add(dl);
-    // two wave sheets rebuilt each frame from the game's own profile (back, then front)
-    const N=64; const sheet=(c0,c1,z)=>{ const geo=new THREE.PlaneGeometry(1,1,N,6); const m=new THREE.Mesh(geo,new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide})); m.frustumCulled=false; m.position.z=z; scene.add(m);
-      const cols=[]; const ca=new THREE.Color(c0), cb=new THREE.Color(c1); for(let j=0;j<=6;j++) for(let i=0;i<=N;i++){ const c=ca.clone().lerp(cb,j/6); cols.push(c.r,c.g,c.b); } geo.setAttribute('color',new THREE.Float32BufferAttribute(cols,3)); return m; };
-    const back=sheet(0x1e5a8a,0x0e3050,-1.2), front=sheet(0x3aa0c8,0x0c3a60,0);
-    function profile(mesh,t,build,off,ampR,ampL){ const pa=mesh.geometry.attributes.position, waveTop=SH*0.42-SH*0.094*build;
-      for(let j=0;j<=6;j++) for(let i=0;i<=N;i++){ const p=i/N, x=p*SW, roll=Math.sin(p*Math.PI*1.1-t*0.0016)*SH*ampR*build, lift=(1-p)*SH*ampL*build, top=waveTop+off+roll-lift+SH*0.125*(1-build);
-        const f=j/6, y=top+(SH-top)*f, k=j*(N+1)+i; pa.setXYZ(k,X(x),Y(y),-(1-f)*(0.6+(1-p)*1.4)*build); } pa.needsUpdate=true; mesh.geometry.computeVertexNormals(); return waveTop; }
-    const sea=new THREE.Mesh(new THREE.PlaneGeometry(80,40),new THREE.MeshLambertMaterial({color:0x0c3a60})); sea.rotation.x=-Math.PI/2; sea.position.set(0,0,-10); scene.add(sea);
-    const tube=new THREE.Mesh(new THREE.CircleGeometry(1,24),new THREE.MeshBasicMaterial({color:0x061a2e,transparent:true})); tube.position.z=0.05; scene.add(tube);
-    const lip=new THREE.Mesh(new THREE.TorusGeometry(1,0.08,6,24,Math.PI),new THREE.MeshBasicMaterial({color:0xeaf6ff,transparent:true})); lip.position.z=0.1; scene.add(lip);
-    const spray=[]; for(let i=0;i<26;i++){ const s=Sp(0.12,glow(0xeaf6ff),0,0,0.15,scene,6,4); spray.push(s); }
-    const foamPool=[]; for(let i=0;i<60;i++){ const m=new THREE.Mesh(new THREE.SphereGeometry(0.07,5,4),new THREE.MeshBasicMaterial({color:0xebf6ff,transparent:true})); m.visible=false; scene.add(m); foamPool.push(m); }
-    const rider=new THREE.Group(); scene.add(rider); const kn=COMBAT.knightModel(); kn.scale.setScalar(0.62); kn.position.y=0.12; rider.add(kn);
-    const board=B(1.3,0.08,0.34,0xe0b050,0,0,0,rider); B(1.32,0.02,0.36,0x8a5f22,0,-0.01,0,rider);
-    const hud=$('hudMg'), call=$('call');
-    const lv={id:'surf',name:'The Knight’s Wave',scene,folk:[],spots:[],anim:[],cam:{pitch:0,dist:12},
-      custom:{ knight:false, buttons:[{id:'B',label:'CUTBACK'},{id:'A',label:'RIDE',big:true}],
-        onEnter(){ const s=S(); kn.dress(s);
-          g={phase:'lineup',score:0,combo:0,wavesRidden:0,bestTrick:0,barrelsMade:0,surferX:0.5,surferY:0.55,dir:1,inAir:false,airT:0,cutFlash:0,waveLife:0,waveDur:12000,buildT:0,fadeT:0,riding:false,foam:[],isBarrelWave:false,barrelOpen:0,tucked:false,tuckT:0,barrelScored:false,trick:null,awarded:false,tier:null,newBest:false};
-          flash(`🏄 The Knight's Wave — a ${D.surfWaves}-wave set rolls in!`); },
-        tick(dt,t,input){ dt*=1000; if(input.pressed.A) press('A'); if(input.pressed.B) press('B'); update(dt,input); draw(t*1000); },
-        camera(cam,dt){ const half=Math.tan(cam.fov*Math.PI/360)*12.5*cam.aspect, lim=Math.max(0,SW/2-half-0.1), want=Math.max(-lim,Math.min(lim,rider.position.x));
-          camX+=(want-camX)*Math.min(1,(dt||0.016)*3); cam.position.set(camX,4.4,12.5); cam.lookAt(camX,4.2,0); } } };
-    let camX=0;
-    let g=null; const TR=D.surfTricks;
-    const flash=(txt)=>{ call.textContent=txt; call.style.opacity=1; clearTimeout(flash.t); flash.t=setTimeout(()=>call.style.opacity=0,1100); };
-    const add=(pts,name)=>{ g.score+=pts; if(pts>g.bestTrick) g.bestTrick=pts; if(name){ g.trick={text:name,pts,t:1000}; flash(name+(pts?' +'+pts:'')); } };
-    function start(){ Object.assign(g,{surferX:0.5,surferY:0.55,dir:1,inAir:false,airT:0,cutFlash:0,waveLife:0,waveDur:10000+Math.random()*10000,buildT:0,fadeT:0,riding:false,combo:0,foam:[],isBarrelWave:Math.random()<0.55,barrelOpen:0,tucked:false,tuckT:0,barrelScored:false,phase:'building'}); }
-    function results(){ g.phase='results'; g.tier=D.surfTiers.find(t=>g.score>=t.min); if(!g.awarded){ g.awarded=true; const s=S(); GAME.addGold(g.tier.gold); const r=GAME.gainXp(g.tier.xp); if(g.tier.sp) s.skillPoints+=g.tier.sp; g.newBest=g.score>(s.surfBest||0); if(g.newBest) s.surfBest=g.score; GAME.save(); } }
-    function leave(){ const t=g.tier||D.surfTiers[D.surfTiers.length-1]; ENGINE.go('world',surfFrom||world.spawn); setTimeout(()=>UI.toast(`🏄 ${t.name} — ${g.score} GRACE · +${t.gold}g · +${t.xp} XP${t.sp?` · ⭐ +${t.sp} skill point`:''}${g.newBest?' · NEW BEST!':''}`,3400),450); }
-    function press(k){ if(g.phase==='lineup'){ if(k==='A') start(); else results(); return; } if(g.phase==='results'){ leave(); return; }
-      if(g.phase==='building'){ g.riding=true; g.phase='drop'; add(50,TR.drop); return; } if(g.phase!=='drop'||g.inAir) return;
-      if(k==='B'){ g.dir=-g.dir; g.cutFlash=220; g.combo++; add(30+g.combo*10,TR.cutback+' ×'+g.combo); }
-      if(k==='A'){ if(g.tucked) return; if(g.surferY<0.22){ g.inAir=true; g.airT=0; g.combo++; add(100+g.combo*25,TR.air); } else add(0,TR.missLip); } }
-    function update(dt,input){ if(!g) return;
-      if(g.phase==='building'){ g.buildT+=dt; if(g.buildT>4500){ g.riding=true; g.phase='drop'; } }
-      if(g.phase==='drop'){ g.waveLife+=dt; g.barrelOpen=g.isBarrelWave?Math.max(0,(Math.sin(g.waveLife*0.0013)*0.5+0.5)-0.35)/0.65:0;
-        if(g.inAir){ g.airT+=dt; if(g.airT>=700){ g.inAir=false; g.surferY=0.3; add(40,TR.land); } }
-        else { const sp=0.0011*dt; if(input.y<-0.3) g.surferY-=sp; if(input.y>0.3) g.surferY+=sp; if(input.x<-0.3) g.surferX-=sp*1.1; if(input.x>0.3) g.surferX+=sp*1.1;
-          if(g.cutFlash>0){ g.cutFlash-=dt; g.surferX+=g.dir*0.0016*dt; } else g.surferX+=g.dir*0.00018*dt;
-          g.surferX=Math.max(0.06,Math.min(0.94,g.surferX)); g.surferY=Math.max(0.05,Math.min(0.92,g.surferY));
-          const inPocket=g.surferY<0.34&&g.surferX<0.5, was=g.tucked; g.tucked=g.barrelOpen>0.35&&inPocket;
-          if(g.tucked){ g.tuckT+=dt; if(!g.barrelScored&&g.tuckT>250){ g.barrelScored=true; g.combo++; g.barrelsMade++; add(150+g.combo*20,TR.barrel); } if(Math.random()<0.06) add(3); }
-          else { if(was&&g.barrelScored&&g.tuckT>250) add(60,'MADE IT OUT!'); g.tuckT=0; g.barrelScored=false; }
-          if(g.surferY<0.3&&Math.random()<0.04) add(2); }
-        if(Math.random()<0.5) g.foam.push({x:g.surferX,y:g.surferY,vx:-g.dir*(0.4+Math.random()),life:1}); if(g.waveLife>g.waveDur){ g.fadeT=0; g.tucked=false; g.phase='fade'; } }
-      if(g.phase==='fade'){ g.fadeT+=dt; if(g.fadeT>1600){ g.wavesRidden++; if(g.wavesRidden>=D.surfWaves) results(); else g.phase='lineup'; } }
-      g.foam.forEach(f=>{ f.x+=f.vx*0.004; f.life-=dt/700; }); g.foam=g.foam.filter(f=>f.life>0).slice(-60); }
-    function draw(t){ if(!g) return; let build=g.phase==='building'?0.45+Math.min(0.55,g.buildT/4500*0.55):(g.phase==='lineup'||g.phase==='results')?0.4:1; const fade=g.phase==='fade'?Math.max(0,1-g.fadeT/1600):1;
-      profile(back,t,build,0,0.031,0.081); const waveTop=profile(front,t,build,SH*0.056,0.025,0.056); back.material.opacity=front.material.opacity=1;
-      const mapY=y01=>{ const top=waveTop+SH*0.05, bot=SH-SH*0.075; return top+(bot-top)*y01; };
-      const open=g.phase==='drop'&&g.isBarrelWave?g.barrelOpen:0; tube.visible=lip.visible=open>0.1;
-      if(tube.visible){ const tcx=SW*0.30, tcy=waveTop+SH*0.106, tw=SW*0.25*open, th=SH*0.219*open; tube.position.set(X(tcx),Y(tcy),0.2); tube.scale.set(tw*0.55,th*0.6,1); tube.material.opacity=0.85*fade;
-        lip.position.set(X(tcx),Y(tcy),0.25); lip.scale.set(tw*0.62,th*0.7,1); lip.rotation.z=Math.PI*0.05; }
-      const curlX=(Math.sin(t*0.0011)*0.5+0.5)*SW*0.5;
-      spray.forEach((s,i)=>{ const x=curlX-i*0.3+Math.sin(t*0.004+i)*0.2, p=Math.max(0,Math.min(1,x/SW)), lift=(1-p)*SH*0.081*build, y=waveTop-lift+SH*0.125*(1-build)+Math.sin(i*1.3+t*0.005)*0.25;
-        s.visible=x>0; s.position.set(X(x),Y(y),0.1); s.scale.setScalar((4-(i%3))/4*fade); });
-      foamPool.forEach((m,i)=>{ const f=g.foam[i]; m.visible=!!f; if(f){ m.position.set(X(f.x*SW),Y(mapY(f.y)),0.3); m.scale.setScalar(1+f.life); m.material.opacity=f.life*0.8*fade; } });
-      const riding=g.phase==='drop'||g.phase==='fade'; rider.visible=true;
-      if(riding){ rider.position.set(X(g.surferX*SW),Y(mapY(g.surferY))+(g.inAir?Math.sin(g.airT/700*Math.PI)*1.2:0),0.45); rider.rotation.set(0,g.dir>0?Math.PI/2:-Math.PI/2,0); rider.rotation.z=g.inAir?-Math.sin(g.airT/700*Math.PI)*0.5*g.dir:0; kn.animate(0.016,'idle',0); }
-      else { rider.position.set(X(SW*0.5),Y(SH*0.82),1.2); rider.rotation.set(0,Math.PI/2,0); kn.animate(0.016,'walk',0.4); }
-      hud.innerHTML=`🏄 ${g.score} GRACE · wave ${Math.min(D.surfWaves,g.wavesRidden+(g.phase==='lineup'||g.phase==='results'?0:1))}/${D.surfWaves}${g.combo>1?' · combo ×'+g.combo:''}${g.tucked?' · IN THE BARREL':''}<br><span style="font-weight:500;color:#c8d6ea">`+
-        (g.phase==='lineup'?'RIDE paddles into the next wave · CUTBACK ends the set':g.phase==='building'?'RIDE to drop in early':g.phase==='results'?`${g.tier.name} — ${g.tier.line} · +${g.tier.gold}g +${g.tier.xp} XP${g.tier.sp?' ⭐+1':''} · tap to come ashore`:'stick: carve · RIDE at the lip for air · CUTBACK turns · tuck into the barrel on the left')+'</span>'; }
-    return lv; }
+  function surfLevel(){ return surfWave({D,S,world,from:()=>surfFrom}); }   // V265: Saltmere Point (engine/surf.js)
 
   // ── ⛵ the regatta: the game's own module, on its own canvas ──
   if(D.regatta&&typeof openBoatRace==='function'){ const cv=document.createElement('canvas'); cv.style.cssText='position:fixed;inset:0;width:100%;height:100%;z-index:30;touch-action:none;background:#06101c'; cv.hidden=true; document.body.appendChild(cv);
