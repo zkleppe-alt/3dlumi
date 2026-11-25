@@ -78,10 +78,47 @@ const ARMOR=(function(){
   const T={};
   // ── HELM: a faceted great helm — crown, straight cheeks, a keel down the face; the T of the sight and breath dark; the visor
   //  edged in gold, a gold crest running from the crown down to an arrow-point over the brow, a gilt boss at each temple ──
-  T.helm=function(ctx){ const K=ctx.K, M=K.M, head=K.rig.head, g=piece(ctx,head);
-    const E=bounds(head,o=>/^(helm2|gold2|helm|visor|gold)$/.test(o.userData.part),[[-0.118,-0.136,-0.13],[0.118,0.19,0.144]]);
+  /* V261: THE HELM KIT. The head measured (its box from the posed body, in the head joint's frame); a style is laid over it: 'great'
+     (the Templar's great helm, now sized to his head), 'kettle' (a brimmed war-hat, the face open), 'sallet' (rounded, a sweeping tail,
+     a visor), 'bascinet' (pointed, the face open, a mail aventail), 'coif' (a mail hood). ── */
+  function headBox(K,gap){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; bodySync(K); const hd=K.rig.head, body=F.body, R=F.D.reg, P=body.geometry.attributes.position; body.skeleton.update();
+    const pts=[]; for(let q=0;q<P.count;q++){ if(R[q]!=='head') continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); hd.worldToLocal(_bv); if(_bv.length()>0.3) continue; pts.push(_bv.clone()); }
+    if(pts.length<40) return null; const ys=pts.map(p=>p.y).sort((a,b)=>a-b), y0=ys[Math.floor(ys.length*0.02)], y1=ys[ys.length-1], H=y1-y0, sk=pts.filter(p=>p.y>y0+0.3*H);   // the skull, above the jaw
+    const b=new THREE.Box3().setFromPoints(sk); b.min.y=y0; b.max.y=y1; b.expandByScalar(gap||0); return b; }
+  T.helm=function(ctx){ const K=ctx.K; K._helmFit=null; if(K._armFit!==false&&!ctx.style0){ const hb=headBox(K,0.018); if(hb){ ctx.headBox=hb; } } return T.helmGreat(ctx); };
+  function helmKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.helm||M.steel, MA=leatherM(K,0x6a6e74), LA=leatherM(K,0x2e2018), hb=headBox(K,0.016); if(!hb) return false; K._helmFit=null;
+    const head=K.rig.head, g=piece(ctx,head); g.userData.fitted=true; const c=hb.getCenter(new THREE.Vector3()), XR=(hb.max.x-hb.min.x)/2, ZR=(hb.max.z-hb.min.z)/2, YB=hb.min.y, YT=hb.max.y, H=YT-YB;
+    const at=(ph,y,k)=>V(c.x+XR*k*Math.sin(ph),y,c.z+ZR*k*Math.cos(ph));
+    const dome=(y0,yTop,k0,mat,part,face)=>mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, a=v*Math.PI/2, k=k0*Math.cos(a), y=y0+(yTop-y0)*Math.sin(a), fy=face?face(ph):y0; return at(ph,v===0?Math.max(y0,fy):y,k); },28,8,{smooth:true,two:0.004}),mat,part);
+    const band2=(y,w,k,mat,part)=>mesh(g,surf((u,v)=>at(-Math.PI+u*Math.PI*2,y+w*v,k),32,1,{two:0.002}),mat,part);
+    const brow=YB+0.62*H, chin=YB+0.12*H;
+    if(style==='kettle'){ dome(brow-0.01,YT+0.012,1.02,ST,'helm'); band2(brow-0.012,0.012,1.05,GD,'gold');
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, k=1.04+0.5*v; return at(ph,brow-0.012-0.03*v,k); },32,2,{smooth:true,two:0.004}),ST,'helm');   // the brim, sloping down
+      mesh(g,surf((u,v)=>at(-Math.PI+u*Math.PI*2,brow-0.042-0.006*v,1.54),40,1,{two:0.002}),GD,'gold');
+      mesh(g,surf((u,v)=>{ const ph=-0.1+0.2*u; return at(ph,brow+(YT+0.01-brow)*v,1.03*Math.cos(v*Math.PI/2)+0.01); },2,6,{two:0.002}),GD,'gold'); }   // a ridge over the crown
+    if(style==='sallet'){ const tail=ph=>{ const b=Math.max(0,-Math.cos(ph)); return 0.1*b*b; };
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, a=v*Math.PI/2, k=1.02*Math.cos(a)+0.0, yb=YB+0.3*H+0.03-tail(ph)*0.5, y=yb+(YT+0.014-yb)*Math.sin(a), kk=k+(v<0.4?tail(ph)*(0.4-v)*3:0); return at(ph,y,Math.max(0.02,kk)); },28,9,{smooth:true,two:0.004}),ST,'helm');
+      mesh(g,surf((u,v)=>{ const ph=-0.95+1.9*u; return at(ph,brow-0.01+v*0.014,1.06); },16,1,{two:0.002}),M.visor||new THREE.MeshBasicMaterial({color:0x07080c}),'slit');   // the sight
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2; return at(ph,YB+0.3*H+0.03-tail(ph)*0.5+v*0.01,1.05+tail(ph)*1.2); },40,1,{two:0.002}),GD,'gold'); }
+    if(style==='bascinet'){ mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, k=1.02*Math.pow(1-v,0.75), y0=ph=>Math.abs(ph)<1.0?brow-0.005:chin, yb=y0(ph), y=yb+(YT+0.05-yb)*v; return at(ph,y,k+0.002); },28,9,{smooth:true,two:0.004}),ST,'helm');   // pointed, the face open
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, yb=Math.abs(ph)<1.0?brow-0.005:chin; return at(ph,yb+v*0.01,1.05); },40,1,{two:0.002}),GD,'gold');
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=chin+0.005-(0.1+0.02*Math.max(0,-Math.cos(ph)))*v; return at(ph,y,1.06+0.22*v); },28,4,{smooth:true,two:0.004}),MA,'mail'); }   // the aventail
+    if(style==='coif'){ mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, a=v*Math.PI/2, open=Math.abs(ph)<0.85&&v<0.55, k=Math.cos(a)*0.98+0.02, yb=chin-0.04, y=open?brow+0.01+(YT-brow)*Math.max(0,(v-0.55)/0.45):yb+(YT+0.01-yb)*Math.sin(a); return at(ph,y,k); },30,9,{smooth:true,two:0.004}),MA,'mail');
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=chin-0.04-0.08*v; return at(ph,y,1.0+0.6*v); },28,3,{smooth:true,two:0.004}),MA,'mail');
+      mesh(g,surf((u,v)=>at(-0.9+1.8*u,brow+0.005+v*0.01,1.03),16,1,{two:0.002}),LA,'leather'); }
+    if(style==='barbute'){ mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, a=v*Math.PI/2, k=1.03*Math.cos(a)+0.0, yb=chin-0.01, y=yb+(YT+0.014-yb)*Math.sin(a); return at(ph,y,Math.max(0.02,k)); },28,9,{smooth:true,two:0.004}),ST,'helm');
+      const DK=new THREE.MeshBasicMaterial({color:0x07080c,side:THREE.DoubleSide}); mesh(g,surf((u,v)=>at(-0.42+0.84*u,brow-0.03+v*0.03,1.045),12,1,{}),DK,'slit'); mesh(g,surf((u,v)=>at(-0.12+0.24*u,chin+(brow-0.03-chin)*v,1.045),3,4,{}),DK,'slit');   // the T
+      if(o.rivets) for(let k=0;k<14;k++){ const ph=-Math.PI+k*Math.PI/7; if(Math.abs(ph)<0.5) continue; const r=mesh(g,facetSphere(0.006,0.006,0.006,6,4),GD,'gold'); r.position.copy(at(ph,chin+0.01,1.05)); }
+      mesh(g,surf((u,v)=>at(-Math.PI+u*Math.PI*2,chin-0.012+v*0.012,1.055),36,1,{two:0.002}),GD,'gold'); }
+    if(style==='turban'){ const CL=o.cloth||M.scarf||M.tunic, y0=brow-0.025, y1=YT+0.045;   // V263: one smooth wound cloth, its turns spiralling round, a little fuller at the back and flattened on top
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, a=v*Math.PI/2, y=y0+(y1-y0)*Math.sin(a), wind=0.022*Math.pow(Math.max(0,Math.sin(ph+v*11)),2)*(1-v*0.6), full=1.1+0.05*Math.max(0,-Math.cos(ph)), k=(full+wind)*Math.pow(Math.cos(a),0.55)+0.0; return at(ph,y,Math.max(0.05,k)); },40,10,{smooth:true,two:0.004}),CL,'cloth');
+      mesh(g,surf((u,v)=>{ const ph=-1.2+2.4*u, k=1.07+0.015*Math.sin(v*Math.PI); return at(ph,chin-0.015+(brow-0.05-chin+0.015)*v,k); },18,4,{smooth:true,two:0.004}),o.wrap||CL,'cloth');   // the face wrapped below the eyes
+      const tl=mesh(g,sweep(bez(at(Math.PI*0.75,brow+0.01,1.12),at(Math.PI*0.82,brow-0.05,1.22),at(Math.PI*0.88,chin-0.05,1.25),at(Math.PI*0.9,chin-0.15,1.22),7),0.03,0.006,4,t=>1-0.4*t),CL,'cloth'); tl.userData.soft=1; }
+    ctx.top=V(c.x,YT+(style==='bascinet'?0.05:0.012),c.z-0.02); return true; }
+  T.helmGreat=function(ctx){ const K=ctx.K, M=K.M, head=K.rig.head, g=piece(ctx,head); if(ctx.headBox) g.userData.fitted=true;
+    const E=ctx.headBox||bounds(head,o=>/^(helm2|gold2|helm|visor|gold)$/.test(o.userData.part),[[-0.118,-0.136,-0.13],[0.118,0.19,0.144]]);
     const XR=Math.max(Math.abs(E.min.x),E.max.x)+0.004, ZR=(E.max.z-E.min.z)/2+0.002, CZ=(E.max.z+E.min.z)/2, YB=E.min.y-0.004, YT=E.max.y+0.002, H=YT-YB, YBR=YB+0.64*H, YEYE=YBR-0.04;
-    const S=(ph,y,off)=>{ const v=(y-YB)/H, vb=(YBR-YB)/H; let k=v<vb?(v<0.12?1.04-0.04*v/0.12:1.0):Math.pow(Math.max(0,Math.cos((v-vb)/(1-vb)*Math.PI/2)),0.8);
+    const S=(ph,y,off)=>{ const v=(y-YB)/H, vb=(YBR-YB)/H; let k=v<vb?(v<0.12?1.04-0.04*v/0.12:1.0):Math.pow(Math.max(0,Math.cos((v-vb)/(1-vb)*Math.PI/2)),ctx.helmFlat?0.22:0.8);
       const fr=Math.max(0,Math.cos(ph)), flat=1-0.1*Math.pow(fr,3)*(v<vb+0.1?1:0), keel=0.02*Math.max(0,1-Math.abs(Math.sin(ph))/0.35)*fr*(v<0.93?1:0)*Math.min(1,k*1.2);
       const r=k*flat+(off||0)/ZR; return V(XR*r*Math.sin(ph)*(1+(off||0)*0), y, CZ+ZR*r*Math.cos(ph)+keel*(1+(off||0)*8)); };
     mesh(g,surf((u,v)=>S(-Math.PI+u*Math.PI*2,YB+H*v),16,9),M.helm,'helm');   // the shell: sixteen facets round, nine up
@@ -142,7 +179,7 @@ const ARMOR=(function(){
   T.tabard=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, GD=M.goldD||M.gold;
     const TR=bodyRings(K,to,['chest','belly','pelvis','thigh'],-0.12,0.64,19,32,0.32), NR=bodyRings(K,to,['head'],0.6,0.7,3,16,0.16);
     if(!TR||K._cuirass===false) return T.tabard0(ctx);
-    const g=piece(ctx,to); g.userData.fitted=true;
+    const g=piece(ctx,to); g.userData.fitted=true; const style=ctx.torsoStyle||'templar', plate=style==='templar'||style==='cuirass';   /* V261: the torso kit */
     const yB=0.2, yS=0.47, yF=0.595, yBk=0.615;   // the plate's foot, the armholes, the throat in front and behind
     const top=ph=>{ const c=Math.abs(Math.cos(ph)), f=Math.cos(ph)>0?yF:yBk; return yS+(f-yS)*Math.pow(c,1.6); };
     const smoothR=(ph,y)=>{ let s=0; for(const d of [-0.2,-0.1,0,0.1,0.2]) s+=TR.r(ph+d,y)*(d===0?2:1); return s/6; };   // plate doesn't follow every muscle
@@ -150,8 +187,9 @@ const ARMOR=(function(){
     const R=(ph,y,o)=>smoothR(ph,Math.max(yB,y))+0.014+keel(ph)*(y>0.3?1:0)+0.012*Math.max(0,(0.26-y)/0.06)+(o||0);
     const at=(ph,y,o)=>{ const [cx,cz]=TR.c(Math.max(yB,Math.min(0.6,y))), r=R(ph,y,o); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
     const pl=surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=yB+(top(ph)-yB)*v; return at(ph,y); },40,12,{smooth:true,two:0.004});
-    mesh(g,pl,M.steel,'steel');
     const rib=(fn,n,mat,part,w)=>mesh(g,surf((u,v)=>fn(u,v),n,1,{two:0.002}),mat,part);
+    if(!plate){ clothTorso(ctx,g,style,TR,NR); return; }
+    mesh(g,pl,M.steel,'steel');
     rib((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=top(ph)-0.016+v*0.016; return at(ph,y,0.004); },64,GD,'gold');   // the gilt edge round the throat and the armholes
     rib((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=yB+v*0.016; return at(ph,y,0.004); },48,GD,'gold');             // and round the foot
     [-1,1].forEach(sd=>[0.3,0.39].forEach(y=>{ const ph=sd*Math.PI/2, m=mesh(g,new THREE.BoxGeometry(0.012,0.022,0.07).toNonIndexed(),M.boot,'leather'); m.position.copy(at(ph,y,0.006)); m.rotation.y=ph;   // side straps and buckles
@@ -159,6 +197,7 @@ const ARMOR=(function(){
     // the scarf: navy, rolled round the throat and lying on the plate's top
     if(NR){ const [nx,nz]=NR.c(0.63), SC=M.scarf||M.tunic, y0=0.575, y1=0.66;
       mesh(g,band((ph,y)=>{ const v=(y-y0)/(y1-y0); return NR.r(ph,0.63)+0.022+0.03*Math.pow(1-v,1.5)+0.006*Math.sin(ph*6+v*4); },-Math.PI,Math.PI,y0,y1,36,5,{cx:nx,cz:nz,smooth:true,two:0.004}),SC,'scarf'); }
+    if(style==='cuirass'){ ctx.R=(ph,y)=>R(ph,y); ctx.ZK=1; ctx.CZ=TR.c(0.3)[1]; return; }
     // the tabard: front and back panels over the plate, hanging past the hips
     // V259: the front panel runs on down to the skirt's hem as one cloth (it stands for the skirt's centre panel, hidden while it's worn:
     //  skirtSync); below the belt both panels hang and swing as cloth (userData.soft, pinned above clothPin)
@@ -173,6 +212,41 @@ const ARMOR=(function(){
     g.userData.longFront=true;
     jerusalem(g,M.cross||GD,TR.c(0.42)[0],0.4,0.82,(x,y)=>{ const [cx,cz]=TR.c(y), r=tabR(0,y,yHF); return cz+Math.sqrt(Math.max(0,r*r-(x-cx)*(x-cx))); });
     ctx.R=(ph,y)=>tabR(ph,y,yHF); ctx.ZK=1; ctx.CZ=TR.c(0.3)[1]; };
+  // a cloth or mail coat laid on the torso: 'gambeson' (quilted, to the hips), 'jerkin' (leather, laced down the front), 'hauberk' (mail
+  //  to mid-thigh, split front and back); below the belt it hangs and swings as cloth
+  function clothTorso(ctx,g,style,TR,NR){ const K=ctx.K, M=K.M, o=ctx.torsoOpts||{}, GD=o.trim||M.goldD||M.gold, MAT=o.cloth||(style==='gambeson'?leatherM(K,0xbfae8a):style==='jerkin'||style==='brigandine'?leatherM(K,0x6e4a2c):style==='robe'?M.tunic:leatherM(K,0x6a6e74)), LA=o.leather||leatherM(K,0x2e2018), SE=o.seam||leatherM(K,0x8c7c5c);
+    const yN=0.585, yH=o.hem!==undefined?o.hem:style==='hauberk'||style==='scale'?-0.26:style==='robe'?-0.62:style==='gambeson'?-0.08:0.0, yPin=0.07, gap=style==='hauberk'?0.008:style==='scale'?0.012:0.014;
+    const smoothR=(ph,y)=>{ let s2=0; for(const d of [-0.18,-0.09,0,0.09,0.18]) s2+=TR.r(ph+d,y)*(d===0?2:1); return s2/6; };
+    const at=(ph,y,o)=>{ const yy=Math.max(-0.1,Math.min(0.6,y)), [cx,cz]=TR.c(yy), r=smoothR(ph,yy)+gap+(o||0)+(y<0.12?(style==='robe'?0.055:0.03)*Math.pow(Math.max(0,(0.12-y)/0.4),1.1):0);   /* a robe falls fuller */ return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
+    const top=ph=>{ const c=Math.cos(ph); return 0.47+(yN-0.47)*Math.pow(Math.abs(c),1.4)-(c>0?0.02:0); };   // the armholes and the neck
+    const split=style==='hauberk'?(ph,y)=>y<0.02&&(Math.abs(Math.sin(ph))<0.05):()=>false;
+    const body=mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=yH+(top(ph)-yH)*v; return at(ph,y); },40,14,{smooth:true,two:0.004}),MAT,style==='hauberk'?'mail':'cloth'); body.userData.soft=1; body.userData.clothPin=yPin;
+    const rib=(fn,n,mat,part)=>mesh(g,surf((u,v)=>fn(u,v),n,1,{two:0.002}),mat,part);
+    if(style==='gambeson'){ for(let k=1;k<9;k++){ const y=yH+(0.5-yH)*k/9; rib((u,v)=>at(-Math.PI+u*Math.PI*2,y+v*0.004,0.003),40,SE,'cloth'); } for(let k=0;k<12;k++){ const ph=-Math.PI+k*Math.PI/6; rib((u,v)=>at(ph+(v-0.5)*0.02,yH+0.02+(0.46-yH)*u,0.003),10,SE,'cloth'); } }   // the quilting
+    if(style==='jerkin'){ for(let k=0;k<6;k++){ const y=0.12+k*0.07; rib((u,v)=>at(-0.12+0.24*u,y+v*0.005,0.004),4,LA,'leather'); } rib((u,v)=>at(-0.01+0.02*v,yH+(yN-yH)*u,0.003),12,LA,'leather'); }   // laced down the front
+    if(style==='hauberk'){ rib((u,v)=>at(-Math.PI+u*Math.PI*2,yH+v*0.012,0.004),48,LA,'leather').userData.soft=1; }
+    if(style==='scale'){ for(let k=0;k<12;k++){ const y=yH+0.01+(0.52-yH)*k/12; const m=rib((u,v)=>{ const ph=-Math.PI+u*Math.PI*2; return at(ph,y+(0.045-0.022*tri(u*28))*(1-v)*0-0.022*tri(u*28)*v+v*0.0,0.004+0.004*v); },56,o.scale||MAT,'steel'); if(y<0.07) m.userData.soft=1; } }   // rows of scales, each row lapping the one below
+    if(style==='brigandine'){ for(let r=0;r<6;r++) for(let k=0;k<14;k++){ const y=0.12+r*0.065, ph=-Math.PI+(k+0.5*(r%2))*Math.PI/7; if(y>top(ph)-0.03) continue; const st=mesh(g,facetSphere(0.007,0.007,0.004,6,4),GD,'gold'); st.position.copy(at(ph,y,0.003)); st.lookAt(st.position.clone().add(V(Math.sin(ph),0,Math.cos(ph)))); } }   // the rivets of its plates
+    if(style==='robe'){ const ST2=o.stole||GD; [-1,1].forEach(sd=>{ const m=rib((u,v)=>at(sd*0.22+(v-0.5)*0.12,yH+0.02+(0.55-yH)*u,0.006),24,ST2,'scarf'); m.userData.soft=1; m.userData.clothPin=yPin; });   // the stole, down the front
+      const hm=rib((u,v)=>at(-Math.PI+u*Math.PI*2,yH+v*0.014,0.005),64,GD,'gold'); hm.userData.soft=1; hm.userData.clothPin=yPin; }
+    rib((u,v)=>{ const ph=-Math.PI+u*Math.PI*2; return at(ph,top(ph)-0.014+v*0.014,0.004); },64,style==='hauberk'?LA:SE,'cloth');   // its edges
+    if(NR&&style!=='jerkin'){ const [nx,nz]=NR.c(0.63), y0=0.57, y1=0.65; mesh(g,band((ph,y)=>{ const v=(y-y0)/(y1-y0); return NR.r(ph,0.63)+0.02+0.025*Math.pow(1-v,1.5); },-Math.PI,Math.PI,y0,y1,32,4,{cx:nx,cz:nz,smooth:true,two:0.004}),MAT,'cloth'); }   // a collar
+    ctx.R=(ph,y)=>smoothR(ph,y)+gap; ctx.ZK=1; ctx.CZ=TR.c(0.3)[1]; }
+  // V261: THE SKIRT KIT, hung from the waist (measured round the hips) and swinging as cloth: 'tassets' (steel lames over each thigh),
+  //  'mail' (a mail skirt), 'kilt' (pleated cloth)
+  function skirtKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, to=K.rig.torso, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.steel, MA=leatherM(K,0x6a6e74), LA=leatherM(K,0x2e2018);
+    const TR=bodyRings(K,to,['pelvis','thigh'],-0.25,0.12,10,32,0.32); if(!TR) return false; const g=piece(ctx,to); g.userData.fitted=true;
+    const yT=0.07, sm=(ph,y)=>{ let s2=0; for(const d of [-0.2,-0.1,0,0.1,0.2]) s2+=TR.r(ph+d,y)*(d===0?2:1); return s2/6; };
+    const at=(ph,y,o2)=>{ const yy=Math.max(-0.25,Math.min(0.12,y)), [cx,cz]=TR.c(Math.min(yT,yy)), r=sm(ph,Math.max(yy,-0.02))+(o2||0)+0.045*Math.max(0,(yT-y)/0.3); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };   // flaring a little as it falls
+    const soft=m=>{ m.userData.soft=1; m.userData.clothPin=yT-0.005; return m; };
+    if(style==='tassets'){ const NL=o.lames||4; [-1,1].forEach(sd=>{ const c=sd*0.55; for(let k=0;k<NL;k++){ const y1=yT-k*0.06, y0=y1-0.075, gp=0.03+k*0.005;
+        soft(mesh(g,surf((u,v)=>{ const ph=c-0.55+1.1*u, y=y0+(y1-y0)*v; return at(ph,y,gp); },10,2,{smooth:true,two:0.004}),ST,'steel'));
+        soft(mesh(g,surf((u,v)=>{ const ph=c-0.55+1.1*u; return at(ph,y0+0.01*v,gp+0.004); },12,1,{two:0.002}),GD,'gold')); } }); }
+    if(style==='mail'){ soft(mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=-0.2+(yT+0.01+0.2)*v; return at(ph,y,0.03); },36,8,{smooth:true,two:0.004}),MA,'mail'));
+      soft(mesh(g,surf((u,v)=>at(-Math.PI+u*Math.PI*2,-0.2+v*0.012,0.034),48,1,{two:0.002}),LA,'leather')); }
+    if(style==='kilt'){ const CL=o.cloth||M.tunic; soft(mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=-0.18+(yT+0.01+0.18)*v; return at(ph,y,0.03+0.008*Math.abs(Math.sin(ph*12))*(1-v)); },72,7,{smooth:true,two:0.004}),CL,'tunic'));   // pleated
+      soft(mesh(g,surf((u,v)=>at(-Math.PI+u*Math.PI*2,-0.18+v*0.012,0.04),72,1,{two:0.002}),GD,'gold')); }
+    g.userData.longFront=false; return true; }
   T.tabard0=function(ctx){ const K=ctx.K, M=K.M, to=K.rig.torso, g=piece(ctx,to), GD=M.goldD||M.gold;
     const E=bounds(to,o=>/^(tunic|steel)$/.test(o.userData.part),[[-0.279,0.061,-0.168],[0.279,0.469,0.157]]);
     const y0=E.min.y-0.012, y1=E.max.y+0.004, W=0.25, ZK=(E.max.z-E.min.z)/2/0.232+0.03, CZ=(E.max.z+E.min.z)/2;
@@ -326,10 +400,18 @@ const ARMOR=(function(){
       const edge=(gap,full,inner,w,mat)=>mesh(g,surf((u,v)=>{ const az=-Math.PI+u*Math.PI*2, el=reach(az,full,inner)-w*(1-v); return S.at(el,az,gap+0.003); },40,1,{two:0.002}),mat,'gold');
       const lame=(k,gap,el0,el1,mat,part,trim)=>{ const a0=S.outAz-1.25, a1=S.outAz+1.25; mesh(g,surf((u,v)=>{ const az=a0+(a1-a0)*u, el=el0+(el1-el0)*v; return S.at(el,az,gap+0.004*v); },16,2,{smooth:true,two:0.004}),mat,part);
         if(trim) mesh(g,surf((u,v)=>{ const az=a0+(a1-a0)*u; return S.at(el1-0.04*(1-v),az,gap+0.008); },16,1,{two:0.002}),trim,'gold'); };
-      if(style==='round'){ const gp=0.014; cap(gp,1.05,0.75,ST,'steel'); edge(gp,1.05,0.75,0.07,GD);
-        for(let k=0;k<3;k++){ const e0=1.0+k*0.2, e1=e0+0.26; lame(k,gp+0.006*(k+1),e0,e1,ST,'steel',GD); }
+      if(style==='round'){ const gp=o.bulk!==undefined?o.bulk:0.03; cap(gp,1.1,0.8,ST,'steel'); edge(gp,1.1,0.8,0.07,GD);   // stands well off the shoulder, as a pauldron does
+        for(let k=0;k<3;k++){ const e0=1.04+k*0.2, e1=e0+0.26; lame(k,gp+0.008*(k+1),e0,e1,ST,'steel',GD); }
         const b=mesh(g,new THREE.CylinderGeometry(0.016,0.016,0.008,10).toNonIndexed(),GD,'gold'), bp=S.at(0.55,S.outAz,gp+0.006); b.position.copy(bp); b.lookAt(bp.clone().add(bp.clone().sub(S.c))); b.rotateX(Math.PI/2); }
-      if(style==='spaulder'){ const gp=0.012; for(let k=0;k<4;k++){ const e0=0.55+k*0.22, e1=e0+0.3; lame(k,gp+0.005*k,e0,e1,ST,'steel',k===3?GD:null); } }
+      if(style==='spiked'||style==='heavy'){ const gp=o.bulk!==undefined?o.bulk:0.04; cap(gp,1.15,0.85,ST,'steel'); edge(gp,1.15,0.85,0.07,GD);
+        for(let k=0;k<4;k++){ const e0=1.08+k*0.19, e1=e0+0.25; lame(k,gp+0.009*(k+1),e0,e1,ST,'steel',GD); }
+        if(style==='spiked'){ [[0.25,0],[0.55,0.5],[0.55,-0.5],[0.85,0.9],[0.85,-0.9]].forEach(([el,da],i)=>{ const az=S.outAz+da, p0=S.at(el,az,gp), n=p0.clone().sub(S.c).normalize(), c2=new THREE.ConeGeometry(0.014,i?0.06:0.08,5).toNonIndexed(); c2.computeVertexNormals(); const m=mesh(g,c2,o.spike||ST,'steel'); m.position.copy(p0).addScaledVector(n,0.02); m.quaternion.setFromUnitVectors(V(0,1,0),n.clone().add(V(0,0.6,0)).normalize()); }); }
+        else { const hp=mesh(g,surf((u,v)=>{ const az=S.outAz+Math.PI+(u-0.5)*1.6; return S.at(0.05+0.35*(1-v),az,gp+0.05*v); },10,3,{smooth:true,two:0.004}),ST,'steel'); }   // the haute-piece, standing up toward the neck
+      }
+      if(style==='feather'){ const gp=0.014, CL=o.cloth||M.scarf||M.tunic, FE=[o.feather||leatherM(K,0xf3efe4),o.feather2||leatherM(K,0xdcd4c2)]; cap(gp,1.15,0.8,CL,'cloth');
+        for(let row=0;row<4;row++) for(let i=0;i<9;i++){ const az=S.outAz-1.6+3.2*i/8+(row%2)*0.18, el=0.35+row*0.27, p0=S.at(el,az,gp+0.006+row*0.003), n=p0.clone().sub(S.c).normalize(); let f=new THREE.SphereGeometry(1,8,5); f.scale(0.02,0.05,0.004); f.translate(0,-0.045,0);
+          const m=mesh(g,f,row===3?GD:FE[(i+row)%2],'feather'); m.position.copy(p0); m.lookAt(p0.clone().add(n)); m.rotateX(-Math.PI/2+0.5); } }
+      if(style==='spaulder'){ const gp=0.018; for(let k=0;k<4;k++){ const e0=0.55+k*0.22, e1=e0+0.3; lame(k,gp+0.005*k,e0,e1,ST,'steel',k===3?GD:null); } }
       if(style==='leather'){ const gp=0.01; cap(gp,1.15,0.7,LE,'leather'); mesh(g,surf((u,v)=>{ const az=-Math.PI+u*Math.PI*2, el=reach(az,1.15,0.7)-0.03*(1-v); return S.at(el,az,gp+0.003); },40,1,{two:0.002}),LA,'leather');
         mesh(g,surf((u,v)=>{ const az=S.outAz+Math.PI+(u-0.5)*0.3, el=0.2+1.6*v; return S.at(el,az,gp+0.005); },3,8,{two:0.002}),LA,'leather'); }   // the strap over the shoulder
     });
@@ -472,6 +554,9 @@ const ARMOR=(function(){
   const PIECES={}; SLOTS.forEach(s=>PIECES[s]={templar:{name:'Templar '+NAMES[s].toLowerCase(),set:'Templar',build:T[s]}});
   // V260: plain leg and foot wear from the leg kit, every knight's from the start
   PIECES.legs.greaves={name:'Greaves',set:'Common',common:true,build:ctx=>{ if(!legKit(ctx,'greaves')) T.legs0(ctx); }};
+  [['cuirass','Breastplate'],['gambeson','Gambeson'],['jerkin','Leather jerkin'],['hauberk','Mail hauberk']].forEach(([k,n])=>{ PIECES.tabard[k]={name:n,set:'Common',common:true,build:ctx=>{ ctx.torsoStyle=k; T.tabard(ctx); }}; });
+  [['tassets','Tassets'],['mail','Mail skirt'],['kilt','Pleated skirt']].forEach(([k,n])=>{ PIECES.skirt[k]={name:n,set:'Common',common:true,build:ctx=>{ if(!skirtKit(ctx,k)) T.skirt(ctx); }}; });
+  [['kettle','Kettle hat'],['sallet','Sallet'],['bascinet','Bascinet'],['coif','Mail coif']].forEach(([k,n])=>{ PIECES.helm[k]={name:n,set:'Common',common:true,build:ctx=>{ if(!helmKit(ctx,k)) T.helmGreat(ctx); }}; });
   PIECES.pauldrons.spaulder={name:'Spaulders',set:'Common',common:true,build:ctx=>{ if(!shoulderKit(ctx,'spaulder')) T.pauldrons0(ctx); }};
   PIECES.pauldrons.leather={name:'Leather shoulder guards',set:'Common',common:true,build:ctx=>{ if(!shoulderKit(ctx,'leather')) T.pauldrons0(ctx); }};
   PIECES.arms.vambraces={name:'Vambraces',set:'Common',common:true,build:ctx=>{ if(!armKit(ctx,'vambraces')) T.arms0(ctx); }};
@@ -572,6 +657,36 @@ const ARMOR=(function(){
     const cl=[]; roof.forEach((ry,k)=>{ const t=top.get(k); if(t!==undefined) cl.push(ry-t); });
     if(cl.length>=4){ const gap=(K._fitGap&&K._fitGap[slot]!==undefined)?K._fitGap[slot]:st.gap; g.position.y+=Math.max(-0.08,Math.min(0.08,gap-pct(cl,0.04))); }
     return g.position.clone().sub(p0); }
+  /* V263: CAPES AND SHROUDS — cloth hung from the shoulders on the cloth sim. mantle(ctx,o): o.kind 'cape' (behind, from shoulder to
+     shoulder), 'half' (a short cape to the middle of the back), 'side' (over one shoulder), 'shroud' (all round him, closed before).
+     A shroud has a second resting shape, thrown back over the shoulders (the front gathered behind); it is worn that way while he fights
+     (sword drawn, on guard, swinging), or when o.back says so (the hood down), and the cloth swings between the two (shroudSync). */
+  function mantle(ctx,o){ const K=ctx.K, M=K.M, to=K.rig.torso, TR=bodyRings(K,to,['chest','belly','pelvis','thigh'],-0.3,0.62,16,32,0.34); if(!TR) return null;
+    const g=piece(ctx,to); g.userData.fitted=true; const CL=o.mat||M.cape||M.tunic, TRIM=o.trim, kind=o.kind||'cape', yTop=o.top||0.6, yHem=o.hem!==undefined?o.hem:-0.35;
+    const P0=kind==='shroud'?-Math.PI:kind==='side'?(o.side||1)*0.2:Math.PI-(o.wide||1.55), P1=kind==='shroud'?Math.PI:kind==='side'?(o.side||1)*Math.PI*0.9:Math.PI+(o.wide||1.55);
+    const shoulderR=(ph)=>{ const sx=Math.abs(Math.sin(ph)); return 0.05+0.13*Math.pow(sx,1.5); };   // over the pauldrons: wider at the sides
+    const at=(ph,y,fall)=>{ const yy=Math.max(-0.12,Math.min(0.56,y)), [cx,cz]=TR.c(yy), base=TR.r(ph,Math.max(0.2,yy)), v=Math.max(0,Math.min(1,(yTop-y)/(yTop-yHem))), stand=shoulderR(ph)*Math.min(1,(yTop+0.04-y)/0.16+0.15);
+      const r=Math.max(base+0.04,TR.r(ph,yy)+0.03)+stand*(1-v*0.5)+(o.flare||0.08)*v*v+(Math.cos(ph)<0?0.03*v:0); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
+    const NU=kind==='shroud'?48:28, NV=10, rag=o.rag||0, hemY=(u)=>yHem-(rag?rag*Math.abs(Math.sin(u*NU*0.9)):0);
+    const shapeAt=(u,v,back)=>{ let ph=P0+(P1-P0)*u; if(back&&kind==='shroud'){ const a=Math.abs(ph); ph=Math.sign(ph||1)*(Math.PI*0.42+a*0.58); }   // the front gathered behind, past the shoulders
+      const y=yTop-(yTop-hemY(u))*v; return at(ph,y); };
+    const top=V(0,0,0); const ring=(fn)=>surf(fn,NU,NV,{smooth:true,two:0.005});
+    const m=mesh(g,ring((u,v)=>shapeAt(u,1-v,false)),CL,'cloth'); m.userData.soft=1; m.userData.clothPin=yTop-0.07; m.userData.cape=kind;
+    if(kind==='shroud'){ const g1=ring((u,v)=>shapeAt(u,1-v,true)); m.userData.rest0=m.geometry.attributes.position.array.slice(); m.userData.rest1=g1.attributes.position.array.slice(); m.userData.shroudBack=o.back||null; m.userData.shroudT=0; }
+    if(TRIM){ const t=mesh(g,surf((u,v)=>{ const p=shapeAt(u,1,false); p.y+=0.018*v; const q=p.clone(); return q; },NU,1,{two:0.003}),TRIM,'gold'); t.userData.soft=1; t.userData.clothPin=yTop-0.07; t.userData.cape=kind;
+      if(kind==='shroud'){ const g1=surf((u,v)=>{ const p=shapeAt(u,1,true); p.y+=0.018*v; return p; },NU,1,{two:0.003}); t.userData.rest0=t.geometry.attributes.position.array.slice(); t.userData.rest1=g1.attributes.position.array.slice(); t.userData.shroudBack=o.back||null; t.userData.shroudT=0; } }
+    if(o.deco) o.deco(g,(u,v)=>shapeAt(u,v,false));
+    return g; }
+  const SHROUD={brown:0x5e4229,moss:0x34492a,ash:0x26242c,navy:0x1f2b52,crimson:0x5a1c1c,sand:0xb89a6a,white:0xe8e2d2};
+  function shroud(ctx,tint,o){ const K=ctx.K, helmOn=Kx=>{ const S=Kx.userData.armorS, hg=S&&S.groups.helm&&S.groups.helm[0]; return !!(S&&S.worn.helm&&hg&&!hg.userData.garmentSlot); };
+    return mantle(ctx,Object.assign({kind:'shroud',mat:leatherM(K,SHROUD[tint]||SHROUD.brown),hem:-0.42,top:0.6,rag:0.015,back:Kx=>{ const S=Kx.userData.armorS; return !S||!hoodUpNow(S)||helmOn(Kx); }},o||{})); }
+  // V263: putting on an earned livery (the wardrobe glass) puts on its armour set, once; you may change pieces after
+  function liverySync(K){ const G=SG(), lv=G.livery||'azure'; if(G._lvArm===lv) return; const had=G._lvArm; G._lvArm=lv; if(had===undefined) return; const id='lv_'+lv;
+    if(SLOTS.some(sl=>PIECES[sl][id])){ G.armorPick=G.armorPick||{}; G.armorOff=G.armorOff||{}; SLOTS.forEach(sl=>{ if(PIECES[sl][id]){ G.armorPick[sl]=id; delete G.armorOff[sl]; } }); apply(); } }
+  function fighting(K){ return K._st==='drawn'||K._st==='drawing'||!!K.guarding||!!K.alert||(K.raise>0)||(K.charge>0); }
+  function shroudSync(K,list,dt){ const f=fighting(K); for(const m of list){ const r0=m.userData.rest0; if(!r0) continue; const want=(f||(m.userData.shroudBack&&m.userData.shroudBack(K)))?1:0, t0=m.userData.shroudT;
+      const t=t0+(want-t0)*Math.min(1,dt*(want?7:2.5)); if(Math.abs(t-t0)<1e-4&&m.userData.rest&&m.userData._shrT===t) continue; m.userData.shroudT=t; m.userData._shrT=t;
+      const r1=m.userData.rest1, R=m.userData.rest||(m.userData.rest=r0.slice()), e=t*t*(3-2*t); for(let i=0;i<R.length;i++) R[i]=r0[i]+(r1[i]-r0[i])*e; } }
   function fitGroups(K,slot,gs){ gs=gs.filter(g=>!g.userData.fitted); if(!gs.length) return; if(slot==='plume'&&K._armFit!==false){ const hf=K._helmFit; if(hf) gs.forEach(g=>{ const par=g.parent; if(!par) return;   // the crest follows the helm: its size, and where it came to rest
         K.updateMatrixWorld(true); const c=K.rig.head.localToWorld(_fv.copy(hf.c)); par.worldToLocal(c); g.scale.multiplyScalar(hf.s); g.position.sub(c).multiplyScalar(hf.s).add(c);
         if(hf.d){ const a=K.rig.head.localToWorld(new THREE.Vector3()), b=K.rig.head.localToWorld(hf.d.clone()); par.worldToLocal(a); par.worldToLocal(b); g.position.add(b.sub(a)); } g.userData.fitS='follows'; }); return; }
@@ -627,7 +742,7 @@ const ARMOR=(function(){
   //  Once earned a piece is kept (a respec doesn't take it back), and the wardrobe picks, slot by slot, from all that are earned ──
   const TREES={striker:'st',guardian:'gd',psalmist:'ps'}, TIER={gauntlets:0,sabatons:1,belt:2,arms:3,legs:4,skirt:5,pauldrons:6,cowl:7,tabard:8,helm:9,plume:9};
   const SG=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
-  function earned(id,slot){ if(id==='templar'||id==='base') return !!(PIECES[slot]&&PIECES[slot][id]); if(PIECES[slot]&&PIECES[slot][id]&&PIECES[slot][id].common) return true; const S=SG(), pre=TREES[id]; if(S.armorOwned&&S.armorOwned[id+'.'+slot]&&PIECES[slot]&&PIECES[slot][id]) return true;   /* V245: bought at the smithy */ if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
+  function earned(id,slot){ if(id==='templar'||id==='base') return !!(PIECES[slot]&&PIECES[slot][id]); if(PIECES[slot]&&PIECES[slot][id]&&PIECES[slot][id].common) return true; if(id.startsWith('lv_')) return !!(PIECES[slot]&&PIECES[slot][id])&&typeof liveryOwned==='function'&&liveryOwned(SG(),id.slice(3)); const S=SG(), pre=TREES[id]; if(S.armorOwned&&S.armorOwned[id+'.'+slot]&&PIECES[slot]&&PIECES[slot][id]) return true;   /* V245: bought at the smithy */ if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
   function options(slot){ const o=Object.keys(PIECES[slot]||{}).filter(id=>earned(id,slot)&&id!=='base'); if(PIECES[slot]&&PIECES[slot].base) o.push('base'); return o; }   // plain clothes last
   function pick(slot){ const S=SG(); if(S.armorOff&&S.armorOff[slot]&&PIECES[slot].base) return 'base'; const id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }   /* V242: a slot with its armour off wears the plain clothes, not the old harness */
   function noteEarned(){ const S=SG(); if(!S.skills) return; S.armorEarned=S.armorEarned||{}; const fresh=[];
@@ -677,12 +792,15 @@ const ARMOR=(function(){
         if(D<C.r) _cw.copy(_p).addScaledVector(D>1e-5?_d.multiplyScalar(1/D):_d.set(0,0,1),C.r); }
       X[j]=_cw.x; X[j+1]=_cw.y; X[j+2]=_cw.z; _cw.applyMatrix4(_inv); A[j]=_cw.x; A[j+1]=_cw.y; A[j+2]=_cw.z; } }
   function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return; hoodSync(K);
+    if(K._og&&K._armFit!==false){ for(const k in K._og.crests){ const c=K._og.crests[k]; if(c.visible) c.visible=false; } const w=K._og.wings(); if(w&&w.visible) w.visible=false; }   /* V263: the old livery crests and wings: the livery sets carry their own now */
+    liverySync(K);
     if(K.rig&&K.rig.capeP&&K.rig.capeP.visible) K.rig.capeP.visible=false;   /* V246: no cloth cape on the hero — it fought every other cloak (and the saddle) */
     if(K.herald&&!K.herald._robust){ K.herald._robust=true; K.herald.group.traverse(m=>{ if(m.isMesh){ m.frustumCulled=false; if(m.material&&m.userData.part==='face'){ m.material.side=THREE.DoubleSide; m.material.needsUpdate=true; } } }); }   /* V246: the shield is never culled */ if(!S.soft||S.softDirty){ S.soft=softList(K,S); S.softDirty=false; } const list=S.soft; if(!list.length) return;
     K.updateMatrixWorld(true); K.getWorldScale(_sc); const sc=_sc.y||1, r=K.rig;
     [r.L,r.R].forEach((G,i)=>{ const T=CAPS[i*2], Sh=CAPS[i*2+1]; G.hip.getWorldPosition(T.a); G.knee.getWorldPosition(T.b); T.r=0.1*sc; Sh.a.copy(T.b); G.knee.localToWorld(Sh.b.set(0,-0.34,0.03)); Sh.r=0.078*sc; });
     r.head.localToWorld(HEAD.c.set(0,0.03,0)); HEAD.r=0.17*sc;
     const now=performance.now(), dt=Math.min(0.05,Math.max(0.004,((now-(S.clothT||now))/1000)||0.016)); S.clothT=now;
+    shroudSync(K,list,dt);
     for(const m of list){ if(!m.visible||(m.parent&&!m.parent.visible)){ m.userData.clothX=null; continue; } const pos=m.geometry.attributes.position, A=pos.array, R=m.userData.rest, head=!!m.userData.softHead; let dirty=false;
       _inv.copy(m.matrixWorld).invert();
       if(!head&&K._cloth!==false){ cloth(m,A,R,dt,sc); pos.needsUpdate=true; continue; }
@@ -717,6 +835,10 @@ const ARMOR=(function(){
     return {start,stop,get angle(){ return ang; }}; })();
   // trying a piece on (the smithy): worn for the preview only, until bought or the menu closes
   function tryOn(slot,id){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; wear(ENGINE.K,slot,id); }
-  const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds};
-  return { preview, tryOn, shop:false, tick, hoodSync, hoodUpNow, regY, bodyRings, legKit, footKit, armKit, handKit, shoulderKit, SLOTS, NAMES, PIECES, TREES, TIER, H, set, wear, worn, dress, apply, covered, earned, options, pick };
+  const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds,mantle,shroud,fighting,leatherM,headBox,shoulderShape,armSeg,legSeg,bodyRings,regY};
+  // V262: the kits, by name, for recipes (armor_recipes.js): KIT.x(ctx,style,o) → true when built
+  const KIT={leg:legKit,foot:footKit,arm:armKit,hand:handKit,shoulder:shoulderKit,helm:helmKit,skirt:skirtKit,
+    great:(ctx,st,o)=>{ ctx.helmFlat=!!(o&&o.flat); T.helm(ctx); return true; },
+    torso:(ctx,st,o)=>{ ctx.torsoStyle=st; ctx.torsoOpts=o||{}; T.tabard(ctx); return true; } };
+  return { preview, tryOn, shop:false, tick, hoodSync, hoodUpNow, regY, bodyRings, legKit, footKit, armKit, handKit, shoulderKit, helmKit, skirtKit, SLOTS, NAMES, PIECES, TREES, TIER, H, KIT, T, set, wear, worn, dress, apply, covered, earned, options, pick };
 })();

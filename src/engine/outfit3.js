@@ -161,14 +161,14 @@ const OUTFIT3=(function(){
     for(let i=0;i<d.length;i+=4){ c.setRGB(d[i]/255,d[i+1]/255,d[i+2]/255); c.getHSL(hsl); if(hsl.h>0.17&&hsl.h<0.5&&hsl.s>0.12){ c.setHSL(D0[0],Math.min(1,hsl.s*D0[1]),Math.min(1,hsl.l*D0[2])); d[i]=c.r*255; d[i+1]=c.g*255; d[i+2]=c.b*255; } }
     x.putImageData(D,0,0); const t=new THREE.CanvasTexture(cv); t.flipY=tex.flipY; t.encoding=tex.encoding; t.wrapS=tex.wrapS; t.wrapT=tex.wrapT; dyeC.set(key,t); return t; }
   function hoodState(S){ const armoured=ARMOR.SLOTS.some(sl=>sl!=='plume'&&sl!=='cowl'&&S.worn[sl]&&S.ids&&S.ids[sl]&&S.ids[sl]!=='base'), G=GS();
-    const helmOn=!!(S.worn.helm&&S.ids&&S.ids.helm&&S.ids.helm!=='base'), up=armoured?!!G.hoodArm:(G.hoodPlain!==false); return {armoured,up,helmOn}; }
+    const hg0=S.groups&&S.groups.helm&&S.groups.helm[0], helmOn=!!(S.worn.helm&&hg0&&!hg0.userData.garmentSlot), up=armoured?!!G.hoodArm:(G.hoodPlain!==false); return {armoured,up,helmOn}; }
   function hoodToggle(){ const K=typeof ENGINE!=='undefined'&&ENGINE.K, S=K&&K.userData.armorS; if(!S) return; const G=GS(), h=hoodState(S); if(h.armoured) G.hoodArm=!h.up; else G.hoodPlain=!h.up; bSig=null; bsync(); if(ARMOR.hoodSync) ARMOR.hoodSync(K); }
   function bsync(){ if(typeof ENGINE==='undefined'||!ENGINE.K||typeof ARMOR==='undefined') return; const K=ENGINE.K, F=K.userData.b3, S=K.userData.armorS;
     if(!F||typeof F!=='object'||!F.idx0||!S||!S.ids) return; if(!bReady){ if(BODY3&&!K.bare) bLoad(); return; }
     const G=K.userData.garm||(K.userData.garm={}), on={}, g0=sl=>S.groups[sl]&&S.groups[sl].length?S.groups[sl][0]:null;
-    for(const sl in BASEP) on[sl]=!cur&&!!S.worn[sl]&&!!(g0(sl)&&g0(sl).userData.garmentSlot===sl)&&(sl==='cowl'||S.ids[sl]==='base');
+    for(const sl in BASEP) on[sl]=!cur&&!!S.worn[sl]&&!!(g0(sl)&&g0(sl).userData.garmentSlot===sl);   /* V262: a set may wear the plain clothes in a slot it leaves plain */
     const hs=hoodState(S), cg=g0('cowl'), tint=(cg&&cg.userData.hoodTint)||'brown', hoodUp=hs.up&&!hs.helmOn, peltUp=!!(cg&&cg.userData.pelt&&S.worn.cowl&&hs.up&&!cur);
-    const headBare=!cur&&(!S.worn.helm||(S.ids.helm==='base'&&!!(g0('helm')&&g0('helm').userData.garmentSlot)));
+    const headBare=!cur&&(!S.worn.helm||!!(g0('helm')&&g0('helm').userData.garmentSlot));
     const shade=!headBare?'off':(on.cowl&&hoodUp?(hs.armoured?'light':'deep'):peltUp?'light':'none'), fpHide=!!(K._head&&!K._head.visible);
     const want={}; for(const sl in BASEP){ if(!on[sl]) continue; want[sl==='cowl'?HOOD+':'+tint+(hoodUp?'':(hs.armoured||hs.helmOn?':over':':down')):BASEP[sl]]=true; }
     for(const k in want) if(!G[k]){ const [nm,tn,dn]=k.split(':'); G[k]=nm===HOOD?garment(F,nm,{tint:tn,down:dn==='down'||dn==='over',over:dn==='over'}):garment(F,nm); }

@@ -801,3 +801,75 @@ Zak: rebuild the leg armour and footwear to match the body, so other styles of b
   - Legs: **Greaves**.
   - Feet: **Tall leather boots**, **Ankle boots**, **Shoes**.
 - Plain trousers with other footwear: the calf is painted as woollen hose (0x5a4a3a) instead of mail.
+
+## V261 — the kit for every slot: build any set from measured parts
+Zak: do the leg kit's approach for each piece, so custom sets are easier and there's more variety. Every slot now has a kit in armor.js: it measures the posed body for that part, then lays a style (a recipe of plates, cloth, leather or mail) on the measurement. The Templar pieces are kit styles now; the old builders stay as fallbacks (`T.*0`) for when the body can't be measured.
+- **Arms** `armKit`: segments found along their own axes (`armSeg` → `limbFrame`, whose outward sign now follows where the points lie, so a hand or bent limb can't flip).
+  - `plate` (Templar): rerebrace, couter, vambrace.
+  - `vambraces`: forearm plate and couter.
+  - `bracers`: laced leather on the forearm.
+  - `mail`: mail sleeves.
+- **Hands** `handKit`:
+  - `gauntlet` (Templar): steel mitten-gauntlet to the knuckles, three finger lames, a flared gold-edged cuff.
+  - `gloves`: leather.
+  - `wraps`: linen bands.
+- **Shoulders** `shoulderKit` / `shoulderShape`: the body round the ball of the shoulder is measured in every direction (10 elevations × 20 round, smoothed, never inside the body). A cap is laid over it, reaching furthest down the outside of the arm.
+  - `round` (Templar): dome standing 0.03 off, three lames, gold edges, a boss.
+  - `spaulder`: four lames down the outer arm.
+  - `leather`: a stitched cap and a strap.
+- **Helms** `helmKit` / `headBox` (the skull's box from the posed body, +0.016–0.018). The Templar great helm (`T.helmGreat`, unchanged in look) is now sized to the measured head; the crest follows it.
+  - `kettle`: brimmed war-hat, face open.
+  - `sallet`: rounded, a sweeping tail, a sight.
+  - `bascinet`: pointed, face open, mail aventail.
+  - `coif`: a mail hood.
+- **Torso** (`T.tabard` with `ctx.torsoStyle`):
+  - `templar`: cuirass and tabard.
+  - `cuirass`: breastplate alone.
+  - `gambeson`, `jerkin`, `hauberk` (`clothTorso`): a coat laid on the torso rings. Quilting / front lacing / a mail hem to mid-thigh; it hangs as cloth below the belt.
+- **Skirt** `skirtKit`, measured round the hips, swinging as cloth:
+  - `tassets`: four steel lames over each thigh.
+  - `mail`: a mail skirt.
+  - `kilt`: a pleated cloth skirt.
+- **Legs and feet**: V260's kit.
+- **New common pieces**, every knight's from the start, listed in ☰ → Gear:
+  - Helm: Kettle hat, Sallet, Bascinet, Mail coif.
+  - Torso: Breastplate, Gambeson, Leather jerkin, Mail hauberk.
+  - Skirt: Tassets, Mail skirt, Pleated skirt.
+  - Pauldrons: Spaulders, Leather shoulder guards.
+  - Arms: Vambraces, Leather bracers, Mail sleeves.
+  - Hands: Leather gloves, Hand wraps.
+  - Legs: Greaves.
+  - Feet: Tall leather boots, Ankle boots, Shoes.
+- The skill-tree and town sets still use their own builders, sized by the V253–V255 fit. Next step: re-express them as kit recipes with their own materials and motifs.
+
+## V262 — the skill-tree and town sets rebuilt from the kit, each its own silhouette
+Zak: build the skill-tree and town sets first; upgrade them to look cooler, after popular designs for each class; give each village its own shape.
+- New file **engine/armor_recipes.js** (after armor_town.js in the build). Each set is a recipe: slot → [kit, style, options, motifs], built in the set's own palette (the town palettes, exported as `ARMOR.TOWN_PAL`).
+  - Motifs are placed on the measured body (breast, shoulder shape, head box, forearm segment), not on the old sculpt's bounds.
+  - A slot left `null` wears the plain clothes (hood and skirt: nothing). A slot not named keeps its old builder (plumes, the Guardian's bearskin, the Psalmist's hood).
+  - A kit that can't measure falls back to the old builder. `ARMOR.RECIPES`, `ARMOR.MOTIFS`.
+
+| Set | Class / town | Helm | Torso | Shoulders | Rest |
+|---|---|---|---|---|---|
+| Striker | fox duelist | sallet + fox ears | brigandine | spaulders | vambraces with forearm blades, 2-lame tassets, gloves, greaves, tall boots |
+| Guardian | bear tank | flat-topped great helm + gold face-cross | cuirass and tabard | heavy, 4 lames, haute-pieces, bulk 0.05 | 4-lame tassets, full plate, bearskin |
+| Psalmist | dove cleric | (hood and circlet) | ankle robe with stole | feathered mantles | mail sleeves, gloves, greaves, ankle boots |
+| Hearthward | Hearthvale | kettle hat | gambeson + wheat-sheaf | leather | pleated skirt, bracers, gloves, ankle boots, plain trousers |
+| Ironforged | Ironhold | riveted barbute | cuirass + crossed hammers | heavy | mail skirt, full plate |
+| Tidecaller | Saltmere | sallet + fin | coat of scales | spaulders + scallop shells | vambraces, gloves, greaves, tall boots |
+| Thornwarden | Thornwood | moss-green hood | leather jerkin | leather + leaf mantles | thorned bracers, kilt, tall boots |
+| Sandstrider | Dusthaven | turban + face wrap | long robe + sash | — | bracers, hand wraps, shoes |
+| Crystalborn | Crystalpeak | bascinet + crystal crown | cuirass and tabard | round + crystal shards | tassets, full plate |
+| Emberforged | Ashfield | horned great helm | cuirass | spiked | tassets, full plate |
+| Tempest | Stormgate | winged sallet | cuirass and tabard + bolt | round | 3-lame tassets, full plate |
+| Shade | Shadowmere | ash-dark hood | jerkin + tatters | spaulders | bracers, gloves, greaves, tall boots |
+| Archangel | Hellgate | great helm + halo | cuirass and tabard | heavy | tassets, full plate, great folded wings |
+
+- **New kit styles:**
+  - Torso: `robe`, `scale`, `brigandine`, and options for `clothTorso` (cloth, trim, hem, stole, scale).
+  - Helm: `barbute` (T-face, optional rivets), `turban` (wound cloth, face wrap, tail). The great helm takes a `flat` top.
+  - Shoulders: `heavy` (haute-piece) and `spiked`, with a bulk option; `feather`.
+  - Tassets take a lame count.
+- `KIT.hood(ctx,tint)` puts the artist's hood in a set's Hood slot, dyed.
+- outfit3: plain garments show wherever a slot wears the plain clothes, whatever set names it. The head counts as bare when the helm slot is plain.
+- armor_sets.js `furCowl`: its declarations no longer leak globals.

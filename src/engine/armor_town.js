@@ -97,6 +97,7 @@
   // ── the shop: what's released (a set for each town whose chapel is cleansed), what's owned, buying ──
   const SG=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
   ARMOR.TOWN_SETS=SETS.map(s=>({id:s.id,name:s.name,town:s.town}));
+  ARMOR.TOWN_PAL={}; SETS.forEach(s=>{ ARMOR.TOWN_PAL[s.id]=s.pal; });   // V262: the recipes (armor_recipes.js) use the same metals and cloths
   ARMOR.released=id=>{ const st=SETS.find(s=>s.id===id); return !!st&&(SG().chapels|0)>st.town; };
   ARMOR.owned=(id,slot)=>!!(SG().armorOwned&&SG().armorOwned[id+'.'+slot]);
   ARMOR.price=(id,slot)=>P[slot]&&P[slot][id]&&P[slot][id].price||0;

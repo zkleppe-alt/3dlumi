@@ -286,7 +286,7 @@
   /* V246: PELTS — the bearskin's pattern for any beast: a collar of fur at the neck, a pelt over each shoulder (on the arm's own joint,
      riding whatever pauldrons are worn), the beast's head on the left shoulder, and a cloak of its hide down the back. o: {c:[main,light,dark],
      head:'bear'|'wolf'|'fox'|'lion'|'stag'|'ram'|'raven', cloak:length (0 for none), sh:shoulder size, mane, feathers, tail, spots} */
-  function furCowl(ctx,o){ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to), hp={up:[],down:[]}; g.userData.pelt=o.head||'pelt'; g.userData.hoodParts=hp; F1=pelt(o.k+'1',o.c[0]), F2=pelt(o.k+'2',o.c[1]), F3=pelt(o.k+'3',o.c[2]), DK=pelt('_nose',0x161210), EY=pelt('_eye',0x0c0a08);
+  function furCowl(ctx,o){ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to), hp=(g.userData.hoodParts={up:[],down:[]}), _pl=(g.userData.pelt=o.head||'pelt'), F1=pelt(o.k+'1',o.c[0]), F2=pelt(o.k+'2',o.c[1]), F3=pelt(o.k+'3',o.c[2]), DK=pelt('_nose',0x161210), EY=pelt('_eye',0x0c0a08);
     const E=bounds(to,q=>q.userData.part==='scarf',[[-0.139,0.361,-0.14],[0.139,0.537,0.16]]), y0=E.min.y;
     const LK=(par,mat,pos,dir,len,wid)=>o.feathers?(()=>{ let f=new THREE.SphereGeometry(1,8,5); f.scale(wid*0.9,len/2,0.006); f.translate(0,-len/2,0); const m=mesh(par,f,mat,'fur'); m.position.copy(pos); m.quaternion.setFromUnitVectors(V(0,-1,0),dir.clone().normalize()); m.userData.soft=1; return m; })():lock(par,mat,pos,dir,len,wid);
     const mix=i=>i%3?F1:(i%2?F2:F3);
@@ -350,7 +350,7 @@
     if(kind==='ram'){ sm(0.058,0.055,0.07,F1); sm(0.03,0.03,0.05,F2,0,-0.016,0.07); [-1,1].forEach(q=>{ const pts=[]; for(let k=0;k<=14;k++){ const a=k/14*Math.PI*1.6; pts.push(V(q*(0.05+0.035*Math.sin(a)),0.03+0.04*Math.cos(a)-0.01*k/14,-0.02-0.035*Math.sin(a*0.5))); } horn(pts,0.014,pelt('_horn',0x8a7a5e)); sm(0.006,0.005,0.004,EY,q*0.03,0.02,0.058); }); }
     if(kind==='raven'){ sm(0.05,0.05,0.055,F1); const bk=mesh(hg,new THREE.ConeGeometry(0.018,0.08,6),pelt('_beak',0x2a2a2e),'fur'); bk.rotation.x=Math.PI/2; bk.position.set(0,-0.005,0.08); [-1,1].forEach(q=>sm(0.007,0.007,0.004,pelt('_ravenEye',0x9a8a40),q*0.03,0.015,0.04)); }
     return hg; }
-  reg('cowl','guardian','Guardian bearskin',ctx=>furCowl(ctx,{k:'bear',c:[0x5a4130,0x6e5139,0x46322a],head:'bear',cloak:0.72}));
+  reg('cowl','guardian','Guardian bearskin',ctx=>furCowl(ctx,{k:'bear',c:[0x5a4130,0x6e5139,0x46322a],head:'bear',cloak:0.34}));   // V263: a half-cape of fur, to the middle of the back
   // the pelts, sold in the towns' shops (V246)
   const PELTS=[
     {id:'pelt_wolf',name:'Wolf pelt',o:{k:'wolf',c:[0x8a8c90,0xd8d6d0,0x55575c],head:'wolf',cloak:0.6},price:90},
@@ -398,7 +398,7 @@
   const cl=(k,c)=>CLOTH[k]||(CLOTH[k]=new THREE.MeshPhongMaterial({color:c,shininess:4,specular:0x111111,side:THREE.DoubleSide}));
   const hoodC=()=>cl('hood',0x4b3d30), linen=()=>cl('linen',0x8f8068), breeches=()=>cl('breeches',0x3d352d);
   const reg0=(slot,name,build)=>{ P[slot].base={name,set:'Plain',build:ctx=>{   /* V252: where the artist's plain clothes can be had (OUTFIT3), they're worn instead */
-    if(slot!=='plume'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ctx.K)){ const g=piece(ctx,ctx.K.rig.torso); g.userData.garmentSlot=slot; return; } build(ctx); }}; };
+    if(slot!=='plume'&&typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&OUTFIT3.baseReady(ctx.K)){ const g=piece(ctx,ctx.K.rig.torso); g.userData.garmentSlot=slot; if(slot==='cowl'&&ARMOR.H.shroud&&ctx.K._shroud!==false) ARMOR.H.shroud(ctx,'brown'); return; } build(ctx); }}; };   /* V263: the plain hood wears its shroud */
   reg0('helm','Bare head',ctx=>hood(ctx,{mat:ctx.K.M.hood||hoodC(),eyes:ctx.K.M.eyes||0x8a7a60}));   // a town's set may dye it
   reg0('plume','No crest',ctx=>{ piece(ctx,ctx.K.rig.plume); });
   reg0('cowl','Hood',ctx=>{ const K=ctx.K, to=K.rig.torso, g=piece(ctx,to);

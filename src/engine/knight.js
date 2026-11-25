@@ -251,7 +251,7 @@ function buildKnight(){
   const ext=(sh,d)=>{ const g=new THREE.ExtrudeGeometry(sh,{depth:d,bevelEnabled:true,bevelThickness:d*0.35,bevelSize:d*0.35,bevelSegments:1}); g.translate(0,0,-d/2); return g; };
   const glowM=(col,op)=>new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:op,depthWrite:false,blending:THREE.AdditiveBlending,side:THREE.DoubleSide});
   const feather=(L,W,bend)=>{ const sh=new THREE.Shape(); sh.moveTo(0,0); sh.quadraticCurveTo(W,L*0.35,W*0.55+bend,L); sh.lineTo(bend,L*1.04); sh.quadraticCurveTo(-W*0.7,L*0.45,0,0); return sh; };
-  function crest(kind){ if(crests[kind]) return crests[kind]; const g=pivot(0,0.17,0,head); g.visible=false; crests[kind]=g;
+  function crest(kind){ if(crests[kind]) return crests[kind]; const g=pivot(0,0.17,0,head); g.visible=false; g.userData.ogCrest=true; crests[kind]=g;
     const put=(geo,mat,x,y,z,rx,ry,rz,par)=>{ const m=new THREE.Mesh(geo,mat); m.position.set(x,y,z); m.rotation.set(rx||0,ry||0,rz||0); m.castShadow=true; (par||g).add(m); return m; };
     const gm=c=>new THREE.MeshPhongMaterial({color:new THREE.Color(c),flatShading:true,shininess:60,specular:0x666655,side:THREE.DoubleSide});
     if(kind==='stormward'){   // a bolt of gold standing fore-and-aft on the crown, crackling faintly
@@ -279,6 +279,7 @@ function buildKnight(){
       const h=put(new THREE.TorusGeometry(0.17,0.012,6,32),gm('#f2d27a'),0,0.0,-0.16); h.material.emissive=new THREE.Color(0x6a5010); put(new THREE.TorusGeometry(0.17,0.04,6,32),glowM(0xfff2c0,0.35),0,0.0,-0.165); }
     return g; }
   const wings=new THREE.Group(); wings.position.set(0,0.34,-0.2); torso.add(wings); let wingKind='';
+  K._og={crests,wings:()=>wings};   /* V263: the old livery shapes, set aside while the armour kit dresses him (ARMOR.tick) */
   function makeWings(kind){ while(wings.children.length) wings.remove(wings.children[0]); wingKind=kind; if(!kind) return;
     if(K.sculpted) wings.position.set(0,0.3,-0.27);
     const pm=(c,o)=>new THREE.MeshPhongMaterial(Object.assign({color:new THREE.Color(c),flatShading:true,shininess:10,side:THREE.DoubleSide},o||{}));
