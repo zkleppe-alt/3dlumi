@@ -54,6 +54,7 @@ const ARMOR=(function(){
   // ── V250: the body's own shape round a limb, sampled from the skinned hero as he stands — so plate can be made to fit his build:
   //  rings of his skin round the limb's axis (in the joint's frame), each ring's centre and its radius at every angle ──
   const _bv=new THREE.Vector3();
+  let HEFT=0; const setHeft=h=>{ HEFT=h||0; };   /* V264: a set's weight — heavier sets stand their plate further off the body (recipes set it while building) */
   /* V259: before the body is measured, its skeleton is posed from the knight's joints now (BODY3's sync) — at load the armour can be
      built before the body has been posed once, and the body's arms were measured in its T-pose: plates out sideways, behind his back */
   function bodySync(K){ const F=K&&K.userData.b3; if(F&&typeof F==='object'&&F.sync){ try{ F.sync(); }catch(e){} } if(K) K.updateMatrixWorld(true); }
@@ -84,7 +85,7 @@ const ARMOR=(function(){
   function headBox(K,gap){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; bodySync(K); const hd=K.rig.head, body=F.body, R=F.D.reg, P=body.geometry.attributes.position; body.skeleton.update();
     const pts=[]; for(let q=0;q<P.count;q++){ if(R[q]!=='head') continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); hd.worldToLocal(_bv); if(_bv.length()>0.3) continue; pts.push(_bv.clone()); }
     if(pts.length<40) return null; const ys=pts.map(p=>p.y).sort((a,b)=>a-b), y0=ys[Math.floor(ys.length*0.02)], y1=ys[ys.length-1], H=y1-y0, sk=pts.filter(p=>p.y>y0+0.3*H);   // the skull, above the jaw
-    const b=new THREE.Box3().setFromPoints(sk); b.min.y=y0; b.max.y=y1; b.expandByScalar(gap||0); return b; }
+    const b=new THREE.Box3().setFromPoints(sk); b.min.y=y0; b.max.y=y1; b.expandByScalar((gap||0)+HEFT*0.008); return b; }
   T.helm=function(ctx){ const K=ctx.K; K._helmFit=null; if(K._armFit!==false&&!ctx.style0){ const hb=headBox(K,0.018); if(hb){ ctx.headBox=hb; } } return T.helmGreat(ctx); };
   function helmKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.helm||M.steel, MA=leatherM(K,0x6a6e74), LA=leatherM(K,0x2e2018), hb=headBox(K,0.016); if(!hb) return false; K._helmFit=null;
     const head=K.rig.head, g=piece(ctx,head); g.userData.fitted=true; const c=hb.getCenter(new THREE.Vector3()), XR=(hb.max.x-hb.min.x)/2, ZR=(hb.max.z-hb.min.z)/2, YB=hb.min.y, YT=hb.max.y, H=YT-YB;
@@ -110,10 +111,10 @@ const ARMOR=(function(){
       const DK=new THREE.MeshBasicMaterial({color:0x07080c,side:THREE.DoubleSide}); mesh(g,surf((u,v)=>at(-0.42+0.84*u,brow-0.03+v*0.03,1.045),12,1,{}),DK,'slit'); mesh(g,surf((u,v)=>at(-0.12+0.24*u,chin+(brow-0.03-chin)*v,1.045),3,4,{}),DK,'slit');   // the T
       if(o.rivets) for(let k=0;k<14;k++){ const ph=-Math.PI+k*Math.PI/7; if(Math.abs(ph)<0.5) continue; const r=mesh(g,facetSphere(0.006,0.006,0.006,6,4),GD,'gold'); r.position.copy(at(ph,chin+0.01,1.05)); }
       mesh(g,surf((u,v)=>at(-Math.PI+u*Math.PI*2,chin-0.012+v*0.012,1.055),36,1,{two:0.002}),GD,'gold'); }
-    if(style==='turban'){ const CL=o.cloth||M.scarf||M.tunic, y0=brow-0.025, y1=YT+0.045;   // V263: one smooth wound cloth, its turns spiralling round, a little fuller at the back and flattened on top
-      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, a=v*Math.PI/2, y=y0+(y1-y0)*Math.sin(a), wind=0.022*Math.pow(Math.max(0,Math.sin(ph+v*11)),2)*(1-v*0.6), full=1.1+0.05*Math.max(0,-Math.cos(ph)), k=(full+wind)*Math.pow(Math.cos(a),0.55)+0.0; return at(ph,y,Math.max(0.05,k)); },40,10,{smooth:true,two:0.004}),CL,'cloth');
-      mesh(g,surf((u,v)=>{ const ph=-1.2+2.4*u, k=1.07+0.015*Math.sin(v*Math.PI); return at(ph,chin-0.015+(brow-0.05-chin+0.015)*v,k); },18,4,{smooth:true,two:0.004}),o.wrap||CL,'cloth');   // the face wrapped below the eyes
-      const tl=mesh(g,sweep(bez(at(Math.PI*0.75,brow+0.01,1.12),at(Math.PI*0.82,brow-0.05,1.22),at(Math.PI*0.88,chin-0.05,1.25),at(Math.PI*0.9,chin-0.15,1.22),7),0.03,0.006,4,t=>1-0.4*t),CL,'cloth'); tl.userData.soft=1; }
+    if(style==='turban'){ const CL=o.cloth||M.scarf||M.tunic, y0=brow-0.03, y1=YT+0.03;   // V263: one smooth wound cloth, rounded, its turns spiralling, fuller at the back
+      mesh(g,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, a=v*Math.PI/2, y=y0+(y1-y0)*Math.sin(a), wind=0.018*Math.pow(Math.max(0,Math.sin(ph+v*10)),2)*(1-v), full=1.12+0.06*Math.max(0,-Math.cos(ph)), k=(full+wind)*Math.pow(Math.cos(a),0.9); return at(ph,y-0.012*Math.max(0,Math.cos(ph))*(1-v),Math.max(0.03,k)); },40,10,{smooth:true,two:0.004}),CL,'cloth');
+      mesh(g,surf((u,v)=>{ const ph=-1.15+2.3*u, k=1.06+0.012*Math.sin(v*Math.PI); return at(ph,chin-0.01+(brow-0.055-chin+0.01)*v,k); },18,4,{smooth:true,two:0.004}),o.wrap||CL,'cloth');   // the face wrapped below the eyes
+      const tl=mesh(g,sweep(bez(at(Math.PI*0.75,brow+0.0,1.13),at(Math.PI*0.82,brow-0.06,1.2),at(Math.PI*0.88,chin-0.05,1.22),at(Math.PI*0.9,chin-0.14,1.2),7),0.028,0.006,4,t=>1-0.4*t),CL,'cloth'); tl.userData.soft=1; }
     ctx.top=V(c.x,YT+(style==='bascinet'?0.05:0.012),c.z-0.02); return true; }
   T.helmGreat=function(ctx){ const K=ctx.K, M=K.M, head=K.rig.head, g=piece(ctx,head); if(ctx.headBox) g.userData.fitted=true;
     const E=ctx.headBox||bounds(head,o=>/^(helm2|gold2|helm|visor|gold)$/.test(o.userData.part),[[-0.118,-0.136,-0.13],[0.118,0.19,0.144]]);
@@ -184,7 +185,7 @@ const ARMOR=(function(){
     const top=ph=>{ const c=Math.abs(Math.cos(ph)), f=Math.cos(ph)>0?yF:yBk; return yS+(f-yS)*Math.pow(c,1.6); };
     const smoothR=(ph,y)=>{ let s=0; for(const d of [-0.2,-0.1,0,0.1,0.2]) s+=TR.r(ph+d,y)*(d===0?2:1); return s/6; };   // plate doesn't follow every muscle
     const keel=ph=>0.008*Math.max(0,1-Math.abs(Math.atan2(Math.sin(ph),Math.cos(ph)))/0.3);
-    const R=(ph,y,o)=>smoothR(ph,Math.max(yB,y))+0.014+keel(ph)*(y>0.3?1:0)+0.012*Math.max(0,(0.26-y)/0.06)+(o||0);
+    const R=(ph,y,o)=>smoothR(ph,Math.max(yB,y))+0.014+HEFT*0.02+keel(ph)*(y>0.3?1:0)+0.012*Math.max(0,(0.26-y)/0.06)+(o||0);
     const at=(ph,y,o)=>{ const [cx,cz]=TR.c(Math.max(yB,Math.min(0.6,y))), r=R(ph,y,o); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
     const pl=surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=yB+(top(ph)-yB)*v; return at(ph,y); },40,12,{smooth:true,two:0.004});
     const rib=(fn,n,mat,part,w)=>mesh(g,surf((u,v)=>fn(u,v),n,1,{two:0.002}),mat,part);
@@ -237,7 +238,7 @@ const ARMOR=(function(){
   function skirtKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, to=K.rig.torso, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.steel, MA=leatherM(K,0x6a6e74), LA=leatherM(K,0x2e2018);
     const TR=bodyRings(K,to,['pelvis','thigh'],-0.25,0.12,10,32,0.32); if(!TR) return false; const g=piece(ctx,to); g.userData.fitted=true;
     const yT=0.07, sm=(ph,y)=>{ let s2=0; for(const d of [-0.2,-0.1,0,0.1,0.2]) s2+=TR.r(ph+d,y)*(d===0?2:1); return s2/6; };
-    const at=(ph,y,o2)=>{ const yy=Math.max(-0.25,Math.min(0.12,y)), [cx,cz]=TR.c(Math.min(yT,yy)), r=sm(ph,Math.max(yy,-0.02))+(o2||0)+0.045*Math.max(0,(yT-y)/0.3); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };   // flaring a little as it falls
+    const at=(ph,y,o2)=>{ const yy=Math.max(-0.25,Math.min(0.12,y)), [cx,cz]=TR.c(Math.min(yT,yy)), r=sm(ph,Math.max(yy,-0.02))+(o2||0)+HEFT*0.022+(0.045+HEFT*0.01)*Math.max(0,(yT-y)/0.3); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };   // flaring a little as it falls
     const soft=m=>{ m.userData.soft=1; m.userData.clothPin=yT-0.005; return m; };
     if(style==='tassets'){ const NL=o.lames||4; [-1,1].forEach(sd=>{ const c=sd*0.55; for(let k=0;k<NL;k++){ const y1=yT-k*0.06, y0=y1-0.075, gp=0.03+k*0.005;
         soft(mesh(g,surf((u,v)=>{ const ph=c-0.55+1.1*u, y=y0+(y1-y0)*v; return at(ph,y,gp); },10,2,{smooth:true,two:0.004}),ST,'steel'));
@@ -343,7 +344,7 @@ const ARMOR=(function(){
      a flared cuff), 'gloves' (leather), 'wraps' (linen bands). ── */
   function armSeg(K,pivot,regs,g,cutTop,cutEnd){ const L=limbFrame(K,pivot,regs,g); if(!L) return null; const y1=-L.t0-(cutTop||0), y0=-L.t1+(cutEnd||0), RR=bodyRings(K,L.f,regs,y0,y1,8,20,0.13); if(!RR) return null;
     const sm=(ph,y)=>{ let s2=0; for(const d of [-0.3,-0.15,0,0.15,0.3]) s2+=RR.r(ph+d,y)*(d===0?2:1); return s2/6; };
-    return {f:L.f,y0,y1,RR,sm,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+gap; return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
+    const hf=HEFT*0.011; return {f:L.f,y0,y1,RR,sm,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+Math.max(0.003,gap+hf); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
   const ring=(Sg,y,w,gap,mat,part,p0,p1)=>mesh(Sg.f,surf((u,v)=>Sg.at((p0===undefined?-Math.PI:p0)+((p1===undefined?Math.PI:p1)-(p0===undefined?-Math.PI:p0))*u,y+w*v,gap),24,1,{two:0.002}),mat,part);
   const tube=(Sg,y0,y1,gap,mat,part,flare,nv)=>mesh(Sg.f,surf((u,v)=>{ const ph=-Math.PI+u*Math.PI*2, y=y0+(y1-y0)*v; return Sg.at(ph,y,gap+(flare?flare(v,ph):0)); },22,nv||6,{smooth:true,two:0.003}),mat,part);
   function undo(ctx,made){ made.forEach(g=>{ if(g.parent) g.parent.remove(g); const i2=ctx.groups.indexOf(g); if(i2>=0) ctx.groups.splice(i2,1); }); }
@@ -392,7 +393,7 @@ const ARMOR=(function(){
     const R2=(el,az)=>{ const fe=Math.max(0,Math.min(NE-1,el/EM*NE-0.5)), e0=Math.floor(fe), e1=Math.min(NE-1,e0+1), te=fe-e0, fa=((az+Math.PI)/(Math.PI*2))*NA-0.5, a0=((Math.floor(fa)%NA)+NA)%NA, a1=(a0+1)%NA, ta=fa-Math.floor(fa), v=(e,a)=>r[e*NA+a];
       return (v(e0,a0)*(1-ta)+v(e0,a1)*ta)*(1-te)+(v(e1,a0)*(1-ta)+v(e1,a1)*ta)*te; };
     const outAz=Math.atan2(sd,0);   // the outside of the arm (+x for the left)
-    return {c,R2,at:(el,az,gap)=>{ const r0=R2(el,az)+gap, se=Math.sin(el); return V(c.x+r0*se*Math.sin(az),c.y+r0*Math.cos(el),c.z+r0*se*Math.cos(az)); }, outAz}; }
+    return {c,R2,at:(el,az,gap)=>{ const r0=R2(el,az)+gap+HEFT*0.018, se=Math.sin(el); return V(c.x+r0*se*Math.sin(az),c.y+r0*Math.cos(el),c.z+r0*se*Math.cos(az)); }, outAz}; }
   function shoulderKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, GD=o.trim||M.goldD||M.gold, ST=o.steel||M.paul||M.steel, LE=o.leather||leatherM(K,0x5b3b22), LA=leatherM(K,0x2e2018); const made=[]; let ok=true;
     [[K.rig.AL,1],[K.rig.AR,-1]].forEach(([A,sd])=>{ if(!ok) return; const g=piece(ctx,A.sh); g.userData.fitted=true; made.push(g); const S=shoulderShape(K,A,sd); if(!S){ ok=false; return; }
       const reach=(az,full,inner)=>{ const c=Math.cos(az-S.outAz); return inner+(full-inner)*(0.5+0.5*c); };   // how far down: furthest on the outside
@@ -457,7 +458,7 @@ const ARMOR=(function(){
   function legSeg(K,pivot,regs,g){ const Y=regY(K,pivot,regs,0.2); if(!Y) return null; const f=new THREE.Group(); f.userData.armor=g.userData.armor; g.add(f);
     const y0=Math.max(Y[0],-0.6), y1=Math.min(Y[1],0.02), RR=bodyRings(K,pivot,regs,y0,y1,10,24,0.2); if(!RR) return null; const L={f};
     const sm=(ph,y)=>{ let s2=0; for(const d of [-0.26,-0.13,0,0.13,0.26]) s2+=RR.r(ph+d,y)*(d===0?2:1); return s2/6; };
-    return {f:L.f,y0,y1,RR,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+gap; return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
+    const hf=HEFT*0.012; return {f:L.f,y0,y1,RR,at:(ph,y,gap)=>{ const yy=Math.max(y0,Math.min(y1,y)), [cx,cz]=RR.c(yy), r=sm(ph,yy)+Math.max(0.003,gap+hf); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); }}; }
   function legKit(ctx,style,o){ o=o||{}; const K=ctx.K, M=K.M, GD=M.goldD||M.gold, ST=o.steel||M.steel, LE=o.leather||leatherM(K,0x5b3b22); let ok=true; const made=[];
     [[K.rig.L,1],[K.rig.R,-1]].forEach(([Gp,sd])=>{ if(!ok) return; const g1=piece(ctx,Gp.hip), g2=piece(ctx,Gp.knee); g1.userData.fitted=g2.userData.fitted=true; made.push(g1,g2);
       const T=legSeg(K,Gp.hip,['thigh'],g1), Sn=legSeg(K,Gp.knee,['calf','boot'],g2); if(!T||!Sn){ ok=false; return; }
@@ -663,12 +664,12 @@ const ARMOR=(function(){
      (sword drawn, on guard, swinging), or when o.back says so (the hood down), and the cloth swings between the two (shroudSync). */
   function mantle(ctx,o){ const K=ctx.K, M=K.M, to=K.rig.torso, TR=bodyRings(K,to,['chest','belly','pelvis','thigh'],-0.3,0.62,16,32,0.34); if(!TR) return null;
     const g=piece(ctx,to); g.userData.fitted=true; const CL=o.mat||M.cape||M.tunic, TRIM=o.trim, kind=o.kind||'cape', yTop=o.top||0.6, yHem=o.hem!==undefined?o.hem:-0.35;
-    const P0=kind==='shroud'?-Math.PI:kind==='side'?(o.side||1)*0.2:Math.PI-(o.wide||1.55), P1=kind==='shroud'?Math.PI:kind==='side'?(o.side||1)*Math.PI*0.9:Math.PI+(o.wide||1.55);
-    const shoulderR=(ph)=>{ const sx=Math.abs(Math.sin(ph)); return 0.05+0.13*Math.pow(sx,1.5); };   // over the pauldrons: wider at the sides
+    const sd0=o.side||1, gapF=kind==='shroud'?(o.open||0.16):0, P0=kind==='shroud'?gapF:kind==='side'?sd0*1.15:Math.PI-(o.wide||1.55), P1=kind==='shroud'?Math.PI*2-gapF:kind==='side'?sd0*Math.PI*1.12:Math.PI+(o.wide||1.55);   /* a shroud opens a little before */
+    const shoulderR=(ph)=>{ const sx=Math.abs(Math.sin(ph)); return (o.stand!==undefined?o.stand:0.03)+(o.over!==undefined?o.over:0.09)*Math.pow(sx,1.5); };   // over the shoulders: wider at the sides
     const at=(ph,y,fall)=>{ const yy=Math.max(-0.12,Math.min(0.56,y)), [cx,cz]=TR.c(yy), base=TR.r(ph,Math.max(0.2,yy)), v=Math.max(0,Math.min(1,(yTop-y)/(yTop-yHem))), stand=shoulderR(ph)*Math.min(1,(yTop+0.04-y)/0.16+0.15);
-      const r=Math.max(base+0.04,TR.r(ph,yy)+0.03)+stand*(1-v*0.5)+(o.flare||0.08)*v*v+(Math.cos(ph)<0?0.03*v:0); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
+      const r=Math.max(base+0.03,TR.r(ph,yy)+0.025)+stand*(1-v*0.65)+(o.flare!==undefined?o.flare:0.06)*v*v+(Math.cos(ph)<0?0.025*v:0); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
     const NU=kind==='shroud'?48:28, NV=10, rag=o.rag||0, hemY=(u)=>yHem-(rag?rag*Math.abs(Math.sin(u*NU*0.9)):0);
-    const shapeAt=(u,v,back)=>{ let ph=P0+(P1-P0)*u; if(back&&kind==='shroud'){ const a=Math.abs(ph); ph=Math.sign(ph||1)*(Math.PI*0.42+a*0.58); }   // the front gathered behind, past the shoulders
+    const shapeAt=(u,v,back)=>{ let ph=P0+(P1-P0)*u; if(back&&kind==='shroud'){ const w=((ph%(Math.PI*2))+Math.PI*2)%(Math.PI*2), a=w>Math.PI?Math.PI*2-w:w, sg=w>Math.PI?-1:1; ph=sg*(Math.PI*0.62+a*0.38); }   // the front gathered behind, over and past the shoulders
       const y=yTop-(yTop-hemY(u))*v; return at(ph,y); };
     const top=V(0,0,0); const ring=(fn)=>surf(fn,NU,NV,{smooth:true,two:0.005});
     const m=mesh(g,ring((u,v)=>shapeAt(u,1-v,false)),CL,'cloth'); m.userData.soft=1; m.userData.clothPin=yTop-0.07; m.userData.cape=kind;
@@ -835,7 +836,7 @@ const ARMOR=(function(){
     return {start,stop,get angle(){ return ang; }}; })();
   // trying a piece on (the smithy): worn for the preview only, until bought or the menu closes
   function tryOn(slot,id){ if(typeof ENGINE==='undefined'||!ENGINE.K) return; wear(ENGINE.K,slot,id); }
-  const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds,mantle,shroud,fighting,leatherM,headBox,shoulderShape,armSeg,legSeg,bodyRings,regY};
+  const H={V,surf,weld,twoSide,band,sweep,bez,facetSphere,tri,piece,mesh,bounds,mantle,shroud,fighting,setHeft,leatherM,headBox,shoulderShape,armSeg,legSeg,bodyRings,regY};
   // V262: the kits, by name, for recipes (armor_recipes.js): KIT.x(ctx,style,o) → true when built
   const KIT={leg:legKit,foot:footKit,arm:armKit,hand:handKit,shoulder:shoulderKit,helm:helmKit,skirt:skirtKit,
     great:(ctx,st,o)=>{ ctx.helmFlat=!!(o&&o.flat); T.helm(ctx); return true; },

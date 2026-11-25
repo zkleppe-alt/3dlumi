@@ -873,3 +873,50 @@ Zak: build the skill-tree and town sets first; upgrade them to look cooler, afte
 - `KIT.hood(ctx,tint)` puts the artist's hood in a set's Hood slot, dyed.
 - outfit3: plain garments show wherever a slot wears the plain clothes, whatever set names it. The head counts as bare when the helm slot is plain.
 - armor_sets.js `furCowl`: its declarations no longer leak globals.
+
+## V263 — shrouds for the hooded, the earned sets made special, the earned liveries as armour sets
+Zak: a shroud for the hooded figures, thrown back over the shoulders when they fight; the Guardian's bear only a half-cape, its armour cleaned up; the Striker and Psalmist made special (they're earned, not bought); the Sandstrider's turban and robe cleaned up; the earned liveries refitted to the new models.
+- **Capes and shrouds** (armor.js `mantle`, `shroud`, `shroudSync`, `fighting`). Cloth hung from the shoulders on the cloth sim, fitted round the torso.
+  - Kinds: `cape` (behind), `half`, `side` (over one shoulder to the back), and `shroud` (all round, open a little before).
+  - A shroud has a second resting shape, thrown back with the front gathered behind past the shoulders. The cloth swings to it while he fights (drawn, drawing, guarding, alert, raising or charging) or while the hood is down or can't go up under a helm, and back again after (fast out, slow back).
+  - Every cloth hood now wears one: the plain hood (brown), Thornwarden (moss), Shade (ash), the Ranger's Watch (brown). Psalmist wears a white, gold-edged shroud over the robe.
+- **Guardian**: bearskin cloak cut to a half-cape (0.72 → 0.34); a plain cuirass with a raised gold cross instead of the tabard.
+- **Striker**: a bevor under the fox-eared sallet, a fox-fur collar, three swept blades fanned on the leading (left) shoulder, a fox-red half-cape over that shoulder with a white hem.
+- **Psalmist**: the white shroud, a gold cross pendant on the robe.
+- **Sandstrider**: the turban is one smooth wound cloth (spiralling turns, fuller behind, rounded top) with a narrower face wrap. The robe falls fuller. No trousers poking through the robe (legs none, belt slot only the sash). No brown shroud.
+- **Earned liveries as armour sets** (`lv_<key>`, armor_recipes.js). Earned with the livery (`liveryOwned`). Putting the livery on at the wardrobe glass puts its set on once (`liverySync`); pieces can be changed after. Each has its own plate and trim colours, because the toon shading kept the knight's own steel one colour. The old livery crests and wings are hidden while the kit dresses him; Robby's smoke stays.
+
+| Livery set | Look |
+|---|---|
+| Sunfall Gilt | gold plate, great helm with a sun-ray crest, sunburst, gold half-cape |
+| Stormward | white-blue plate, sallet with bolt crest and bevor, heavy pauldrons, blue cape, the bolt |
+| Fallen | black plate, red trim, barbute with jagged red crown and red eyes, spiked pauldrons, ragged cape |
+| Robby's Demise | black-red, flat great helm with horns and red eyes, spiked pauldrons, bat wings, mail skirt |
+| Champion's | white and gold, great helm with the tourney plume, white cape |
+| Ranger's Watch | the ranger's hood and shroud, red feather, brigandine, leaf mantles, kilt, tall boots |
+| Armour of God | gold plate, great helm with a halo, sunburst, the belt of truth, white cape, great wings |
+| Deepwater | pearl and teal, finned sallet with pearls, a scale coat, shells, teal cape |
+
+## V264 — heavy sets built heavier
+Zak: vary the armours, the Guardian heavier and thicker, so the difference reads.
+- armor.js `HEFT` (`ARMOR.H.setHeft`, set by the recipe runner while a set is built): each set stands its plate further off the body.
+  - Arm and leg tubes: +0.011–0.012 per unit, so greaves, vambraces, cuisses and the boots and sabatons with them.
+  - Breastplate +0.02; shoulder caps +0.018; helms +0.008; skirts +0.022.
+- Weights:
+
+| Weight | Sets |
+|---|---|
+| 1.6 | Guardian |
+| 1.3 | Ironforged, Robby's Demise |
+| 1.1 | Emberforged |
+| 0.9 | Archangel, Armour of God |
+| 0.8 | Champion's, Fallen |
+| 0.6 | Crystalborn, Stormward, Sunfall Gilt |
+| 0.4 | Tempest, Hearthward |
+| 0.2 | Psalmist |
+| 0.1 | Deepwater |
+| -0.1 | Tidecaller |
+| -0.25 | Striker (lean) |
+| 0 | everything else, and the Templar |
+
+- Ironforged, Crystalborn and Emberforged wear no cloth hood (the navy hood had shown as a bib on the breast). Archangel's Hood slot carries only its wings.
