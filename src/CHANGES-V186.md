@@ -764,3 +764,12 @@ Zak's answers: breastplate *under* the tabard; pelts become hoods; with a helm t
   - The pelt falls from the hood down both sides of his face and the back to his shoulders, widening, with a ragged foot of locks.
 - Replaces V256's fur cap with a small head on top. Hood down is unchanged (the beast's head on his shoulder).
 - Smoke note: V256's run showed one error, at the shop interior (`Cannot read properties of null (reading 'trim')`), in code not touched here. It did not recur on the V257 run (0 errors), so it's treated as flaky; watch for it.
+
+## V258 — pelts lie over the pauldrons
+- armor.js `drape()`: whenever the pelt (Hood slot) or the pauldrons change (`set`), every part of the pelt (the shoulder skins, the collar, the hood's fall, the cloak) is set out over the pauldrons he's wearing.
+  - `envelope()` measures each worn pauldron's outer surface round its middle: the farthest point in each direction, 8 × 16 bins.
+  - Only small holes are filled, so there's no false shell below the rim.
+  - The bins are smoothed twice and read with bilinear blending, so the fur lies in a curve, not steps.
+  - A pelt point inside the surface plus a gap (0.016 world) moves out along its ray onto it.
+  - The fur's underside (faces whose normal points inward) stays a fur's thickness (0.007) inside its top, so the two layers don't z-fight.
+- Each pass starts from the pelt's own shape and normals (`drape0`, `drapeN`), so taking the pauldrons off restores it. The cloth's resting shape (`rest`) follows, and the cloth sim restarts.
