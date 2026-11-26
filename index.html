@@ -23916,7 +23916,7 @@ const BODY3=(function(){
 const ARMOR=(function(){
   const V=(x,y,z)=>new THREE.Vector3(x||0,y||0,z||0);
   const SLOTS=['helm','plume','cowl','tabard','belt','skirt','pauldrons','arms','gauntlets','legs','sabatons'];
-  const NAMES={helm:'Great helm',plume:'Plume',cowl:'Hood',tabard:'Tabard & breastplate',belt:'Belt & pouches',skirt:'Skirt',pauldrons:'Pauldrons',arms:'Arms & gloves',gauntlets:'Gloves',legs:'Greaves & cuisses',sabatons:'Sabatons'};
+  const NAMES={helm:'Great helm',plume:'Plume',cowl:'Hood',tabard:'Tabard & breastplate',belt:'Belt & pouches',skirt:'Skirt',pauldrons:'Pauldrons',arms:'Arms & gloves',gauntlets:'Gloves',legs:'Legs & boots',sabatons:'Sabatons'};
 
   // ── geometry helpers ──
   // a surface from f(u,v)→Vector3, u around (left to right as seen from outside), v up; flat-shaded unless smooth
@@ -24752,7 +24752,7 @@ const ARMOR=(function(){
   function bodyPts(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.body.boneTransform) return null; const body=F.body, G=body.geometry, P=G.attributes.position;
     bodySync(K); body.skeleton.update(); body.updateMatrixWorld(true); const st=2, n=Math.ceil(P.count/st), X=new Float32Array(n*3), I=new Int32Array(n); const v=new THREE.Vector3();
     for(let q=0,k=0;q<P.count;q+=st,k++){ body.boneTransform(q,v); v.applyMatrix4(body.matrixWorld); X[k*3]=v.x; X[k*3+1]=v.y; X[k*3+2]=v.z; I[k]=q; } return {X,I,n,body}; }
-  function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; gs=gs.filter(g=>!g.userData.glove); if(!gs.length) return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
+  function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; gs=gs.filter(g=>!g.userData.glove&&!g.userData.skinKit); if(!gs.length) return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
     gs.forEach(g=>{ if(!g.parent||g.userData.garmentSlot||g.parent===K._skF||g.parent===K._skB) return; g.updateWorldMatrix(true,true); const pts=[];
       g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/40)); for(let i=0;i<A.count;i+=st) pts.push(v.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld).clone()); });
       if(!pts.length) return; const W=new Map();
@@ -24779,12 +24779,13 @@ const ARMOR=(function(){
     return ()=>{ if(--_restD>0) return; saved.forEach(([p,q])=>p.quaternion.copy(q)); bodySync(K); }; }
   function wear(K,slot,id){ const undo=restPose(K); try{ return wear0(K,slot,id); } finally{ undo(); } }
   function wear0(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
+    if(slot==='legs'&&!wear._gl&&PIECES.sabatons.kit){ wear._gl=true; try{ wear(K,'sabatons','kit'); } finally{ wear._gl=false; } }   /* V276: the boots are in the legs' kit */
     if(slot==='arms'&&!wear._gl&&typeof ARMOR!=='undefined'&&ARMOR.gloveFor){ wear._gl=true; try{ wear(K,'gauntlets',ARMOR.gloveFor(id)); } finally{ wear._gl=false; } }   /* V275: the glove that goes with this vambrace */
     if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
     if(slot==='helm'&&S.groups.cowl&&S.groups.cowl[0]&&S.groups.cowl[0].userData.hoodParts&&!wear._in){ wear._in=true; try{ const on=S.worn.cowl; wear(K,'cowl',S.ids.cowl); if(!on) set(K,'cowl',false); } finally{ wear._in=false; } }   /* a pelt's hood re-cut to the new helm */
     if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ if((slot==='tabard'||slot==='skirt')&&S.groups.belt&&S.ids&&S.ids.belt&&!wear._in){ wear._in=true; try{ const bid=S.ids.belt, on=S.worn.belt; gs.forEach(g=>g.updateMatrixWorld(true)); S.groups[slot]=gs; S.worn[slot]=true; wear(K,'belt',bid); if(!on) set(K,'belt',false); } finally{ wear._in=false; } }   /* V269: the belt let out over the new tabard */ try{ skinGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR skin',slot,e); } try{ onBones(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR bones',slot,e); } S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
   function set(K,slot,on){ const undo=restPose(K); try{ return set0(K,slot,on); } finally{ undo(); } }   /* V274: draping is measured in the rest pose too */
-  function set0(K,slot,on){ const S=state(K); if(slot==='arms'&&S.groups.gauntlets) set0(K,'gauntlets',on); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
+  function set0(K,slot,on){ const S=state(K); if(slot==='arms'&&S.groups.gauntlets) set0(K,'gauntlets',on); if(slot==='legs'&&S.groups.sabatons) set0(K,'sabatons',on); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
     if(slot==='pauldrons'||slot==='cowl') try{ drape(K); }catch(e){ if(window.DEBUG_ARMOR) console.error('drape',e); }
     if(slot==='tabard'||slot==='skirt') skirtSync(K); }
   function skirtSync(K){ const S=K&&K.userData.armorS; if(!S||!S.groups.skirt) return; const long=!!(S.worn.tabard&&S.groups.tabard&&S.groups.tabard[0]&&S.groups.tabard[0].userData.longFront);
@@ -24821,9 +24822,10 @@ const ARMOR=(function(){
   const SG=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
   function earned(id,slot){ if(id==='templar'||id==='base') return !!(PIECES[slot]&&PIECES[slot][id]); if(PIECES[slot]&&PIECES[slot][id]&&PIECES[slot][id].common) return true; if(id.startsWith('lv_')) return !!(PIECES[slot]&&PIECES[slot][id])&&typeof liveryOwned==='function'&&liveryOwned(SG(),id.slice(3)); const S=SG(), pre=TREES[id]; if(S.armorOwned&&S.armorOwned[id+'.'+slot]&&PIECES[slot]&&PIECES[slot][id]) return true;   /* V245: bought at the smithy */ if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
   function options(slot){ const o=Object.keys(PIECES[slot]||{}).filter(id=>earned(id,slot)&&id!=='base'); if(PIECES[slot]&&PIECES[slot].base) o.push('base'); return o; }   // plain clothes last
-  function pick(slot){ if(slot==='gauntlets'&&typeof ARMOR!=='undefined'&&ARMOR.gloveFor) return ARMOR.gloveFor(pick('arms')); const S=SG();   /* V275: the glove comes with the vambrace */ if(S.armorOff&&S.armorOff[slot]&&PIECES[slot].base) return 'base'; const id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }   /* V242: a slot with its armour off wears the plain clothes, not the old harness */
+  function pick(slot){ if(slot==='sabatons'&&PIECES.sabatons.kit) return 'kit';   /* V276: the feet come with the legs' kit */
+    if(slot==='gauntlets'&&typeof ARMOR!=='undefined'&&ARMOR.gloveFor) return ARMOR.gloveFor(pick('arms')); const S=SG();   /* V275: the glove comes with the vambrace */ if(S.armorOff&&S.armorOff[slot]&&PIECES[slot].base) return 'base'; const id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }   /* V242: a slot with its armour off wears the plain clothes, not the old harness */
   function noteEarned(){ const S=SG(); if(!S.skills) return; S.armorEarned=S.armorEarned||{}; const fresh=[];
-    for(const id in TREES) for(const slot in TIER){ const k=id+'.'+slot; if(!S.armorEarned[k]&&S.skills[TREES[id]+TIER[slot]]&&PIECES[slot]&&PIECES[slot][id]){ S.armorEarned[k]=1; if(slot!=='gauntlets') fresh.push(PIECES[slot][id].name); } }
+    for(const id in TREES) for(const slot in TIER){ const k=id+'.'+slot; if(!S.armorEarned[k]&&S.skills[TREES[id]+TIER[slot]]&&PIECES[slot]&&PIECES[slot][id]){ S.armorEarned[k]=1; if(slot!=='gauntlets'&&slot!=='sabatons') fresh.push(PIECES[slot][id].name); } }
     if(fresh.length&&typeof UI!=='undefined'&&UI.toast&&!noteEarned.quiet) UI.toast('🛡 Armour earned: '+fresh.join(', ')+' — try it on in ☰ System → Armour',3200); noteEarned.quiet=false; }
   noteEarned.quiet=true;
   const hasBody=K=>{ const b=K.userData.b3; return !!(b&&typeof b==='object'&&b.body); };
@@ -24933,7 +24935,7 @@ const ARMOR=(function(){
   const KIT={belt:beltKit,leg:legKit,foot:footKit,arm:armKit,hand:handKit,shoulder:shoulderKit,helm:helmKit,skirt:skirtKit,
     great:(ctx,st,o)=>{ ctx.helmFlat=!!(o&&o.flat); T.helm(ctx); return true; },
     torso:(ctx,st,o)=>{ ctx.torsoStyle=st; ctx.torsoOpts=o||{}; T.tabard(ctx); return true; } };
-  const LOOK=SLOTS.filter(s=>s!=='gauntlets');   // what the Gear screen lists (the gloves come with the arms)
+  const LOOK=SLOTS.filter(s=>s!=='gauntlets'&&s!=='sabatons');   // what the Gear screen lists (the gloves come with the arms)
   return { LOOK, preview, tryOn, shop:false, tick, hoodSync, hoodUpNow, regY, bodyRings, legKit, footKit, armKit, handKit, shoulderKit, helmKit, skirtKit, SLOTS, NAMES, PIECES, TREES, TIER, H, KIT, T, set, wear, worn, dress, apply, covered, earned, options, pick };
 })();
 
@@ -25758,6 +25760,108 @@ const ARMOR=(function(){
   ARMOR.GLOVE=GLOVE;
 })();
 
+// ── engine/legkit.js ──
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+//  LEGKIT — V276. The legs as one kit, built on the body the way the gloves are (V275): trousers, boots, plate — each a
+//  layer of the BODY3 body's own leg triangles pushed out from it and skinned to the same bones, so it bends at the knee
+//  and ankle with the leg and can't come loose. Raised parts (knee cops, shin keels, gold bands, the cuisse's edge) are
+//  further layers on top. A layer's thickness can vary down the leg, which is what gives the trousers their medieval puff
+//  (full at the thigh, bloused over the boot top). One Gear tile, "Legs & boots": each set brings its kit, plus common kits.
+//  Measured in the body's bind pose: y is height (sole 0, ankle ~0.09, knee ~0.54, hip ~0.97), +z is the front.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+(function(){
+  if(typeof ARMOR==='undefined') return;
+  const P=ARMOR.PIECES, OLDL=Object.assign({},P.legs), OLDS=Object.assign({},P.sabatons);
+  const hx=m=>m&&m.color?m.color.getHex():null, dark=(c,k)=>new THREE.Color(c).multiplyScalar(k).getHex();
+  const LEGR=new Set(['pelvis','thigh','calf','boot','foot']);
+  const bump=(y,c,w)=>Math.exp(-((y-c)/w)*((y-c)/w));
+  // one layer: the leg triangles whose middle passes L.sel, pushed out by L.d (a number or a function of the bind point), skinned
+  function layer(F,g,L){ const body=F.body, geo=body.geometry, P0=geo.attributes.position, N0=geo.attributes.normal, R=F.D.reg, cn=F.D.cn, ix=F.idx0||geo.index, n=P0.count;
+    const tri=[]; for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t), b=ix.getX(t+1), c=ix.getX(t+2); if(!LEGR.has(R[a])||!LEGR.has(R[b])||!LEGR.has(R[c])) continue;
+      const y=(P0.getY(a)+P0.getY(b)+P0.getY(c))/3, x=(P0.getX(a)+P0.getX(b)+P0.getX(c))/3, z=(P0.getZ(a)+P0.getZ(b)+P0.getZ(c))/3, nz=(N0.getZ(a)+N0.getZ(b)+N0.getZ(c))/3, ny=(N0.getY(a)+N0.getY(b)+N0.getY(c))/3;
+      if(R[a]==='pelvis'&&R[b]==='pelvis'&&R[c]==='pelvis'&&Math.abs(x)<0.02&&z>0.05) continue;   // not over the belly
+      if(L.sel(y,Math.abs(x),z,nz,ny)) tri.push(a,b,c); }
+    if(!tri.length) return null;
+    const nb=new Map(), link=(a,b)=>{ if(a===b) return; if(!nb.has(a)) nb.set(a,new Set()); nb.get(a).add(b); };
+    for(let t=0;t<tri.length;t+=3) for(let q=0;q<3;q++){ const a=cn[tri[t+q]], b=cn[tri[t+(q+1)%3]]; link(a,b); link(b,a); }
+    // the open edge: an edge of the layer used by one of its triangles only
+    const ec=new Map(); for(let t=0;t<tri.length;t+=3) for(let q=0;q<3;q++){ const a=cn[tri[t+q]], b=cn[tri[t+(q+1)%3]], k=a<b?a+'_'+b:b+'_'+a; ec.set(k,(ec.get(k)||0)+1); }
+    const open=new Set(); ec.forEach((v,k)=>{ if(v===1){ const [a,b]=k.split('_'); open.add(+a); open.add(+b); } });
+    const X=new Float32Array(n*3); for(let q=0;q<n;q++){ X[q*3]=P0.getX(q); X[q*3+1]=P0.getY(q); X[q*3+2]=P0.getZ(q); }
+    for(let it=0;it<(L.it==null?2:L.it);it++){ const Y=new Float32Array(X); nb.forEach((ns,a)=>{ if(open.has(a)) return; let x=0,y=0,z=0; ns.forEach(b=>{ x+=X[b*3]; y+=X[b*3+1]; z+=X[b*3+2]; }); const m=ns.size; Y[a*3]=X[a*3]*0.5+x/m*0.5; Y[a*3+1]=X[a*3+1]*0.5+y/m*0.5; Y[a*3+2]=X[a*3+2]*0.5+z/m*0.5; }); X.set(Y); }
+    const norms=()=>{ const Nn=new Float32Array(n*3), A=new THREE.Vector3(), B=new THREE.Vector3(), C=new THREE.Vector3();
+      for(let t=0;t<tri.length;t+=3){ const a=cn[tri[t]], b=cn[tri[t+1]], c=cn[tri[t+2]]; A.set(X[a*3],X[a*3+1],X[a*3+2]); B.set(X[b*3]-A.x,X[b*3+1]-A.y,X[b*3+2]-A.z); C.set(X[c*3]-A.x,X[c*3+1]-A.y,X[c*3+2]-A.z); B.cross(C); [a,b,c].forEach(v=>{ Nn[v*3]+=B.x; Nn[v*3+1]+=B.y; Nn[v*3+2]+=B.z; }); }
+      nb.forEach((_,a)=>{ const l=Math.hypot(Nn[a*3],Nn[a*3+1],Nn[a*3+2])||1; Nn[a*3]/=l; Nn[a*3+1]/=l; Nn[a*3+2]/=l; }); return Nn; };
+    let Nn=norms(); const need=new Map(), df=typeof L.d==='function'?L.d:(()=>L.d);
+    nb.forEach((_,a)=>{ const D=df(P0.getY(a),Math.abs(P0.getX(a)),P0.getZ(a))*F.unit, out=(X[a*3]-P0.getX(a))*Nn[a*3]+(X[a*3+1]-P0.getY(a))*Nn[a*3+1]+(X[a*3+2]-P0.getZ(a))*Nn[a*3+2]; need.set(a,Math.max(D*0.4,D-out)); });
+    for(let it=0;it<4;it++){ const nx=new Map(); nb.forEach((ns,a)=>{ let s=need.get(a); ns.forEach(b=>s+=need.get(b)); nx.set(a,Math.max(need.get(a)*0.85,s/(ns.size+1))); }); nx.forEach((v,a)=>need.set(a,v)); }
+    nb.forEach((_,a)=>{ const w=need.get(a); X[a*3]+=Nn[a*3]*w; X[a*3+1]+=Nn[a*3+1]*w; X[a*3+2]+=Nn[a*3+2]*w; }); Nn=norms();
+    const ng=new THREE.BufferGeometry(), PA=new Float32Array(n*3), NA=new Float32Array(n*3); for(let q=0;q<n;q++){ const c=cn[q]; for(let e=0;e<3;e++){ PA[q*3+e]=X[c*3+e]; NA[q*3+e]=Nn[c*3+e]; } }
+    ng.setAttribute('position',new THREE.BufferAttribute(PA,3)); ng.setAttribute('normal',new THREE.BufferAttribute(NA,3)); ['skinIndex','skinWeight','uv'].forEach(k=>{ if(geo.attributes[k]) ng.setAttribute(k,geo.attributes[k]); }); ng.setIndex(tri);
+    const sm=new THREE.SkinnedMesh(ng,BODY3.mat(L.kind,L.col)); sm.castShadow=true; sm.frustumCulled=false; sm.userData.keepMat=true; sm.userData.armor='legs'; sm.userData.legKit=true; g.add(sm); sm.bind(body.skeleton,body.bindMatrix); return sm; }
+  // ── the parts ──  (front: nz>0; the boot top / trouser end heights are bind y)
+  const all=()=>true;
+  const BOOT={ tall:0.4, ankle:0.17, shoes:0.105, steel:0.2, bare:-1 };
+  function trousers(col,end,o){ o=o||{}; const top=o.top||0.95, puff=o.puff==null?1:o.puff;   // full at the thigh, gathered and bloused just above where they end
+    const tp=y=>y<0.84?1:Math.max(0.25,1-(y-0.84)/0.1), d=y=>tp(y)*(0.008+puff*(0.014*bump(y,0.72,0.15)+0.006*bump(y,0.42,0.12)+(end>0.12?0.012*bump(y,end+0.05,0.05):0)));   // easing to a close fit at the hips, under the tabard
+    const L=[{sel:(y)=>y>end-0.005&&y<top,d,it:24,kind:'cloth',col}];
+    if(o.cuff) L.push({sel:y=>y>end-0.005&&y<end+0.03,d:y=>d(y)+0.006,it:4,kind:'cloth',col:dark(col,0.8)});   // a gathered cuff where they end bare
+    return L; }
+  function boots(kind,col,o){ o=o||{}; const h=BOOT[kind]; if(h<0) return []; const L=[];
+    L.push({sel:y=>y<h,d:y=>0.008+0.008*bump(y,h-0.02,0.04),it:3,kind:'leather',col});
+    L.push({sel:(y,x,z,nz,ny)=>y<0.02&&ny<0.2,d:0.013,it:1,kind:'leather',col:dark(col,0.45)});   // the sole and heel
+    if(kind==='tall') L.push({sel:y=>y>h-0.05&&y<h+0.01,d:0.017,it:4,kind:'leather',col:dark(col,0.8)});   // the turned-down cuff
+    if(kind==='ankle') L.push({sel:y=>y>0.11&&y<0.135,d:0.012,it:1,kind:'leather',col:dark(col,0.6)});    // a strap
+    return L; }
+  function steelBoots(st,gd){ return [
+    {sel:y=>y<0.2,d:0.01,it:3,kind:'steel',col:st},
+    {sel:(y,x,z,nz,ny)=>y<0.02&&ny<0.2,d:0.013,it:1,kind:'leather',col:0x2a1e16},
+    {sel:(y,x,z,nz,ny)=>y<0.1&&ny>0.25&&((z>0.02&&z<0.035)||(z>0.055&&z<0.07)),d:0.014,it:0,kind:'gold',col:gd},   // the lames over the instep
+    {sel:y=>y>0.13&&y<0.16,d:0.0145,it:1,kind:'gold',col:gd} ]; }                                                  // the ankle band
+  function plate(st,gd,o){ o=o||{}; const hv=o.heavy||0, low=o.greaveTo==null?0.13:o.greaveTo, under=o.under||0x4c535e, L=[];
+    L.push({sel:y=>y>0.6&&y<0.985,d:0.009,it:3,kind:o.underKind||'cloth',col:under});                       // what's under: mail or leather behind the cuisse
+    L.push({sel:(y,x,z,nz)=>y>0.6&&y<0.93&&nz>-0.35,d:0.016+hv,it:4,kind:'steel',col:st});                // the cuisse, round the front and sides
+    L.push({sel:(y,x,z,nz)=>y>0.6&&y<0.625&&nz>-0.3,d:0.019+hv,it:1,kind:'gold',col:gd});                // its gilt foot
+    L.push({sel:(y,x,z,nz)=>y>0.475&&y<0.615&&nz>0.05,d:y=>0.02+hv+0.006*bump(y,0.545,0.03),it:5,kind:'steel',col:dark(st,1.08)});   // the knee cop
+    L.push({sel:(y,x,z,nz)=>((y>0.475&&y<0.49)||(y>0.6&&y<0.615))&&nz>0.1,d:0.024+hv,it:1,kind:'gold',col:gd});   // its rims
+    L.push({sel:y=>y>low&&y<0.5,d:0.013+hv,it:3,kind:'steel',col:st});                                     // the greave, closed round the shin
+    L.push({sel:(y,x,z,nz)=>y>low+0.01&&y<0.48&&nz>0.72,d:0.018+hv,it:1,kind:'steel',col:dark(st,1.15)});  // the shin keel
+    L.push({sel:y=>(y>0.47&&y<0.5)||(y>low&&y<low+0.025),d:0.016+hv,it:1,kind:'gold',col:gd});           // gilt at its top and foot
+    return L; }
+  function greaves(st,gd){ return plate(st,gd).filter((l,i)=>i>=3); }   // knee cop and greave only (over trousers)
+  // ── the kits: what each set wears on its legs ──
+  const KIT={
+    plate:s=>[...plate(s.st,s.gd,{heavy:s.heavy}),...steelBoots(s.st,s.gd)],
+    plateLeather:s=>[...plate(s.st,s.gd,{greaveTo:0.37,under:0x4a3a2a,underKind:'leather'}),...boots('tall',s.boot||0x4a3020)],
+    greaves:s=>[...trousers(s.cloth||0x5a4a36,0.38,{puff:0.6}),...greaves(s.st,s.gd),...boots(s.bootKind||'tall',s.boot||0x3a2618)],
+    trousers:s=>[...trousers(s.cloth||0x6a5a40,BOOT[s.bootKind||'tall']-0.02,{puff:s.puff}),...boots(s.bootKind||'tall',s.boot||0x4a3020)],
+    bare:s=>trousers(s.cloth||0x6a5a40,0.27,{cuff:true,puff:s.puff}) };
+  const KITS={ templar:['plate'], guardian:['plate',{heavy:0.006}], ironforged:['plate',{heavy:0.004}], crystalborn:['plate'], emberforged:['plate',{heavy:0.003}], tempest:['plate'], archangel:['plate'],
+    lv_gilt:['plate'], lv_stormward:['plate'], lv_fallen:['plate'], lv_robby:['plate',{heavy:0.004}], lv_champion:['plate'], lv_glory:['plate'], lv_deepwater:['plate'],
+    striker:['greaves',{cloth:0x3a2418,boot:0x2e1a12}], tidecaller:['greaves',{cloth:0x2a4a50,boot:0x2e2a24}],
+    psalmist:['trousers',{cloth:0xe9e2d0,boot:0x8a6a44,bootKind:'ankle'}], hearth:['trousers',{cloth:0x6a5a3a,boot:0x5a3a20,bootKind:'ankle'}],
+    thornwarden:['trousers',{cloth:0x3e4a2a,boot:0x4a3a22}], sandstrider:['trousers',{cloth:0xd8c8a0,boot:0x8a6a44,bootKind:'shoes',puff:1.3}],
+    shade:['trousers',{cloth:0x24222a,boot:0x1e1a20}], lv_ranger:['trousers',{cloth:0x4a4030,boot:0x5a3a1e}],
+    base:['trousers',{cloth:0x6a5a40,boot:0x4a3020}],
+    k_boots:['trousers',{}], k_ankle:['trousers',{bootKind:'ankle',boot:0x5a3a20}], k_shoes:['trousers',{bootKind:'shoes',boot:0x5a3a20}], k_bare:['bare',{}],
+    k_plate:['plate'], k_plateLeather:['plateLeather'], greaves:['greaves'], k_greaves:['greaves'] };
+  const NM={k_boots:'Trousers & tall boots',k_ankle:'Trousers & ankle boots',k_shoes:'Trousers & shoes',k_bare:'Barefoot & trousers',k_plate:'Armoured legs & steel boots',k_plateLeather:'Armoured legs & leather boots',k_greaves:'Greaves over trousers & boots'};
+  function build(ctx,id){ const K=ctx.K, F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||typeof BODY3==='undefined'||!BODY3.mat) return false;
+    const pal=ARMOR.PAL&&ARMOR.PAL[id], M=pal?Object.assign({},K.M,pal):K.M, k=KITS[id]||['trousers',{}], s=Object.assign({},k[1]||{});
+    s.st=new THREE.Color(hx(M.steel)||0xa9b0bc).lerp(new THREE.Color(0x5e6774),0.75).getHex(); s.gd=hx(M.goldD||M.gold)||0xd6a640;   // as the gloves' steel
+    const g=new THREE.Group(); g.userData.armor='legs'; g.userData.fitted=true; g.userData.skinKit=true; g.userData.barefoot=k[0]==='bare'; K.add(g); ctx.groups.push(g);
+    (KIT[k[0]]||KIT.trousers)(s).forEach(L=>{ try{ layer(F,g,L); }catch(e){ if(window.DEBUG_ARMOR) console.error('legkit',e); } });
+    return true; }
+  // every legs piece is now a kit; the feet come with it (the Sabatons slot wears nothing of its own)
+  const ids=new Set([...Object.keys(P.legs||{}),...Object.keys(KITS)]);
+  ids.forEach(id=>{ const old=OLDL[id]; if(id.startsWith('k_')&&!old) P.legs[id]={name:NM[id],set:'Common',common:true};
+    const pc=P.legs[id]; if(!pc) return; if(id==='greaves') pc.name='Greaves over trousers & boots'; else if(id!=='base'&&!id.startsWith('k_')&&pc.set) pc.name=pc.set+' legs & boots'; if(id==='base') pc.name='Trousers & tall boots';
+    pc.build=ctx=>{ if(build(ctx,id)) return; if(old) old.build(ctx); else if(OLDL.templar) OLDL.templar.build(ctx); }; });
+  if(P.legs.k_boots) delete P.legs.k_boots;   // the plain kit is the same as the base: no twin in the list
+  P.sabatons.kit={name:'(with the legs)',set:'Common',common:true,build:ctx=>{ const K=ctx.K, F=K.userData.b3; if(F&&typeof F==='object'&&F.body){ const g=new THREE.Group(); g.userData.armor='sabatons'; g.userData.fitted=true; g.userData.skinKit=true; K.add(g); ctx.groups.push(g); return; } const o=OLDS.templar; if(o) o.build(ctx); }};
+  ARMOR.LEGKIT=KITS;
+})();
+
 // ── engine/outfit3.js ──
 // ════════════════════════════════════════════════════════════════
 //  OUTFIT3 (V247, a TEST) — the knight in clothes an artist made: Quaternius's "Modular Character Outfits – Fantasy"
@@ -26043,17 +26147,18 @@ const OUTFIT3=(function(){
     for(const k in G){ const m=G[k], st=m&&m._style; if(!st||!m.visible) continue; [st.cloth,st.trim].forEach((src,i)=>{ if(src&&src.color&&m.material[i]) m.material[i].color.copy(src.color); }); if(m._decal&&st.mark&&st.mark.color) m._decal.material.color.copy(st.mark.color); }   // a livery recolours it
     // the crest can't stand up through a cloth hood
     (S.groups.plume||[]).forEach(g=>{ const hide=!!(on.cowl&&hoodUp&&hs.helmOn&&!A)||(!hs.helmOn&&!!S.worn.plume); if(hide&&g.visible){ g.visible=false; g.userData.hoodHid=1; } else if(!hide&&g.userData.hoodHid){ delete g.userData.hoodHid; if(S.worn.plume) g.visible=true; } });
+    let bareFeet=false;
     const cut=new Set(); for(const sl in BCUT) if(on[sl]) BCUT[sl].forEach(r=>cut.add(r));
-    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur)+'|'+on.arms+'|'+(on.legs&&!on.sabatons);
+    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur)+'|'+on.arms+'|'+(on.legs&&!on.sabatons)+'|'+(bareFeet=!!(g0('legs')&&S.worn.legs&&g0('legs').userData.barefoot));
     if(K._glint) K._glint.visible=shade==='deep'&&!fpHide&&!cur;
     if(cur||sig===bSig) return; bSig=sig;
     const R=F.D.reg, ix=F.idx0, keep=[]; if(cut.size){ for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(cut.has(R[a])&&cut.has(R[b])&&cut.has(R[c]))) keep.push(a,b,c); } }
-    paintBase(F,shade,on.gauntlets,on.arms,on.legs&&!on.sabatons); F.body.geometry.setIndex(cut.size?keep:ix);
+    paintBase(F,shade,on.gauntlets,on.arms,on.legs&&!on.sabatons,bareFeet); F.body.geometry.setIndex(cut.size?keep:ix);
     const showFace=shade!=='off', ek=shade==='deep'?0.1:shade==='light'?0.62:1; F.extra.forEach(o=>{ o.visible=showFace; const m=o.material; if(m&&m.color){ m.color.setScalar(ek); } });
     glints(K,shade==='deep'); }
   // the skin: the face (under the hood, shaded as the hood shades it) and the bare hands; the rest of him the mail-grey under any armour
   const SKIN=0xd9a67c, MAIL=0x4c535e, HOSE=0x5a4a3a;
-  function paintBase(F,shade,bareHands,bareArms,hose){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):rg==='forearm'?(bareArms?SKIN:MAIL):(hose&&(rg==='calf'||rg==='boot'||rg==='foot'))?HOSE:MAIL,'mail');   /* V260: breeches and other shoes: woollen hose on the calf */   /* the Peasant's sleeves end at the elbow: a bare forearm under the bracer */
+  function paintBase(F,shade,bareHands,bareArms,hose,bareFeet){ BODY3.paint(F,rg=>rg==='head'?(shade==='off'?MAIL:SKIN):rg==='hand'?(bareHands?SKIN:MAIL):(bareFeet&&(rg==='foot'||rg==='boot'))?SKIN:rg==='forearm'?(bareArms?SKIN:MAIL):(hose&&(rg==='calf'||rg==='boot'||rg==='foot'))?HOSE:MAIL,'mail');   /* V260: breeches and other shoes: woollen hose on the calf */   /* the Peasant's sleeves end at the elbow: a bare forearm under the bracer */
     if(shade!=='deep'&&shade!=='light') return; const g=F.body.geometry, C=g.attributes.color, P=g.attributes.position, R=F.D.reg; let y0=1e9,y1=-1e9,z1=-1e9;
     for(let j=0;j<P.count;j++) if(R[j]==='head'){ y0=Math.min(y0,P.getY(j)); y1=Math.max(y1,P.getY(j)); z1=Math.max(z1,P.getZ(j)); }
     const sc=new THREE.Color(0x0b0b10); if(ENGINE.renderer&&ENGINE.renderer.outputEncoding===THREE.sRGBEncoding) sc.convertSRGBToLinear();
