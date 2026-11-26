@@ -40,37 +40,37 @@
   const all=()=>true;
   const BOOT={ tall:0.4, ankle:0.17, shoes:0.105, steel:0.2, bare:-1 };
   function trousers(col,end,o){ o=o||{}; const top=o.top||0.95, puff=o.puff==null?1:o.puff;   // full at the thigh, gathered and bloused just above where they end
-    const tp=y=>y<0.84?1:Math.max(0.25,1-(y-0.84)/0.1), d=y=>tp(y)*(0.008+puff*(0.014*bump(y,0.72,0.15)+0.006*bump(y,0.42,0.12)+(end>0.12?0.012*bump(y,end+0.05,0.05):0)));   // easing to a close fit at the hips, under the tabard
+    const tp=y=>y<0.84?1:Math.max(0.25,1-(y-0.84)/0.1), d=y=>tp(y)*(0.008+puff*(0.014*bump(y,0.72,0.15)+0.006*bump(y,0.42,0.12)+(end>0.12&&!o.tuck?0.012*bump(y,end+0.05,0.05):0)))*(o.tuck?Math.min(1,0.35+0.65*Math.max(0,(y-end)/0.12)):1);   // tucked: drawn in to slip under a greave   // easing to a close fit at the hips, under the tabard
     const L=[{sel:(y)=>y>end-0.005&&y<top,d,it:24,kind:'cloth',col}];
     if(o.cuff) L.push({sel:y=>y>end-0.005&&y<end+0.03,d:y=>d(y)+0.006,it:4,kind:'cloth',col:dark(col,0.8)});   // a gathered cuff where they end bare
     return L; }
   function boots(kind,col,o){ o=o||{}; const h=BOOT[kind]; if(h<0) return []; const L=[];
-    L.push({sel:y=>y<h,d:y=>0.008+0.008*bump(y,h-0.02,0.04),it:3,kind:'leather',col});
-    L.push({sel:(y,x,z,nz,ny)=>y<0.02&&ny<0.2,d:0.013,it:1,kind:'leather',col:dark(col,0.45)});   // the sole and heel
-    if(kind==='tall') L.push({sel:y=>y>h-0.05&&y<h+0.01,d:0.017,it:4,kind:'leather',col:dark(col,0.8)});   // the turned-down cuff
-    if(kind==='ankle') L.push({sel:y=>y>0.11&&y<0.135,d:0.012,it:1,kind:'leather',col:dark(col,0.6)});    // a strap
+    L.push({sel:y=>y<h,d:y=>0.015+0.007*bump(y,h-0.02,0.04)+0.006*bump(y,0.03,0.05),it:4,kind:'leather',col});   // V277: real leather — thicker, fuller over the foot
+    L.push({sel:(y,x,z,nz,ny)=>y<0.025&&ny<0.2,d:0.024,it:1,kind:'leather',col:dark(col,0.45)});   // the sole and heel
+    if(kind==='tall') L.push({sel:y=>y>h-0.05&&y<h+0.01,d:0.028,it:4,kind:'leather',col:dark(col,0.8)});   // the turned-down cuff
+    if(kind==='ankle') L.push({sel:y=>y>0.11&&y<0.135,d:0.02,it:1,kind:'leather',col:dark(col,0.6)});    // a strap
     return L; }
   function steelBoots(st,gd){ return [
-    {sel:y=>y<0.2,d:0.01,it:3,kind:'steel',col:st},
-    {sel:(y,x,z,nz,ny)=>y<0.02&&ny<0.2,d:0.013,it:1,kind:'leather',col:0x2a1e16},
-    {sel:(y,x,z,nz,ny)=>y<0.1&&ny>0.25&&((z>0.02&&z<0.035)||(z>0.055&&z<0.07)),d:0.014,it:0,kind:'gold',col:gd},   // the lames over the instep
-    {sel:y=>y>0.13&&y<0.16,d:0.0145,it:1,kind:'gold',col:gd} ]; }                                                  // the ankle band
+    {sel:y=>y<0.2,d:y=>0.016+0.005*bump(y,0.03,0.05),it:4,kind:'steel',col:st},
+    {sel:(y,x,z,nz,ny)=>y<0.025&&ny<0.2,d:0.025,it:1,kind:'leather',col:0x2a1e16},
+    {sel:(y,x,z,nz,ny)=>y<0.1&&ny>0.25&&((z>0.02&&z<0.035)||(z>0.055&&z<0.07)),d:0.024,it:0,kind:'gold',col:gd},   // the lames over the instep
+    {sel:y=>y>0.13&&y<0.16,d:0.021,it:1,kind:'gold',col:gd} ]; }                                                  // the ankle band
   function plate(st,gd,o){ o=o||{}; const hv=o.heavy||0, low=o.greaveTo==null?0.13:o.greaveTo, under=o.under||0x4c535e, L=[];
     L.push({sel:y=>y>0.6&&y<0.985,d:0.009,it:3,kind:o.underKind||'cloth',col:under});                       // what's under: mail or leather behind the cuisse
     L.push({sel:(y,x,z,nz)=>y>0.6&&y<0.93&&nz>-0.35,d:0.016+hv,it:4,kind:'steel',col:st});                // the cuisse, round the front and sides
     L.push({sel:(y,x,z,nz)=>y>0.6&&y<0.625&&nz>-0.3,d:0.019+hv,it:1,kind:'gold',col:gd});                // its gilt foot
-    L.push({sel:(y,x,z,nz)=>y>0.475&&y<0.615&&nz>0.05,d:y=>0.02+hv+0.006*bump(y,0.545,0.03),it:5,kind:'steel',col:dark(st,1.08)});   // the knee cop
-    L.push({sel:(y,x,z,nz)=>((y>0.475&&y<0.49)||(y>0.6&&y<0.615))&&nz>0.1,d:0.024+hv,it:1,kind:'gold',col:gd});   // its rims
-    L.push({sel:y=>y>low&&y<0.5,d:0.013+hv,it:3,kind:'steel',col:st});                                     // the greave, closed round the shin
-    L.push({sel:(y,x,z,nz)=>y>low+0.01&&y<0.48&&nz>0.72,d:0.018+hv,it:1,kind:'steel',col:dark(st,1.15)});  // the shin keel
-    L.push({sel:y=>(y>0.47&&y<0.5)||(y>low&&y<low+0.025),d:0.016+hv,it:1,kind:'gold',col:gd});           // gilt at its top and foot
+    L.push({sel:(y,x,z,nz)=>y>0.475&&y<0.615&&nz>0.05,d:y=>0.025+hv+0.006*bump(y,0.545,0.03),it:5,kind:'steel',col:dark(st,1.08)});   // the knee cop
+    L.push({sel:(y,x,z,nz)=>((y>0.475&&y<0.49)||(y>0.6&&y<0.615))&&nz>0.1,d:0.029+hv,it:1,kind:'gold',col:gd});   // its rims
+    L.push({sel:y=>y>low&&y<0.5,d:0.02+hv,it:3,kind:'steel',col:st});                                     // the greave, closed round the shin
+    L.push({sel:(y,x,z,nz)=>y>low+0.01&&y<0.48&&nz>0.72,d:0.025+hv,it:1,kind:'steel',col:dark(st,1.15)});  // the shin keel
+    L.push({sel:y=>(y>0.47&&y<0.5)||(y>low&&y<low+0.025),d:0.023+hv,it:1,kind:'gold',col:gd});           // gilt at its top and foot
     return L; }
   function greaves(st,gd){ return plate(st,gd).filter((l,i)=>i>=3); }   // knee cop and greave only (over trousers)
   // ── the kits: what each set wears on its legs ──
   const KIT={
     plate:s=>[...plate(s.st,s.gd,{heavy:s.heavy}),...steelBoots(s.st,s.gd)],
     plateLeather:s=>[...plate(s.st,s.gd,{greaveTo:0.37,under:0x4a3a2a,underKind:'leather'}),...boots('tall',s.boot||0x4a3020)],
-    greaves:s=>[...trousers(s.cloth||0x5a4a36,0.38,{puff:0.6}),...greaves(s.st,s.gd),...boots(s.bootKind||'tall',s.boot||0x3a2618)],
+    greaves:s=>[...trousers(s.cloth||0x5a4a36,0.46,{puff:0.6,tuck:true}),...greaves(s.st,s.gd),...boots(s.bootKind||'tall',s.boot||0x3a2618)],
     trousers:s=>[...trousers(s.cloth||0x6a5a40,BOOT[s.bootKind||'tall']-0.02,{puff:s.puff}),...boots(s.bootKind||'tall',s.boot||0x4a3020)],
     bare:s=>trousers(s.cloth||0x6a5a40,0.27,{cuff:true,puff:s.puff}) };
   const KITS={ templar:['plate'], guardian:['plate',{heavy:0.006}], ironforged:['plate',{heavy:0.004}], crystalborn:['plate'], emberforged:['plate',{heavy:0.003}], tempest:['plate'], archangel:['plate'],

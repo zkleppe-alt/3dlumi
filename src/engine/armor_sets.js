@@ -325,12 +325,12 @@
           [[-0.022,0.026],[0.022,0.026],[-0.011,0.012],[0,0.011],[0.011,0.012]].forEach(([x,l])=>{ const c=new THREE.ConeGeometry(0.0055*sz,l*sz,5).toNonIndexed(); c.rotateX(Math.PI); const m=mesh(hh,c,TT,'fur'); m.position.set(x*sz,-0.04*sz-l*sz/2+0.004,0.1*sz+(o.head==='bear'?0:0.02)); }); } } }
     // the cloak, and a tail
     if(o.cloak){ const CL=o.cloak, RC=0.32, cape=(ph,y)=>{ const v=(YA-y)/CL; return RC*(1.0+0.16*v)*(1+0.03*Math.sin(ph*7+v*3)); };
-      const cm=mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-CL*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y,tz*r*Math.cos(ph)); },20,8,{smooth:true,two:0.006}),F1,'fur'); cm.userData.soft=1;
+      const cm=mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-CL*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y,tz*r*Math.cos(ph)); },20,8,{smooth:true,two:0.006}),F1,'fur'); cm.userData.soft=1; cm.userData.underShield=true;
       if(o.spots) for(let i=0;i<12;i++){ const u=(i*0.37)%1, v=0.2+((i*0.53)%0.7), ph=Math.PI-1.2+2.4*u, y=YA+0.04-CL*(1-v), r=cape(ph,y)+0.004, sp=mesh(g,(()=>{ const s2=new THREE.SphereGeometry(1,8,5); s2.scale(0.02,0.016,0.004); return s2; })(),F2,'fur'); sp.position.set(r*Math.sin(ph),y,tz*r*Math.cos(ph)); sp.rotation.y=ph; sp.userData.soft=1; }
       for(let i=0;i<22;i++){ const ph=Math.PI-1.3+2.6*i/21, y=YA+0.04-CL+0.04, r=cape(ph,y)+0.002; LK(g,mix(i),V(r*Math.sin(ph),y,tz*r*Math.cos(ph)),V(0,-1,-0.1),(o.feathers?0.13:0.1)+(i%3)*0.025,0.04); } }
     if(o.tail){ const pts=bez(V(0,YA-0.02,-0.3),V(0.02,YA-0.25,-0.38),V(0.05,YA-0.45,-0.34),V(0.07,YA-0.62,-0.26),12); const n=pts.length, cut=Math.round(n*0.78);
-      const t1=mesh(g,sweep(pts.slice(0,cut+1),0.05,0.04,7,t=>0.55+0.45*Math.sin(Math.min(1,t*1.1)*Math.PI)),F1,'fur'); t1.userData.soft=1;
-      const t2=mesh(g,sweep(pts.slice(cut),0.05,0.04,7,t=>0.9*(1-t*0.85)),F3,'fur'); t2.userData.soft=1; } }
+      const t1=mesh(g,sweep(pts.slice(0,cut+1),0.05,0.04,7,t=>0.55+0.45*Math.sin(Math.min(1,t*1.1)*Math.PI)),F1,'fur'); t1.userData.soft=1; t1.userData.underShield=true;
+      const t2=mesh(g,sweep(pts.slice(cut),0.05,0.04,7,t=>0.9*(1-t*0.85)),F3,'fur'); t2.userData.soft=1; t2.userData.underShield=true; } }
   // the beast's head, worn on the shoulder, its snout to the fore
   function head(par,at,kind,F1,F2,F3,DK,EY){ const hg=new THREE.Group(); hg.position.copy(at); par.add(hg); hg.userData.armor=par.userData.armor;
     const sm=(a,b,c,mat,x,y,z,seg)=>{ const s2=new THREE.SphereGeometry(1,seg||12,8); s2.scale(a,b,c); const m=mesh(hg,s2,mat,'fur'); m.position.set(x||0,y||0,z||0); return m; };

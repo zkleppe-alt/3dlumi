@@ -125,7 +125,7 @@ function buildKnight(){
   const shM=pivot(0.088,-0.13,0,AL.el); shM.rotation.y=Math.PI/2; const sh=pivot(0,0,0,shM); sh.scale.x=1.2;   /* V232: a broader shield */
   /* V232: with a bow or a two-handed weapon the shield rides on his back, slung between the shoulders (the weapon, when it's
      put away, goes across it); K._sbP/_sbR tune where. shieldHome() moves it there or back to the arm as the weapon changes. */
-  const shBack=pivot(0,0.24,-0.32,torso);
+  const shBack=pivot(0,0.24,-0.32,torso); K._shM=shM; K._shG=sh; K._shBk=shBack;   /* V277: armour.js seats the shield on the body's forearm and keeps the cloak under it */
   function shieldHome(){ const back=!!K._shB||!!K._shS; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,0];
       shM.position.set(p[0],p[1],p[2]); shM.rotation.set(r[0],r[1],r[2]); sh.rotation.set(q[0],q[1],q[2]); }
     else if(shM.parent!==AL.el){ AL.el.add(shM); shM.position.set(K.shX,K.shY,0); shM.rotation.set(0,K.shRY,0); sh.rotation.set(0,0,0); } shM.visible=true; }
@@ -454,7 +454,7 @@ function buildKnight(){
         else if(K.falling>0&&!(K.raise>0)) ov={n:'fall',t:0.35+K.falling*1.15,w:Math.min(0.92,0.45+K.falling*3),fade:9};   /* V165: off a ledge, the falling clip from the first moment — arms up and out, legs reaching for the ground */
         else if(K._airT>0&&!(K.raise>0)) ov=K._airT<1.1?{n:'jump',u:Math.min(1.5,0.62+K._airT)/2.6,w:0.9}:{n:'fall',t:K._airT,w:0.9};
         else if(K._st==='sheathing') ov={n:K._carry==='back'?'sheath':'sheathHip',u:Math.min(1,K._shT||0),w:0.7};
-        else if(K._bw>0.01) ov={n:'block',t:t,w:K._bw};
+        else if(K._bw>0.01) ov={n:'block',t:t,w:K._bw*(1-0.85*Math.min(1,Math.max(0,a)))};   /* V277: guarding on the move, the legs walk (the walk clip carries them); the guard's arms are set below */
         const S1=typeof GAME!=='undefined'&&GAME.S, hurt=!K.npc&&S1&&S1.maxHp&&S1.hp<S1.maxHp*0.25, calm=K._st==='sheathed'||!(K.alert||K.guarding||swing>=0||K.raise>0||K.charge>0);   /* V155: no fight on, no fighting stance */
         if(K.npc&&!ov&&(K._talk||0)>0.2) ov={n:'agree',t:t+(K._tph||0),w:0.45*K._talk};   /* the folk nod along as they talk */
         /* V142: walk or run by how fast he truly goes (in hip heights a second), eased — not the hand-keyed gait's own blend */
