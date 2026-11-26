@@ -76,7 +76,7 @@ const MENU=(function(){
       for(const [sl] of SYS.GEAR_SLOTS){ const e=SYS.EQUIP[S.equip[sl]]; if(e){ tot.atk+=e.atk||0; tot.def+=e.def||0; tot.hp+=e.maxHp||0; } }
       const tile=(act,ic,nm,val,sel,cls)=>`<button class="inv-tile ${sel?'sel':''} ${cls||''}" data-act="${act}"><b>${ic}</b><span>${E(nm)}</span><small>${E(val)}</small></button>`;
       let left=SYS.GEAR_SLOTS.map(([sl])=>{ const e=SYS.EQUIP[S.equip[sl]], [ic,nm]=SLOT_NAMES[sl]; return tile('pk:g.'+sl,e&&e.emoji||ic,nm,e?e.name:'— none —',invPick==='g.'+sl,'big'); }).join('');
-      let right=AR?AR.SLOTS.map(sl=>{ const id=AR.pick(sl), P=AR.PIECES[sl][id]; return tile('pk:a.'+sl,LOOK_IC[sl]||'•',AR.NAMES[sl],P.set,invPick==='a.'+sl); }).join(''):'';
+      let right=AR?(AR.LOOK||AR.SLOTS).map(sl=>{ const id=AR.pick(sl), P=AR.PIECES[sl][id]; return tile('pk:a.'+sl,LOOK_IC[sl]||'•',AR.NAMES[sl],P.set,invPick==='a.'+sl); }).join(''):'';
       let h=`<style>#gm .inv{display:grid;grid-template-columns:minmax(150px,190px) 1fr minmax(220px,260px);gap:14px;align-items:start;max-width:1010px;margin:0 auto}
         #gm .inv-col{display:flex;flex-direction:column;gap:8px} #gm .inv-look{display:grid;grid-template-columns:1fr 1fr;gap:6px}
         #gm .inv-tile{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 9px;border-radius:10px;border:1px solid rgba(255,214,130,.22);background:linear-gradient(160deg,rgba(40,52,62,.85),rgba(18,22,30,.9));color:#f3ead6;text-align:left;cursor:pointer;min-height:54px}
@@ -109,7 +109,7 @@ const MENU=(function(){
       else if(AR&&AR.shop){ h+=`<div class="inv-pick">`+sec('⚒ The Great Forge — armour of the ten towns')+`<p class="gm-hint">Each town’s smiths send their work here once its chapel is cleansed. Tap a piece to try it on; buy to keep it. 🪙 ${S.gold}</p>`;
         AR.TOWN_SETS.forEach(st=>{ const rel=AR.released(st.id), town=SYS.TOWN_DATA[st.town].name, open=arOpen===st.id;
           h+=`<button class="gm-item ${rel?'':'locked'}" data-act="${rel?'arset:'+st.id:''}"><span>${E(st.name)} <span class="ds">${rel?'from '+E(town):'cleanse '+E(town)+'’s chapel to bring it here'}</span></span><i>${rel?(open?'▾':'▸'):'🔒'}</i></button>`;
-          if(rel&&open) AR.SLOTS.forEach(sl=>{ const own=AR.owned(st.id,sl), pr=AR.price(st.id,sl), wearing=AR.worn(ENGINE.K)[sl]===st.id;
+          if(rel&&open) (AR.LOOK||AR.SLOTS).forEach(sl=>{ const own=AR.owned(st.id,sl), pr=AR.price(st.id,sl), wearing=AR.worn(ENGINE.K)[sl]===st.id;
             h+=`<div style="display:flex;gap:6px;margin:0 0 4px 14px"><button class="gm-item ${wearing?'worn':''}" style="flex:1;margin:0" data-act="artry:${st.id}.${sl}"><span>${E(AR.NAMES[sl])} <span class="ds">${own?'yours':'tap to try on'}</span></span></button>`
               +(own?'':`<button class="gm-btn" style="flex:none;margin:0;min-width:84px" data-act="arbuy:${st.id}.${sl}" ${S.gold<pr?'disabled':''}>🪙 ${pr}</button>`)+`</div>`; }); });
         h+='</div>'; }

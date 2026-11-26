@@ -185,5 +185,5 @@
         extra.forEach(m=>{ try{ MO[m](c2); }catch(e){ console.warn('motif',m,e); } });
         if(c2!==ctx) ctx.groups=c2.groups; };
     }); });
-  ARMOR.RECIPES=R; ARMOR.MOTIFS=MO;
+  ARMOR.RECIPES=R; ARMOR.MOTIFS=MO; ARMOR.PAL=PAL;   /* V275: the gloves (gloves.js) take each set's colours */
 })();

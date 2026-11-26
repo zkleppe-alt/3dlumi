@@ -5416,7 +5416,7 @@ const MENU=(function(){
       for(const [sl] of SYS.GEAR_SLOTS){ const e=SYS.EQUIP[S.equip[sl]]; if(e){ tot.atk+=e.atk||0; tot.def+=e.def||0; tot.hp+=e.maxHp||0; } }
       const tile=(act,ic,nm,val,sel,cls)=>`<button class="inv-tile ${sel?'sel':''} ${cls||''}" data-act="${act}"><b>${ic}</b><span>${E(nm)}</span><small>${E(val)}</small></button>`;
       let left=SYS.GEAR_SLOTS.map(([sl])=>{ const e=SYS.EQUIP[S.equip[sl]], [ic,nm]=SLOT_NAMES[sl]; return tile('pk:g.'+sl,e&&e.emoji||ic,nm,e?e.name:'— none —',invPick==='g.'+sl,'big'); }).join('');
-      let right=AR?AR.SLOTS.map(sl=>{ const id=AR.pick(sl), P=AR.PIECES[sl][id]; return tile('pk:a.'+sl,LOOK_IC[sl]||'•',AR.NAMES[sl],P.set,invPick==='a.'+sl); }).join(''):'';
+      let right=AR?(AR.LOOK||AR.SLOTS).map(sl=>{ const id=AR.pick(sl), P=AR.PIECES[sl][id]; return tile('pk:a.'+sl,LOOK_IC[sl]||'•',AR.NAMES[sl],P.set,invPick==='a.'+sl); }).join(''):'';
       let h=`<style>#gm .inv{display:grid;grid-template-columns:minmax(150px,190px) 1fr minmax(220px,260px);gap:14px;align-items:start;max-width:1010px;margin:0 auto}
         #gm .inv-col{display:flex;flex-direction:column;gap:8px} #gm .inv-look{display:grid;grid-template-columns:1fr 1fr;gap:6px}
         #gm .inv-tile{display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 9px;border-radius:10px;border:1px solid rgba(255,214,130,.22);background:linear-gradient(160deg,rgba(40,52,62,.85),rgba(18,22,30,.9));color:#f3ead6;text-align:left;cursor:pointer;min-height:54px}
@@ -5449,7 +5449,7 @@ const MENU=(function(){
       else if(AR&&AR.shop){ h+=`<div class="inv-pick">`+sec('⚒ The Great Forge — armour of the ten towns')+`<p class="gm-hint">Each town’s smiths send their work here once its chapel is cleansed. Tap a piece to try it on; buy to keep it. 🪙 ${S.gold}</p>`;
         AR.TOWN_SETS.forEach(st=>{ const rel=AR.released(st.id), town=SYS.TOWN_DATA[st.town].name, open=arOpen===st.id;
           h+=`<button class="gm-item ${rel?'':'locked'}" data-act="${rel?'arset:'+st.id:''}"><span>${E(st.name)} <span class="ds">${rel?'from '+E(town):'cleanse '+E(town)+'’s chapel to bring it here'}</span></span><i>${rel?(open?'▾':'▸'):'🔒'}</i></button>`;
-          if(rel&&open) AR.SLOTS.forEach(sl=>{ const own=AR.owned(st.id,sl), pr=AR.price(st.id,sl), wearing=AR.worn(ENGINE.K)[sl]===st.id;
+          if(rel&&open) (AR.LOOK||AR.SLOTS).forEach(sl=>{ const own=AR.owned(st.id,sl), pr=AR.price(st.id,sl), wearing=AR.worn(ENGINE.K)[sl]===st.id;
             h+=`<div style="display:flex;gap:6px;margin:0 0 4px 14px"><button class="gm-item ${wearing?'worn':''}" style="flex:1;margin:0" data-act="artry:${st.id}.${sl}"><span>${E(AR.NAMES[sl])} <span class="ds">${own?'yours':'tap to try on'}</span></span></button>`
               +(own?'':`<button class="gm-btn" style="flex:none;margin:0;min-width:84px" data-act="arbuy:${st.id}.${sl}" ${S.gold<pr?'disabled':''}>🪙 ${pr}</button>`)+`</div>`; }); });
         h+='</div>'; }
@@ -23916,7 +23916,7 @@ const BODY3=(function(){
 const ARMOR=(function(){
   const V=(x,y,z)=>new THREE.Vector3(x||0,y||0,z||0);
   const SLOTS=['helm','plume','cowl','tabard','belt','skirt','pauldrons','arms','gauntlets','legs','sabatons'];
-  const NAMES={helm:'Great helm',plume:'Plume',cowl:'Hood',tabard:'Tabard & breastplate',belt:'Belt & pouches',skirt:'Skirt',pauldrons:'Pauldrons',arms:'Vambraces',gauntlets:'Gauntlets',legs:'Greaves & cuisses',sabatons:'Sabatons'};
+  const NAMES={helm:'Great helm',plume:'Plume',cowl:'Hood',tabard:'Tabard & breastplate',belt:'Belt & pouches',skirt:'Skirt',pauldrons:'Pauldrons',arms:'Arms & gloves',gauntlets:'Gloves',legs:'Greaves & cuisses',sabatons:'Sabatons'};
 
   // ── geometry helpers ──
   // a surface from f(u,v)→Vector3, u around (left to right as seen from outside), v up; flat-shaded unless smooth
@@ -24752,7 +24752,7 @@ const ARMOR=(function(){
   function bodyPts(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.body.boneTransform) return null; const body=F.body, G=body.geometry, P=G.attributes.position;
     bodySync(K); body.skeleton.update(); body.updateMatrixWorld(true); const st=2, n=Math.ceil(P.count/st), X=new Float32Array(n*3), I=new Int32Array(n); const v=new THREE.Vector3();
     for(let q=0,k=0;q<P.count;q+=st,k++){ body.boneTransform(q,v); v.applyMatrix4(body.matrixWorld); X[k*3]=v.x; X[k*3+1]=v.y; X[k*3+2]=v.z; I[k]=q; } return {X,I,n,body}; }
-  function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
+  function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; gs=gs.filter(g=>!g.userData.glove); if(!gs.length) return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
     gs.forEach(g=>{ if(!g.parent||g.userData.garmentSlot||g.parent===K._skF||g.parent===K._skB) return; g.updateWorldMatrix(true,true); const pts=[];
       g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/40)); for(let i=0;i<A.count;i+=st) pts.push(v.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld).clone()); });
       if(!pts.length) return; const W=new Map();
@@ -24779,11 +24779,12 @@ const ARMOR=(function(){
     return ()=>{ if(--_restD>0) return; saved.forEach(([p,q])=>p.quaternion.copy(q)); bodySync(K); }; }
   function wear(K,slot,id){ const undo=restPose(K); try{ return wear0(K,slot,id); } finally{ undo(); } }
   function wear0(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
+    if(slot==='arms'&&!wear._gl&&typeof ARMOR!=='undefined'&&ARMOR.gloveFor){ wear._gl=true; try{ wear(K,'gauntlets',ARMOR.gloveFor(id)); } finally{ wear._gl=false; } }   /* V275: the glove that goes with this vambrace */
     if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
     if(slot==='helm'&&S.groups.cowl&&S.groups.cowl[0]&&S.groups.cowl[0].userData.hoodParts&&!wear._in){ wear._in=true; try{ const on=S.worn.cowl; wear(K,'cowl',S.ids.cowl); if(!on) set(K,'cowl',false); } finally{ wear._in=false; } }   /* a pelt's hood re-cut to the new helm */
     if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ if((slot==='tabard'||slot==='skirt')&&S.groups.belt&&S.ids&&S.ids.belt&&!wear._in){ wear._in=true; try{ const bid=S.ids.belt, on=S.worn.belt; gs.forEach(g=>g.updateMatrixWorld(true)); S.groups[slot]=gs; S.worn[slot]=true; wear(K,'belt',bid); if(!on) set(K,'belt',false); } finally{ wear._in=false; } }   /* V269: the belt let out over the new tabard */ try{ skinGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR skin',slot,e); } try{ onBones(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR bones',slot,e); } S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
   function set(K,slot,on){ const undo=restPose(K); try{ return set0(K,slot,on); } finally{ undo(); } }   /* V274: draping is measured in the rest pose too */
-  function set0(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
+  function set0(K,slot,on){ const S=state(K); if(slot==='arms'&&S.groups.gauntlets) set0(K,'gauntlets',on); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
     if(slot==='pauldrons'||slot==='cowl') try{ drape(K); }catch(e){ if(window.DEBUG_ARMOR) console.error('drape',e); }
     if(slot==='tabard'||slot==='skirt') skirtSync(K); }
   function skirtSync(K){ const S=K&&K.userData.armorS; if(!S||!S.groups.skirt) return; const long=!!(S.worn.tabard&&S.groups.tabard&&S.groups.tabard[0]&&S.groups.tabard[0].userData.longFront);
@@ -24820,9 +24821,9 @@ const ARMOR=(function(){
   const SG=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
   function earned(id,slot){ if(id==='templar'||id==='base') return !!(PIECES[slot]&&PIECES[slot][id]); if(PIECES[slot]&&PIECES[slot][id]&&PIECES[slot][id].common) return true; if(id.startsWith('lv_')) return !!(PIECES[slot]&&PIECES[slot][id])&&typeof liveryOwned==='function'&&liveryOwned(SG(),id.slice(3)); const S=SG(), pre=TREES[id]; if(S.armorOwned&&S.armorOwned[id+'.'+slot]&&PIECES[slot]&&PIECES[slot][id]) return true;   /* V245: bought at the smithy */ if(!pre||!PIECES[slot]||!PIECES[slot][id]) return false; return !!((S.armorEarned&&S.armorEarned[id+'.'+slot])||(S.skills&&S.skills[pre+TIER[slot]])); }
   function options(slot){ const o=Object.keys(PIECES[slot]||{}).filter(id=>earned(id,slot)&&id!=='base'); if(PIECES[slot]&&PIECES[slot].base) o.push('base'); return o; }   // plain clothes last
-  function pick(slot){ const S=SG(); if(S.armorOff&&S.armorOff[slot]&&PIECES[slot].base) return 'base'; const id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }   /* V242: a slot with its armour off wears the plain clothes, not the old harness */
+  function pick(slot){ if(slot==='gauntlets'&&typeof ARMOR!=='undefined'&&ARMOR.gloveFor) return ARMOR.gloveFor(pick('arms')); const S=SG();   /* V275: the glove comes with the vambrace */ if(S.armorOff&&S.armorOff[slot]&&PIECES[slot].base) return 'base'; const id=(S.armorPick&&S.armorPick[slot])||'templar'; return earned(id,slot)?id:'templar'; }   /* V242: a slot with its armour off wears the plain clothes, not the old harness */
   function noteEarned(){ const S=SG(); if(!S.skills) return; S.armorEarned=S.armorEarned||{}; const fresh=[];
-    for(const id in TREES) for(const slot in TIER){ const k=id+'.'+slot; if(!S.armorEarned[k]&&S.skills[TREES[id]+TIER[slot]]&&PIECES[slot]&&PIECES[slot][id]){ S.armorEarned[k]=1; fresh.push(PIECES[slot][id].name); } }
+    for(const id in TREES) for(const slot in TIER){ const k=id+'.'+slot; if(!S.armorEarned[k]&&S.skills[TREES[id]+TIER[slot]]&&PIECES[slot]&&PIECES[slot][id]){ S.armorEarned[k]=1; if(slot!=='gauntlets') fresh.push(PIECES[slot][id].name); } }
     if(fresh.length&&typeof UI!=='undefined'&&UI.toast&&!noteEarned.quiet) UI.toast('🛡 Armour earned: '+fresh.join(', ')+' — try it on in ☰ System → Armour',3200); noteEarned.quiet=false; }
   noteEarned.quiet=true;
   const hasBody=K=>{ const b=K.userData.b3; return !!(b&&typeof b==='object'&&b.body); };
@@ -24884,6 +24885,8 @@ const ARMOR=(function(){
     if(K._head){ const hv=K._head.visible; for(const sl in S.groups) (S.groups[sl]||[]).forEach(g=>{ if(!g.userData.headP) return; if(!hv&&g.visible){ g.visible=false; g.userData.fpHid=1; } else if(hv&&g.userData.fpHid){ g.visible=true; delete g.userData.fpHid; } }); }
     if(K._og&&K._armFit!==false){ for(const k in K._og.crests){ const c=K._og.crests[k]; if(c.visible) c.visible=false; } const w=K._og.wings(); if(w&&w.visible) w.visible=false; }   /* V263: the old livery crests and wings: the livery sets carry their own now */
     liverySync(K);
+    if(K.rig&&hasBody(K)) [K.rig.AL,K.rig.AR].forEach(A=>{ const b=A.hand&&A.hand.box; if(b&&b.visible) b.visible=false; });   /* V275: the old knight's sculpted fist never shows over the body's own hand */
+    { const fk=K._fam==='fist'?'f':''; if(S.fistK===undefined) S.fistK=fk; else if(fk!==S.fistK&&S.ids&&S.ids.gauntlets){ S.fistK=fk; const on=S.worn.gauntlets; try{ wear(K,'gauntlets',S.ids.gauntlets); if(!on) set(K,'gauntlets',false); }catch(e){} } }   /* fist weapons: plated gloves */
     if(K.rig&&K.rig.capeP&&K.rig.capeP.visible) K.rig.capeP.visible=false;   /* V246: no cloth cape on the hero — it fought every other cloak (and the saddle) */
     if(K.herald&&!K.herald._robust){ K.herald._robust=true; K.herald.group.traverse(m=>{ if(m.isMesh){ m.frustumCulled=false; if(m.material&&m.userData.part==='face'){ m.material.side=THREE.DoubleSide; m.material.needsUpdate=true; } } }); }   /* V246: the shield is never culled */ if(!S.soft||S.softDirty){ S.soft=softList(K,S); S.softDirty=false; } const list=S.soft; if(!list.length) return;
     K.updateMatrixWorld(true); K.getWorldScale(_sc); const sc=_sc.y||1, r=K.rig;
@@ -24930,7 +24933,8 @@ const ARMOR=(function(){
   const KIT={belt:beltKit,leg:legKit,foot:footKit,arm:armKit,hand:handKit,shoulder:shoulderKit,helm:helmKit,skirt:skirtKit,
     great:(ctx,st,o)=>{ ctx.helmFlat=!!(o&&o.flat); T.helm(ctx); return true; },
     torso:(ctx,st,o)=>{ ctx.torsoStyle=st; ctx.torsoOpts=o||{}; T.tabard(ctx); return true; } };
-  return { preview, tryOn, shop:false, tick, hoodSync, hoodUpNow, regY, bodyRings, legKit, footKit, armKit, handKit, shoulderKit, helmKit, skirtKit, SLOTS, NAMES, PIECES, TREES, TIER, H, KIT, T, set, wear, worn, dress, apply, covered, earned, options, pick };
+  const LOOK=SLOTS.filter(s=>s!=='gauntlets');   // what the Gear screen lists (the gloves come with the arms)
+  return { LOOK, preview, tryOn, shop:false, tick, hoodSync, hoodUpNow, regY, bodyRings, legKit, footKit, armKit, handKit, shoulderKit, helmKit, skirtKit, SLOTS, NAMES, PIECES, TREES, TIER, H, KIT, T, set, wear, worn, dress, apply, covered, earned, options, pick };
 })();
 
 // ── engine/armor_sets.js ──
@@ -25674,7 +25678,84 @@ const ARMOR=(function(){
         extra.forEach(m=>{ try{ MO[m](c2); }catch(e){ console.warn('motif',m,e); } });
         if(c2!==ctx) ctx.groups=c2.groups; };
     }); });
-  ARMOR.RECIPES=R; ARMOR.MOTIFS=MO;
+  ARMOR.RECIPES=R; ARMOR.MOTIFS=MO; ARMOR.PAL=PAL;   /* V275: the gloves (gloves.js) take each set's colours */
+})();
+
+// ── engine/gloves.js ──
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+//  GLOVES — V275. The gauntlets are gone: every glove is a SKIN on his real hand, the way the big games dress hands.
+//  Each glove is a shell of the BODY3 body's own hand triangles (and the wrist's), pushed a few millimetres out and
+//  skinned to the same bones — so it bends finger by finger with the hand and can never come loose or flip.
+//  The glove comes with the vambrace: the Arms slot ("Arms & gloves") wears the glove that belongs to it (GLOVE below).
+//  Styles: steel (plated glove: steel skin, a raised back, gold lames, a flared cuff) · leather · fur (leather with a fur
+//  cuff) · deco (dyed in the set's colours, gilt trim, a gold mark on the back of the hand) · fingerless · wraps · none.
+//  Everything is measured in the body's bind pose (a T-pose: the hand runs out along ±x, its back is +y).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+(function(){
+  if(typeof ARMOR==='undefined') return;
+  const P=ARMOR.PIECES, OLD=Object.assign({},P.gauntlets);
+  const hx=m=>m&&m.color?m.color.getHex():null;
+  // the hand's frame in bind space, one per side: the wrist (hand points touching the forearm), the way to the fingertips,
+  // the hand's middle; t = distance from the wrist toward the fingertips (0 … ~0.215), u = across the hand
+  function frame(F){ if(F._hf) return F._hf; const g=F.body.geometry, P0=g.attributes.position, R=F.D.reg, ix=F.idx0||g.index, out={};
+    [1,-1].forEach(sd=>{ const hv=[]; for(let i=0;i<P0.count;i++) if(R[i]==='hand'&&P0.getX(i)*sd>0) hv.push(i); if(!hv.length) return;
+      const hs=new Set(hv), wr=new Set(); for(let t=0;t<ix.count;t+=3){ const v=[ix.getX(t),ix.getX(t+1),ix.getX(t+2)]; if(v.some(x=>hs.has(x))&&v.some(x=>R[x]==='forearm')) v.forEach(x=>{ if(hs.has(x)) wr.add(x); }); }
+      const C=new THREE.Vector3(), W=new THREE.Vector3(), q=new THREE.Vector3(); hv.forEach(i=>C.add(q.fromBufferAttribute(P0,i))); C.multiplyScalar(1/hv.length);
+      wr.forEach(i=>W.add(q.fromBufferAttribute(P0,i))); if(wr.size) W.multiplyScalar(1/wr.size); else W.copy(C).addScaledVector(new THREE.Vector3(sd,0,0),-0.1);
+      const D=C.clone().sub(W).normalize(); let L=0; hv.forEach(i=>{ L=Math.max(L,q.fromBufferAttribute(P0,i).sub(W).dot(D)); });
+      out[sd]={W,D,C,L}; });
+    return F._hf=out; }
+  function TU(F,P0,i){ const x=P0.getX(i), H=F._hf[x>0?1:-1]; if(!H) return [99,0]; const dx=x-H.W.x, dy=P0.getY(i)-H.W.y, dz=P0.getZ(i)-H.W.z; return [(dx*H.D.x+dy*H.D.y+dz*H.D.z)/(H.L/0.215), P0.getZ(i)-H.C.z]; }   // t scaled to a 0.215-long hand
+  // one layer: the triangles of the hand and wrist that pass `keep`, as a skinned shell `d` out, put in the glove's group
+  function layer(F,g,o){ const N0=F.body.geometry.attributes.normal;
+    const keep=(a,b,c,P0)=>{ const A=TU(F,P0,a), B=TU(F,P0,b), C=TU(F,P0,c); if(A[0]===99||B[0]===99||C[0]===99) return false; const t=(A[0]+B[0]+C[0])/3, u=(A[1]+B[1]+C[1])/3;   /* by the triangle's middle: the forearm's triangles are long */
+      if(t<o.t0||t>o.t1) return false; if(o.back!=null&&(N0.getY(a)+N0.getY(b)+N0.getY(c))/3<o.back) return false; if(o.shape&&!o.shape(t,u)) return false; return true; };
+    const body=F.body, geo=body.geometry, ix0=geo.index, nParts=F.parts.length; if(F.idx0&&ix0!==F.idx0) geo.setIndex(F.idx0);   // the whole body (the hands may be cut away under clothes)
+    let m=null; try{ m=BODY3.shell(F,['hand','forearm'],BODY3.mat(o.kind,o.col),o.d,o.it==null?1:o.it,{kind:o.kind,cut:keep,
+      trim:o.trim!=null?BODY3.mat(o.trimKind||'gold',o.trim):undefined,trimRings:o.tr||1,pat:o.pat,patN:o.patN}); } finally{ if(geo.index!==ix0) geo.setIndex(ix0); }
+    if(window.DEBUG_ARMOR) console.log("glove layer",o.kind,o.t0,o.t1,!!m,F.parts.length-nParts);
+    const made=F.parts.splice(nParts); made.forEach(sm=>{ sm.parent&&sm.parent.remove(sm); sm.userData.keepMat=true; sm.userData.armor='gauntlets'; sm.userData.glove=true; g.add(sm); });   // skinned 'attached': where it hangs in the scene doesn't move it
+    return m; }
+  const dark=(c,k)=>new THREE.Color(c).multiplyScalar(k).getHex();
+  // the styles, as layers (t in a 0.215 hand: the knuckles ~0.095, the fingertips 0.215; the wrist 0, the forearm below it)
+  const band=(t0,t1,d,kind,col,o)=>Object.assign({t0,t1,d,it:0,kind,col},o||{});
+  const STY={
+    none:()=>[],
+    leather:s=>{ const c=s.col||0x4a3020; return [{t0:-0.014,t1:1,d:0.0045,kind:'leather',col:c},band(-0.034,-0.004,0.0075,'leather',dark(c,0.62))]; },   // the glove, a turned cuff at the wrist
+    fingerless:s=>{ const c=s.col||0x4a3020; return [{t0:-0.014,t1:0.104,d:0.0045,kind:'leather',col:c},band(-0.034,-0.004,0.0075,'leather',dark(c,0.62)),band(0.088,0.104,0.0065,'leather',dark(c,0.62))]; },
+    wraps:s=>{ const c=s.col||0xd8c8a0; return [{t0:-0.04,t1:0.104,d:0.004,kind:'cloth',col:c},{t0:-0.04,t1:0.104,d:0.0068,it:0,kind:'cloth',col:dark(c,0.8),shape:t=>Math.floor((t+0.04)/0.017)%2===0}]; },   // linen bound round the palm, the fingers free
+    fur:s=>[...STY.leather(s),{t0:-0.07,t1:0.004,d:0.017,it:16,kind:'cloth',col:s.fur||0x6a4a2e},{t0:-0.05,t1:-0.012,d:0.024,it:16,kind:'cloth',col:s.furTip||dark(s.fur||0x6a4a2e,1.2)}],   // a soft fur cuff, rolled
+    deco:s=>[{t0:-0.014,t1:1,d:0.0045,kind:'leather',col:s.col},band(-0.03,-0.006,0.0075,'gold',s.trim),
+      band(0.02,0.1,0.0078,'gold',s.trim,{back:0.4,shape:(t,u)=>Math.abs(t-0.058)/0.032+Math.abs(u)/0.02<1})],   // gilt at the wrist, a gold lozenge on the back of the hand
+    steel:s=>{ const st=s.col||0x76818f, gd=s.trim||0xd6a640; return [
+      {t0:-0.014,t1:1,d:0.0055,kind:'steel',col:st},                                           // the plated glove, jointed with the fingers
+      {t0:-0.004,t1:0.09,back:0.3,d:0.0095,it:2,kind:'steel',col:dark(st,1.12)},              // the back plate
+      band(0.086,0.102,0.012,'gold',gd,{back:0.2}),                                             // the knuckle ridge
+      band(0.122,0.135,0.009,'gold',gd,{back:0.2}),band(0.155,0.168,0.009,'gold',gd,{back:0.2}),   // the finger lames
+      {t0:-0.07,t1:0.006,d:0.019,it:6,kind:'steel',col:st},band(-0.072,-0.058,0.0215,'gold',gd),band(-0.006,0.008,0.0215,'gold',gd),   // the flared cuff, gilt at both edges
+      ...(s.fur?[{t0:-0.1,t1:-0.06,d:0.026,it:16,kind:'cloth',col:s.fur}]:[]) ]; } };
+  // which glove goes with which vambrace (the set's own colours: '$x' is the set's material x)
+  const GLOVE={ templar:['steel'], base:['none'], vambraces:['leather'], bracers:['fingerless'], mail:['leather',{col:0x3e2a1a}],
+    striker:['fur',{col:0x2e1a12,fur:0xc0582a,furTip:0xf0e6dc}], guardian:['steel',{fur:0x5a3a22}], psalmist:['deco',{col:0xf1ece0,trim:'$gold'}],
+    hearth:['fur',{col:0x6a4526,fur:0xe2d6bc,furTip:0xfff8ea}], ironforged:['steel'], tidecaller:['deco',{col:'$scarf',trim:'$gold'}], thornwarden:['fingerless',{col:0x4a3a22}],
+    sandstrider:['wraps',{col:0xd8c8a0}], crystalborn:['steel'], emberforged:['steel'], tempest:['steel'], shade:['fingerless',{col:0x2a2630}], archangel:['steel'],
+    lv_gilt:['steel'], lv_stormward:['steel'], lv_fallen:['steel'], lv_robby:['steel'], lv_champion:['steel'], lv_ranger:['fingerless',{col:0x5a3a1e}], lv_glory:['steel'], lv_deepwater:['deco',{col:'$tunic',trim:'$gold'}],
+    gloves:['leather'], wraps:['wraps'] };
+  function spec(id,M){ const g=GLOVE[id]||['leather'], o=Object.assign({},g[1]||{}); for(const k in o) if(typeof o[k]==='string'&&o[k][0]==='$') o[k]=hx(M[o[k].slice(1)]);
+    if(g[0]==='steel'){ if(o.col==null) o.col=new THREE.Color(hx(M.steel)||0xa9b0bc).lerp(new THREE.Color(0x5e6774),0.75).getHex();   /* the metal ramp lifts steel: the lineup's steel, leaning to the set's */ if(o.trim==null) o.trim=hx(M.goldD||M.gold); } if(g[0]==='deco'&&o.col==null) o.col=hx(M.tunic)||0x2a3a6a; if(g[0]==='deco'&&o.trim==null) o.trim=hx(M.gold)||0xd6a640;
+    return [g[0],o]; }
+  function build(ctx,id){ const K=ctx.K, F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||typeof BODY3==='undefined'||!BODY3.shell) return false;
+    const pal=ARMOR.PAL&&ARMOR.PAL[id], M=pal?Object.assign({},K.M,pal):K.M; let [st,o]=spec(id,M);
+    if(K._fam==='fist'){ const bm=K.rig&&K.rig.AR.hand.box&&K.rig.AR.hand.box.material; st='steel'; o={col:new THREE.Color(hx(bm)||0xc9cdd6).lerp(new THREE.Color(0x76818f),0.5).getHex(),trim:hx(M.goldD||M.gold),fur:o.fur}; }   // fist weapons are worn as plated gloves
+    frame(F); const g=new THREE.Group(); g.userData.armor='gauntlets'; g.userData.fitted=true; g.userData.glove=st; K.add(g); ctx.groups.push(g);
+    (STY[st]||STY.leather)(o).forEach(L=>{ try{ layer(F,g,L); }catch(e){ if(window.DEBUG_ARMOR) console.error('glove',e); } });
+    return true; }
+  const NM={none:'Bare hands',leather:'Leather gloves',fingerless:'Fingerless gloves',wraps:'Hand wraps',fur:'Fur-cuffed gloves',deco:'Gloves',steel:'Plated gloves'};
+  const ids=new Set([...Object.keys(P.arms||{}),...Object.keys(GLOVE)]);
+  ids.forEach(id=>{ const old=OLD[id], A=P.arms[id]; P.gauntlets[id]={name:(A&&A.set&&id!=='base'?A.set+' ':'')+NM[(GLOVE[id]||['leather'])[0]].toLowerCase(),set:(A&&A.set)||(old&&old.set)||'Common',common:old?old.common:true,
+    build:ctx=>{ if(build(ctx,id)) return; if(old) old.build(ctx); } }; });
+  ARMOR.gloveFor=armsId=>!armsId||armsId==='base'?'base':(P.gauntlets[armsId]?armsId:'gloves');
+  ARMOR.GLOVE=GLOVE;
 })();
 
 // ── engine/outfit3.js ──
@@ -25963,7 +26044,7 @@ const OUTFIT3=(function(){
     // the crest can't stand up through a cloth hood
     (S.groups.plume||[]).forEach(g=>{ const hide=!!(on.cowl&&hoodUp&&hs.helmOn&&!A)||(!hs.helmOn&&!!S.worn.plume); if(hide&&g.visible){ g.visible=false; g.userData.hoodHid=1; } else if(!hide&&g.userData.hoodHid){ delete g.userData.hoodHid; if(S.worn.plume) g.visible=true; } });
     const cut=new Set(); for(const sl in BCUT) if(on[sl]) BCUT[sl].forEach(r=>cut.add(r));
-    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base')+'|'+on.arms+'|'+(on.legs&&!on.sabatons);
+    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur)+'|'+on.arms+'|'+(on.legs&&!on.sabatons);
     if(K._glint) K._glint.visible=shade==='deep'&&!fpHide&&!cur;
     if(cur||sig===bSig) return; bSig=sig;
     const R=F.D.reg, ix=F.idx0, keep=[]; if(cut.size){ for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(cut.has(R[a])&&cut.has(R[b])&&cut.has(R[c]))) keep.push(a,b,c); } }

@@ -1152,3 +1152,21 @@ Two causes, both in how the armour was measured when it was put on (not the extr
 - **The wrong hand.** A glove or forearm plate was fitted to the body's points near its joint. With his arms hanging by his sides, the *other* hand was close enough to count, so the glove was fitted across both hands (lying sideways) and then pinned to the wrong bone — the left gauntlet and forearm rode the RIGHT arm. That is the "gloves flip backwards" and "armour separates when attacking": one arm moves, the other arm's plate goes with it. Every measurement (`bodyRings`, `regY`, `limbFrame`) now only looks at the limb's own side of the body (`sideOf`).
 - **The pose he was caught in.** Armour was measured in whatever pose he was in — mid-stride when the game reloaded it, or wherever he stopped when the Gear menu paused him. Now every wear/unwear/drape is done with the rig in its rest pose (the pose the body was bound in) and the pose put back after (`restPose`), so it comes out the same every time, in the Gear screen and in play.
 - Pieces never ride a finger bone (a gauntlet on the thumb spun when he gripped); they move up to the hand.
+
+## V275 — gloves are skins; the old knight's hands gone
+Zak: get rid of the gauntlets and build glove skins into the vambraces — some with fur, some decorative, some with no glove; and the old knight's hands were still fighting the new body's hands for position.
+- **The old hands.** The sculpted knight's fist (`hand.box` on each rig hand, a 1,280-vertex leather fist) was still drawn over the body's own hand. It is now hidden every frame whenever the hero is on his body (armor.js `tick`).
+- **Gloves are skins** (new engine/gloves.js). Each glove is a shell of the body's own hand and wrist triangles, a few millimetres out, skinned to the same bones (`BODY3.shell`), so it bends finger by finger and can't come loose or flip. Measured in the body's bind pose: t runs from the wrist to the fingertips, the back of the hand is +y. Layers are picked by each triangle's middle (the forearm's triangles are long).
+- **Styles:** plated steel (steel skin, a raised back plate, a gold knuckle ridge and two finger lames, a flared cuff gilt at both edges; the Guardian's with a fur roll) · leather (a turned cuff) · fur-cuffed · decorative (the set's colours, gilt at the wrist, a gold lozenge on the back of the hand) · fingerless · linen wraps · bare hands.
+- **The glove comes with the vambrace** (Zak's choice). The Gauntlets tile is gone from the Gear screen; Arms is now "Arms & gloves". `ARMOR.pick('gauntlets')` follows the arms (`ARMOR.gloveFor`); wearing or taking off the arms does the same to the glove. Fist weapons are worn as plated gloves in the weapon's colour. The hands under every glove are painted skin (fingerless gloves show the fingers).
+
+| Gloves | Sets |
+|---|---|
+| Plated steel | Templar, Ironforged, Crystalborn, Emberforged, Tempest, Archangel, Sunfall Gilt, Stormward, Fallen, Robby's Demise, Champion's, Armour of God |
+| Plated steel with a fur roll | Guardian |
+| Fur-cuffed | Striker (fox), Hearthward (fleece) |
+| Decorative | Psalmist (white and gold), Tidecaller (sea-green), Deepwater |
+| Fingerless | Thornwarden, Shade, Ranger's Watch, the common leather bracers |
+| Linen wraps | Sandstrider |
+| Leather | the common vambraces and mail sleeves |
+| Bare hands | plain clothes |

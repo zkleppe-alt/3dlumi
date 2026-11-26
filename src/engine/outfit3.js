@@ -283,7 +283,7 @@ const OUTFIT3=(function(){
     // the crest can't stand up through a cloth hood
     (S.groups.plume||[]).forEach(g=>{ const hide=!!(on.cowl&&hoodUp&&hs.helmOn&&!A)||(!hs.helmOn&&!!S.worn.plume); if(hide&&g.visible){ g.visible=false; g.userData.hoodHid=1; } else if(!hide&&g.userData.hoodHid){ delete g.userData.hoodHid; if(S.worn.plume) g.visible=true; } });
     const cut=new Set(); for(const sl in BCUT) if(on[sl]) BCUT[sl].forEach(r=>cut.add(r));
-    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur&&S.worn.gauntlets&&S.ids.gauntlets==='base')+'|'+on.arms+'|'+(on.legs&&!on.sabatons);
+    const sig=[...cut].sort().join(',')+'|'+shade+'|'+(on.gauntlets=!cur)+'|'+on.arms+'|'+(on.legs&&!on.sabatons);
     if(K._glint) K._glint.visible=shade==='deep'&&!fpHide&&!cur;
     if(cur||sig===bSig) return; bSig=sig;
     const R=F.D.reg, ix=F.idx0, keep=[]; if(cut.size){ for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t),b=ix.getX(t+1),c=ix.getX(t+2); if(!(cut.has(R[a])&&cut.has(R[b])&&cut.has(R[c]))) keep.push(a,b,c); } }
