@@ -1146,3 +1146,9 @@ Zak's Gear photo of V272 is still glitchy: the leg plates and sabatons are out o
   - Its saved choice (`klk3d_outfit3` in localStorage) is cleared on load.
   - If it was left on from those tests, it rebuilt its own skinned copy of the armour whenever the wardrobe changed, alongside the real armour. That's the likeliest source of doubled, misplaced pieces that only happen on one machine.
 - **Sharper Gear preview.** The knight is now rendered at twice the size (520×680) and scaled down smoothly into the 260×340 canvas, so the gold edges no longer look dotted.
+
+## V274 — the armour glitch, found
+Two causes, both in how the armour was measured when it was put on (not the extra sets themselves — they made it visible once pieces were fitted to his body instead of being loose blocks):
+- **The wrong hand.** A glove or forearm plate was fitted to the body's points near its joint. With his arms hanging by his sides, the *other* hand was close enough to count, so the glove was fitted across both hands (lying sideways) and then pinned to the wrong bone — the left gauntlet and forearm rode the RIGHT arm. That is the "gloves flip backwards" and "armour separates when attacking": one arm moves, the other arm's plate goes with it. Every measurement (`bodyRings`, `regY`, `limbFrame`) now only looks at the limb's own side of the body (`sideOf`).
+- **The pose he was caught in.** Armour was measured in whatever pose he was in — mid-stride when the game reloaded it, or wherever he stopped when the Gear menu paused him. Now every wear/unwear/drape is done with the rig in its rest pose (the pose the body was bound in) and the pose put back after (`restPose`), so it comes out the same every time, in the Gear screen and in play.
+- Pieces never ride a finger bone (a gauntlet on the thumb spun when he gripped); they move up to the hand.

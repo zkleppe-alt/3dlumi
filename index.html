@@ -23960,9 +23960,13 @@ const ARMOR=(function(){
   /* V259: before the body is measured, its skeleton is posed from the knight's joints now (BODY3's sync) — at load the armour can be
      built before the body has been posed once, and the body's arms were measured in its T-pose: plates out sideways, behind his back */
   function bodySync(K){ const F=K&&K.userData.b3; if(F&&typeof F==='object'&&F.sync){ try{ F.sync(); }catch(e){} } if(K) K.updateMatrixWorld(true); }
+  /* V274: a limb is measured only from its own side of the body. With the arms hanging (or the legs together) the other hand or thigh
+     was in reach, and a glove or greave was fitted across both — lying sideways — and then rode the wrong bone. */
+  const _kv=new THREE.Vector3();
+  function sideOf(K,pivot){ const pk=K.worldToLocal(pivot.getWorldPosition(new THREE.Vector3())); const sx=Math.abs(pk.x)>0.05?Math.sign(pk.x):0; return sx?(w=>K.worldToLocal(_kv.copy(w)).x*sx>0.02):(()=>true); }
   function bodyRings(K,pivot,regs,y0,y1,NY,NA,box){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; bodySync(K);
-    const body=F.body, R=F.D.reg, P=body.geometry.attributes.position, ok=new Set(regs), pts=[]; K.updateMatrixWorld(true); body.skeleton.update();
-    for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); pivot.worldToLocal(_bv);
+    const body=F.body, R=F.D.reg, P=body.geometry.attributes.position, ok=new Set(regs), pts=[]; K.updateMatrixWorld(true); body.skeleton.update(); const side=sideOf(K,pivot);
+    for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); if(!side(_bv)) continue; pivot.worldToLocal(_bv);
       if(_bv.y<y0-0.02||_bv.y>y1+0.02||Math.abs(_bv.x)>(box||0.16)||Math.abs(_bv.z)>(box||0.16)+0.03) continue; pts.push(_bv.x,_bv.y,_bv.z); }
     if(pts.length<60) return null;
     const cx=new Float32Array(NY), cz=new Float32Array(NY), cn=new Float32Array(NY), r=new Float32Array(NY*NA), bin=y=>Math.max(0,Math.min(NY-1,Math.floor((y-y0)/(y1-y0)*NY)));
@@ -24230,12 +24234,12 @@ const ARMOR=(function(){
      pauldron to above the elbow, a vambrace closed round the forearm from below the elbow to the wrist — each a clean plate a hair over
      the arm, gold at its ends, a point on the vambrace's top; the couter cupped over the elbow ── */
   function regY(K,pivot,regs,box){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; const body=F.body, R=F.D.reg, P=body.geometry.attributes.position, ok=new Set(regs), ys=[];
-    bodySync(K); body.skeleton.update(); for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); pivot.worldToLocal(_bv); if(Math.abs(_bv.x)>box||Math.abs(_bv.z)>box||Math.abs(_bv.y)>0.5) continue; ys.push(_bv.y); }
+    bodySync(K); body.skeleton.update(); const side=sideOf(K,pivot); for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); if(!side(_bv)) continue; pivot.worldToLocal(_bv); if(Math.abs(_bv.x)>box||Math.abs(_bv.z)>box||Math.abs(_bv.y)>0.5) continue; ys.push(_bv.y); }
     if(ys.length<30) return null; ys.sort((a,b)=>a-b); return [ys[Math.floor(ys.length*0.03)],ys[Math.floor(ys.length*0.97)]]; }
   // the limb's own axis: the body's points of that region (in the joint's frame), their mean and main direction (from the joint outward);
   //  a frame set on it whose -y runs down the limb, so rings can be measured square to the limb whatever the joint's own axes are
   function limbFrame(K,pivot,regs,g){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.D||!F.body.boneTransform) return null; const body=F.body, R=F.D.reg, P=body.geometry.attributes.position, ok=new Set(regs), pts=[];
-    bodySync(K); body.skeleton.update(); for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); pivot.worldToLocal(_bv); if(_bv.length()>0.45) continue; pts.push(_bv.clone()); }
+    bodySync(K); body.skeleton.update(); const side=sideOf(K,pivot); for(let q=0;q<P.count;q++){ if(!ok.has(R[q])) continue; body.boneTransform(q,_bv); _bv.applyMatrix4(body.matrixWorld); if(!side(_bv)) continue; pivot.worldToLocal(_bv); if(_bv.length()>0.45) continue; pts.push(_bv.clone()); }
     if(pts.length<40) return null; const m=new THREE.Vector3(); pts.forEach(p=>m.add(p)); m.divideScalar(pts.length);
     const C=[0,0,0,0,0,0,0,0,0]; pts.forEach(p=>{ const d=[p.x-m.x,p.y-m.y,p.z-m.z]; for(let a=0;a<3;a++) for(let b=0;b<3;b++) C[a*3+b]+=d[a]*d[b]; });
     let d=new THREE.Vector3(0,-1,0); for(let it=0;it<30;it++){ const x=C[0]*d.x+C[1]*d.y+C[2]*d.z, y=C[3]*d.x+C[4]*d.y+C[5]*d.z, z=C[6]*d.x+C[7]*d.y+C[8]*d.z; d.set(x,y,z).normalize(); }
@@ -24749,25 +24753,37 @@ const ARMOR=(function(){
     bodySync(K); body.skeleton.update(); body.updateMatrixWorld(true); const st=2, n=Math.ceil(P.count/st), X=new Float32Array(n*3), I=new Int32Array(n); const v=new THREE.Vector3();
     for(let q=0,k=0;q<P.count;q+=st,k++){ body.boneTransform(q,v); v.applyMatrix4(body.matrixWorld); X[k*3]=v.x; X[k*3+1]=v.y; X[k*3+2]=v.z; I[k]=q; } return {X,I,n,body}; }
   function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
-    gs.forEach(g=>{ if(!g.parent||g.userData.garmentSlot||g.parent===K._skF||g.parent===K._skB) return; g.updateMatrixWorld(true); const pts=[];
+    gs.forEach(g=>{ if(!g.parent||g.userData.garmentSlot||g.parent===K._skF||g.parent===K._skB) return; g.updateWorldMatrix(true,true); const pts=[];
       g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/40)); for(let i=0;i<A.count;i+=st) pts.push(v.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld).clone()); });
       if(!pts.length) return; const W=new Map();
       pts.forEach(p=>{ let bd=1e9,bk=-1; for(let k=0;k<B.n;k++){ const dx=B.X[k*3]-p.x, dy=B.X[k*3+1]-p.y, dz=B.X[k*3+2]-p.z, d=dx*dx+dy*dy+dz*dz; if(d<bd){ bd=d; bk=k; } } if(bk<0) return; const q=B.I[bk];
         for(let c=0;c<4;c++){ const w=SW.array[q*4+c]; if(w>0){ const bi=SI.array[q*4+c]; W.set(bi,(W.get(bi)||0)+w); } } });
       const r=K.rig, P0=g.parent, inn=(...ps)=>ps.some(q=>q&&(q===P0||(()=>{ for(let o=P0;o&&o!==K;o=o.parent) if(o===q) return true; return false; })()));
       const ok=inn(r.L&&r.L.hip,r.R&&r.R.hip)?/thigh|calf|foot|ball/i:inn(r.AL&&r.AL.sh,r.AR&&r.AR.sh)?/upperarm|lowerarm|hand|thumb|index|middle|ring|pinky/i:inn(r.head,K._head)?/head|neck/i:/spine|pelvis|neck|clavicle/i;   // a piece rides a bone of its own limb
-      let best=-1,bw=0; W.forEach((w,bi)=>{ if(w>bw&&bones[bi]&&ok.test(bones[bi].name)){ bw=w; best=bi; } }); const bone=bones[best]; if(!bone) return;
+      let best=-1,bw=0; W.forEach((w,bi)=>{ if(w>bw&&bones[bi]&&ok.test(bones[bi].name)){ bw=w; best=bi; } }); let bone=bones[best]; if(!bone) return;
+      while(bone.parent&&bone.parent.isBone&&/thumb|index|middle|ring|pinky/i.test(bone.name)) bone=bone.parent;   /* V274: never ride a finger — a gauntlet on the thumb bone spun round whenever he gripped */
       let hp=false; for(let o=g.parent;o&&o!==K;o=o.parent) if(o===K._head){ hp=true; break; } g.userData.headP=hp;   // hidden with the head pivot in first person
       g._pivot=g.parent;
       if((slot==='pauldrons'||slot==='cowl')&&/upperarm/i.test(bone.name)&&bone.parent){   /* V267: a pauldron (or a pelt on the shoulder) turns only part of the way with the arm, so a raised arm doesn't swing it out */
         const J=new THREE.Object3D(); J.name='halfJ_'+bone.name; J.position.copy(bone.position); J.quaternion.copy(bone.quaternion); J.scale.copy(bone.scale); bone.parent.add(J); J.updateMatrixWorld(true); J.attach(g);
         const S=state(K); (S.halfJ||(S.halfJ=[])).push({J,bone,q0:bone.quaternion.clone(),f:slot==='pauldrons'?0.6:0.6,g}); g.userData.bone=J.name; return; }
       bone.attach(g); g.userData.bone=bone.name; }); }
-  function wear(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
+  /* V274: armour is always built in one pose — the rig's rest (every joint square: standing straight, arms hanging) — and the pose
+     put back after. Before, a piece was measured in whatever pose he was caught in: mid-stride when the game reloaded the armour,
+     or wherever he stopped when the Gear menu paused him — legs apart, an arm swung — and the plates came out skewed and sat wrong
+     ever after, until a re-equip happened to catch him standing still. */
+  let _restD=0;
+  function restPose(K){ if(_restD++>0) return ()=>{ _restD--; }; const r=K.rig; if(!r||K._restBuild===false) return ()=>{ _restD--; };
+    const P=[r.hips,r.torso,r.head,r.L&&r.L.hip,r.L&&r.L.knee,r.R&&r.R.hip,r.R&&r.R.knee,r.AL&&r.AL.sh,r.AL&&r.AL.el,r.AL&&r.AL.hand,r.AR&&r.AR.sh,r.AR&&r.AR.el,r.AR&&r.AR.hand,K._skF,K._skB].filter(Boolean);
+    const saved=P.map(p=>[p,p.quaternion.clone()]); P.forEach(p=>p.quaternion.identity()); bodySync(K);
+    return ()=>{ if(--_restD>0) return; saved.forEach(([p,q])=>p.quaternion.copy(q)); bodySync(K); }; }
+  function wear(K,slot,id){ const undo=restPose(K); try{ return wear0(K,slot,id); } finally{ undo(); } }
+  function wear0(K,slot,id){ const S=state(K); if(S.worn[slot]) set(K,slot,false); if(S.groups[slot]){ S.groups[slot].forEach(g=>g.parent&&g.parent.remove(g)); S.groups[slot]=null; }
     if(!id) return; const gs=build(K,slot,id); if(!gs) return; try{ fitGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR fit',slot,e); }
     if(slot==='helm'&&S.groups.cowl&&S.groups.cowl[0]&&S.groups.cowl[0].userData.hoodParts&&!wear._in){ wear._in=true; try{ const on=S.worn.cowl; wear(K,'cowl',S.ids.cowl); if(!on) set(K,'cowl',false); } finally{ wear._in=false; } }   /* a pelt's hood re-cut to the new helm */
     if(slot==='helm'&&S.groups.plume&&S.ids&&S.ids.plume&&!wear._in){ wear._in=true; try{ const pid=S.ids.plume, on=S.worn.plume; wear(K,'plume',pid); if(!on) set(K,'plume',false); } finally{ wear._in=false; } }   /* the crest re-seated on the new helm */ if((slot==='tabard'||slot==='skirt')&&S.groups.belt&&S.ids&&S.ids.belt&&!wear._in){ wear._in=true; try{ const bid=S.ids.belt, on=S.worn.belt; gs.forEach(g=>g.updateMatrixWorld(true)); S.groups[slot]=gs; S.worn[slot]=true; wear(K,'belt',bid); if(!on) set(K,'belt',false); } finally{ wear._in=false; } }   /* V269: the belt let out over the new tabard */ try{ skinGroups(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR skin',slot,e); } try{ onBones(K,slot,gs); }catch(e){ if(window.DEBUG_ARMOR) console.error('ARMOR bones',slot,e); } S.groups[slot]=gs; S.ids=S.ids||{}; S.ids[slot]=id; set(K,slot,true); }
-  function set(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
+  function set(K,slot,on){ const undo=restPose(K); try{ return set0(K,slot,on); } finally{ undo(); } }   /* V274: draping is measured in the rest pose too */
+  function set0(K,slot,on){ const S=state(K); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
     if(slot==='pauldrons'||slot==='cowl') try{ drape(K); }catch(e){ if(window.DEBUG_ARMOR) console.error('drape',e); }
     if(slot==='tabard'||slot==='skirt') skirtSync(K); }
   function skirtSync(K){ const S=K&&K.userData.armorS; if(!S||!S.groups.skirt) return; const long=!!(S.worn.tabard&&S.groups.tabard&&S.groups.tabard[0]&&S.groups.tabard[0].userData.longFront);
