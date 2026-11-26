@@ -828,7 +828,7 @@ const ARMOR=(function(){
         best.sort((a,b)=>a[0]-b[0]); best.length=Math.min(best.length,6); } return best; };
     const loose=slot==='tabard'||slot==='skirt';
     gs.forEach(gr=>{ if(gr.userData.garmentSlot||gr.userData.mantle) return; gr.updateMatrixWorld(true);
-      const meshes=[]; gr.traverse(m=>{ if(m.isMesh&&!m.isSkinnedMesh&&!m.userData.twin&&m.geometry&&m.geometry.attributes.position&&!(slot==='cowl'&&m.userData.soft&&!m.userData.softHead)) meshes.push(m); });
+      const meshes=[]; gr.traverse(m=>{ if(m.isMesh&&!m.isSkinnedMesh&&!m.userData.twin&&m.geometry&&m.geometry.attributes.position&&!(slot==='cowl'&&m.userData.soft&&!m.userData.softHead)){ for(let o=m;o&&o!==gr.parent;o=o.parent) if(o.userData&&o.userData.noSkin) return; meshes.push(m); } });
       meshes.forEach(m=>{ const geo=m.geometry.clone(), P=geo.attributes.position, n=P.count, si=new Float32Array(n*4), sw=new Float32Array(n*4);
         for(let i=0;i<n;i++){ v.fromBufferAttribute(P,i).applyMatrix4(m.matrixWorld); t.copy(v).applyMatrix4(B.toK);
           const legSide=slot==='legs'||slot==='sabatons'||(loose&&t.y<B.pelY+0.02), side=legSide?(Math.abs(t.x)<0.025?0:Math.sign(t.x)):0;
@@ -964,7 +964,9 @@ const ARMOR=(function(){
   //  Up or down as the plain hood (☰ → Gear → Hood → Hood up/down: one choice for plain clothes, one with armour).
   function hoodUpNow(S){ const G=(typeof GAME!=='undefined'&&GAME.S)||{}, armoured=SLOTS.some(sl=>sl!=='plume'&&sl!=='cowl'&&S.worn[sl]&&S.ids&&S.ids[sl]&&S.ids[sl]!=='base'); return armoured?!!G.hoodArm:(G.hoodPlain!==false); }
   function hoodSync(K){ const S=K&&K.userData.armorS, cg=S&&S.groups.cowl&&S.groups.cowl[0], hp=cg&&cg.userData.hoodParts; if(!hp) return; const up=hoodUpNow(S), fp=!!(K._head&&!K._head.visible);
-    hp.up.forEach(o=>{ const v=up&&!fp; if(o.visible!==v) o.visible=v; }); hp.down.forEach(o=>{ if(o.visible!==!up) o.visible=!up; }); }
+    hp.up.forEach(o=>{ const v=up&&!fp; if(o.visible!==v) o.visible=v; }); hp.down.forEach(o=>{ if(o.visible!==!up) o.visible=!up; });
+    /* V281: the beast's head, hood down, rides up onto a shield slung on his back instead of through it */
+    const sb=!!(K._shM&&K._shM.parent===K._shBk&&K._shM.visible); hp.down.forEach(o=>{ const p0=o.userData.p0; if(!p0) return; const k=o.userData.sbK=(o.userData.sbK||0)+((sb?1:0)-(o.userData.sbK||0))*0.15; o.position.set(p0.x,p0.y+0.085*k,p0.z-0.075*k); o.rotation.x=o.userData.r0+0.35*k; }); }
   /* V256: CLOTH. Skirts, robes and fur cloaks hang and swing: every point of the cloth is a little mass, held toward where it would hang
      on the body (its rest place, carried by the hips) — firmly at the belt, loosely at the hem — so it lags behind as he moves, swings past,
      and settles; gravity draws it down; it is kept out of his legs (the leg capsules) and never strays far from where it belongs. The weights

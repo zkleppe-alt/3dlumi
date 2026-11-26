@@ -304,7 +304,6 @@
       const d=(y,x,z)=>0.02+pad*bump(x,0.24,0.085)+ruff*bump(y,1.53,0.04)*(x<0.13?1:0)-(z>0.05&&y<1.47?0.006:0);
       const c0=o.c[0], c1=o.c[1], c2=o.c[2];
       [ {sel,d,it:14,kind:'cloth',col:c0},
-        {sel:(y,x,z,nz,ny,rr)=>sel(y,x,z,nz,ny,rr)&&(Math.floor(x*38+y*22+(z>0?0.5:0))%2===0),d:(y,x,z)=>d(y,x,z)+0.008,it:3,kind:'cloth',col:c2},   // the pelt's lie: tufts a shade darker
         {sel:(y,x,z,nz,ny,rr)=>sel(y,x,z,nz,ny,rr)&&y>1.47&&x<0.15,d:(y,x,z)=>d(y,x,z)+0.01,it:10,kind:'cloth',col:o.mane?c1:c0} ]   // the ruff at the neck
         .forEach(L=>{ try{ L.slot='cowl'; L.regs=['chest','head','upperarm']; if(SHL(F3B,gs,L)) shellOk=true; }catch(e){ if(window.DEBUG_ARMOR) console.error('furShell',e); } }); }
     if(!shellOk){
@@ -322,13 +321,13 @@
       });
     }
     // V280: with the hood down the beast's head hangs behind his neck, as a hood falls back — on the upper back, snout down
-    if(o.head){ head(g,V(0,YA+0.07,-col(Math.PI,YA)-0.02),o.head,F1,F2,F3,DK,EY); const hb=g.children[g.children.length-1]; hb.rotation.set(-1.25,Math.PI,0); hb.scale.setScalar(0.85); hp.down.push(hb); }
+    if(o.head){ head(g,V(0,YA+0.07,-col(Math.PI,YA)-0.02),o.head,F1,F2,F3,DK,EY); const hb=g.children[g.children.length-1]; hb.rotation.set(-1.25,Math.PI,0); hb.scale.setScalar(0.85); hb.userData.noSkin=true; hb.userData.p0=hb.position.clone(); hb.userData.r0=hb.rotation.x; hp.down.push(hb); }   /* kept rigid, so it can rise onto a shield slung on his back (ARMOR.hoodSync) */
     // V256/257: the hood — the beast's own head worn over his (after Zak's references: Hunt's wolf, the grizzly): its skull is the hood's
     //  crown, its brow and snout jut out over his forehead like a visor with its teeth showing, his face open below; the pelt falls down
     //  both sides of his face to the shoulders and the mantle. Over a helm it is cut larger.
     if(o.head&&typeof ARMOR!=='undefined'&&ARMOR.regY){ const hd=K.rig.head, HY=ARMOR.regY(K,hd,['head'],0.2), S0=K.userData.armorS, helmed=!!(S0&&S0.worn.helm&&S0.ids&&S0.ids.helm&&S0.ids.helm!=='base');
       const H=HY?HY[1]-HY[0]:0, yb=HY?HY[0]+0.4*H:0, ybr=HY?HY[0]+0.76*H:0, yt=HY?HY[1]:0, HR=HY?ARMOR.bodyRings(K,hd,['head'],yb,yt,6,16,0.2):null;
-      if(HR){ const gh=piece(ctx,hd); gh.userData.fitted=true; hp.up.push(gh); const ex=helmed?0.045:0, top=yt+0.035+ex*1.2, gap=0.026+ex, yN=HY[0]-0.03;
+      if(HR){ const gh=piece(ctx,hd); gh.userData.fitted=true; gh.userData.noSkin=true; hp.up.push(gh);   /* V281: the hood rides the head whole (it's on the head): not twinned */ const ex=helmed?0.045:0, top=yt+0.035+ex*1.2, gap=0.026+ex, yN=HY[0]-0.03;
         const ys=ph=>yb+(ybr-0.01-yb)*Math.pow(Math.max(0,Math.cos(ph)),1.2);   // the face left open below the brow
         const at=(ph,v,of)=>{ const y0=ys(ph), y=y0+(top-y0)*v, k=v<0.55?1:Math.pow(Math.max(0,Math.cos((v-0.55)/0.45*Math.PI/2)),0.7), yy=Math.min(y,yt), [cx,cz]=HR.c(yy), r=k*(HR.r(ph,yy)+gap+(of||0))*(1+0.035*Math.sin(ph*7+v*5)); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
         mesh(gh,surf((u,v)=>at(-Math.PI+u*Math.PI*2,v),28,8,{smooth:true,two:0.006}),F1,'fur');
@@ -339,7 +338,7 @@
           LK(gh,mix(i),q,V(dx*0.6,-1,dz*0.6),0.06+(i%3)*0.02,0.032); }   // its ragged foot
         // the beast's head: its skull the crown, brow and snout out over his forehead
         const [hx,hz]=HR.c(Math.min(yt,ybr+0.04)), fr=HR.r(0,ybr)+gap, W=(HR.r(Math.PI/2,ybr)+gap)/0.075;
-        head(gh,V(hx,ybr+0.035+ex*0.5,hz+fr*0.32),o.head,F1,F2,F3,DK,EY); const hh=gh.children[gh.children.length-1]; hh.scale.set(W*1.02,W*0.82,W*1.05); hh.rotation.x=-0.06;
+        head(gh,V(hx,ybr+0.035+ex*0.5,hz+fr*0.32),o.head,F1,F2,F3,DK,EY); const hh=gh.children[gh.children.length-1]; hh.scale.set(W*1.02,W*0.92,W*0.95); hh.rotation.x=-0.06;
         if(/bear|wolf|lion|fox/.test(o.head)){ const TT=pelt('_tooth',0xeee6cf), sz=o.head==='bear'||o.head==='lion'?1:0.8;   // the teeth of the upper jaw, over his brow
           [[-0.022,0.026],[0.022,0.026],[-0.011,0.012],[0,0.011],[0.011,0.012]].forEach(([x,l])=>{ const c=new THREE.ConeGeometry(0.0055*sz,l*sz,5).toNonIndexed(); c.rotateX(Math.PI); const m=mesh(hh,c,TT,'fur'); m.position.set(x*sz,-0.04*sz-l*sz/2+0.004,0.1*sz+(o.head==='bear'?0:0.02)); }); } } }
     // the cloak, and a tail
@@ -351,7 +350,83 @@
       const t1=mesh(g,sweep(pts.slice(0,cut+1),0.05,0.04,7,t=>0.55+0.45*Math.sin(Math.min(1,t*1.1)*Math.PI)),F1,'fur'); t1.userData.soft=1; t1.userData.underShield=true;
       const t2=mesh(g,sweep(pts.slice(cut),0.05,0.04,7,t=>0.9*(1-t*0.85)),F3,'fur'); t2.userData.soft=1; t2.userData.underShield=true; } }
   // the beast's head, worn on the shoulder, its snout to the fore
-  function head(par,at,kind,F1,F2,F3,DK,EY){ const hg=new THREE.Group(); hg.position.copy(at); par.add(hg); hg.userData.armor=par.userData.armor;
+  /* V281: THE BEASTS' HEADS, SCULPTED. Each head is one smooth lofted skull — cross-sections down its length (the back of the skull, the
+     brow, the stop, the muzzle, the nose), each a rounded box with its own width, crown, jaw and centre — instead of a few stacked eggs.
+     Coloured by a vertex wash (darker over the crown and down the bridge, the muzzle and chin paler, the beast's own markings), with a
+     lower jaw, a dark nose pad with nostrils, eyes set under a fur brow, and each beast's ears, horns, antlers, ruff or beak. */
+  const HEADP={
+    // [z, half-width, crown, jaw, centre-y, squareness]
+    bear:{L:[[-0.078,0.012,0.012,0.012,0.004,2],[-0.066,0.05,0.046,0.04,0.004,2.4],[-0.035,0.074,0.062,0.056,0.006,2.6],[0.0,0.077,0.06,0.058,0.004,2.6],[0.03,0.068,0.054,0.05,0.0,2.5],[0.052,0.05,0.04,0.044,-0.006,2.3],[0.07,0.042,0.034,0.04,-0.012,2.3],[0.095,0.037,0.03,0.036,-0.013,2.5],[0.112,0.03,0.026,0.03,-0.011,2.6],[0.12,0.014,0.014,0.014,-0.01,2]],
+      jaw:[[0.0,0.05,0.022],[0.05,0.036,0.018],[0.1,0.024,0.012]], nose:[0.12,-0.006,0.021,0.015], eye:[0.033,0.05,0.016,0.006], ears:'round', ear:[0.054,0.058,-0.03,0.024], muzzle:0.07},
+    wolf:{L:[[-0.07,0.01,0.01,0.01,0.004,2],[-0.058,0.042,0.04,0.034,0.004,2.3],[-0.03,0.058,0.052,0.042,0.006,2.5],[0.0,0.058,0.048,0.042,0.004,2.4],[0.028,0.048,0.042,0.036,0.0,2.3],[0.05,0.036,0.032,0.032,-0.008,2.3],[0.085,0.028,0.024,0.027,-0.013,2.4],[0.12,0.021,0.019,0.021,-0.013,2.5],[0.136,0.009,0.009,0.009,-0.012,2]],
+      jaw:[[0.0,0.036,0.017],[0.06,0.024,0.013],[0.122,0.015,0.009]], nose:[0.135,-0.007,0.014,0.01], eye:[0.03,0.04,0.02,0.0065], ears:'tall', ear:[0.036,0.05,-0.012,0.03,0.075], muzzle:0.05, mask:true},
+    fox:{L:[[-0.062,0.01,0.01,0.01,0.004,2],[-0.05,0.04,0.034,0.03,0.004,2.3],[-0.022,0.054,0.044,0.038,0.004,2.4],[0.008,0.05,0.04,0.034,0.002,2.3],[0.034,0.034,0.03,0.026,-0.006,2.2],[0.066,0.022,0.019,0.021,-0.011,2.3],[0.105,0.014,0.013,0.014,-0.012,2.4],[0.12,0.006,0.006,0.006,-0.011,2]],
+      jaw:[[0.0,0.03,0.015],[0.055,0.018,0.011],[0.108,0.01,0.007]], nose:[0.119,-0.008,0.009,0.008], eye:[0.028,0.034,0.018,0.006], ears:'tall', ear:[0.034,0.044,-0.008,0.028,0.07], muzzle:0.04, mask:true, white:true},
+    lion:{L:[[-0.07,0.012,0.012,0.012,0.004,2],[-0.058,0.048,0.046,0.04,0.004,2.4],[-0.028,0.066,0.058,0.05,0.006,2.6],[0.006,0.066,0.054,0.052,0.002,2.6],[0.036,0.056,0.046,0.048,-0.004,2.5],[0.06,0.046,0.036,0.044,-0.01,2.6],[0.09,0.04,0.03,0.038,-0.012,2.7],[0.112,0.032,0.026,0.03,-0.01,2.6],[0.122,0.016,0.014,0.016,-0.008,2]],
+      jaw:[[0.0,0.046,0.022],[0.06,0.034,0.018],[0.1,0.024,0.012]], nose:[0.121,-0.002,0.017,0.012], eye:[0.032,0.04,0.018,0.0065], ears:'round', ear:[0.046,0.05,-0.02,0.018], muzzle:0.06, ruff:true},
+    stag:{L:[[-0.06,0.01,0.01,0.01,0.004,2],[-0.048,0.036,0.036,0.032,0.004,2.2],[-0.02,0.046,0.046,0.04,0.004,2.3],[0.01,0.042,0.04,0.036,0.0,2.2],[0.04,0.032,0.03,0.032,-0.008,2.1],[0.075,0.028,0.025,0.03,-0.014,2.3],[0.108,0.024,0.021,0.026,-0.016,2.4],[0.126,0.018,0.016,0.018,-0.015,2.4],[0.134,0.007,0.007,0.007,-0.014,2]],
+      jaw:[[0.0,0.03,0.015],[0.06,0.022,0.013],[0.124,0.015,0.009]], nose:[0.133,-0.011,0.016,0.011], eye:[0.022,0.04,0.012,0.0075], ears:'long', ear:[0.04,0.034,-0.012,0.02,0.06], muzzle:0.08, antlers:true, white:true},
+    ram:{L:[[-0.062,0.01,0.01,0.01,0.004,2],[-0.05,0.042,0.042,0.036,0.004,2.3],[-0.022,0.054,0.054,0.044,0.006,2.4],[0.01,0.05,0.05,0.042,0.002,2.4],[0.04,0.04,0.04,0.036,-0.008,2.3],[0.08,0.03,0.03,0.03,-0.016,2.3],[0.112,0.024,0.024,0.024,-0.02,2.4],[0.126,0.01,0.01,0.01,-0.02,2]],
+      jaw:[[0.0,0.034,0.014],[0.07,0.022,0.012],[0.118,0.016,0.008]], nose:[0.125,-0.018,0.016,0.01], eye:[0.016,0.042,0.014,0.0065], ears:'flop', ear:[0.03,0.046,-0.018,0.016,0.05], muzzle:0.07, horns:true, fleece:true},
+    raven:{L:[[-0.05,0.01,0.01,0.01,0.004,2],[-0.04,0.036,0.038,0.034,0.004,2.2],[-0.012,0.046,0.048,0.04,0.006,2.2],[0.016,0.044,0.044,0.036,0.004,2.2],[0.04,0.03,0.03,0.026,0.0,2.1],[0.052,0.016,0.018,0.014,-0.002,2]],
+      beak:true, eye:[0.024,0.034,0.01,0.0065]} };
+  const HM={};
+  const hmat=(k,c,o)=>HM[k]||(HM[k]=(typeof BODY3!=='undefined'&&BODY3.mat)?BODY3.mat(o&&o.metal?'steel':'cloth',c,Object.assign({skinning:false},o&&o.vc?{vertexColors:true}:{})):new THREE.MeshLambertMaterial({color:c,vertexColors:!!(o&&o.vc)}));   /* not skinned: a skinned material shared with a plain mesh (same colour as a fur shell) broke the shell's skinning */
+  function loft(L,NA,NZ,colAt){ const z0=L[0][0], z1=L[L.length-1][0], at=z=>{ let i=0; while(i<L.length-2&&L[i+1][0]<z) i++; const a=L[i], b=L[i+1], t=Math.max(0,Math.min(1,(z-a[0])/(b[0]-a[0]))), s=t*t*(3-2*t); return a.map((x,k)=>x+(b[k]-x)*s); };
+    const pos=[], col=[], idx=[], c=new THREE.Color();
+    for(let iz=0;iz<=NZ;iz++){ const u=iz/NZ, z=z0+(z1-z0)*(0.5-0.5*Math.cos(u*Math.PI)), [,w,ht,hb,cy,sq]=at(z);
+      for(let ia=0;ia<NA;ia++){ const a=ia/NA*Math.PI*2, ca=Math.cos(a), sa=Math.sin(a), e=2/sq, x=w*Math.sign(ca)*Math.pow(Math.abs(ca),e), yy=(sa>0?ht:hb)*Math.sign(sa)*Math.pow(Math.abs(sa),e);
+        pos.push(x,cy+yy,z); colAt(c,x,yy,z,sa,w); col.push(c.r,c.g,c.b); } }
+    for(let iz=0;iz<NZ;iz++) for(let ia=0;ia<NA;ia++){ const a=iz*NA+ia, b=iz*NA+(ia+1)%NA, c2=a+NA, d=b+NA; idx.push(a,c2,b,b,c2,d); }
+    const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3)); g.setAttribute('color',new THREE.Float32BufferAttribute(col,3)); g.setIndex(idx); g.computeVertexNormals(); return g; }
+  function head(par,at,kind,F1,F2,F3,DK,EY){ const P0=HEADP[kind]; if(!P0) return headOld(par,at,kind,F1,F2,F3,DK,EY);
+    const hg=new THREE.Group(); hg.position.copy(at); par.add(hg); hg.userData.armor=par.userData.armor;
+    const C1=new THREE.Color(F1.color), C2=new THREE.Color(F2.color), C3=new THREE.Color(F3.color), CK=new THREE.Color(DK.color), WH=new THREE.Color(0xf2eee6);
+    const put=(geo,mat,x,y,z)=>{ const m=mesh(hg,geo,mat,'fur'); m.position.set(x||0,y||0,z||0); m.userData.keepMat=true; return m; };
+    const ell=(a,b,c,seg)=>{ const g=new THREE.SphereGeometry(1,seg||14,10); g.scale(a,b,c); return g; };
+    const VC=hmat('vc',0xffffff,{vc:true});
+    // the skull and muzzle
+    put(loft(P0.L,22,26,(c,x,y,z,sa,w)=>{ const top=Math.max(0,sa), mz=P0.muzzle!==undefined?Math.max(0,Math.min(1,(z-P0.muzzle)/0.03)):0;
+      c.copy(C1).lerp(C3,top*top*0.55);                                                       // darker over the crown and the bridge
+      if(P0.mask&&sa<0.15) c.lerp(P0.white?WH:C2,Math.min(1,(0.15-sa)*1.6)*(z>-0.01?1:0.4));   // the pale cheeks and throat (a wolf's mask, a fox's white)
+      if(mz>0&&sa<0.4) c.lerp(C2,mz*0.75*(1-Math.max(0,sa)));                                  // the paler muzzle
+      if(P0.white&&sa<-0.3) c.lerp(WH,0.7); }),VC);
+    // the lower jaw, its lip line dark
+    if(P0.jaw){ const J=P0.jaw, L=P0.L, cy0=L[Math.min(L.length-2,4)][4]; const jl=[[J[0][0]-0.01,0.01,0.004,0.004,0,2],...J.map(([z,w,h])=>[z,w,h*0.5,h,0,2.2]),[J[J.length-1][0]+0.008,0.004,0.002,0.002,0,2]];
+      const nz=z=>{ let i=0; while(i<L.length-2&&L[i+1][0]<z) i++; const a=L[i], b=L[i+1], t=Math.max(0,Math.min(1,(z-a[0])/(b[0]-a[0]))); return [a[3]+(b[3]-a[3])*t,a[4]+(b[4]-a[4])*t]; };
+      const jaw=put(loft(jl,14,12,(c,x,y,z,sa)=>{ c.copy(C2).lerp(C1,0.25); if(P0.white) c.lerp(WH,0.6); }),VC); const [hb,cy]=nz(J[1][0]); jaw.position.y=cy-hb*0.86; jaw.rotation.x=-0.04;
+      put(ell(J[1][1]*0.95,0.0025,(J[J.length-1][0]-J[0][0])*0.42,12),hmat('lip',CK.getHex()),0,cy-hb*0.78,(J[0][0]+J[J.length-1][0])/2+0.01); }
+    // the nose pad and nostrils
+    if(P0.nose){ const [z,y,w,h]=P0.nose; put(ell(w,h,w*0.75),hmat('nose',0x1c1816),0,y,z-w*0.35); [-1,1].forEach(q=>put(ell(w*0.26,h*0.3,w*0.2,8),hmat('nostril',0x070605),q*w*0.42,y-h*0.25,z+w*0.25)); }
+    // the eyes, set in under a fur brow, a catch-light in each
+    if(P0.eye){ const [z,x,y,r]=P0.eye; [-1,1].forEach(q=>{ const e=put(ell(r,r*0.9,r*0.8,10),EY,q*x,y,z); e.rotation.y=q*0.6; put(ell(r*0.28,r*0.28,r*0.2,6),hmat('glint',0xf6f2e8),q*(x+r*0.15),y+r*0.35,z+r*0.55);
+      const br=put(ell(r*2.1,r*0.9,r*1.6,10),VC.clone?hmat('brow',C3.getHex()):F3,q*(x-r*0.2),y+r*1.15,z-r*0.4); br.rotation.z=-q*0.25; }); }
+    // the ears
+    const EI=hmat('earIn',CK.clone().lerp(C2,0.45).getHex());
+    if(P0.ears==='round') [-1,1].forEach(q=>{ const [x,y,z,r]=P0.ear; const e=put(ell(r,r*0.95,r*0.45,12),hmat('earR'+kind,C3.getHex()),q*x,y,z); e.rotation.z=-q*0.35; e.rotation.x=-0.25; const i2=put(ell(r*0.62,r*0.6,r*0.2,10),EI,q*x,y-0.002,z+r*0.28); i2.rotation.copy(e.rotation); });
+    if(P0.ears==='tall'||P0.ears==='long'||P0.ears==='flop') [-1,1].forEach(q=>{ const [x,y,z,r,h]=P0.ear, sh=new THREE.Shape(); sh.moveTo(-r,0); sh.quadraticCurveTo(-r*0.7,h*0.65,0,h); sh.quadraticCurveTo(r*0.7,h*0.65,r,0); sh.quadraticCurveTo(0,-r*0.25,-r,0);
+      const eg=new THREE.ExtrudeGeometry(sh,{depth:0.006,bevelEnabled:true,bevelSize:0.003,bevelThickness:0.003,bevelSegments:2,curveSegments:8}); eg.translate(0,0,-0.003);
+      // cupped: the ear's middle pressed back
+      const pa=eg.attributes.position; for(let k=0;k<pa.count;k++){ const ex=pa.getX(k)/r; pa.setZ(k,pa.getZ(k)-0.012*(1-Math.min(1,ex*ex))*(pa.getY(k)/h)); } eg.computeVertexNormals();
+      const e=put(eg,hmat('ear'+kind,(kind==='fox'?C1:C3).getHex()),q*x,y,z); if(P0.ears==='tall'){ e.rotation.set(-0.2,q*0.35,-q*0.22); } else if(P0.ears==='long'){ e.rotation.set(-0.1,q*0.9,-q*1.15); } else { e.rotation.set(0.2,q*0.6,-q*1.9); }
+      const ig=new THREE.ShapeGeometry(new THREE.Shape(sh.getPoints(10).map(p=>new THREE.Vector2(p.x*0.6,p.y*0.75+h*0.06))),6); const pi=ig.attributes.position; for(let k=0;k<pi.count;k++) pi.setZ(k,0.0045-0.012*(1-Math.min(1,(pi.getX(k)/r)**2))*(pi.getY(k)/h)); ig.computeVertexNormals();
+      const ii=put(ig,kind==='fox'?hmat('foxEarIn',0x2a1a12):EI,0,0,0); e.add(ii); ii.position.set(0,0,0); });
+    // the beasts' own: the lion's ruff, the stag's antlers, the ram's horns, the raven's beak
+    if(P0.ruff){ for(let i=0;i<22;i++){ const a=i/22*Math.PI*2, r=0.066+(i%2)*0.008; lock(hg,i%3?F2:F3,V(Math.cos(a)*r,Math.sin(a)*r*0.95,-0.015-(i%2)*0.01),V(Math.cos(a),Math.sin(a),-0.55),0.075+(i%3)*0.015,0.03); } }
+    const horn=(pts,r,mat)=>{ const m=mesh(hg,sweep(pts,r,r,8,t=>1-0.75*t),mat,'fur'); m.userData.keepMat=true; return m; };
+    if(P0.antlers){ const AM=hmat('antler',0xd8c8a8); [-1,1].forEach(q=>{ const b=V(q*0.026,0.04,-0.004), pt=(x,y,z)=>b.clone().add(V(q*x,y,z));
+      horn([b,pt(0.03,0.05,-0.012),pt(0.07,0.11,-0.04),pt(0.1,0.17,-0.05),pt(0.11,0.24,-0.03)],0.0085,AM);
+      horn([pt(0.022,0.035,-0.008),pt(0.02,0.06,0.03),pt(0.012,0.075,0.05)],0.0055,AM); horn([pt(0.06,0.1,-0.035),pt(0.05,0.15,0.0),pt(0.045,0.18,0.02)],0.005,AM); horn([pt(0.095,0.16,-0.05),pt(0.13,0.2,-0.06),pt(0.15,0.24,-0.05)],0.0045,AM);
+      put(ell(0.011,0.008,0.011,10),hmat('burr',0xb8a888),b.x,b.y,b.z); }); }
+    if(P0.horns){ const HMt=hmat('horn',0x8a7a5e); [-1,1].forEach(q=>{ const pts=[]; for(let k=0;k<=22;k++){ const a=k/22*Math.PI*1.75; pts.push(V(q*(0.036+0.04*Math.sin(a)*0.9+0.012*k/22),0.03+0.042*Math.cos(a)-0.012*k/22,-0.01-0.045*Math.sin(a*0.5)+0.01*Math.sin(a))); }
+      const hm=mesh(hg,sweep(pts,0.016,0.014,10,t=>1-0.62*t),HMt,'fur'); hm.userData.keepMat=true;
+      for(let k=2;k<20;k+=2){ const p=pts[k]; const rr=put(new THREE.TorusGeometry(0.016*(1-0.62*k/22),0.0016,4,10),hmat('ridge',0x6e6048),p.x,p.y,p.z); rr.lookAt(hg.localToWorld(pts[k+1].clone())); } }); }
+    if(P0.fleece) for(let i=0;i<11;i++){ const a=i*2.4, r=0.02+0.022*((i*7)%5)/5; put(ell(0.013,0.006,0.012,8),hmat('fleece'+kind,C1.clone().lerp(C2,0.4).getHex()),Math.cos(a)*r*1.1,0.044+Math.sin(a)*r*0.25,-0.024+((i*3)%7)*0.006); }
+    if(P0.beak){ const BK=hmat('beak',0x2a2a30), bl=[[0.034,0.012,0.012,0.014,-0.002,2.2],[0.06,0.009,0.01,0.008,-0.004,2.2],[0.09,0.006,0.006,0.004,-0.008,2],[0.118,0.0015,0.0015,0.0015,-0.014,2]];
+      put(loft(bl,12,14,(c)=>c.set(0x2a2a30)),VC); put(ell(0.0035,0.0012,0.012,6),hmat('nare',0x0e0e10),0.004,0.006,0.05); put(ell(0.0035,0.0012,0.012,6),hmat('nare',0x0e0e10),-0.004,0.006,0.05);
+      for(let i=0;i<10;i++){ const a=-1.2+i*0.27; lock(hg,i%2?F1:F2,V(Math.sin(a)*0.03,-0.02,-0.01+Math.cos(a)*0.02),V(Math.sin(a)*0.3,-1,-0.2),0.04,0.016); } }
+    return hg; }
+  function headOld(par,at,kind,F1,F2,F3,DK,EY){ const hg=new THREE.Group(); hg.position.copy(at); par.add(hg); hg.userData.armor=par.userData.armor;
     const sm=(a,b,c,mat,x,y,z,seg)=>{ const s2=new THREE.SphereGeometry(1,seg||12,8); s2.scale(a,b,c); const m=mesh(hg,s2,mat,'fur'); m.position.set(x||0,y||0,z||0); return m; };
     const horn=(pts,r,mat)=>mesh(hg,sweep(pts,r,r,6,t=>1-0.8*t),mat,'fur');
     if(kind==='bear'){ sm(0.075,0.06,0.08,F1); sm(0.04,0.034,0.06,F2,0,-0.01,0.075); sm(0.015,0.011,0.01,DK,0,0.003,0.132); [-1,1].forEach(q=>{ sm(0.022,0.024,0.012,F3,q*0.05,0.055,-0.01); sm(0.007,0.005,0.004,EY,q*0.03,0.022,0.06); }); }

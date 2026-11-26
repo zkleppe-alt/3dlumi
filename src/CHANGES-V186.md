@@ -1206,3 +1206,23 @@ Zak: the bear hood comes apart from itself when he walks or runs and moves with 
 - **The cape:** no long cloak. A short cape of the pelt hangs from the left shoulder round the back (`mantle` kind 'side' with a new `diag` option that lifts the hem along it), lowest at mid-back under that shoulder and rising across to the right shoulder blade, ragged at the hem. It's cloth, and it lies under a shield on his back.
 - **Hood down:** the beast's head rests on the upper back behind the neck, snout down, instead of on the left shoulder.
 - Fix: removing skinned twins while walking the scene graph broke the walk; they're gathered first.
+
+## V281 — the beasts' heads, sculpted
+Zak: make the pelt heads look a little more realistic.
+- **One lofted skull per beast** (armor_sets.js `HEADP`, `loft`, `head`). The old heads were a few stacked egg shapes. Each head is now a single smooth surface lofted through cross-sections down its length (back of the skull, brow, stop, muzzle, nose). Each section is a rounded box with its own width, crown height, jaw depth and centre, so the forehead rises over a stop and the muzzle narrows to the nose. Proportions per beast:
+  - bear: broad skull, short blunt muzzle;
+  - wolf: long muzzle;
+  - fox: narrow and pointed;
+  - lion: broad, square muzzle;
+  - stag: long, fine;
+  - ram: roman nose;
+  - raven: round head with a lofted beak.
+- **Coloured by a vertex wash:** darker over the crown and down the bridge, a paler muzzle, the wolf's pale mask, the fox's, stag's and ram's white chins and throats.
+- **Detail:**
+  - a lower jaw with a dark lip line;
+  - a nose pad with nostrils;
+  - eyes set under a fur brow, with a catch-light;
+  - ears: round cupped for the bear and lion; tall cupped ears with dark inners for the wolf and fox; long sideways ears for the stag; drooping ears for the ram;
+  - the stag's branching antlers with burrs, the ram's ridged curling horns and fleece, the lion's ruff, the raven's beak and throat feathers.
+- **Hood down:** the head rests on the upper back. If a shield is slung there, it rises onto the shield's top edge instead of passing through it (`hoodSync`; the head is kept rigid, `noSkin`). The hood worn up rides the head whole and is no longer twinned.
+- **Fix:** the heads' materials are created unskinned. A skinned material shared, by colour, between a plain mesh and the fur shell broke the shell's skinning: the fox's mantle floated over his head. Also removed the darker tuft layer from the fur shell, which left floating slivers.
