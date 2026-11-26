@@ -752,7 +752,7 @@ const ARMOR=(function(){
     const shoulderR=(ph)=>{ const sx=Math.abs(Math.sin(ph)); return (o.stand!==undefined?o.stand:0.03)+(o.over!==undefined?o.over:0.09)*Math.pow(sx,1.5); };   // over the shoulders: wider at the sides
     const at=(ph,y,fall)=>{ const yy=Math.max(-0.12,Math.min(0.56,y)), [cx,cz]=TR.c(yy), base=TR.r(ph,Math.max(0.2,yy)), v=Math.max(0,Math.min(1,(yTop-y)/(yTop-yHem))), stand=shoulderR(ph)*Math.min(1,(yTop+0.04-y)/0.16+0.15);
       const r=Math.max(base+0.03,TR.r(ph,yy)+0.025)+stand*(1-v*0.65)+(o.flare!==undefined?o.flare:0.06)*v*v+(Math.cos(ph)<0?0.025*v:0); return V(cx+r*Math.sin(ph),y,cz+r*Math.cos(ph)); };
-    const NU=kind==='shroud'?48:28, NV=10, rag=o.rag||0, hemY=(u)=>yHem-(rag?rag*Math.abs(Math.sin(u*NU*0.9)):0);
+    const NU=kind==='shroud'?48:28, NV=10, rag=o.rag||0, hemY=(u)=>yHem+(o.diag||0)*u-(rag?rag*Math.abs(Math.sin(u*NU*0.9)):0);   /* V280: o.diag lifts the hem along the cape: hung diagonally from one shoulder */
     const shapeAt=(u,v,back)=>{ let ph=P0+(P1-P0)*u; if(back&&kind==='shroud'){ const w=((ph%(Math.PI*2))+Math.PI*2)%(Math.PI*2), a=w>Math.PI?Math.PI*2-w:w, sg=w>Math.PI?-1:1; ph=sg*(Math.PI*0.62+a*0.38); }   // the front gathered behind, over and past the shoulders
       const y=yTop-(yTop-hemY(u))*v; return at(ph,y); };
     const top=V(0,0,0); const ring=(fn)=>surf(fn,NU,NV,{smooth:true,two:0.005});
@@ -828,7 +828,7 @@ const ARMOR=(function(){
         best.sort((a,b)=>a[0]-b[0]); best.length=Math.min(best.length,6); } return best; };
     const loose=slot==='tabard'||slot==='skirt';
     gs.forEach(gr=>{ if(gr.userData.garmentSlot||gr.userData.mantle) return; gr.updateMatrixWorld(true);
-      const meshes=[]; gr.traverse(m=>{ if(m.isMesh&&!m.isSkinnedMesh&&!m.userData.twin&&m.geometry&&m.geometry.attributes.position) meshes.push(m); });
+      const meshes=[]; gr.traverse(m=>{ if(m.isMesh&&!m.isSkinnedMesh&&!m.userData.twin&&m.geometry&&m.geometry.attributes.position&&!(slot==='cowl'&&m.userData.soft&&!m.userData.softHead)) meshes.push(m); });
       meshes.forEach(m=>{ const geo=m.geometry.clone(), P=geo.attributes.position, n=P.count, si=new Float32Array(n*4), sw=new Float32Array(n*4);
         for(let i=0;i<n;i++){ v.fromBufferAttribute(P,i).applyMatrix4(m.matrixWorld); t.copy(v).applyMatrix4(B.toK);
           const legSide=slot==='legs'||slot==='sabatons'||(loose&&t.y<B.pelY+0.02), side=legSide?(Math.abs(t.x)<0.025?0:Math.sign(t.x)):0;
@@ -850,7 +850,7 @@ const ARMOR=(function(){
   function bodyPts(K){ const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body||!F.body.boneTransform) return null; const body=F.body, G=body.geometry, P=G.attributes.position;
     bodySync(K); body.skeleton.update(); body.updateMatrixWorld(true); const st=2, n=Math.ceil(P.count/st), X=new Float32Array(n*3), I=new Int32Array(n); const v=new THREE.Vector3();
     for(let q=0,k=0;q<P.count;q+=st,k++){ body.boneTransform(q,v); v.applyMatrix4(body.matrixWorld); X[k*3]=v.x; X[k*3+1]=v.y; X[k*3+2]=v.z; I[k]=q; } return {X,I,n,body}; }
-  function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; gs=gs.filter(g=>!g.userData.glove&&!g.userData.skinKit); if(!gs.length) return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
+  function onBones(K,slot,gs){ if(K._onBones===false||slot==='skirt') return; gs=gs.filter(g=>!g.userData.glove&&!g.userData.skinKit&&!g.userData.furShell); if(!gs.length) return; const B=bodyPts(K); if(!B) return; const SI=B.body.geometry.attributes.skinIndex, SW=B.body.geometry.attributes.skinWeight, bones=B.body.skeleton.bones, v=new THREE.Vector3();
     gs.forEach(g=>{ if(!g.parent||g.userData.garmentSlot||g.parent===K._skF||g.parent===K._skB) return; g.updateWorldMatrix(true,true); const pts=[];
       g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, st=Math.max(1,Math.floor(A.count/40)); for(let i=0;i<A.count;i+=st) pts.push(v.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld).clone()); });
       if(!pts.length) return; const W=new Map();
@@ -885,6 +885,7 @@ const ARMOR=(function(){
   function set(K,slot,on){ const undo=restPose(K); try{ return set0(K,slot,on); } finally{ undo(); } }   /* V274: draping is measured in the rest pose too */
   function set0(K,slot,on){ const S=state(K); if(slot==='arms'&&S.groups.gauntlets) set0(K,'gauntlets',on); if(slot==='legs'&&S.groups.sabatons) set0(K,'sabatons',on); if(on&&!S.groups[slot]){ wear(K,slot,(S.ids&&S.ids[slot])||'templar'); return; } if(!S.groups[slot]) return; S.worn[slot]=!!on; show(K,slot,!!on); if(on) toon(K);
     if(slot==='pauldrons'||slot==='cowl') try{ drape(K); }catch(e){ if(window.DEBUG_ARMOR) console.error('drape',e); }
+    if((slot==='pauldrons'||slot==='cowl')&&S.groups.cowl&&S.worn.cowl) try{ skinCowl(K); }catch(e){ if(window.DEBUG_ARMOR) console.error('skinCowl',e); }
     if(slot==='tabard'||slot==='skirt') skirtSync(K); }
   function skirtSync(K){ const S=K&&K.userData.armorS; if(!S||!S.groups.skirt) return; const long=!!(S.worn.tabard&&S.groups.tabard&&S.groups.tabard[0]&&S.groups.tabard[0].userData.longFront);
     S.groups.skirt.forEach(g=>{ if(g.userData.centre) g.visible=!!S.worn.skirt&&!long; }); S.softDirty=true; }
@@ -902,9 +903,19 @@ const ARMOR=(function(){
     const R=d=>{ const L=d.length()||1, fe=(Math.asin(Math.max(-1,Math.min(1,d.y/L)))+Math.PI/2)/Math.PI*NE-0.5, fa=((Math.atan2(d.x,d.z)+Math.PI)/(Math.PI*2))*NA-0.5, e0=Math.max(0,Math.min(NE-1,Math.floor(fe))), e1=Math.min(NE-1,e0+1), te=Math.max(0,Math.min(1,fe-e0)), a0=((Math.floor(fa)%NA)+NA)%NA, a1=(a0+1)%NA, ta=fa-Math.floor(fa);
       const v=(e,a)=>r[e*NA+a], q=[[v(e0,a0),(1-te)*(1-ta)],[v(e0,a1),(1-te)*ta],[v(e1,a0),te*(1-ta)],[v(e1,a1),te*ta]]; let w=0,t=0; q.forEach(([x,ww])=>{ if(x){ t+=x*ww; w+=ww; } }); return w>0.25?t/w:0; };   // read between the bins
     return {c,r,bin,R}; }
+  /* V280: A HOOD, COWL OR PELT IS ONE SOFT GARMENT. Its pieces were each carried rigidly by a different joint (the collar by the chest,
+     each shoulder pelt by its arm), so in a stride or a swing they parted from one another. Now, after it is draped over the pauldrons,
+     every piece gets a skinned twin with blended weights from the body points nearest it (chest, neck and head, the upper arms), as
+     clothing is skinned in games: the collar flows into the shoulders and the shoulders bend with the arms, all of a piece. Capes keep
+     their cloth (they're not twinned). */
+  const COWLREG=['chest','head','upperarm'];
+  function skinCowl(K){ const S=K.userData.armorS; if(!S||!S.groups.cowl||K._skinArmor===false) return; const F=K.userData.b3; if(!F||typeof F!=='object'||!F.body) return;
+    const old=[]; S.groups.cowl.forEach(g=>g.traverse(m=>{ if(m.userData&&m.userData.skinTwin) old.push(m); }));   /* gathered first: taking a twin out mid-traverse breaks the walk */
+    old.forEach(m=>{ const tw=m.userData.skinTwin; tw.parent&&tw.parent.remove(tw); tw.geometry.dispose(); delete m.userData.skinTwin; if(m.userData.matOrig){ m.material=m.userData.matOrig; delete m.userData.matOrig; } });
+    SKINREG.cowl=COWLREG; try{ skinGroups(K,'cowl',S.groups.cowl.filter(g=>!g.userData.mantle&&!g.userData.garmentSlot)); } finally{ delete SKINREG.cowl; } }
   function drape(K){ const S=K&&K.userData.armorS; if(!S||!S.groups.cowl) return; const cg=S.groups.cowl[0], dm=S.groups.cowl.some(g=>g.userData.drapeMe); if(!cg||!(cg.userData.pelt||dm)) return;   /* V270: and the hood's cowl */
     K.updateMatrixWorld(true); K.getWorldScale(_sc); const gap=0.016*(_sc.y||1), envs=S.worn.pauldrons&&S.groups.pauldrons?S.groups.pauldrons.map(envelope).filter(Boolean):[];
-    S.groups.cowl.forEach(g=>{ if(!cg.userData.pelt&&!g.userData.drapeMe) return; g.traverse(m=>{ if(!m.isMesh||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, arr=A.array;
+    S.groups.cowl.forEach(g=>{ if(!cg.userData.pelt&&!g.userData.drapeMe) return; g.traverse(m=>{ if(!m.isMesh||m.isSkinnedMesh||m.userData.twin||!m.geometry.attributes.position) return; const A=m.geometry.attributes.position, arr=A.array;
       if(!m.userData.drape0){ m.userData.drape0=(m.userData.rest||arr).slice(); if(m.geometry.attributes.normal) m.userData.drapeN=m.geometry.attributes.normal.array.slice(); } arr.set(m.userData.drape0); if(m.userData.drapeN) m.geometry.attributes.normal.array.set(m.userData.drapeN); let moved=false;
       if(envs.length){ _dm.copy(m.matrixWorld).invert(); const NA0=m.geometry.attributes.normal, nv=new THREE.Vector3(), th=0.007*(_sc.y||1);
         for(let i=0;i<arr.length;i+=3){ _dv.set(arr[i],arr[i+1],arr[i+2]).applyMatrix4(m.matrixWorld); let hit=false; if(NA0) nv.fromBufferAttribute(NA0,i/3).transformDirection(m.matrixWorld);
@@ -1001,7 +1012,7 @@ const ARMOR=(function(){
         if(Math.abs(_p.x)<hw&&(_p.z-SHC.zb)*SHC.s<SHC.m){ _p.z=SHC.zb+SHC.s*SHC.m; _cw.copy(_p).applyMatrix4(SHC.mw); } } }
       X[j]=_cw.x; X[j+1]=_cw.y; X[j+2]=_cw.z; _cw.applyMatrix4(_inv); A[j]=_cw.x; A[j+1]=_cw.y; A[j+2]=_cw.z; } }
   function tick(K){ const S=K&&K.userData.armorS; if(!S||!K.visible) return; hoodSync(K);
-    for(const sl in SKINREG) (S.groups[sl]||[]).forEach(g=>g.traverse(m=>{ const tw=m.userData&&m.userData.skinTwin; if(!tw) return; if(tw.visible!==m.visible) tw.visible=m.visible;
+    for(const sl of [...Object.keys(SKINREG),'cowl']) (S.groups[sl]||[]).forEach(g=>g.traverse(m=>{ const tw=m.userData&&m.userData.skinTwin; if(!tw) return; if(tw.visible!==m.visible) tw.visible=m.visible;
       const ms=Array.isArray(tw.material)?tw.material:[tw.material]; ms.forEach(x=>{ const src=x.userData.src; if(src&&src.color&&!x.color.equals(src.color)) x.color.copy(src.color); }); }));   /* V271: the skinned twin shows as its piece does, in its colours */
     if(K.userData.armorSettle&&performance.now()>K.userData.armorSettle&&!(typeof OUTFIT3!=='undefined'&&OUTFIT3.baseReady&&!OUTFIT3.baseReady(K)&&performance.now()<K.userData.armorSettle+20000)){ delete K.userData.armorSettle; resettle(K); return; }
     { const now=performance.now(), dt=Math.min(0.05,Math.max(0.001,((now-(S._tt||now))/1000)||0.016)); S._tt=now; const bg=S.worn.belt&&S.groups.belt||[], sp=K.rig&&K.rig.sheathP; let frog=null;

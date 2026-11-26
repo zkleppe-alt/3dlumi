@@ -14,10 +14,10 @@
   const bump=(y,c,w)=>Math.exp(-((y-c)/w)*((y-c)/w));
   // one layer: the leg triangles whose middle passes L.sel, pushed out by L.d (a number or a function of the bind point), skinned
   function layer(F,g,L){ const body=F.body, geo=body.geometry, P0=geo.attributes.position, N0=geo.attributes.normal, R=F.D.reg, cn=F.D.cn, ix=F.idx0||geo.index, n=P0.count;
-    const tri=[]; for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t), b=ix.getX(t+1), c=ix.getX(t+2); if(!LEGR.has(R[a])||!LEGR.has(R[b])||!LEGR.has(R[c])) continue;
+    const RG=L.regs?new Set(L.regs):LEGR; const tri=[]; for(let t=0;t<ix.count;t+=3){ const a=ix.getX(t), b=ix.getX(t+1), c=ix.getX(t+2); if(!RG.has(R[a])||!RG.has(R[b])||!RG.has(R[c])) continue;
       const y=(P0.getY(a)+P0.getY(b)+P0.getY(c))/3, x=(P0.getX(a)+P0.getX(b)+P0.getX(c))/3, z=(P0.getZ(a)+P0.getZ(b)+P0.getZ(c))/3, nz=(N0.getZ(a)+N0.getZ(b)+N0.getZ(c))/3, ny=(N0.getY(a)+N0.getY(b)+N0.getY(c))/3;
-      if(R[a]==='pelvis'&&R[b]==='pelvis'&&R[c]==='pelvis'&&Math.abs(x)<0.02&&z>0.05) continue;   // not over the belly
-      if(L.sel(y,Math.abs(x),z,nz,ny)) tri.push(a,b,c); }
+      if(!L.regs&&R[a]==='pelvis'&&R[b]==='pelvis'&&R[c]==='pelvis'&&Math.abs(x)<0.02&&z>0.05) continue;   // not over the belly
+      if(L.sel(y,Math.abs(x),z,nz,ny,R[a]+R[b]+R[c])) tri.push(a,b,c); }
     if(!tri.length) return null;
     const nb=new Map(), link=(a,b)=>{ if(a===b) return; if(!nb.has(a)) nb.set(a,new Set()); nb.get(a).add(b); };
     for(let t=0;t<tri.length;t+=3) for(let q=0;q<3;q++){ const a=cn[tri[t+q]], b=cn[tri[t+(q+1)%3]]; link(a,b); link(b,a); }
@@ -30,12 +30,12 @@
       for(let t=0;t<tri.length;t+=3){ const a=cn[tri[t]], b=cn[tri[t+1]], c=cn[tri[t+2]]; A.set(X[a*3],X[a*3+1],X[a*3+2]); B.set(X[b*3]-A.x,X[b*3+1]-A.y,X[b*3+2]-A.z); C.set(X[c*3]-A.x,X[c*3+1]-A.y,X[c*3+2]-A.z); B.cross(C); [a,b,c].forEach(v=>{ Nn[v*3]+=B.x; Nn[v*3+1]+=B.y; Nn[v*3+2]+=B.z; }); }
       nb.forEach((_,a)=>{ const l=Math.hypot(Nn[a*3],Nn[a*3+1],Nn[a*3+2])||1; Nn[a*3]/=l; Nn[a*3+1]/=l; Nn[a*3+2]/=l; }); return Nn; };
     let Nn=norms(); const need=new Map(), df=typeof L.d==='function'?L.d:(()=>L.d);
-    nb.forEach((_,a)=>{ const D=df(P0.getY(a),Math.abs(P0.getX(a)),P0.getZ(a))*F.unit, out=(X[a*3]-P0.getX(a))*Nn[a*3]+(X[a*3+1]-P0.getY(a))*Nn[a*3+1]+(X[a*3+2]-P0.getZ(a))*Nn[a*3+2]; need.set(a,Math.max(D*0.4,D-out)); });
+    nb.forEach((_,a)=>{ const D=df(P0.getY(a),Math.abs(P0.getX(a)),P0.getZ(a),R[a])*F.unit, out=(X[a*3]-P0.getX(a))*Nn[a*3]+(X[a*3+1]-P0.getY(a))*Nn[a*3+1]+(X[a*3+2]-P0.getZ(a))*Nn[a*3+2]; need.set(a,Math.max(D*0.4,D-out)); });
     for(let it=0;it<4;it++){ const nx=new Map(); nb.forEach((ns,a)=>{ let s=need.get(a); ns.forEach(b=>s+=need.get(b)); nx.set(a,Math.max(need.get(a)*0.85,s/(ns.size+1))); }); nx.forEach((v,a)=>need.set(a,v)); }
     nb.forEach((_,a)=>{ const w=need.get(a); X[a*3]+=Nn[a*3]*w; X[a*3+1]+=Nn[a*3+1]*w; X[a*3+2]+=Nn[a*3+2]*w; }); Nn=norms();
     const ng=new THREE.BufferGeometry(), PA=new Float32Array(n*3), NA=new Float32Array(n*3); for(let q=0;q<n;q++){ const c=cn[q]; for(let e=0;e<3;e++){ PA[q*3+e]=X[c*3+e]; NA[q*3+e]=Nn[c*3+e]; } }
     ng.setAttribute('position',new THREE.BufferAttribute(PA,3)); ng.setAttribute('normal',new THREE.BufferAttribute(NA,3)); ['skinIndex','skinWeight','uv'].forEach(k=>{ if(geo.attributes[k]) ng.setAttribute(k,geo.attributes[k]); }); ng.setIndex(tri);
-    const sm=new THREE.SkinnedMesh(ng,BODY3.mat(L.kind,L.col)); sm.castShadow=true; sm.frustumCulled=false; sm.userData.keepMat=true; sm.userData.armor='legs'; sm.userData.legKit=true; g.add(sm); sm.bind(body.skeleton,body.bindMatrix); return sm; }
+    const sm=new THREE.SkinnedMesh(ng,BODY3.mat(L.kind,L.col)); sm.castShadow=true; sm.frustumCulled=false; sm.userData.keepMat=true; sm.userData.armor=L.slot||'legs'; sm.userData.legKit=true; if(L.slot) sm.userData.furShell=true; g.add(sm); sm.bind(body.skeleton,body.bindMatrix); return sm; }
   // ── the parts ──  (front: nz>0; the boot top / trouser end heights are bind y)
   const all=()=>true;
   const BOOT={ tall:0.4, ankle:0.17, shoes:0.105, steel:0.2, bare:-1 };
@@ -96,5 +96,5 @@
     pc.build=ctx=>{ if(build(ctx,id)) return; if(old) old.build(ctx); else if(OLDL.templar) OLDL.templar.build(ctx); }; });
   if(P.legs.k_boots) delete P.legs.k_boots;   // the plain kit is the same as the base: no twin in the list
   P.sabatons.kit={name:'(with the legs)',set:'Common',common:true,build:ctx=>{ const K=ctx.K, F=K.userData.b3; if(F&&typeof F==='object'&&F.body){ const g=new THREE.Group(); g.userData.armor='sabatons'; g.userData.fitted=true; g.userData.skinKit=true; K.add(g); ctx.groups.push(g); return; } const o=OLDS.templar; if(o) o.build(ctx); }};
-  ARMOR.LEGKIT=KITS;
+  ARMOR.LEGKIT=KITS; ARMOR.H.bodyShell=layer;   /* V280: the same body-shell layer, for any part of the body (the pelt mantles) */
 })();

@@ -292,6 +292,22 @@
     const mix=i=>i%3?F1:(i%2?F2:F3);
     // the collar
     const tz=0.88, YA=y0+0.05, YT=y0+0.19+(o.mane?0.05:0), R0=(K._furR||0.25)*(o.mane?1.22:1), col=(ph,y)=>{ const v=(y-YA)/(YT-YA); return R0*(1-0.4*Math.pow(v,1.2))*(1+0.035*Math.sin(ph*9)); };
+    // V280: THE PELT AS ONE GARMENT ON THE BODY. Where the body is to hand, the collar and the shoulder pelts are a single skin of fur:
+    //  the body's own shoulders, upper back, upper chest and neck, pushed out to a fur's thickness (more over the shoulders, to lie over
+    //  the pauldrons; a roll at the neck), skinned to the same bones — so it bends with the shoulders and can't come apart.
+    const F3B=K.userData.b3, SHL=ARMOR.H.bodyShell, SW=K.userData.armorS, pauldOn=!!(SW&&SW.worn.pauldrons&&SW.ids&&SW.ids.pauldrons&&SW.ids.pauldrons!=='base');
+    let shellOk=false;
+    if(F3B&&typeof F3B==='object'&&F3B.body&&F3B.D&&SHL&&typeof BODY3!=='undefined'&&K._furShell!==false){ const gs=piece(ctx,K); gs.userData.fitted=true; gs.userData.furShell=true;
+      const bump=(v,c,w)=>Math.exp(-((v-c)/w)*((v-c)/w)), pad=pauldOn?0.052*(o.sh||1):0.012, ruff=o.mane?0.05:0.03;
+      const sel=(y,x,z,nz,ny,rr)=>{ if(/forearm|hand|belly|pelvis/.test(rr)||x>0.34) return false; if(/head/.test(rr)) return y<1.585&&x<0.1;
+        if(/upperarm/.test(rr)) return y>1.405; return y>(z>0.03?1.43:1.33); };
+      const d=(y,x,z)=>0.02+pad*bump(x,0.24,0.085)+ruff*bump(y,1.53,0.04)*(x<0.13?1:0)-(z>0.05&&y<1.47?0.006:0);
+      const c0=o.c[0], c1=o.c[1], c2=o.c[2];
+      [ {sel,d,it:14,kind:'cloth',col:c0},
+        {sel:(y,x,z,nz,ny,rr)=>sel(y,x,z,nz,ny,rr)&&(Math.floor(x*38+y*22+(z>0?0.5:0))%2===0),d:(y,x,z)=>d(y,x,z)+0.008,it:3,kind:'cloth',col:c2},   // the pelt's lie: tufts a shade darker
+        {sel:(y,x,z,nz,ny,rr)=>sel(y,x,z,nz,ny,rr)&&y>1.47&&x<0.15,d:(y,x,z)=>d(y,x,z)+0.01,it:10,kind:'cloth',col:o.mane?c1:c0} ]   // the ruff at the neck
+        .forEach(L=>{ try{ L.slot='cowl'; L.regs=['chest','head','upperarm']; if(SHL(F3B,gs,L)) shellOk=true; }catch(e){ if(window.DEBUG_ARMOR) console.error('furShell',e); } }); }
+    if(!shellOk){
     mesh(g,band(col,-Math.PI,Math.PI,YA,YT,36,5,{zk:tz,smooth:true,two:0.006}),o.mane?F2:F1,'fur');
     const NL=o.mane?44:30; for(let i=0;i<NL;i++){ const ph=-Math.PI+i/NL*Math.PI*2+(i%2)*0.05, r=col(ph,YA)+0.002, ln=(o.mane?0.13:0.07)+(i%3)*0.015; LK(g,o.mane?(i%2?F2:F1):mix(i),V(r*Math.sin(ph),YA+0.02,tz*r*Math.cos(ph)),V(Math.sin(ph)*0.35,-1,tz*Math.cos(ph)*0.35),ln,o.mane?0.036:0.03); }
     if(o.mane) for(let i=0;i<28;i++){ const ph=-Math.PI+i/28*Math.PI*2, r=col(ph,YT-0.02); LK(g,i%2?F1:F2,V(r*Math.sin(ph),YT,tz*r*Math.cos(ph)),V(Math.sin(ph)*0.8,-0.6,tz*Math.cos(ph)*0.8),0.1,0.034); }   // the mane's crown, standing out
@@ -303,7 +319,10 @@
       if(o.spots) for(let i=0;i<7;i++){ const sp=mesh(gp,(()=>{ const s2=new THREE.SphereGeometry(1,8,5); s2.scale(0.018,0.004,0.014); return s2; })(),F2,'fur'); const ph=-Math.PI+i*0.9, th=0.5+(i%3)*0.25, p=dome(ph,th,0.004); sp.position.copy(p); sp.lookAt(p.clone().multiplyScalar(2).sub(V(cx,top-ry,0))); sp.rotateX(Math.PI/2); }
       const NS=o.feathers?24:18; for(let i=0;i<NS;i++){ const ph=-Math.PI+i/NS*Math.PI*2+(i%2)*0.08, p=dome(ph,TH-0.02,0.002), d=V(Math.sin(ph)*0.45,-1,Math.cos(ph)*0.45); LK(gp,mix(i),p,d,(o.feathers?0.12:0.085)+(i%3)*0.02,o.feathers?0.03:0.036).userData.softHead=1; }
       if(o.feathers) for(let row=0;row<2;row++) for(let i=0;i<14;i++){ const ph=-Math.PI+i/14*Math.PI*2+row*0.2, th=0.55+row*0.35, p=dome(ph,th,0.006+row*0.003); LK(gp,mix(i+row),p,p.clone().sub(V(cx,top-ry,0)).add(V(0,-0.12,0)),0.09,0.026).userData.softHead=1; }
-      if(sd>0&&o.head){ head(gp,dome(Math.PI/2,0.35,0.02),o.head,F1,F2,F3,DK,EY); hp.down.push(gp.children[gp.children.length-1]); } });
+      });
+    }
+    // V280: with the hood down the beast's head hangs behind his neck, as a hood falls back — on the upper back, snout down
+    if(o.head){ head(g,V(0,YA+0.07,-col(Math.PI,YA)-0.02),o.head,F1,F2,F3,DK,EY); const hb=g.children[g.children.length-1]; hb.rotation.set(-1.25,Math.PI,0); hb.scale.setScalar(0.85); hp.down.push(hb); }
     // V256/257: the hood — the beast's own head worn over his (after Zak's references: Hunt's wolf, the grizzly): its skull is the hood's
     //  crown, its brow and snout jut out over his forehead like a visor with its teeth showing, his face open below; the pelt falls down
     //  both sides of his face to the shoulders and the mantle. Over a helm it is cut larger.
@@ -324,10 +343,10 @@
         if(/bear|wolf|lion|fox/.test(o.head)){ const TT=pelt('_tooth',0xeee6cf), sz=o.head==='bear'||o.head==='lion'?1:0.8;   // the teeth of the upper jaw, over his brow
           [[-0.022,0.026],[0.022,0.026],[-0.011,0.012],[0,0.011],[0.011,0.012]].forEach(([x,l])=>{ const c=new THREE.ConeGeometry(0.0055*sz,l*sz,5).toNonIndexed(); c.rotateX(Math.PI); const m=mesh(hh,c,TT,'fur'); m.position.set(x*sz,-0.04*sz-l*sz/2+0.004,0.1*sz+(o.head==='bear'?0:0.02)); }); } } }
     // the cloak, and a tail
-    if(o.cloak){ const CL=o.cloak, RC=0.32, cape=(ph,y)=>{ const v=(YA-y)/CL; return RC*(1.0+0.16*v)*(1+0.03*Math.sin(ph*7+v*3)); };
-      const cm=mesh(g,surf((u,v)=>{ const ph=Math.PI-1.35+2.7*u, y=YA+0.04-CL*(1-v), r=cape(ph,y); return V(r*Math.sin(ph),y,tz*r*Math.cos(ph)); },20,8,{smooth:true,two:0.006}),F1,'fur'); cm.userData.soft=1; cm.userData.underShield=true;
-      if(o.spots) for(let i=0;i<12;i++){ const u=(i*0.37)%1, v=0.2+((i*0.53)%0.7), ph=Math.PI-1.2+2.4*u, y=YA+0.04-CL*(1-v), r=cape(ph,y)+0.004, sp=mesh(g,(()=>{ const s2=new THREE.SphereGeometry(1,8,5); s2.scale(0.02,0.016,0.004); return s2; })(),F2,'fur'); sp.position.set(r*Math.sin(ph),y,tz*r*Math.cos(ph)); sp.rotation.y=ph; sp.userData.soft=1; }
-      for(let i=0;i<22;i++){ const ph=Math.PI-1.3+2.6*i/21, y=YA+0.04-CL+0.04, r=cape(ph,y)+0.002; LK(g,mix(i),V(r*Math.sin(ph),y,tz*r*Math.cos(ph)),V(0,-1,-0.1),(o.feathers?0.13:0.1)+(i%3)*0.025,0.04); } }
+    // V280: no long cloak — a short cape of the pelt hung diagonally from the left shoulder (as in Assassin's Creed): from the left
+    //  side round the back, its hem lowest at mid-back under that shoulder and rising across to the right shoulder blade. Cloth.
+    if(o.cloak&&ARMOR.H.mantle){ const cp=ARMOR.H.mantle(ctx,{kind:'side',side:1,top:0.6,hem:0.17,diag:0.2,over:0.12,stand:0.07,flare:0.03,rag:0.022,mat:F1});
+      if(cp){ cp.userData.armor='cowl'; cp.traverse(m=>{ if(m.isMesh) m.userData.underShield=true; }); } }
     if(o.tail){ const pts=bez(V(0,YA-0.02,-0.3),V(0.02,YA-0.25,-0.38),V(0.05,YA-0.45,-0.34),V(0.07,YA-0.62,-0.26),12); const n=pts.length, cut=Math.round(n*0.78);
       const t1=mesh(g,sweep(pts.slice(0,cut+1),0.05,0.04,7,t=>0.55+0.45*Math.sin(Math.min(1,t*1.1)*Math.PI)),F1,'fur'); t1.userData.soft=1; t1.userData.underShield=true;
       const t2=mesh(g,sweep(pts.slice(cut),0.05,0.04,7,t=>0.9*(1-t*0.85)),F3,'fur'); t2.userData.soft=1; t2.userData.underShield=true; } }
