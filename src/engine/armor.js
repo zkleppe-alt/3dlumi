@@ -985,10 +985,10 @@ const ARMOR=(function(){
       if(dirty) pos.needsUpdate=true; } }
   // ── V245: the PREVIEW — the knight himself, drawn alone into the Armour tab: the game's own renderer draws only his layer from a
   //  turntable camera into a small target, which is copied into the tab's canvas. Drag to turn him. ──
-  const preview=(function(){ let cv=null, ctx2=null, rt=null, cam=null, raf=0, ang=0.5, drag=null, buf=null, img=null, last=0; const W=260, Hh=340, LAY=5;
+  const preview=(function(){ let cv=null, ctx2=null, rt=null, cam=null, raf=0, ang=0.5, drag=null, buf=null, img=null, last=0, cv2=null, x2=null; const W=520, Hh=680, LAY=5;   /* V273: drawn at twice the size and scaled down — the edges were stair-stepped */
     function frame(t){ raf=requestAnimationFrame(frame); if(!cv||!cv.isConnected){ stop(); return; } if(t-last<45) return; last=t;
       if(typeof ENGINE==='undefined'||!ENGINE.K||!ENGINE.level||!ENGINE.renderer) return; const K=ENGINE.K, L=ENGINE.level, R=ENGINE.renderer, sc=L.scene; if(!sc) return;
-      if(!rt){ rt=new THREE.WebGLRenderTarget(W,Hh); cam=new THREE.PerspectiveCamera(28,W/Hh,0.05,30); buf=new Uint8Array(W*Hh*4); img=ctx2.createImageData(W,Hh); }
+      if(!rt){ rt=new THREE.WebGLRenderTarget(W,Hh); cam=new THREE.PerspectiveCamera(28,W/Hh,0.05,30); buf=new Uint8Array(W*Hh*4); cv2=document.createElement('canvas'); cv2.width=W; cv2.height=Hh; x2=cv2.getContext('2d'); img=x2.createImageData(W,Hh); }
       K.traverse(o=>o.layers.enable(LAY)); sc.traverse(o=>{ if(o.isLight) o.layers.enable(LAY); }); cam.layers.set(LAY);
       K.updateMatrixWorld(true); const foot=K.getWorldPosition(new THREE.Vector3()), hd=K.rig.head.getWorldPosition(new THREE.Vector3()), h=hd.y-foot.y, mid=foot.clone().add(V(0,h*0.55,0)), d=h*2.85, f=K.rotation.y+ang;
       cam.position.set(mid.x+Math.sin(f)*d,mid.y+h*0.08,mid.z+Math.cos(f)*d); cam.lookAt(mid);
@@ -997,8 +997,8 @@ const ARMOR=(function(){
       sc.background=null; if(fog){ if(fog.isFogExp2) fog.density=0; else { fog.near=1e4; fog.far=2e4; } }   /* fog thinned, not removed: shaders were built with it */ if(K._head) K._head.visible=true; K.visible=true; R.shadowMap.autoUpdate=false; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.bsync) try{ OUTFIT3.bsync(); }catch(e){}   /* the hood, shown though first person hides it */
       try{ R.setRenderTarget(rt); R.setClearColor(0x17161d,1); R.clear(); R.render(sc,cam); R.readRenderTargetPixels(rt,0,0,W,Hh,buf); }
       finally{ hid.forEach(o=>o.visible=true); R.setRenderTarget(prevT); R.setClearColor(cc,ca); sc.background=bg; if(fog){ if(fog.isFogExp2) fog.density=fD; else { fog.near=fN; fog.far=fF; } } if(K._head) K._head.visible=hv; K.visible=kv; R.shadowMap.autoUpdate=sm; if(typeof OUTFIT3!=='undefined'&&OUTFIT3.bsync) try{ OUTFIT3.bsync(); }catch(e){} }
-      const D=img.data; for(let y=0;y<Hh;y++){ const s0=(Hh-1-y)*W*4, d0=y*W*4; for(let x=0;x<W*4;x++) D[d0+x]=buf[s0+x]; } ctx2.putImageData(img,0,0); }
-    function start(c){ if(!c) return; if(cv!==c){ cv=c; ctx2=c.getContext('2d'); img=null; rt&&(img=ctx2.createImageData(W,Hh));
+      const D=img.data; for(let y=0;y<Hh;y++){ const s0=(Hh-1-y)*W*4, d0=y*W*4; for(let x=0;x<W*4;x++) D[d0+x]=buf[s0+x]; } x2.putImageData(img,0,0); ctx2.imageSmoothingEnabled=true; ctx2.imageSmoothingQuality='high'; ctx2.drawImage(cv2,0,0,cv.width,cv.height); }
+    function start(c){ if(!c) return; if(cv!==c){ cv=c; ctx2=c.getContext('2d');
         c.addEventListener('pointerdown',e=>{ drag={x:e.clientX,a:ang}; c.setPointerCapture&&c.setPointerCapture(e.pointerId); c.style.cursor='grabbing'; });
         c.addEventListener('pointermove',e=>{ if(drag) ang=drag.a+(e.clientX-drag.x)*0.012; });
         const up=()=>{ drag=null; c.style.cursor='grab'; }; c.addEventListener('pointerup',up); c.addEventListener('pointercancel',up); }

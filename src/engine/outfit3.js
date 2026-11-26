@@ -13,7 +13,7 @@ const OUTFIT3=(function(){
   const DIR='models/look3/outfits/', SETS={
     ranger:{name:'Ranger',parts:['Male_Ranger_Body','Male_Ranger_Arms','Male_Ranger_Legs','Male_Ranger_Feet_Boots','Male_Ranger_Head_Hood','Male_Ranger_Acc_Pauldron'],cut:['chest','belly','pelvis','upperarm','forearm','thigh','calf','foot']},
     peasant:{name:'Peasant',parts:['Male_Peasant_Body','Male_Peasant_Arms','Male_Peasant_Legs','Male_Peasant_Feet'],cut:['chest','belly','pelvis','upperarm','forearm','thigh','calf','foot']}};
-  const files={}; let cur=null, want=null; try{ want=localStorage.getItem('klk3d_outfit3')||null; if(want==='peasant') want=null; }catch(e){}   /* V252: the Peasant clothes are the plain look now */
+  const files={}; let cur=null, want=null; try{ want=null; localStorage.removeItem('klk3d_outfit3'); }catch(e){}   /* V273: the test looks are retired — an old 'armour skinned' test, still switched on from V248, kept making its own copies of the armour */   /* V252: the Peasant clothes are the plain look now */
   const load=n=>files[n]||(files[n]=new Promise((res,rej)=>new THREE.GLTFLoader().load(DIR+n+'.gltf',res,undefined,rej)));
   const ramp=(()=>{ const d=new Uint8Array([140,140,140,255, 210,210,210,255, 255,255,255,255]), t=new THREE.DataTexture(d,3,1,THREE.RGBAFormat); t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true; return t; })();
   // what the outfit hides while it's worn, to show again after

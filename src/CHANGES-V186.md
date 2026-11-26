@@ -1138,3 +1138,11 @@ Zak's Gear-screen photos of V271: "the skins seem melted together and kinda slop
   - Pauldrons, arms, gauntlets, legs and sabatons ride their bone whole again (`onBones`; pauldrons on the 60% half-joint).
 - **Dotted edges.** The rigid originals were hidden from the camera by `layers`, but the Gear preview draws every layer, so both copies drew and z-fought.
   - They're now hidden by an invisible material (`INVIS`; the real one kept as `userData.matOrig`).
+
+## V273 — the old test look retired; a sharper Gear preview
+
+Zak's Gear photo of V272 is still glitchy: the leg plates and sabatons are out of place, and the edges are stair-stepped. Here the same save and the same screen come out clean, so the cause is likely something kept in his browser.
+- **Test looks retired.** System → "🧪 Test look" (V247/V248: the Ranger outfit, and "your armour skinned to the skeleton") is gone.
+  - Its saved choice (`klk3d_outfit3` in localStorage) is cleared on load.
+  - If it was left on from those tests, it rebuilt its own skinned copy of the armour whenever the wardrobe changed, alongside the real armour. That's the likeliest source of doubled, misplaced pieces that only happen on one machine.
+- **Sharper Gear preview.** The knight is now rendered at twice the size (520×680) and scaled down smoothly into the 260×340 canvas, so the gold edges no longer look dotted.
