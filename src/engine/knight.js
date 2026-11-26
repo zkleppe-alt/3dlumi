@@ -126,9 +126,11 @@ function buildKnight(){
   /* V232: with a bow or a two-handed weapon the shield rides on his back, slung between the shoulders (the weapon, when it's
      put away, goes across it); K._sbP/_sbR tune where. shieldHome() moves it there or back to the arm as the weapon changes. */
   const shBack=pivot(0,0.24,-0.32,torso); K._shM=shM; K._shG=sh; K._shBk=shBack;   /* V277: armour.js seats the shield on the body's forearm and keeps the cloak under it */
+  const _lvF=new THREE.Vector3(), _lvT=new THREE.Vector3(), _lvX=new THREE.Vector3(), _lvQ=new THREE.Quaternion(), _lvM=new THREE.Matrix4();
+  const onArm=()=>shM.parent===AL.el||(!!K._elB&&shM.parent===K._elB);   /* V278: on the arm = on the rig's forearm, or on the body's (armor.js K._elB) */
   function shieldHome(){ const back=!!K._shB||!!K._shS; if(back){ if(shM.parent!==shBack) shBack.add(shM); const p=K._sbP||[0,0,0], r=K._sbR||[0,Math.PI,0], q=K._sbS||[0,0,0];
       shM.position.set(p[0],p[1],p[2]); shM.rotation.set(r[0],r[1],r[2]); sh.rotation.set(q[0],q[1],q[2]); }
-    else if(shM.parent!==AL.el){ AL.el.add(shM); shM.position.set(K.shX,K.shY,0); shM.rotation.set(0,K.shRY,0); sh.rotation.set(0,0,0); } shM.visible=true; }
+    else if(!onArm()){ (K._elB||AL.el).add(shM); shM.position.set(K.shX,K.shY,0); shM.rotation.set(0,K.shRY,0); sh.rotation.set(0,0,0); } shM.visible=true; }
   function kite(s){ const p=new THREE.Shape(); p.moveTo(0,0.26*s); p.quadraticCurveTo(0.2*s,0.26*s,0.2*s,0.12*s); p.quadraticCurveTo(0.18*s,-0.12*s,0,-0.34*s);
     p.quadraticCurveTo(-0.18*s,-0.12*s,-0.2*s,0.12*s); p.quadraticCurveTo(-0.2*s,0.26*s,0,0.26*s); return p; }
   const rim=add(new THREE.ExtrudeGeometry(kite(1),{depth:0.035,bevelEnabled:false,curveSegments:5}),M.shield,0,0,-0.02,sh);
@@ -483,9 +485,9 @@ function buildKnight(){
     // the guard, eased in and out (~0.1 s): upper arm forward and in, forearm level across the chest, the shield squarely
     //  in front of him with its point down; a slight crouch and the torso turned shield-side into the blow
     K._g=(K._g||0)+((K.guarding?1:0)-(K._g||0))*Math.min(1,dt*16); const gk=K._g, ik=1-gk, mixv=(a,b)=>a*ik+b*gk; const rest=-(AL.sh.rotation.x+AL.el.rotation.x);
-    if(!K._shB&&shM.parent===AL.el){ AL.sh.rotation.x=mixv(AL.sh.rotation.x,-1.22);   /* V271: not while it rides on his back */ AL.sh.rotation.y=mixv(0,0.15); AL.sh.rotation.z=mixv(AL.sh.rotation.z,-0.22);
+    if(!K._shB&&onArm()){ AL.sh.rotation.x=mixv(AL.sh.rotation.x,-1.22);   /* V271: not while it rides on his back */ AL.sh.rotation.y=mixv(0,0.15); AL.sh.rotation.z=mixv(AL.sh.rotation.z,-0.22);
     AL.el.rotation.x=mixv(AL.el.rotation.x,0); AL.el.rotation.z=mixv(0,-1.5);
-    sh.rotation.z=mixv(rest,Math.PI/2); shM.rotation.y=mixv(K.shRY,Math.PI/2); shM.position.y=mixv(K.shY,K.shY+0.01); shM.position.x=mixv(K.shX,K.shX+0.007); }
+    sh.rotation.z=mixv(rest,Math.PI/2); shM.rotation.set(0,mixv(K.shRY,Math.PI/2),0); shM.position.z=0; shM.position.y=mixv(K.shY,K.shY+0.01); shM.position.x=mixv(K.shX,K.shX+0.007); }
     if(gk>0.01){ torso.rotation.y-=0.22*gk; hips.position.y-=0.03*gk; torso.rotation.x+=0.08*gk; L.knee.rotation.x+=0.25*gk; R.knee.rotation.x+=0.25*gk; }
     sCape.v-=vy*0.9*dt*60*0.05; capeP.rotation.x=spr(sCape,0.08+(0.12+0.22*rf)*a+Math.max(0,acc)*0.02+Math.sin(t*3+walk)*0.03*a+0.03*breath*ia,32,4.5,dt); if(K._capeX!==undefined) capeP.rotation.x=K._capeX;
     if(wingKind) wings.children.forEach(w=>{ if(w.sd) w.rotation.y=w.sd*(0.55+Math.sin(t*(wingKind==='robby'?1.6:2.1))*0.12); });
@@ -610,8 +612,8 @@ function buildKnight(){
         if(K._shB){ const H=K._fpH||[-1.85,0.75,-0.2,-0.35,0.8]; m(AR.sh,'x',H[0]); m(AR.sh,'y',H[1]); m(AR.sh,'z',H[2]); m(AR.el,'x',H[3]); m(AR.hand,'x',H[4]); } else { m(AR.sh,'x',R[0]); m(AR.sh,'y',R[1]); m(AR.sh,'z',R[2]); m(AR.el,'x',R[3]); m(AR.hand,'x',R[4]); m(AL.sh,'x',Lp[0]); m(AL.sh,'y',Lp[1]); m(AL.sh,'z',Lp[2]); m(AL.el,'x',Lp[3]); m(AL.hand,'x',Lp[4]); } } }
     /* V239: a one-handed blade out, the shield is HELD — the forearm across his front, the shield turned to face the foe (canted a touch outward
        in third person, square on in first person), its rim near his chin. Not while guarding, swinging or busy. */
-    { const want=!K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)&&!K._act&&shM.parent===AL.el&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&mode!=='lyre'?1:0;
-      K._sr=(K._sr||0)+(want-(K._sr||0))*Math.min(1,dt*10); if(K._sr>0.01) holdShield(Math.min(1,K._sr*1.1)); else if(K._srOn){ if(shM.parent===AL.el) shM.rotation.set(0,Math.PI/2,0); K._srOn=false; } }
+    { const want=!K._shB&&K._fam!=='bow'&&sword.parent===AR.hand&&K._st==='drawn'&&swing<0&&!K.guarding&&!(K.charge>0)&&!(K.spinT>=0)&&!K._act&&onArm()&&mode!=='sit'&&mode!=='ride'&&mode!=='climb'&&mode!=='fish'&&mode!=='lyre'?1:0;
+      K._sr=(K._sr||0)+(want-(K._sr||0))*Math.min(1,dt*10); if(K._sr>0.01) holdShield(Math.min(1,K._sr*1.1)); else if(K._srOn){ if(onArm()) shM.rotation.set(0,Math.PI/2,0); K._srOn=false; } }
     /* V239: first person, bow or crossbow up — the left arm out with the bow upright before your eye (canted a touch), the right fist drawn to the cheek;
        the crossbow's stock to the shoulder. Placed by IK in his own frame, whatever the archer's clip has done to his shoulders. */
     { const want=K.fp&&K._fam==='bow'&&sword.parent===AL.hand&&(K._bow||K.guarding)?1:0; K._fpA=(K._fpA||0)+(want-(K._fpA||0))*Math.min(1,dt*14);
@@ -661,7 +663,11 @@ function buildKnight(){
     const yo=fp?(K._shYF!==undefined?K._shYF:0.25):(K._shY!==undefined?K._shY:0.5), tilt=fp?0.05:(K._shTl!==undefined?K._shTl:0.12);   // the face turned a little outward; the top tipped back a touch
     const fw=_ZBshd.set(Math.sin(yo),-Math.sin(tilt),Math.cos(yo)).normalize().transformDirection(K.matrixWorld), up=_ZCshd.set(0,1,0).transformDirection(K.matrixWorld); up.addScaledVector(fw,-up.dot(fw)).normalize();
     const xa=new THREE.Vector3().copy(up).cross(fw); _Zmshd.makeBasis(xa,up,fw); _Zqshd.setFromRotationMatrix(_Zmshd);
-    AL.el.updateWorldMatrix(true,false); AL.el.getWorldQuaternion(_Zq2shd).invert(); _Zq2shd.multiply(_Zqshd); _Zqshd.copy(_Zq0shd).slerp(_Zq2shd,w); shM.quaternion.copy(_Zqshd); }
+    shM.parent.updateWorldMatrix(true,false); shM.parent.getWorldQuaternion(_Zq2shd).invert(); _Zq2shd.multiply(_Zqshd); _Zqshd.copy(_Zq0shd).slerp(_Zq2shd,w); shM.quaternion.copy(_Zqshd); fistBehind(w); }
+  /* V279: the fist stays behind the shield — held across him, the gauntlet came out through its face */
+  const _fbV=new THREE.Vector3();
+  function fistBehind(w){ if(K._shZin===undefined||!onArm()) return; shM.updateMatrixWorld(true); AL.hand.getWorldPosition(_fbV); shM.worldToLocal(_fbV); const need=_fbV.z+0.07-K._shZin;
+    if(need>0){ _fbV.set(0,0,need*w).applyQuaternion(shM.quaternion); shM.position.add(_fbV); } }
   const _eA=new THREE.Vector3(), _eB=new THREE.Vector3(), _eC=new THREE.Vector3(), _em=new THREE.Matrix4(), _eq=new THREE.Quaternion(), _eq2=new THREE.Quaternion();
   function fpArcher(w,xb){ K.updateMatrixWorld(true); torso.getWorldScale(_eC); const sc=_eC.y||1;
     const eye=K._eyeK||(K._eyeK=K.worldToLocal(head.localToWorld(new THREE.Vector3(0,0.1,0))).clone());   // his eye, in his own frame (taken once, at rest)
@@ -998,9 +1004,14 @@ function buildKnight(){
       skirtF.rotation.x=hSpr(sSkF,Math.min(Math.min(lx,rx)+0.08,0)*1.08-0.04*a-0.03*rf,240,19,dt); skirtB.rotation.x=hSpr(sSkB,Math.max(Math.max(lx,rx)-0.08,0)*1.0+0.04*a+0.1*rf,200,16,dt);   /* the hinge keeps the knees inside */
       // the shield held as on the sheet: its face turned forward-out from his side, point down, whatever the forearm does
       //  (blended away in the guard, which squares it to the front)
-      if(K.shFace!==undefined&&!K._shB){ const gk=K._g||0; torso.updateWorldMatrix(true,false); shM.updateWorldMatrix(true,false);
-        qT.setFromRotationMatrix(torso.matrixWorld); qP.setFromRotationMatrix(shM.matrixWorld); qW.setFromEuler(eF.set(0,K.shFace,0)).premultiply(qT);
-        qP.invert().multiply(qW); qG.copy(sh.quaternion); sh.quaternion.copy(qP).slerp(qG,gk); }
+      if(K.shFace!==undefined&&!K._shB&&onArm()){ const gk=K._g||0; torso.updateWorldMatrix(true,false); shM.updateWorldMatrix(true,false);
+        torso.getWorldQuaternion(qT); shM.getWorldQuaternion(qP); qW.setFromEuler(eF.set(0,K.shFace,0)).premultiply(qT);   /* V279: true rotations — setFromRotationMatrix on a scaled matrix gave a non-unit turn that squashed the shield (and on his back it ran too) */
+        qP.invert().multiply(qW); qG.copy(sh.quaternion); sh.quaternion.copy(qP).slerp(qG,gk).normalize(); }
+      else if(!onArm()&&Math.abs(sh.quaternion.lengthSq()-1)>1e-4) sh.quaternion.normalize();
+      /* V279: in the guard the shield's face stands square to the foe and level — it had faced off to his side, tipped toward the ground */
+      if((K._g||0)>0.01&&!K._shB&&onArm()){ const gk=K._g; sh.updateWorldMatrix(true,false); sh.getWorldQuaternion(qG); const f=_lvF.set(0,0,1).applyQuaternion(qG), h=Math.hypot(f.x,f.z);
+        if(h>0.05){ const yo=K._gYo!==undefined?K._gYo:0.2; _lvT.set(Math.sin(yo),0.04,Math.cos(yo)).normalize().transformDirection(K.matrixWorld); _lvF.set(0,1,0).addScaledVector(_lvT,-_lvT.y).normalize();   /* square to the front, turned a touch outward, level; its point down */
+          _lvM.makeBasis(_lvX.copy(_lvF).cross(_lvT),_lvF,_lvT); _lvQ.setFromRotationMatrix(_lvM).multiply(qG.copy(sh.quaternion).invert()); shM.parent.getWorldQuaternion(qT); qT.invert().multiply(_lvQ); shM.quaternion.slerp(qT,gk).normalize(); fistBehind(gk); } }
       if(K.CLOTH){ if(!cInit){ cInit=true; cTy=torso.rotation.y; cLx=L.hip.rotation.x; } const C=K.CLOTH, ty=torso.rotation.y, dTy=Math.max(-3,Math.min(3,(ty-cTy)/Math.max(dt,1e-3))); cTy=ty;
         // the skirts' hems flutter after the thighs (a beat behind them) and lift a little at speed
         const legV=(lx-cLx)/Math.max(dt,1e-3); cLx=lx; C.skF.uBend.value=hSpr(sCfB,Math.max(-0.25,Math.min(0.3,-legV*0.04))+0.06*rf,90,14,dt); C.skB.uBend.value=hSpr(sCbB,Math.max(-0.25,Math.min(0.3,legV*0.04))+0.14*rf,90,14,dt);

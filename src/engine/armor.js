@@ -970,14 +970,23 @@ const ARMOR=(function(){
     sh.updateMatrixWorld(true); _shI.copy(sh.matrixWorld).invert(); K.rig.torso.getWorldPosition(_shV).applyMatrix4(_shI); const s=_shV.z>=0?1:-1;
     return { inv:_shI.clone(), mw:sh.matrixWorld.clone(), s, zb:s>0?bb.max.z:bb.min.z, hw:(bb.max.x-bb.min.x)/2*0.95, x0:(bb.max.x+bb.min.x)/2, y0:bb.min.y, y1:bb.max.y, m:0.012/Math.max(0.05,sh.getWorldScale(_shV).y)*sc*0+0.012 }; }
   /* V277: the shield on the forearm the body actually has — the rig's forearm runs past the body's wrist, so the shield stood off beyond it */
-  function seatShield(K){ const r=K.rig, F=K.userData.b3, shM=K._shM, sh=K._shG; if(!r||!shM||!sh||!hasBody(K)) return false; const undo=restPose(K);
+  function seatShield(K){ K._seatN=(K._seatN||0)+1; const r=K.rig, F=K.userData.b3, shM=K._shM, sh=K._shG; if(!r||!shM||!sh||!hasBody(K)) return false; const undo=restPose(K);
     try{ const el=r.AL.el, b=F.body, R=F.D.reg, P0=b.geometry.attributes.position, v=new THREE.Vector3(); K.updateMatrixWorld(true); b.skeleton.update(); const pts=[];
       for(let i=0;i<P0.count;i++){ if(R[i]!=='forearm'||P0.getX(i)<0) continue; b.boneTransform(i,v); v.applyMatrix4(b.matrixWorld); el.worldToLocal(v); pts.push(v.clone()); }
       if(pts.length<10) return false; let y0=9,y1=-9; pts.forEach(p=>{ y0=Math.min(y0,p.y); y1=Math.max(y1,p.y); }); const ty=y0+(y1-y0)*0.42; let fx=-9; pts.forEach(p=>{ if(Math.abs(p.y-ty)<0.04) fx=Math.max(fx,p.x); });
       shM.updateMatrixWorld(true); const inv=new THREE.Matrix4().copy(shM.matrixWorld).invert(); let zin=9;
       sh.traverse(m=>{ if(!m.isMesh) return; for(let o=m;o&&o!==sh;o=o.parent) if(!o.visible) return; const A=m.geometry.attributes.position; for(let i=0;i<A.count;i++){ v.fromBufferAttribute(A,i).applyMatrix4(m.matrixWorld).applyMatrix4(inv); if(Math.abs(v.x)<0.07&&Math.abs(v.y)<0.07) zin=Math.min(zin,v.z); } });
-      if(zin===9||fx<-1) return false; K.shX=+(fx-zin+0.006).toFixed(4); K.shY=+ty.toFixed(4); if(shM.parent===el) shM.position.set(K.shX,K.shY,0); return true; }
+      if(window.DEBUG_ARMOR) console.log('ARMOR seat',pts.length,y0.toFixed(3),y1.toFixed(3),ty.toFixed(3),fx.toFixed(3),zin.toFixed(3),'el',el.position.toArray().map(x=>x.toFixed(3)).join(','),'hand',r.AL.hand.position.toArray().map(x=>x.toFixed(3)).join(','),'b3',!!F.fitted,performance.now()|0); if(zin===9||fx<-1) return false; K.shX=+(fx-zin+0.006).toFixed(4); K.shY=+ty.toFixed(4); K._shZin=zin;
+      /* V278: and carried by the body's forearm bone. The body's forearm is shorter than the rig's and turns about its own elbow, so a
+         shield on the rig's forearm drifted off the arm (and the arm through it) as the elbow bent. K._elB is the rig's forearm frame
+         as the body's forearm bone carries it: it coincides with AL.el in the rest pose and moves rigidly with the bone. */
+      const bone=b.skeleton.bones.find(x=>x.name==='lowerarm_l'); if(bone){ if(!K._elB){ K._elB=new THREE.Group(); K._elB.name='elB'; K._elB.matrixAutoUpdate=false; K.add(K._elB); }
+        bone.updateWorldMatrix(true,false); el.updateWorldMatrix(true,false); K._elBbone=bone; K._elBoff=new THREE.Matrix4().copy(bone.matrixWorld).invert().multiply(el.matrixWorld);
+        elBsync(K); if(shM.parent===el){ const p=shM.position.clone(), q=shM.quaternion.clone(); K._elB.add(shM); shM.position.copy(p); shM.quaternion.copy(q); } }
+      if(shM.parent===el||shM.parent===K._elB) shM.position.set(K.shX,K.shY,0); return true; }
     finally{ undo(); } }
+  const _eK=new THREE.Matrix4();
+  function elBsync(K){ const E=K._elB, bone=K._elBbone; if(!E||!bone||!K._elBoff) return; K.updateWorldMatrix(true,false); bone.updateWorldMatrix(true,false); E.matrix.copy(_eK.copy(K.matrixWorld).invert()).multiply(bone.matrixWorld).multiply(K._elBoff); E.matrixWorldNeedsUpdate=true; E.updateMatrixWorld(true); }
   function cloth(m,A,R,dt,sc){ if(!m.userData.clothH) clothInit(m); const H=m.userData.clothH, n=H.length; let X=m.userData.clothX, Xp=m.userData.clothP;
     if(!X){ X=m.userData.clothX=new Float32Array(n*3); Xp=m.userData.clothP=new Float32Array(n*3); for(let i=0;i<n;i++){ _cw.set(R[i*3],R[i*3+1],R[i*3+2]).applyMatrix4(m.matrixWorld); X[i*3]=Xp[i*3]=_cw.x; X[i*3+1]=Xp[i*3+1]=_cw.y; X[i*3+2]=Xp[i*3+2]=_cw.z; } }
     const f=dt*60, damp=Math.pow(0.9,f), g=-0.5*sc*dt*dt*9.8*0.35, far=0.16*sc;
@@ -1004,6 +1013,7 @@ const ARMOR=(function(){
     if(K._og&&K._armFit!==false){ for(const k in K._og.crests){ const c=K._og.crests[k]; if(c.visible) c.visible=false; } const w=K._og.wings(); if(w&&w.visible) w.visible=false; }   /* V263: the old livery crests and wings: the livery sets carry their own now */
     liverySync(K);
     if(K._shM&&hasBody(K)&&S.shSeatX!==K.shX){ seatShield(K); S.shSeatX=K.shX; }
+    elBsync(K);
     if(K.rig&&hasBody(K)) [K.rig.AL,K.rig.AR].forEach(A=>{ const b=A.hand&&A.hand.box; if(b&&b.visible) b.visible=false; });   /* V275: the old knight's sculpted fist never shows over the body's own hand */
     { const fk=K._fam==='fist'?'f':''; if(S.fistK===undefined) S.fistK=fk; else if(fk!==S.fistK&&S.ids&&S.ids.gauntlets){ S.fistK=fk; const on=S.worn.gauntlets; try{ wear(K,'gauntlets',S.ids.gauntlets); if(!on) set(K,'gauntlets',false); }catch(e){} } }   /* fist weapons: plated gloves */
     if(K.rig&&K.rig.capeP&&K.rig.capeP.visible) K.rig.capeP.visible=false;   /* V246: no cloth cape on the hero — it fought every other cloak (and the saddle) */
