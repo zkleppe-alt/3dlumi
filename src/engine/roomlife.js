@@ -73,6 +73,7 @@ const ROOMLIFE=(function(){
       else if(k==='bed'&&home&&spec.homeFloor===1&&x>13) spot(x,z,'Look',x<15.5?'Grandfather’s bed':'The guest bed',()=>UI.toast(x<15.5?'🛏 Tobias’s bed: a patched quilt older than you are, his pipe on the chest, and a Bible worn soft at the Psalms.':'🛏 Made up fresh, a sprig of lavender on the pillow — for whichever friend the road brings home tonight.',2200),1.3);
       else if(k==='bed'){ if(home&&spec.homeFloor===1) spot(x,z,'Look',x<4?'Mara’s bed':'Tobiah’s bed',()=>UI.toast(x<4?'🛏 The rose quilt, and under the pillow a wooden sword she thinks no one knows about.':'🛏 The blue quilt, and a row of carved soldiers keeping watch along the headboard.',2200),1.3); else if(home) spot(x,z,'Sleep','Your bed',()=>sleepSheet(),1.3); else if(inn) spot(x,z,'Sleep','A made-up bed',()=>SERVICES.openInn?SERVICES.openInn('Innkeeper'):UI.toast('Ask at the counter downstairs.',1400),1.3); }
       else if(k==='pbed') spot(x,z+1.3,'Look','Father and Mother’s bed',()=>UI.toast('🛏 The box bed Father built the year they wed. Mother kept his side made up every night for fifteen years.',2400),1.3);
+      else if(k==='stalls') spot(x,z,'Stables','The stalls',()=>{ if(typeof SERVICES!=='undefined') SERVICES.openStables(); },1.4);
       else if(k==='basket') spot(x,z,'Look','The basket by the fire',()=>UI.toast(S().pet?'🐾 Your companion’s bed by the hearth — the cushion already shaped just so.':'🐾 A basket by the fire, cushion and all. Mother says every farm needs a creature to put in it.',2200),0.9);
       else if(k==='spin') spot(x,z,'Look','Mother’s spinning wheel',()=>UI.toast('🧶 A skein half spun, the wool soft as breath. The wheel still turns a little from her hand.',2200));
       else if(k==='portrait') spot(x,z,'Look','The family portrait',()=>ENGINE.speak('The family portrait',['Mother and Father with the twins in their arms, newborn — and you at three, trying hard not to smile. It was painted the spring before Father rode out.','“As for me and my house, we will serve the LORD.” — Joshua 24:15']));
@@ -156,17 +157,28 @@ const HOMESTEAD=(function(){
        5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5`};
   const F={
     2:{ set:[[1,1,44],[2,1,44],[4,1,44],[3,2,62],[6,1,62],[7,1,62],[5,2,62],[8,2,62],[9,1,62],[12,1,62],[10,1,62],[11,1,62],[10,2,62],[11,2,62],[10,3,62],[11,3,62],[1,4,56],[1,5,62],[1,6,62],[1,7,49],[12,4,62],[10,4,66],[11,4,62],[3,9,49],[10,9,49],[9,10,40],[8,10,41]] } };
-  function pre(spec){ const m=/^in:home_house:(\d)$/.exec(spec.id||''); if(!m) return spec; const n=+m[1];
+  // V289: the barn, walked into: three stalls along the back, a hayloft on posts at the east end (Hal's cot up there), bales, a door
+  const BARN=`5 5 5 51 5 5 5 5 5 5 51 5 5
+       5 12 12 12 12 12 12 12 62 12 12 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 48 12 12 12 12 12 12 12 12 12 62 5
+       5 48 12 12 12 12 12 12 12 12 62 62 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 5 5 5 5 9 9 5 5 5 5 5 5`;
+  function pre(spec){ if(spec.id==='in:home_barn:0') return Object.assign({},spec,{grid:BARN.trim().split('\n').map(r=>r.trim().split(/\s+/).map(Number)),barn:true,npcs:(spec.npcs||[]).map(q=>/Mule/.test(q.name||'')?Object.assign({},q,{x:4,y:2}):q)});
+    const m=/^in:home_house:(\d)$/.exec(spec.id||''); if(!m) return spec; const n=+m[1];
     if(GRID[n]){ const g=GRID[n].trim().split('\n').map(r=>r.trim().split(/\s+/).map(Number)); return Object.assign({},spec,{grid:g,ownHome:true,homeFloor:n}); }
     const D=F[n]; if(!D) return spec; const g=spec.grid.map(r=>r.slice());
     D.set.forEach(([x,y,t])=>{ if(g[y]&&g[y][x]!==undefined&&g[y][x]!==10&&g[y][x]!==11&&g[y][x]!==9) g[y][x]=t; });
     if(n===2) for(let y=9;y<=10;y++) for(let x=3;x<=10;x++) if(g[y]&&g[y][x]===12) g[y][x]=53;   // the balcony's flags
     return Object.assign({},spec,{grid:g,ownHome:true,homeFloor:n}); }
-  function post(lv,spec){ const items=[]; if(spec.homeFloor===undefined) return items; const room=lv.room, pal=lv.pal, an=lv.anim, K=PROP_IN, f=spec.homeFloor, L=group(0,0,0,room); L.userData.keepScale=true;
+  function post(lv,spec){ const items=[]; if(spec.barn) return barnPost(lv,spec); if(spec.homeFloor===undefined) return items; const room=lv.room, pal=lv.pal, an=lv.anim, K=PROP_IN, f=spec.homeFloor, L=group(0,0,0,room); L.userData.keepScale=true;
     const S=(par,k)=>{ par.scale.setScalar(k||K); return par; };
     if(f===0){
       // V289: Father's chair at the head of the table and Mother's at its foot
-      [[4.5,3.5,Math.PI/2],[11.5,3.5,-Math.PI/2]].forEach(([x,z,fc])=>{ const g=S(group(x,0,z,L)); PROP.chair(g,0,0,fc,pal); items.push({k:'chair',x,z,face:fc}); });
+      [[5.05,3.5,Math.PI/2],[10.95,3.5,-Math.PI/2]].forEach(([x,z,fc])=>{ const g=S(group(x,0,z,L)); PROP.chair(g,0,0,fc,pal); items.push({k:'chair',x,z,face:fc}); });
       // V289: Father and Mother's chamber, through the doorway at the hall's east end: their bed (a great box bed, panelled
       //  and curtained), the chest at its foot, Mother's dresser, the wardrobe, a rag rug, a plant under the window
       { const g=group(17.0,0,2.05,L), oak=0x5a3a22, dkO=0x3e2814, q=0x8a3a4a;
@@ -229,6 +241,28 @@ const HOMESTEAD=(function(){
       { const g=S(group(1.45,0,6.5,L)); g.rotation.y=Math.PI/2; B(0.95,1.95,0.5,0x5a3a20,0,0,0,g); B(0.02,1.7,0.02,0x2a1a10,0,0.12,0.26,g); [-0.08,0.08].forEach(x=>B(0.03,0.1,0.03,0xd8b04a,x,1.0,0.27,g)); B(1.0,0.08,0.55,0x4a2e18,0,1.95,0,g); items.push({k:'wardrobe',x:1.5,z:6.5}); }
       { const g=S(group(12.5,0,4.5,L)); g.rotation.y=-Math.PI/2; B(1.0,0.06,0.55,0x6a4428,0,0.7,0,g); [[-0.45,-0.22],[0.45,-0.22],[-0.45,0.22],[0.45,0.22]].forEach(([x,z])=>B(0.05,0.7,0.05,0x4a2e18,x,0,z,g)); B(0.3,0.02,0.22,0xf4eee0,-0.1,0.73,0,g); Cy(0.03,0.03,0.12,6,0x2a2a30,0.25,0.73,0.05,g); B(0.01,0.18,0.01,0xe8e0d0,0.25,0.85,0.05,g); items.push({k:'desk',x:12.5,z:4.5}); }
     }
+    return items; }
+  function barnPost(lv,spec){ const items=[], R=lv.room, L=group(0,0,0,R); L.userData.keepScale=true; const oak=0x6a4a2a, dkO=0x4a3018, straw=0xd8b860;
+    // straw over the floor of the stalls; the stall boards; a manger and a hay rack in each
+    B(8.0,0.02,2.1,straw,4.5,0,2.05,L);
+    [1.0,3.0,6.0,8.0].forEach((x,i)=>{ if(i===0||i===3) return; B(0.08,1.05,2.0,oak,x,0,2.0,L); B(0.12,0.08,2.04,dkO,x,1.05,2.0,L); B(0.1,1.25,0.1,dkO,x,0,3.0,L); });
+    [2.0,4.5,7.0].forEach(x=>{ B(0.9,0.12,0.35,oak,x,0.6,1.25,L); B(0.9,0.3,0.3,dkO,x,0.3,1.25,L); const r=group(x,1.25,1.08,L); for(let i=0;i<6;i++) B(0.02,0.4,0.02,dkO,-0.4+i*0.16,0,0,r); B(0.92,0.04,0.04,dkO,0,0.4,0,r); Sp(0.18,straw,0,0.25,0.05,r,7,5).scale.set(2.2,0.8,0.8); });
+    // straw nests in the end stalls, for any companion who'd rather sleep in the barn
+    [2.0,7.0].forEach(x=>{ const n=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.12,6,14),mt(straw)); n.rotation.x=-Math.PI/2; n.position.set(x,0.08,2.3); L.add(n); Cy(0.26,0.26,0.04,12,0xc8a850,x,0.02,2.3,L); });
+    items.push({k:'stalls',x:4.5,z:3.4});
+    // the hayloft on its posts, its ladder, its rail, and Hal's cot up there
+    const H=1.55; [[9.1,1.1],[11.9,1.1],[9.1,4.05],[11.9,4.05]].forEach(([x,z])=>B(0.14,H,0.14,dkO,x,0,z,L));
+    B(3.0,0.1,3.1,oak,10.5,H,2.55,L); for(let i=0;i<7;i++) B(3.0,0.012,0.02,dkO,10.5,H+0.1,1.1+i*0.48,L);
+    B(3.0,0.06,0.06,dkO,10.5,H+0.55,4.08,L); [9.2,10.5,11.8].forEach(x=>B(0.06,0.55,0.06,dkO,x,H+0.1,4.08,L));
+    { const g=group(8.75,0,4.35,L); g.rotation.z=0.0; g.rotation.x=-0.28; [-0.2,0.2].forEach(x=>B(0.05,2.0,0.05,dkO,x,0,0,g)); for(let i=0;i<6;i++) B(0.42,0.04,0.04,oak,0,0.25+i*0.3,0,g); }
+    for(let i=0;i<4;i++) Sp(0.3,straw,11.55,H+0.22,1.4+i*0.5,L,7,5).scale.set(0.9,0.7,1.2);
+    { const g=group(10.8,H+0.1,2.0,L); B(0.8,0.14,1.7,straw,0,0,0,g); B(0.78,0.04,0.9,0x7a5a3a,0,0.14,0.3,g); B(0.42,0.08,0.26,0xe8dcc0,0,0.14,-0.6,g); items.push({k:'cot',x:10.8,z:2.0,top:H+0.1+0.18}); }
+    // bales stacked under the loft and by the east wall, a pitchfork, a cart wheel, and a lantern on a hook
+    const bale=(x,z,y,r)=>{ const g=group(x,y||0,z,L); g.rotation.y=r||0; B(0.8,0.42,0.48,straw,0,0,0,g); [-0.2,0.2].forEach(dx=>B(0.02,0.43,0.5,0x8a6a3a,dx,0,0,g)); return g; };
+    bale(11.4,5.3); bale(10.6,6.4,0,0.1); bale(11.4,6.4); bale(11.0,5.9,0.42,0.3); bale(8.4,6.3,0,0.4);
+    { const g=group(1.3,0,7.3,L); const w=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.05,6,16),mt(dkO)); w.position.y=0.4; g.add(w); for(let i=0;i<6;i++){ const sp=B(0.03,0.72,0.03,oak,0,0.04,0,g); sp.rotation.z=i*Math.PI/6; } g.rotation.y=0.3; }
+    { const g=group(8.92,1.2,4.05,L); B(0.12,0.18,0.12,0x2a2a30,0,0,0,g); B(0.16,0.02,0.02,0x2a2a30,0.08,0.2,0,g); const fl=Sp(0.045,0xffd27a,0,0.08,0,g,6,5); fl.material=new THREE.MeshBasicMaterial({color:0xffd27a}); const pl=new THREE.PointLight(0xffb060,0.55,6,1.6); pl.position.set(0,0,0); g.add(pl); }
+    items.push({k:'bale',x:8.4,z:6.3,face:Math.PI});
     return items; }
   return {pre,post};
 })();

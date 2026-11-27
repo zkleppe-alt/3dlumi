@@ -32,7 +32,7 @@ const ROUTINE=(()=>{ const API={spd:1};
     const out=[pts[0]]; let i=0; while(i<pts.length-1){ let j=Math.min(pts.length-1,i+8); while(j>i+1&&!clear(pts[i],pts[j])) j--; out.push(pts[j]); i=j; } return out; }
   function attach(lv){ if(!lv||typeof WORLD_DATA==='undefined') return; LV=lv; const WD=WORLD_DATA, towns=WD.towns||[];
     const townOf=(x,y)=>{ let bt=null, bd=1e9; towns.forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-y); if(d<bd){ bd=d; bt=n; } }); return [bt,bd]; };
-    const houses={}; (WD.buildings||[]).forEach(b=>{ if(!/house|cottage/.test(b.style||'')||b.deck!==undefined||!b.interior) return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; (houses[t]=houses[t]||[]).push(b); });
+    const houses={}; (WD.buildings||[]).forEach(b=>{ if(!/house|cottage/.test(b.style||'')||b.deck!==undefined||!b.interior||b.id==='home_barn'||b.id==='home_house') return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; (houses[t]=houses[t]||[]).push(b); });
     const halls={}; (WD.buildings||[]).forEach(b=>{ if(!/keep|inn/.test(b.style||'')) return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; const cur=halls[t]; if(!cur||(b.style==='keep'&&cur.style!=='keep')) halls[t]=b; });
     const folk=(lv.folk||[]).filter(f=>f.town&&f.key&&/^v:/.test(f.key));
     const load={}; folk.forEach(f=>{ const guard=/soldier|guard|watcher/.test(f.key.split(':').pop()); f.R={x0:f.x,z0:f.z,rest0:f.rest||0,ph:'out',path:null,i:0,guard,kid:/child/.test(f.key)};

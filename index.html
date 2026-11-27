@@ -6,7 +6,7 @@
 <link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>/* V229: an installable web app — play offline, in its own window (sw.js); only where it is served over the web.
    V282: installed (its own window), it keeps the version you have until you choose to update, like the desktop launcher. */
-window.KLK_VER='V288';
+window.KLK_VER='V289';
 try{ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(!/localhost|127\.0\.0\.1/.test(location.hostname)||/[?&]sw=1/.test(location.search))) addEventListener('load',async()=>{
   try{ const reg=await navigator.serviceWorker.register('sw.js'); const app=/[?&]app=1/.test(location.search)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone;
     if(!app) return; await navigator.serviceWorker.ready; const sw=navigator.serviceWorker.controller||reg.active; if(!sw) return; sw.postMessage({pin:true});
@@ -6586,7 +6586,8 @@ function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(s
     const night=[]; res.forEach((v,i)=>{ const out=(v.key||'').split(':').pop(), sp=spotsIn[i%spotsIn.length]; const own=(typeof DIALOGUE!=='undefined'&&DIALOGUE.lines(v.key))||null; const f=addPerson(lv,lv.room,out,sp[0],sp[1],0,v.who,(own&&own.lines)||v.lines||['God keep you, knight.'],{rest:0}); f.atHomeIn=true;
       f.key=v.key; f.town=v.town; f.idle=v.idle||'clasped'; f.lookAbout=0.4; f.breathe=true; f.rest=faceTo(f.x,f.z,W/2,H-1); night.push(f); });
     night.forEach(f=>{ f.sleeper=true; f.nightOnly=true; f.g.visible=false; f.mute=true; f.ghost=true; }); } }   /* V288: SLEEP brings them in for the evening and puts them to bed */
-  if(typeof SLEEP!=='undefined'&&!/^in:home_house/.test(spec.id||'')) SLEEP.room(lv,spec,lv._items||[]);
+  if(/^in:home_(house|barn):/.test(spec.id||'')){ if(typeof HOMEHOLD!=='undefined') HOMEHOLD.attach(lv,spec,lv._items||[]); }   /* V289: the Homestead keeps its own hours (homehold.js) */
+  else if(typeof SLEEP!=='undefined') SLEEP.room(lv,spec,lv._items||[]);
   return lv; }
 // a stair's landing must be floor you can stand on: the nearest open cell to the stair, in front of it if it can be
 function landings(lv){ ['upAt','downAt'].forEach(k=>{ const p=lv[k]; if(!p||lv.canMove(p.x,p.z,p.x,p.z)) return; const sx=Math.floor(p.x), sy=Math.floor(p.z-1.6); let best=null, bd=99;
@@ -6778,7 +6779,11 @@ const ROOMLIFE=(function(){
       else if(k==='rack'||k==='armour') spot(x,z,'Admire',k==='rack'?'A weapon rack':'An armour stand',()=>UI.toast(k==='rack'?'⚔ Good steel, oiled and kept. Someone here was a soldier once.':'🛡 Old plate, dented at the shoulder — and polished all the same.',1800));
       else if(k==='anvil'||k==='grind') spot(x,z,k==='anvil'?'Strike':'Sharpen',k==='anvil'?'The anvil':'The grindstone',()=>{ AMBI.clang(); sparks(x,0.75,z); if(k==='grind') UI.toast('✨ You put an edge back on your blade. It sings.',1500); });
       else if(k==='bard') spot(x,z,'Listen','The bard',()=>{ const hymn=()=>{ const h=HYMNS[Math.floor(Math.random()*HYMNS.length)]; ENGINE.speak('The bard sings',['🎵 '+h[0],'🎵 '+h[1]]); }; if(typeof LYREBOOK!=='undefined'&&LYREBOOK.bardMenu) LYREBOOK.bardMenu(lv,hymn);   /* V217: teach him your songs, or ask to hear one */ else hymn(); },1.4);
+      else if(k==='bed'&&home&&spec.homeFloor===1&&x>13) spot(x,z,'Look',x<15.5?'Grandfather’s bed':'The guest bed',()=>UI.toast(x<15.5?'🛏 Tobias’s bed: a patched quilt older than you are, his pipe on the chest, and a Bible worn soft at the Psalms.':'🛏 Made up fresh, a sprig of lavender on the pillow — for whichever friend the road brings home tonight.',2200),1.3);
       else if(k==='bed'){ if(home&&spec.homeFloor===1) spot(x,z,'Look',x<4?'Mara’s bed':'Tobiah’s bed',()=>UI.toast(x<4?'🛏 The rose quilt, and under the pillow a wooden sword she thinks no one knows about.':'🛏 The blue quilt, and a row of carved soldiers keeping watch along the headboard.',2200),1.3); else if(home) spot(x,z,'Sleep','Your bed',()=>sleepSheet(),1.3); else if(inn) spot(x,z,'Sleep','A made-up bed',()=>SERVICES.openInn?SERVICES.openInn('Innkeeper'):UI.toast('Ask at the counter downstairs.',1400),1.3); }
+      else if(k==='pbed') spot(x,z+1.3,'Look','Father and Mother’s bed',()=>UI.toast('🛏 The box bed Father built the year they wed. Mother kept his side made up every night for fifteen years.',2400),1.3);
+      else if(k==='stalls') spot(x,z,'Stables','The stalls',()=>{ if(typeof SERVICES!=='undefined') SERVICES.openStables(); },1.4);
+      else if(k==='basket') spot(x,z,'Look','The basket by the fire',()=>UI.toast(S().pet?'🐾 Your companion’s bed by the hearth — the cushion already shaped just so.':'🐾 A basket by the fire, cushion and all. Mother says every farm needs a creature to put in it.',2200),0.9);
       else if(k==='spin') spot(x,z,'Look','Mother’s spinning wheel',()=>UI.toast('🧶 A skein half spun, the wool soft as breath. The wheel still turns a little from her hand.',2200));
       else if(k==='portrait') spot(x,z,'Look','The family portrait',()=>ENGINE.speak('The family portrait',['Mother and Father with the twins in their arms, newborn — and you at three, trying hard not to smile. It was painted the spring before Father rode out.','“As for me and my house, we will serve the LORD.” — Joshua 24:15']));
       else if(k==='horse') spot(x,z,'Rock','The rocking horse',()=>UI.toast('🐴 It creaks back and forth. Father carved it the winter you were five.',2000));
@@ -6840,36 +6845,62 @@ const HOMESTEAD=(function(){
   const dk=(h,k)=>new THREE.Color(h).multiplyScalar(k).getHex();
   // the hall and the children's floor laid out anew for 3D (roomier than the painted rooms they come from); the suite as the game has it
   const GRID={
-    0:`5 5 45 5 5 51 5 5 5 5 51 5 51 5 5 5
-       5 53 53 53 50 12 12 12 12 12 12 47 12 12 10 5
-       5 53 53 53 12 41 12 41 12 41 12 12 12 12 12 5
-       5 12 12 12 12 62 62 62 62 62 62 12 12 12 12 5
-       5 12 41 12 12 12 41 12 12 41 12 12 12 12 12 5
-       5 12 12 12 12 12 12 12 12 12 12 12 12 12 12 5
-       5 62 12 12 12 12 12 12 12 12 12 12 12 12 48 5
-       5 49 12 12 12 12 12 12 12 12 12 12 12 59 48 5
-       5 12 12 12 12 12 12 12 12 12 12 12 12 12 12 5
-       5 5 5 5 5 5 5 9 9 5 5 5 5 5 5 5`,
-    1:`5 5 5 5 51 5 5 5 5 51 5 5 5 5
-       5 12 42 12 12 12 42 62 62 12 62 12 11 5
-       5 12 43 12 12 12 43 12 12 12 12 12 12 5
-       5 12 66 12 12 12 12 12 12 12 12 62 12 5
-       5 12 12 12 41 40 41 12 12 12 12 12 12 5
-       5 12 12 12 12 12 12 12 12 12 12 12 12 5
-       5 12 12 12 12 12 12 12 12 12 12 12 49 5
-       5 10 12 12 12 12 12 12 12 12 12 12 12 5
-       5 5 5 5 5 5 5 5 5 5 5 5 5 5`};
+    0:`5 5 45 5 5 51 5 5 5 5 51 5 51 5 5 5 5 51 5 5
+       5 53 53 53 50 12 12 12 12 12 12 47 12 12 10 5 62 62 50 5
+       5 53 53 53 12 41 12 41 12 41 12 12 12 12 12 5 62 62 12 5
+       5 12 12 12 62 62 62 62 62 62 62 62 12 12 12 5 66 12 12 5
+       5 12 41 12 12 12 41 12 12 41 12 12 12 12 12 12 13 13 13 5
+       5 12 12 12 12 12 12 12 12 12 12 12 12 12 12 5 13 13 13 5
+       5 62 12 12 12 12 12 12 12 12 12 12 12 12 48 5 13 13 13 5
+       5 49 12 12 12 12 12 12 12 12 12 12 12 59 48 5 12 12 62 5
+       5 12 12 12 12 12 12 12 12 12 12 12 12 12 12 5 49 12 12 5
+       5 5 5 5 5 5 5 9 9 5 5 5 5 5 5 5 5 5 5 5`,
+    1:`5 5 5 5 51 5 5 5 5 51 5 5 5 5 5 51 5 5
+       5 12 42 12 12 12 42 62 62 12 62 12 11 5 42 12 42 5
+       5 12 43 12 12 12 43 12 12 12 12 12 12 5 43 12 43 5
+       5 12 66 12 12 12 12 12 12 12 12 62 12 5 66 12 66 5
+       5 12 12 12 41 40 41 12 12 12 12 12 12 12 12 13 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 12 5 12 13 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 49 5 50 12 49 5
+       5 10 12 12 12 12 12 12 12 12 12 12 12 5 12 12 12 5
+       5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5`};
   const F={
     2:{ set:[[1,1,44],[2,1,44],[4,1,44],[3,2,62],[6,1,62],[7,1,62],[5,2,62],[8,2,62],[9,1,62],[12,1,62],[10,1,62],[11,1,62],[10,2,62],[11,2,62],[10,3,62],[11,3,62],[1,4,56],[1,5,62],[1,6,62],[1,7,49],[12,4,62],[10,4,66],[11,4,62],[3,9,49],[10,9,49],[9,10,40],[8,10,41]] } };
-  function pre(spec){ const m=/^in:home_house:(\d)$/.exec(spec.id||''); if(!m) return spec; const n=+m[1];
+  // V289: the barn, walked into: three stalls along the back, a hayloft on posts at the east end (Hal's cot up there), bales, a door
+  const BARN=`5 5 5 51 5 5 5 5 5 5 51 5 5
+       5 12 12 12 12 12 12 12 62 12 12 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 48 12 12 12 12 12 12 12 12 12 62 5
+       5 48 12 12 12 12 12 12 12 12 62 62 5
+       5 12 12 12 12 12 12 12 12 12 12 12 5
+       5 5 5 5 5 9 9 5 5 5 5 5 5`;
+  function pre(spec){ if(spec.id==='in:home_barn:0') return Object.assign({},spec,{grid:BARN.trim().split('\n').map(r=>r.trim().split(/\s+/).map(Number)),barn:true,npcs:(spec.npcs||[]).map(q=>/Mule/.test(q.name||'')?Object.assign({},q,{x:4,y:2}):q)});
+    const m=/^in:home_house:(\d)$/.exec(spec.id||''); if(!m) return spec; const n=+m[1];
     if(GRID[n]){ const g=GRID[n].trim().split('\n').map(r=>r.trim().split(/\s+/).map(Number)); return Object.assign({},spec,{grid:g,ownHome:true,homeFloor:n}); }
     const D=F[n]; if(!D) return spec; const g=spec.grid.map(r=>r.slice());
     D.set.forEach(([x,y,t])=>{ if(g[y]&&g[y][x]!==undefined&&g[y][x]!==10&&g[y][x]!==11&&g[y][x]!==9) g[y][x]=t; });
     if(n===2) for(let y=9;y<=10;y++) for(let x=3;x<=10;x++) if(g[y]&&g[y][x]===12) g[y][x]=53;   // the balcony's flags
     return Object.assign({},spec,{grid:g,ownHome:true,homeFloor:n}); }
-  function post(lv,spec){ const items=[]; if(spec.homeFloor===undefined) return items; const room=lv.room, pal=lv.pal, an=lv.anim, K=PROP_IN, f=spec.homeFloor, L=group(0,0,0,room); L.userData.keepScale=true;
+  function post(lv,spec){ const items=[]; if(spec.barn) return barnPost(lv,spec); if(spec.homeFloor===undefined) return items; const room=lv.room, pal=lv.pal, an=lv.anim, K=PROP_IN, f=spec.homeFloor, L=group(0,0,0,room); L.userData.keepScale=true;
     const S=(par,k)=>{ par.scale.setScalar(k||K); return par; };
     if(f===0){
+      // V289: Father's chair at the head of the table and Mother's at its foot
+      [[5.05,3.5,Math.PI/2],[10.95,3.5,-Math.PI/2]].forEach(([x,z,fc])=>{ const g=S(group(x,0,z,L)); PROP.chair(g,0,0,fc,pal); items.push({k:'chair',x,z,face:fc}); });
+      // V289: Father and Mother's chamber, through the doorway at the hall's east end: their bed (a great box bed, panelled
+      //  and curtained), the chest at its foot, Mother's dresser, the wardrobe, a rag rug, a plant under the window
+      { const g=group(17.0,0,2.05,L), oak=0x5a3a22, dkO=0x3e2814, q=0x8a3a4a;
+        B(1.72,0.3,2.12,oak,0,0,0,g); B(1.6,0.15,2.0,0xf4eee0,0,0.3,0,g); [-0.4,0.4].forEach(x=>{ const p=B(0.62,0.1,0.34,0xffffff,x,0.44,-0.78,g); p.scale.set(1,1,1); });
+        B(1.84,1.25,0.1,dkO,0,0,-1.08,g); B(1.94,0.12,0.16,0x2e1e10,0,1.25,-1.08,g); [-0.6,0,0.6].forEach(x=>B(0.42,0.5,0.02,oak,x,0.62,-1.02,g)); B(1.84,0.55,0.08,dkO,0,0,1.08,g);
+        [[-0.88,-1.06],[0.88,-1.06],[-0.88,1.06],[0.88,1.06]].forEach(([x,z])=>B(0.09,2.05,0.09,dkO,x,0,z,g)); B(1.9,0.1,2.25,dkO,0,2.0,0,g); B(1.86,0.24,0.03,q,0,1.78,1.12,g);
+        [-0.9,0.9].forEach(x=>{ const cu=B(0.03,1.55,0.42,q,x,0.42,-0.82,g); });
+        const quilt=B(1.62,0.05,1.32,q,0,0.45,0.32,g); for(let i=0;i<4;i++) B(1.63,0.052,0.05,0xe8c78a,0,0.45,-0.25+i*0.34,g);
+        items.push({k:'pbed',x:17.0,z:2.05,top:0.45,quilt}); }
+      { const g=S(group(18.55,0,7.5,L)); g.rotation.y=-Math.PI/2; B(0.95,1.95,0.5,0x5a3a20,0,0,0,g); B(0.02,1.7,0.02,0x2a1a10,0,0.12,0.26,g); [-0.08,0.08].forEach(x=>B(0.03,0.1,0.03,0xd8b04a,x,1.0,0.27,g)); B(1.0,0.08,0.55,0x4a2e18,0,1.95,0,g); }
+      // a basket by the fire for the companion, with a cushion and an old blanket
+      { const g=group(1.5,0,2.45,L); const bk=Cy(0.36,0.3,0.2,14,0xb08a50,0,0,0,g); const rim=new THREE.Mesh(new THREE.TorusGeometry(0.36,0.035,6,18),mt(0x8a6a3a)); rim.rotation.x=Math.PI/2; rim.position.y=0.2; g.add(rim);
+        Cy(0.3,0.3,0.06,14,0xc0504a,0,0.12,0,g); const bl=B(0.36,0.03,0.22,0x6a8aa8,0.08,0.18,0.1,g); bl.rotation.y=0.5; items.push({k:'basket',x:1.5,z:2.45}); }
       // the beam across the hall with herbs and onions drying
       B(13,0.14,0.16,0x3e2a1a,8.0,2.3,2.0,L); for(let i=0;i<18;i++){ const g=group(1.9+i*0.7,0,2.0,L); B(0.01,0.2,0.01,0x8a7a5a,0,2.1,0,g); i%3===0?Sp(0.06,0xe8dcb0,0,2.04,0,g,7,5):Co(0.05,0.22,5,i%3===1?0x5a8a3a:0x7a9a4a,0,1.9,0,g).rotation.x=Math.PI; }
       // the long trestle table laid for supper, one board the length of the hall
@@ -6919,6 +6950,28 @@ const HOMESTEAD=(function(){
       { const g=S(group(1.45,0,6.5,L)); g.rotation.y=Math.PI/2; B(0.95,1.95,0.5,0x5a3a20,0,0,0,g); B(0.02,1.7,0.02,0x2a1a10,0,0.12,0.26,g); [-0.08,0.08].forEach(x=>B(0.03,0.1,0.03,0xd8b04a,x,1.0,0.27,g)); B(1.0,0.08,0.55,0x4a2e18,0,1.95,0,g); items.push({k:'wardrobe',x:1.5,z:6.5}); }
       { const g=S(group(12.5,0,4.5,L)); g.rotation.y=-Math.PI/2; B(1.0,0.06,0.55,0x6a4428,0,0.7,0,g); [[-0.45,-0.22],[0.45,-0.22],[-0.45,0.22],[0.45,0.22]].forEach(([x,z])=>B(0.05,0.7,0.05,0x4a2e18,x,0,z,g)); B(0.3,0.02,0.22,0xf4eee0,-0.1,0.73,0,g); Cy(0.03,0.03,0.12,6,0x2a2a30,0.25,0.73,0.05,g); B(0.01,0.18,0.01,0xe8e0d0,0.25,0.85,0.05,g); items.push({k:'desk',x:12.5,z:4.5}); }
     }
+    return items; }
+  function barnPost(lv,spec){ const items=[], R=lv.room, L=group(0,0,0,R); L.userData.keepScale=true; const oak=0x6a4a2a, dkO=0x4a3018, straw=0xd8b860;
+    // straw over the floor of the stalls; the stall boards; a manger and a hay rack in each
+    B(8.0,0.02,2.1,straw,4.5,0,2.05,L);
+    [1.0,3.0,6.0,8.0].forEach((x,i)=>{ if(i===0||i===3) return; B(0.08,1.05,2.0,oak,x,0,2.0,L); B(0.12,0.08,2.04,dkO,x,1.05,2.0,L); B(0.1,1.25,0.1,dkO,x,0,3.0,L); });
+    [2.0,4.5,7.0].forEach(x=>{ B(0.9,0.12,0.35,oak,x,0.6,1.25,L); B(0.9,0.3,0.3,dkO,x,0.3,1.25,L); const r=group(x,1.25,1.08,L); for(let i=0;i<6;i++) B(0.02,0.4,0.02,dkO,-0.4+i*0.16,0,0,r); B(0.92,0.04,0.04,dkO,0,0.4,0,r); Sp(0.18,straw,0,0.25,0.05,r,7,5).scale.set(2.2,0.8,0.8); });
+    // straw nests in the end stalls, for any companion who'd rather sleep in the barn
+    [2.0,7.0].forEach(x=>{ const n=new THREE.Mesh(new THREE.TorusGeometry(0.3,0.12,6,14),mt(straw)); n.rotation.x=-Math.PI/2; n.position.set(x,0.08,2.3); L.add(n); Cy(0.26,0.26,0.04,12,0xc8a850,x,0.02,2.3,L); });
+    items.push({k:'stalls',x:4.5,z:3.4});
+    // the hayloft on its posts, its ladder, its rail, and Hal's cot up there
+    const H=1.55; [[9.1,1.1],[11.9,1.1],[9.1,4.05],[11.9,4.05]].forEach(([x,z])=>B(0.14,H,0.14,dkO,x,0,z,L));
+    B(3.0,0.1,3.1,oak,10.5,H,2.55,L); for(let i=0;i<7;i++) B(3.0,0.012,0.02,dkO,10.5,H+0.1,1.1+i*0.48,L);
+    B(3.0,0.06,0.06,dkO,10.5,H+0.55,4.08,L); [9.2,10.5,11.8].forEach(x=>B(0.06,0.55,0.06,dkO,x,H+0.1,4.08,L));
+    { const g=group(8.75,0,4.35,L); g.rotation.z=0.0; g.rotation.x=-0.28; [-0.2,0.2].forEach(x=>B(0.05,2.0,0.05,dkO,x,0,0,g)); for(let i=0;i<6;i++) B(0.42,0.04,0.04,oak,0,0.25+i*0.3,0,g); }
+    for(let i=0;i<4;i++) Sp(0.3,straw,11.55,H+0.22,1.4+i*0.5,L,7,5).scale.set(0.9,0.7,1.2);
+    { const g=group(10.8,H+0.1,2.0,L); B(0.8,0.14,1.7,straw,0,0,0,g); B(0.78,0.04,0.9,0x7a5a3a,0,0.14,0.3,g); B(0.42,0.08,0.26,0xe8dcc0,0,0.14,-0.6,g); items.push({k:'cot',x:10.8,z:2.0,top:H+0.1+0.18}); }
+    // bales stacked under the loft and by the east wall, a pitchfork, a cart wheel, and a lantern on a hook
+    const bale=(x,z,y,r)=>{ const g=group(x,y||0,z,L); g.rotation.y=r||0; B(0.8,0.42,0.48,straw,0,0,0,g); [-0.2,0.2].forEach(dx=>B(0.02,0.43,0.5,0x8a6a3a,dx,0,0,g)); return g; };
+    bale(11.4,5.3); bale(10.6,6.4,0,0.1); bale(11.4,6.4); bale(11.0,5.9,0.42,0.3); bale(8.4,6.3,0,0.4);
+    { const g=group(1.3,0,7.3,L); const w=new THREE.Mesh(new THREE.TorusGeometry(0.38,0.05,6,16),mt(dkO)); w.position.y=0.4; g.add(w); for(let i=0;i<6;i++){ const sp=B(0.03,0.72,0.03,oak,0,0.04,0,g); sp.rotation.z=i*Math.PI/6; } g.rotation.y=0.3; }
+    { const g=group(8.92,1.2,4.05,L); B(0.12,0.18,0.12,0x2a2a30,0,0,0,g); B(0.16,0.02,0.02,0x2a2a30,0.08,0.2,0,g); const fl=Sp(0.045,0xffd27a,0,0.08,0,g,6,5); fl.material=new THREE.MeshBasicMaterial({color:0xffd27a}); const pl=new THREE.PointLight(0xffb060,0.55,6,1.6); pl.position.set(0,0,0); g.add(pl); }
+    items.push({k:'bale',x:8.4,z:6.3,face:Math.PI});
     return items; }
   return {pre,post};
 })();
@@ -15164,7 +15217,7 @@ const ROUTINE=(()=>{ const API={spd:1};
     const out=[pts[0]]; let i=0; while(i<pts.length-1){ let j=Math.min(pts.length-1,i+8); while(j>i+1&&!clear(pts[i],pts[j])) j--; out.push(pts[j]); i=j; } return out; }
   function attach(lv){ if(!lv||typeof WORLD_DATA==='undefined') return; LV=lv; const WD=WORLD_DATA, towns=WD.towns||[];
     const townOf=(x,y)=>{ let bt=null, bd=1e9; towns.forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-y); if(d<bd){ bd=d; bt=n; } }); return [bt,bd]; };
-    const houses={}; (WD.buildings||[]).forEach(b=>{ if(!/house|cottage/.test(b.style||'')||b.deck!==undefined||!b.interior) return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; (houses[t]=houses[t]||[]).push(b); });
+    const houses={}; (WD.buildings||[]).forEach(b=>{ if(!/house|cottage/.test(b.style||'')||b.deck!==undefined||!b.interior||b.id==='home_barn'||b.id==='home_house') return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; (houses[t]=houses[t]||[]).push(b); });
     const halls={}; (WD.buildings||[]).forEach(b=>{ if(!/keep|inn/.test(b.style||'')) return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; const cur=halls[t]; if(!cur||(b.style==='keep'&&cur.style!=='keep')) halls[t]=b; });
     const folk=(lv.folk||[]).filter(f=>f.town&&f.key&&/^v:/.test(f.key));
     const load={}; folk.forEach(f=>{ const guard=/soldier|guard|watcher/.test(f.key.split(':').pop()); f.R={x0:f.x,z0:f.z,rest0:f.rest||0,ph:'out',path:null,i:0,guard,kid:/child/.test(f.key)};
@@ -15309,15 +15362,15 @@ const SLEEP=(()=>{
   // how high the bed's mattress stands where its middle is: cast a ray down onto the furniture
   const RC=new THREE.Raycaster(), DN=new THREE.Vector3(0,-1,0);
   function topAt(lv,x,z){ RC.set(new THREE.Vector3(x,1.5,z),DN); RC.far=2; const ms=[]; lv.room.traverse(o=>{ if(o.isMesh&&!o.isSkinnedMesh&&!o.isSprite&&!o.isInstancedMesh&&o.geometry) ms.push(o); }); lv.room.updateMatrixWorld(true); const hits=RC.intersectObjects(ms,false).filter(h=>h.object.visible&&h.point.y<0.9&&!(h.object.material&&(h.object.material.transparent||h.object.material.isMeshBasicMaterial))&&!(h.object.userData&&h.object.userData.castK)&&!h.object.isSkinnedMesh); return hits.length?hits[0].point.y:0.33; }
-  function cover(lv,b,col){ const g=new THREE.Group(); const m=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.09,0.98,4,1,6),new THREE.MeshLambertMaterial({color:col||0x8a3a3a}));
-    const p=m.geometry.attributes.position; for(let i=0;i<p.count;i++){ if(p.getY(i)>0){ const x=p.getX(i)/0.31, z=p.getZ(i)/0.49; p.setY(i,p.getY(i)+0.05*(1-x*x)*(1-Math.abs(z)*0.5)); } else p.setX(i,p.getX(i)*1.08); }
-    m.geometry.computeVertexNormals(); m.castShadow=m.receiveShadow=true; g.add(m); const fold=new THREE.Mesh(new THREE.BoxGeometry(0.66,0.04,0.12),new THREE.MeshLambertMaterial({color:0xf4eee0})); fold.position.set(0,0.06,-0.5); g.add(fold);
+  function cover(lv,b,col,w){ w=w||0.62; const g=new THREE.Group(); const m=new THREE.Mesh(new THREE.BoxGeometry(w,0.09,0.98,4,1,6),new THREE.MeshLambertMaterial({color:col||0x8a3a3a}));
+    const p=m.geometry.attributes.position; for(let i=0;i<p.count;i++){ if(p.getY(i)>0){ const x=p.getX(i)/(w/2), z=p.getZ(i)/0.49; p.setY(i,p.getY(i)+0.05*(1-x*x)*(1-Math.abs(z)*0.5)); } else p.setX(i,p.getX(i)*1.08); }
+    m.geometry.computeVertexNormals(); m.castShadow=m.receiveShadow=true; g.add(m); const fold=new THREE.Mesh(new THREE.BoxGeometry(w+0.04,0.04,0.12),new THREE.MeshLambertMaterial({color:0xf4eee0})); fold.position.set(0,0.06,-0.5); g.add(fold);
     g.position.set(b.x,b.top+0.01,b.z+0.22); g.visible=false; lv.room.add(g); return g; }
   function room(lv,spec,items){ try{
     const kind=spec.theme||'home', beds=(items||[]).filter(i=>i.k==='bed').map(b=>({x:b.x,z:b.z,used:null})), chairs=(items||[]).filter(i=>i.k==='chair'||i.k==='armchair').map(c=>({x:c.x,z:c.z,face:c.face||0,used:null}));
     const hearth=(items||[]).find(i=>i.k==='hearth');
     // who lives here and sleeps here: the people of a home, the shopkeeper, the innkeeper (not patrons, bards, strangers, pets)
-    const sleepers=lv.folk.filter(f=>!f.Z&&f.who&&!/Patron|Bard|Stranger|cat|dog|hound|Guard|Royal Guard|Traveller|Pilgrim/i.test(f.who)&&(kind==='home'||kind==='keep'||f.label==='Shop'||f.label==='Rest'||f.who===spec.keeper||f.who==='Innkeeper'||f.sleeper));
+    const sleepers=lv.folk.filter(f=>!f.Z&&f.who&&!/Patron|Bard|Stranger|cat|dog|hound|Guard|Royal Guard|Traveller|Pilgrim|mule|horse|goat|hen|cow|pig|sheep|ox\b/i.test(f.who)&&(kind==='home'||kind==='keep'||f.label==='Shop'||f.label==='Rest'||f.who===spec.keeper||f.who==='Innkeeper'||f.sleeper));
     if(!sleepers.length) return;
     beds.forEach(b=>{ b.top=topAt(lv,b.x,b.z); b.cov=cover(lv,b,spec.blanket||(lv.pal&&lv.pal.cloth)); });
     sleepers.forEach((f,i)=>{ const bed=beds.find(b=>!b.used); if(bed) bed.used=f;
@@ -15345,7 +15398,138 @@ const SLEEP=(()=>{
     lv.anim.push(tick); const oe=lv.onEnter; lv.onEnter=sp=>{ mine.forEach(f=>{ if(f.Z) f.Z.ph=null; f.Z&&(f.Z.awake=0); }); tick(0,0); if(oe) oe(sp); };
     tick(0,0); LIST.push(lv.id);
   }catch(e){ console.warn('[sleep]',e); } }
-  return {room,phase,EVE,BED,DAWN};
+  return {room,phase,frac,topAt,cover,EVE,BED,DAWN};
+})();
+
+// ── engine/homehold.js ──
+// ════════════════════════════════════════════════════════════════
+//  HOMEHOLD (V289) — the Homestead's own hours. The family farmhouse is three floors, and its people move between them as the
+//  day goes: by day each is about the house as before (Father and Mother and Grandfather in the hall, the twins upstairs);
+//  in the early evening (~19:10) the whole family sits down to supper at the long table; after supper (~20:20) Father takes
+//  his chair on the rug, Mother her spinning wheel, Grandfather the fireside, the twins the window seat; and from about nine
+//  everyone is in bed until morning: Father and Mother in their box bed off the hall, Grandfather in his room off the
+//  children's floor, the twins in theirs.
+//  After the wedding (S.homecoming) Princess Madison lives here too: about the house by day (baking with Mother of a morning,
+//  writing to her father at the desk, reading to the twins, talking with Mother of an afternoon), at the table at supper,
+//  out on the bedchamber balcony after, and then in the great bed in your suite — your bed, now hers too.
+//  One night in three a friend stays over in the guest bed (Squire Matthew; and, once the realm is at peace, Sir Joshua too),
+//  and comes to supper. In the barn, Hal the farmhand forks hay by day, sits on his bale by the lantern of an evening, and sleeps
+//  up in the hayloft. Speak to anyone abed and they wake — sleepily — and settle again soon after.
+//    HOMEHOLD.attach(lv, spec, items)   — rooms.js, for in:home_house:N and in:home_barn:0
+//    HOMEHOLD.phase()                    — 'day' | 'supper' | 'after' | 'bed'
+// ════════════════════════════════════════════════════════════════
+const HOMEHOLD=(()=>{
+  const S=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
+  const frac=()=>{ const f=S().dayFrac; return typeof f==='number'?((f%1)+1)%1:0.4; };
+  const SUP=0.80, AFT=0.845, BED=0.875, DAWN=0.272;   // ~19:12, 20:17, 21:00, 06:30
+  const phase=()=>{ const f=frac(); return f>=BED||f<DAWN?'bed':f>=AFT?'after':f>=SUP?'supper':'day'; };
+  const day=()=>S().day||1;
+  const wed=()=>!!S().homecoming;
+  // a friend stays one night in three: the squire, and once the realm is at peace, Sir Joshua turn about
+  const guest=()=>{ const d=day(); if(d%3!==0) return null; return wed()&&(d/3)%2===1?'Sir Joshua':'Squire Matthew'; };
+  // where everyone is, by the hour: {fl, x, z, face, m:'sit'|'stand'|'lie', bed} (bed: which bed they lie in)
+  const SEAT={'Sir Aldric':[5.05,3.5,Math.PI/2],'Lady Elara':[10.95,3.5,-Math.PI/2],'Tobias':[5.5,2.5,0],'Mara':[7.5,2.5,0],'Tobiah':[9.5,2.5,0],'Princess Madison':[6.5,4.5,Math.PI],guest:[9.5,4.5,Math.PI]};
+  const AFTER={'Sir Aldric':{fl:0,x:2.5,z:4.5,face:Math.PI,m:'sit'},'Lady Elara':{fl:0,x:2.45,z:6.75,face:-2.2,m:'stand'},'Tobias':{fl:0,x:3.75,z:2.15,face:-2.4,m:'stand'},
+    'Mara':{fl:1,x:10.22,z:1.4,face:0,m:'sit'},'Tobiah':{fl:1,x:10.78,z:1.4,face:0,m:'sit'},'Princess Madison':{fl:2,x:6.5,z:9.75,face:0,m:'stand'},guest:{fl:0,x:4.35,z:1.95,face:-2.0,m:'stand'}};
+  const BEDS={'Sir Aldric':{fl:0,bed:'p',side:-0.4},'Lady Elara':{fl:0,bed:'p',side:0.4},'Tobias':{fl:1,bed:[14.5,2.0]},'Mara':{fl:1,bed:[2.5,2.0]},'Tobiah':{fl:1,bed:[6.5,2.0]},
+    'Princess Madison':{fl:2,bed:'g',side:-0.42},guest:{fl:1,bed:[16.5,2.0]}};
+  // the Princess's day about the house
+  const MADDAY=[[0.40,{fl:0,x:3.65,z:3.55,face:-2.6,m:'stand',say:'mor'}],[0.52,{fl:2,x:11.85,z:4.5,face:Math.PI/2,m:'sit',say:'desk'}],[0.64,{fl:1,x:10.5,z:1.4,face:0,m:'sit',say:'seat'}],[0.80,{fl:0,x:9.45,z:5.4,face:-0.9,m:'stand',say:'aft'}]];
+  const MADLINES={mor:['Good morning, my knight! Your mother is teaching me to bake bread. It is a great deal harder than ruling.'],
+    desk:['A letter to Father. I tell him of the farm, the twins, the sunsets… and that I am happy. Truly.'],
+    seat:['The twins asked for a story about the Pretender. I told them a better one — about you.'],
+    aft:['Your mother says you were a terror at six. I want to hear everything.'],
+    home:['Your mother has asked me four times whether the palace fed me properly. I have stopped saying yes; she does not believe it.','I like it here. There is a window in your top room that faces east — I have watched the sun come up from it eleven mornings running, and it has not once failed.','Sunfall is keeping its own watch now. The lamps are theirs again. The boy with the kite writes to me, if you can believe it.'],
+    supper:['Sit by me. Your grandfather is about to say grace, and he is not a brief man.'],
+    after:['Come and look. The first stars over Luminar… once I thought I would never see the sky again.','“The heavens declare the glory of God; and the firmament sheweth his handywork.” — Psalm 19:1'],
+    wake:['Mm… there you are. Come to bed, my knight — the realm can spare you till morning.']};
+  const LINES={
+    supper:{'Sir Aldric':['Sit, my child. We waited grace for you.'],'Lady Elara':['Eat — you\'re thin as a fence-rail. There\'s more stew in the pot.'],'Tobias':['Pass the bread, young one. And tell us where you\'ve been.'],
+      'Mara':['Tell us a story! A real one, with a dragon!'],'Tobiah':['Mara took the biggest piece again.'],'Squire Matthew':['Sir! Your mother\'s stew — I\'d ride a week for it. I nearly did.'],'Sir Joshua':['Your father tells a fine tale of the old wars, friend. Your mother tells it better.']},
+    after:{'Sir Aldric':['Fifteen years I dreamed of this chair, and this fire. It is softer than I remembered.'],'Lady Elara':['One more row, then bed. Goodnight, love.'],'Tobias':['The fire\'s low. Mind you get some sleep yourself, young one.'],
+      'Mara':['We\'re not tired. …Much.'],'Tobiah':['Can we stay up till the fire\'s out? Please?'],'Squire Matthew':['I\'ll be up with the sun, sir — I promised your grandfather I\'d help with the mule.'],'Sir Joshua':['A good house, this. Strong walls and a warm hearth.']},
+    wake:{'Sir Aldric':['Hm? …Is the gate barred? Good. Sleep, child. The night watch is done.'],'Lady Elara':['Can\'t sleep, love? There\'s warm milk on the hob. Go on.'],'Tobias':['Eh? Wha— oh, it\'s you. Go to bed, young one.'],
+      'Mara':['*mumbles* …five more minutes…'],'Tobiah':['Is it a demon?! …Oh. It\'s you. Night.'],'Squire Matthew':['Sir! Is it the alarm?— oh. Sorry, sir. Goodnight, sir.'],'Sir Joshua':['Hrmph. Even heroes sleep, friend.']}};
+  const pickL=(o,who)=>(o[who]||['Goodnight, knight.']);
+  function plan(who,isGuest){ const ph=phase(), k=isGuest?'guest':who;
+    if(who==='Princess Madison'&&!wed()) return null;
+    if(who==='Sir Aldric'&&!S().abaddonWon) return null;   // home only once Abaddon falls (luminar.js)
+    if(isGuest&&guest()!==who) return null;
+    if(ph==='day'){ if(isGuest) return null; if(who==='Princess Madison'){ const f=frac(); const e=MADDAY.find(([t])=>f<t)||MADDAY[MADDAY.length-1]; return e[1]; } return {home:true}; }
+    if(ph==='supper'){ const s=SEAT[k]; return s?{fl:0,x:s[0],z:s[1],face:s[2],m:'sit',say:'supper'}:{home:true}; }
+    if(ph==='after') return Object.assign({say:'after'},AFTER[k]||{home:true});
+    const b=BEDS[k]; return b?Object.assign({m:'lie'},b):{home:true}; }
+  // ── a floor of the farmhouse ──
+  function attachHouse(lv,spec,items){ if(lv._hh) return; lv._hh=true; const FL=+((/:(\d)$/.exec(lv.id)||[])[1]||0), R=lv.room;
+    const beds=items.filter(i=>i.k==='bed').map(b=>({x:b.x,z:b.z})); const lift=c=>{ c.position.y+=0.04; c.scale.y=1.4; return c; };
+    beds.forEach(b=>{ b.top=SLEEP.topAt(lv,b.x,b.z); b.cov=lift(SLEEP.cover(lv,b,0x6a7aa8)); });
+    const pb=items.find(i=>i.k==='pbed'); let pCov=null; if(pb){ pCov=lift(SLEEP.cover(lv,{x:pb.x,z:pb.z+0.1,top:pb.top},0x8a3a4a,1.62)); pCov.scale.z=1.12; }
+    const gb=FL===2?{x:11.0,z:2.5}:null; let gCov=null; if(gb){ gb.top=SLEEP.topAt(lv,gb.x-0.42,gb.z); gCov=lift(SLEEP.cover(lv,{x:gb.x,z:gb.z+0.05,top:gb.top},0x7a2a3a,1.5)); gCov.scale.z=1.12; }
+    const bedAt=(b)=>{ if(Array.isArray(b)){ let best=null,d=9; beds.forEach(q=>{ const dd=Math.hypot(q.x-b[0],q.z-b[1]); if(dd<d){ d=dd; best=q; } }); return d<1.2?best:null; } return null; };
+    // everyone who lives here (and the night's guest), each with a figure on this floor: their own, or one made for this floor
+    const ROSTER=['Sir Aldric','Lady Elara','Tobias','Mara','Tobiah','Princess Madison','Squire Matthew','Sir Joshua'];
+    const HOMEF={'Sir Aldric':0,'Lady Elara':0,'Tobias':0,'Mara':1,'Tobiah':1}, KEY={'Sir Aldric':'home_house:0:5,4','Lady Elara':'home_house:0:8,4','Tobias':'home_house:0:6,5','Mara':'home_house:1:3,2','Tobiah':'home_house:1:7,2'};
+    const people=[];
+    ROSTER.forEach(who=>{ const isGuest=who==='Squire Matthew'||who==='Sir Joshua'; let f=lv.folk.find(q=>q.who===who), own=!!f;
+      // does this person ever come to this floor?
+      const ever=FL===HOMEF[who]||(FL===0)||(FL===1&&['Tobias','Mara','Tobiah','Princess Madison','Squire Matthew','Sir Joshua'].includes(who))||(FL===2&&who==='Princess Madison');
+      if(!ever&&!own) return;
+      if(!f){ const ls=(typeof DIALOGUE!=='undefined'&&KEY[who]&&DIALOGUE.lines(KEY[who]))||null; f=addPerson(lv,R,'peasant',2,2,0,who,(ls&&ls.lines)||['God keep you.'],{rest:0}); if(KEY[who]) f.key=KEY[who]; f.g.visible=false; f.mute=true; f.ghost=true; }
+      f.still=true; f.near=f.near||30; f.lookAbout=0.35; f.breathe=true; f.idle=f.idle||({'Sir Aldric':'behind','Lady Elara':'clasped','Tobias':'behind','Princess Madison':'clasped'}[who]||null);
+      people.push({f,who,isGuest,own,day:{x:f.x,z:f.z,rest:f.rest,y:f.g.position.y},act0:f.action||null,key:'',awake:0}); });
+    const set=(f,x,z,rest,y)=>{ f.x=x; f.z=z; f.rest=rest; f.g.position.set(x,y||0,z); f.g.rotation.y=rest; };
+    const show=(f,v)=>{ f.g.visible=v; f.mute=!v; f.ghost=!v; };
+    function place(P){ const p=plan(P.who,P.isGuest), f=P.f; f.lie=false; f.sit=false;
+      if(!p||(p.home&&!(P.own&&HOMEF[P.who]===FL))||(p.fl!==undefined&&p.fl!==FL)){ show(f,false); clr(P); return; }
+      show(f,true);
+      if(p.home){ set(f,P.day.x,P.day.z,P.day.rest,P.day.y); clr(P); return; }
+      if(p.m==='lie'){ let x,z,top,s=f.g.scale.x||0.6;
+        if(p.bed==='p'&&pb){ x=pb.x+p.side; z=pb.z+0.02; top=pb.top+0.04; if(pb.quilt) pb.quilt.visible=false; if(pCov) pCov.visible=true; }
+        else if(p.bed==='g'&&gb){ x=gb.x+p.side; z=gb.z+0.05; top=gb.top; if(gCov) gCov.visible=true; }
+        else { const b=bedAt(p.bed); if(!b){ show(f,false); return; } x=b.x; z=b.z+0.08; top=b.top; if(b.cov) b.cov.visible=true; }
+        set(f,x,z,0,top-0.11*s); f.lie=true; act(P,()=>wake(P)); return; }
+      set(f,p.x,p.z,p.face,p.m==='sit'?0.02:0); if(p.m==='sit') f.sit=true;
+      const ls=P.who==='Princess Madison'?(p.say==='mor'||p.say==='desk'||p.say==='seat'||p.say==='aft'?MADLINES[p.say].concat([MADLINES.home[(P.hn=(P.hn||0)+1)%3]]):MADLINES[p.say]||MADLINES.aft):p.say&&LINES[p.say]?pickL(LINES[p.say],P.who):null;
+      if(ls) act(P,()=>ENGINE.speak(P.who,ls,f)); else clr(P); }
+    // our own words for the evening and the night; their own (and the Demon Hunt's, for Father) by day
+    function act(P,fn){ if(!P.ov){ P.saved=P.f.action; P.ov=true; } P.f.action=fn; }
+    function clr(P){ if(P.ov){ P.f.action=P.saved; P.ov=false; } }
+    function wake(P){ const f=P.f; f.lie=false; f.sit=true; const s=f.g.scale.x||0.6; set(f,f.x+0.5,f.z+0.15,Math.PI/2,0.02); P.awake=25;
+      ENGINE.speak(P.who,P.who==='Princess Madison'?MADLINES.wake:pickL(LINES.wake,P.who),f); }
+    let lastKey='';
+    const tick=(t,dt)=>{ const k=phase()+'|'+wed()+'|'+guest()+'|'+(phase()==='day'&&wed()?(MADDAY.findIndex(([tt])=>frac()<tt)):0);
+      people.forEach(P=>{ if(P.awake>0){ P.awake-=Math.min(dt||0.016,0.1); if(P.awake<=0&&!(ENGINE.talking&&ENGINE.talking()===P.f)) P.key=''; } });
+      if(k===lastKey&&people.every(P=>P.key===k)) return;
+      // covers and quilts back as they were, then everyone to their place
+      beds.forEach(b=>{ if(b.cov) b.cov.visible=false; }); if(pCov) pCov.visible=false; if(gCov) gCov.visible=false; if(pb&&pb.quilt) pb.quilt.visible=true;
+      people.forEach(P=>{ if(P.awake>0){ return; } place(P); P.key=k; });
+      // the beds of anyone awake and sitting on the edge stay turned down
+      lastKey=k; };
+    lv.anim.push(tick); const oe=lv.onEnter; lv.onEnter=sp=>{ lastKey=''; people.forEach(P=>{ P.key=''; P.awake=0; }); tick(0,0); if(oe) oe(sp); };
+    tick(0,0); }
+  // ── the barn: Hal the farmhand — forking hay by day, on his bale with the lantern of an evening, up in the loft at night ──
+  function attachBarn(lv,spec,items){ if(lv._hh) return; lv._hh=true; const R=lv.room, cot=items.find(i=>i.k==='cot'), bale=items.find(i=>i.k==='bale');
+    // the Old Mule was standing in his stall as a man; he is a mule again (the realm's own donkey, rigged), and still answers you
+    const mi=lv.folk.findIndex(q=>/Mule/.test(q.who||'')); if(mi>=0&&typeof DECOR_KINDS!=='undefined'&&DECOR_KINDS.mule){ const q=lv.folk[mi]; R.remove(q.g); lv.folk.splice(mi,1);
+      const g=group(4.5,0,2.2,R); g.userData.keepScale=true; try{ DECOR_KINDS.mule({x:4,y:2},g,lv.anim); }catch(e){} g.scale.setScalar(0.72); g.rotation.y=Math.PI;
+      g.traverse(o=>{ if(o.isGroup&&o!==g&&o.rotation) o.rotation.y=0; });
+      lv.spots.push({x:4.5,z:3.3,r:1.1,label:'Pat',who:'Old Mule',action:()=>ENGINE.speak('Old Mule',['(The mule regards you with mild interest, then leans his great head on your shoulder.)'])}); }
+    const f=addPerson(lv,R,'vill',5.5,5.0,0,'Hal the farmhand',['Morning, young master. The mule\'s in a mood — always is, before his oats.','Your father took me on the week he came home. Best master I\'ve had.'],{outfit:'farmer',rest:-0.6});
+    f.key='home_barn:hal'; f.still=true; f.near=30; f.lookAbout=0.4; f.breathe=true; f.idle='thumbs';
+    const fork=group(0,0,0,f.g); B(0.03,1.5,0.03,0x8a6a3a,0.3,0,0.12,fork); [-0.05,0,0.05].forEach(x=>B(0.012,0.2,0.012,0x8a8a90,0.3+x,1.5,0.12,fork));
+    const cov=cot?SLEEP.cover(lv,{x:cot.x,z:cot.z-0.15,top:cot.top},0x7a5a3a,0.7):null;
+    let lastPh='', awake=0;
+    const set=(x,z,rest,y)=>{ f.x=x; f.z=z; f.rest=rest; f.g.position.set(x,y||0,z); f.g.rotation.y=rest; };
+    const place=()=>{ const ph=phase(); f.lie=false; f.sit=false; fork.visible=false; f.action=null; if(cov) cov.visible=false;
+      if(ph==='day'){ set(5.5,5.0,-0.6,0); fork.visible=true; return; }
+      if(ph==='bed'&&cot){ const s=f.g.scale.x||0.6; set(cot.x,cot.z+0.05,0,cot.top-0.11*s); f.lie=true; if(cov) cov.visible=true;
+        f.action=()=>{ f.lie=false; f.sit=true; if(cov) cov.visible=false; set(cot.x+0.42,cot.z+0.2,Math.PI/2,cot.top-0.38); awake=25; ENGINE.speak(f.who,['Mmph — the mule out? …No? Then let a man sleep, young master.'],f); }; return; }
+      set(bale.x,bale.z+0.05,bale.face||Math.PI,0.02); f.sit=true; f.action=()=>ENGINE.speak(f.who,['Evening, young master. Bread and cheese and a quiet barn — a man needs nothing more.','Your grandfather says the old mule\'s older than me. I believe him.'],f); };
+    lv.anim.push((t,dt)=>{ if(awake>0){ awake-=Math.min(dt||0.016,0.1); if(awake<=0) lastPh=''; return; } const ph=phase(); if(ph!==lastPh){ lastPh=ph; place(); } });
+    const oe=lv.onEnter; lv.onEnter=sp=>{ lastPh=''; awake=0; if(oe) oe(sp); };
+    place(); }
+  function attach(lv,spec,items){ try{ if(/^in:home_barn:/.test(lv.id)) attachBarn(lv,spec,items||[]); else attachHouse(lv,spec,items||[]); }catch(e){ console.warn('[homehold]',e); } }
+  return {attach,phase,plan,guest};
 })();
 
 // ── engine/guardians.js ──
@@ -27487,7 +27671,7 @@ const VILLAGE3=(function(){
     if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(typeof CATACOMB!=='undefined'&&CATACOMB.has(t)&&t<=S().chapels) { const CS=WD.cata&&WD.cata[t]; ENGINE.speak(b.name,CS?(S().cataHeard&&S().cataHeard[t]?CS.doorHeard:CS.door):['The doors are barred from within. A cold shadow seeps out from under them.','The old way in is from below: '+CATACOMB.cfg(t).wayIn]); } else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
       else ENGINE.speak(b.name,[t>S().chapels?'The doors will not open. Something waits beyond, for a knight who has cleansed the towns before it.':'The doors are barred.']); }; }
     if(id==='sg_keep') return ()=>ENGINE.go('keep');
-    if(id==='home_barn') return ()=>SERVICES.openStables();
+    /* V289: the barn is walked into now; the stables are its stalls (roomlife.js) */
     if(id==='hg_keep') return ()=>FINALE&&FINALE.enter();
     return ()=>ENGINE.go('in:'+id+':0'); }
   // cleansed chapels are sanctuaries: the priest, his teaching, the redeemed general, Ezra
@@ -27517,9 +27701,8 @@ const VILLAGE3=(function(){
   // Sir Aldric in the Family Farmhouse: home once Abaddon falls, and the Demon Hunt is his to give
   { const R=ENGINE.levels['in:home_house:0']; if(R&&R.lazy){ const lz=R.lazy; R.lazy=()=>{ const lv=lz(); const f=lv.folk.find(q=>q.who==='Sir Aldric');
       if(f){ HUNT.aldric(f); lv.anim.push(()=>{ const on=!!S().abaddonWon; f.g.visible=on; f.mute=!on; f.ghost=!on; }); }
-      // after the wedding: the princess at your family's table (ensureMadisonAtHome)
-      const md=addPerson(lv,lv.room||lv.scene,'noble',9.5,5.5,0,'Princess Madison',['Your mother has asked me four times whether the palace fed me properly. I have stopped saying yes; she does not believe it.','I like it here. There is a window in your top room that faces east — I have watched the sun come up from it eleven mornings running, and it has not once failed.','Sunfall is keeping its own watch now. The lamps are theirs again. The boy with the kite writes to me, if you can believe it.'],{her:{main:'#e88ab0',trim:'#f2d27a'},rest:Math.PI});
-      lv.anim.push(()=>{ const on=!!S().homecoming; md.g.visible=on; md.mute=!on; md.ghost=!on; }); return lv; }; } }
+      // after the wedding the princess lives here: homehold.js keeps her hours (V289)
+      return lv; }; } }
 
   // ✦ the knight's own top floor: the lectern (the codex) and the wardrobe glass (HS_LECTERN, HS_WARDROBE)
   { const LB=PASTIME_DATA&&PASTIME_DATA.library, R=ENGINE.levels['in:home_house:'+(LB?LB.lectern.floor:2)]; if(R&&R.lazy&&LB){ const lz=R.lazy; R.lazy=()=>{ const lv=lz(), Lc=LB.lectern, Wd=LB.wardrobe;

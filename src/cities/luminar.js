@@ -190,7 +190,7 @@
     if(J.theme==='chapel'){ const t=WD.chapelTown[b.id]; return ()=>{ if(cleansed(t)) ENGINE.go('sanct'+t); else if(typeof CATACOMB!=='undefined'&&CATACOMB.has(t)&&t<=S().chapels) { const CS=WD.cata&&WD.cata[t]; ENGINE.speak(b.name,CS?(S().cataHeard&&S().cataHeard[t]?CS.doorHeard:CS.door):['The doors are barred from within. A cold shadow seeps out from under them.','The old way in is from below: '+CATACOMB.cfg(t).wayIn]); } else if(CHAPELS[t]&&t===S().chapels) chapel(t).enter();
       else ENGINE.speak(b.name,[t>S().chapels?'The doors will not open. Something waits beyond, for a knight who has cleansed the towns before it.':'The doors are barred.']); }; }
     if(id==='sg_keep') return ()=>ENGINE.go('keep');
-    if(id==='home_barn') return ()=>SERVICES.openStables();
+    /* V289: the barn is walked into now; the stables are its stalls (roomlife.js) */
     if(id==='hg_keep') return ()=>FINALE&&FINALE.enter();
     return ()=>ENGINE.go('in:'+id+':0'); }
   // cleansed chapels are sanctuaries: the priest, his teaching, the redeemed general, Ezra
@@ -220,9 +220,8 @@
   // Sir Aldric in the Family Farmhouse: home once Abaddon falls, and the Demon Hunt is his to give
   { const R=ENGINE.levels['in:home_house:0']; if(R&&R.lazy){ const lz=R.lazy; R.lazy=()=>{ const lv=lz(); const f=lv.folk.find(q=>q.who==='Sir Aldric');
       if(f){ HUNT.aldric(f); lv.anim.push(()=>{ const on=!!S().abaddonWon; f.g.visible=on; f.mute=!on; f.ghost=!on; }); }
-      // after the wedding: the princess at your family's table (ensureMadisonAtHome)
-      const md=addPerson(lv,lv.room||lv.scene,'noble',9.5,5.5,0,'Princess Madison',['Your mother has asked me four times whether the palace fed me properly. I have stopped saying yes; she does not believe it.','I like it here. There is a window in your top room that faces east — I have watched the sun come up from it eleven mornings running, and it has not once failed.','Sunfall is keeping its own watch now. The lamps are theirs again. The boy with the kite writes to me, if you can believe it.'],{her:{main:'#e88ab0',trim:'#f2d27a'},rest:Math.PI});
-      lv.anim.push(()=>{ const on=!!S().homecoming; md.g.visible=on; md.mute=!on; md.ghost=!on; }); return lv; }; } }
+      // after the wedding the princess lives here: homehold.js keeps her hours (V289)
+      return lv; }; } }
 
   // ✦ the knight's own top floor: the lectern (the codex) and the wardrobe glass (HS_LECTERN, HS_WARDROBE)
   { const LB=PASTIME_DATA&&PASTIME_DATA.library, R=ENGINE.levels['in:home_house:'+(LB?LB.lectern.floor:2)]; if(R&&R.lazy&&LB){ const lz=R.lazy; R.lazy=()=>{ const lv=lz(), Lc=LB.lectern, Wd=LB.wardrobe;
