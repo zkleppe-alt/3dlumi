@@ -59,6 +59,8 @@ const REACT=(()=>{
     else { const fl=FLAV[f.town]; out.push(pick(f,fl&&(seedOf(f,'fp')+(f._rk||0))%3===0?[fl.pre]:P.pre,'pre')); if(!home) out.push(fill(pick(f,n===0?P.word0:n===1?P.word1:P.wordN,'word'),o)); }
     return out; }
   function wrap(f,lines){ try{ if(!f||!f.town) return lines; const g=greet(f); if(!g) return lines; const head=Array.isArray(g)?g:[g];
-      const rest=(lines||[]).filter(l=>head.indexOf(l)<0); return head.concat(rest.length?rest.slice(0,2):[]); }catch(e){ return lines; } }
+      const st=S(), t=TIX[f.town], safe=!!st.abaddonWon||(t!==undefined&&(st.chapels|0)>t);
+      // once their village is free, their old warnings of demons on the road are out of date: leave those out
+      const rest=(lines||[]).filter(l=>head.indexOf(l)<0&&!(safe&&/demon|careful|beware|monster|roam|danger|the dark (is|comes)|not safe/i.test(l))); return head.concat(rest.length?rest.slice(0,2):[]); }catch(e){ return lines; } }
   return {wrap,greet,TIX};
 })();

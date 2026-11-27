@@ -1287,3 +1287,16 @@ Zak: look over all the NPCs — natural standing and moving, in our art style, w
 - **Houses with rooms** (rooms.js `homePlan`): the stock one-room village home (11×7) is laid out as a house (14×9): a hall with the hearth on the back wall, a hearth rug, the table and three chairs, a cabinet, shelf, dresser, barrel and plant; a partition wall with a doorway; a bedchamber with a bed for each person who lives there (residents plus the people inside by day, not pets; up to four), a chest at each bed's foot, a dresser, a runner between the beds, a window. Mirrored left/right from house to house. Partition walls now get the wainscot, posts and beam on both faces; rugs are drawn full-size with an edge all round (they were shrunk with the furniture and showed gaps).
 - **At night the residents are in** (rooms.js, gridRoom): their figures (same outfit, town and seed, so they look as they do outside) stand by the hearth and the table; shown only at night (`ROUTINE.night()`), checked on entering and every second.
 - Dialogue at home is a placeholder pair of lines until part 4 (`DIALOGUE.homeLines` if present).
+
+## V287 — word spreads: the townsfolk answer to what the Knight has done (NPCs, part 4)
+Zak's choices: before/after their chapel, word spreading, people helped personally, after the game is beaten.
+- New engine/reactions.js (`REACT.wrap(f, lines)`, called by core.js `act()` through `RX` before a townsperson speaks, both for the story's lines and their own). A villager (anyone with a town: the overworld folk, the night watch, residents at home) first greets you as things stand, then says one or two of their own lines:
+  - their own chapel still bound: fear and hope (and now and then their village's own trouble — the cold in Ironhold's forges, Saltmere's empty nets…), plus the word from elsewhere: nothing yet ("they say the King's sent a knight"), one town freed ("Word came from {town}… was that you?"), or many ("{n} chapels lit again…").
+  - just cleansed (the most recent chapel is theirs): overjoyed.
+  - cleansed earlier: grateful and at ease, now and then their village's life restored; or, if a side quest in their village is done (`S.sideq`), its giver's name: "{giver} hasn't stopped telling everyone what you did for her family."
+  - at home at night (`f.atHomeIn`): welcomed in from the dark (hurried in and the door barred, while their chapel is bound).
+  - the Demon King beaten (`S.abaddonWon`): at peace.
+  - guards, the night watch and children have their own sets for each case.
+  - Lines are chosen by the villager's own seed and move on each time you speak to them.
+- Once a villager's village is free (or the game is won), their old lines warning of demons, monsters and danger on the road are left out.
+- Residents at home now speak their own lines (the story's for that person, else their outdoor lines).
