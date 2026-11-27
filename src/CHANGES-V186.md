@@ -1241,3 +1241,11 @@ Zak: a launcher people can download to play locally, saving on their own compute
 - **The download page** (`download.html`): a card for each of Windows, Mac, Linux and Chromebook, with the visitor's own computer marked first and first-run tips for each. Below: how updates work, that saves are safe, and how to bring browser saves.
 - **Chromebook / the installed web app** (pwa/sw.js, shell.html): when the game runs as an installed app, the page tells the offline worker so (`{pin:true}`). From then on the kept page is served until you choose to update. On start it reads the feed, and if there's a newer build it shows "Update available: V… [Update now] [Later]"; Update fetches the new page and reloads. In a browser tab nothing changes (always the newest). `window.KLK_VER` (from the VERSION file, stamped by build.py) says which version a page is. `?app=1` forces app mode for tests. Tested: kept V282 while the site was at V283, the banner, the update to V283.
 - **The game:** ☰ → System → **Export saves** (a .json file in the same format) and **Import saves** (from an export or a launcher backup; replaces this browser's saves and reloads), so players can carry their browser saves into the launcher and back.
+
+## Launcher 1.0 — the home screen as an unrolled scroll
+Zak: make the launcher page more game-themed, like a rolled-out scroll. He held off on renaming for now: "LastWatch" is an upcoming Steam game and there's an itch.io horror game called "The Last Watch"; "Knights of Luminar" looked clear.
+- launcher/app/ui/index.html restyled; no change to how it works:
+  - The window is a dark wall with the crest faint behind it. On it hangs a scroll: two turned wooden rods with gilt end knobs, and between them a parchment (paper grain, browned edges, slightly ragged sides).
+  - Left side: the crest, the title in small caps over a ruled line, and the banner in italics. Play is a red wax seal (it tilts when hovered); Update is a red-inked button. The progress bar is drawn in red ink.
+  - Right side: Patch notes, Saves and Settings are ribbon bookmarks (the open one in red). The pages are ruled like a ledger, with red ✦ bullets and "installed" / "new" stamps.
+- It ships with the launcher build (tag `launcher-v…`); the game itself is unchanged.

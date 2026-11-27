@@ -28,8 +28,10 @@ body::before{ content:''; position:fixed; inset:0; background:url(crest.png) 50%
 .col{ display:flex; flex-direction:column; min-height:0; }
 .brand{ display:flex; align-items:center; gap:14px; }
 .brand img{ width:62px; height:62px; filter:drop-shadow(0 2px 3px #5a3a1a88); }
+.brand img.patch{ width:136px; height:136px; border-radius:16px; filter:none; box-shadow:0 0 0 3px #1a2440, 0 0 0 5px #c9a14a, 0 6px 14px #3a20088a; outline:1px dashed #e8c770aa; outline-offset:-9px; transform:rotate(-2deg); }   /* the Restful Knight Gaming badge, sewn on like a patch */
+.brand{ gap:22px; }
 .brand small{ display:block; color:var(--ink2); letter-spacing:.22em; text-transform:uppercase; font-size:11px; }
-h1{ margin:0; font-size:32px; font-weight:700; letter-spacing:.01em; color:#4a2a10; font-variant:small-caps; }
+h1{ margin:4px 0 0; font-size:32px; line-height:1.1; font-weight:700; letter-spacing:.01em; color:#4a2a10; font-variant:small-caps; }
 .rule{ height:12px; margin:14px 0 4px; background:radial-gradient(circle,#8a5a2a 2px,transparent 3px) 50% 50%/14px 12px no-repeat, linear-gradient(90deg,transparent,#8a5a2a 20%,#8a5a2a 80%,transparent) 50% 50%/100% 1px no-repeat; }
 #banner{ margin:10px 0 0; font-size:19px; font-style:italic; color:var(--ink2); max-width:32ch; }
 .spacer{ flex:1; }
@@ -88,7 +90,7 @@ input[type=checkbox]{ width:18px; height:18px; accent-color:var(--red); }
   <div class="rod"></div>
   <div class="paper">
     <section class="col" id="hero">
-      <div class="brand"><img src="crest.png" alt=""><div><small>Restful Knight Gaming</small><h1>Kingdom's Last Knight</h1></div></div>
+      <div class="brand"><img class="patch" src="rkg.jpg" alt="Restful Knight Gaming"><div><small>Restful Knight Gaming presents</small><h1>Kingdom's Last Knight</h1></div></div>
       <div class="rule"></div>
       <p id="banner">Ride out from Luminar, cleanse the ten chapels and free their generals.</p>
       <div class="spacer"></div>
