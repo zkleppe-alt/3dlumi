@@ -3,95 +3,122 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
 <title>Kingdom's Last Knight</title>
 <style>
-:root{ --ink:#e9e2cf; --dim:#a79f8b; --faint:#6d6758; --gold:#d6a640; --gold2:#f0c766; --navy:#0d1220; --panel:#151c2e; --line:#2a3350; --red:#c0503a; --green:#6fae6a; }
+:root{ --ink:#3a2814; --ink2:#5e4527; --faint:#8a7152; --gold:#b8862b; --red:#8e2a1e; --red2:#b73a28; }
 *{ box-sizing:border-box; }
-html,body{ margin:0; height:100%; background:var(--navy); color:var(--ink); font:15px/1.45 "Segoe UI",system-ui,-apple-system,Ubuntu,sans-serif; user-select:none; }
-.serif{ font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif; }
-#app{ display:grid; grid-template-columns:1.15fr 1fr; height:100vh; overflow:hidden; }
-body{ overflow:hidden; }
-/* the hero side */
-#hero{ position:relative; padding:40px 44px 28px; display:flex; flex-direction:column; overflow:hidden;
-  background: radial-gradient(1200px 700px at 20% 110%, #2a3a66 0%, transparent 55%), radial-gradient(700px 500px at 90% -10%, #4a3a1a 0%, transparent 60%), linear-gradient(160deg,#121a30,#0b0f1b); }
-#hero::after{ content:''; position:absolute; inset:auto -60px -80px auto; width:380px; height:380px; background:url(crest.png) center/contain no-repeat; opacity:0.07; transform:rotate(-8deg); pointer-events:none; }
+html,body{ margin:0; height:100%; overflow:hidden; user-select:none; font:15px/1.45 "Palatino Linotype","Book Antiqua",Palatino,Georgia,serif; color:var(--ink);
+  background:
+    radial-gradient(900px 520px at 50% 45%, #2b3352 0%, transparent 70%),
+    radial-gradient(1200px 800px at 50% 120%, #3a2a14 0%, transparent 60%),
+    repeating-linear-gradient(90deg, #121726 0 3px, #10141f 3px 7px), #0d111c; }
+body::before{ content:''; position:fixed; inset:0; background:url(crest.png) 50% 50%/440px no-repeat; opacity:.05; filter:grayscale(1); pointer-events:none; }
+/* the scroll: two wooden rods, the parchment unrolled between them */
+#scroll{ position:absolute; left:50%; top:50%; width:min(980px,calc(100vw - 40px)); height:calc(100vh - 34px); transform:translate(-50%,-50%); display:flex; flex-direction:column; }
+.rod{ position:relative; height:30px; margin:0 -6px; border-radius:15px; z-index:2;
+  background:linear-gradient(#6b4423 0%,#a26a37 22%,#c88a4d 38%,#8b5a2b 62%,#4a2c14 100%); box-shadow:0 6px 12px #0009, inset 0 -2px 3px #0006; }
+.rod::before,.rod::after{ content:''; position:absolute; top:-7px; width:38px; height:44px; border-radius:50%/42%;
+  background:radial-gradient(circle at 40% 35%,#f1cf7a,#b8862b 45%,#6b4a12 80%); box-shadow:0 4px 8px #000a, inset 0 -3px 4px #0006; }
+.rod::before{ left:-26px; } .rod::after{ right:-26px; }
+.paper{ position:relative; flex:1; min-height:0; margin:-8px 14px; padding:30px 40px 18px; display:grid; grid-template-columns:1fr 1.05fr; gap:30px;
+  background:
+    radial-gradient(ellipse at 50% 50%, transparent 55%, #8a5a2a33 85%, #6b3f1a66 100%),
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='300'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .45  0 0 0 0 .32  0 0 0 0 .17  0 0 0 .22 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+    linear-gradient(90deg,#e2cfa3,#f1e3c0 12%,#f4e8c9 50%,#efe0bb 88%,#dcc699);
+  box-shadow:0 18px 40px #000a, inset 0 14px 18px -10px #6b3f1a88, inset 0 -14px 18px -10px #6b3f1a88;
+  clip-path:polygon(0 0,100% 0,99.6% 8%,100% 17%,99.5% 29%,100% 41%,99.6% 55%,100% 68%,99.5% 80%,100% 91%,100% 100%,0 100%,.4% 90%,0 78%,.5% 66%,0 53%,.4% 40%,0 27%,.5% 15%,0 6%); }
+.col{ display:flex; flex-direction:column; min-height:0; }
 .brand{ display:flex; align-items:center; gap:14px; }
-.brand img{ width:56px; height:56px; filter:drop-shadow(0 2px 6px #000a); }
-.brand small{ display:block; color:var(--dim); letter-spacing:.18em; text-transform:uppercase; font-size:11px; }
-h1{ margin:0; font-size:34px; font-weight:600; letter-spacing:.02em; color:var(--gold2); text-shadow:0 2px 0 #0008; }
-#banner{ margin:26px 0 0; font-size:19px; color:var(--ink); max-width:30ch; }
+.brand img{ width:62px; height:62px; filter:drop-shadow(0 2px 3px #5a3a1a88); }
+.brand small{ display:block; color:var(--ink2); letter-spacing:.22em; text-transform:uppercase; font-size:11px; }
+h1{ margin:0; font-size:32px; font-weight:700; letter-spacing:.01em; color:#4a2a10; font-variant:small-caps; }
+.rule{ height:12px; margin:14px 0 4px; background:radial-gradient(circle,#8a5a2a 2px,transparent 3px) 50% 50%/14px 12px no-repeat, linear-gradient(90deg,transparent,#8a5a2a 20%,#8a5a2a 80%,transparent) 50% 50%/100% 1px no-repeat; }
+#banner{ margin:10px 0 0; font-size:19px; font-style:italic; color:var(--ink2); max-width:32ch; }
 .spacer{ flex:1; }
-#status{ color:var(--dim); margin-bottom:10px; min-height:22px; }
-#status b{ color:var(--ink); font-weight:600; }
-#status .new{ color:var(--gold2); }
-.actions{ display:flex; gap:12px; align-items:center; }
-button{ font:inherit; cursor:pointer; border:1px solid var(--line); background:#1b2440; color:var(--ink); padding:9px 16px; border-radius:8px; }
-button:hover:not(:disabled){ border-color:#46557f; background:#212c4e; }
+#status{ color:var(--ink2); margin-bottom:12px; min-height:22px; }
+#status b{ color:var(--ink); } #status .new{ color:var(--red); font-weight:700; }
+.actions{ display:flex; gap:18px; align-items:center; }
+button{ font:inherit; cursor:pointer; color:var(--ink); background:#efe0bb; border:1px solid #a7865a; padding:7px 14px; border-radius:4px; box-shadow:0 1px 0 #fff8 inset; }
+button:hover:not(:disabled){ background:#f7ebcc; border-color:#7a5a32; }
 button:disabled{ opacity:.45; cursor:default; }
-#play{ font-size:22px; font-weight:700; letter-spacing:.08em; padding:14px 46px; border:none; border-radius:10px; color:#1d1505;
-  background:linear-gradient(#f2cd6c,#c9922c); box-shadow:0 3px 0 #7c5716, 0 10px 30px #d6a64033; }
-#play:hover:not(:disabled){ background:linear-gradient(#ffd97a,#d69d33); }
-#update{ border-color:#7c5716; color:var(--gold2); }
-#bar{ height:8px; border-radius:4px; background:#0a0e19; border:1px solid var(--line); margin-top:14px; overflow:hidden; display:none; }
-#bar i{ display:block; height:100%; width:0; background:linear-gradient(90deg,#c9922c,#f2cd6c); transition:width .2s; }
-#barTxt{ color:var(--dim); font-size:13px; margin-top:6px; min-height:18px; }
-#links{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:22px; font-size:13px; }
-#links a{ color:var(--dim); text-decoration:none; border-bottom:1px dotted var(--faint); cursor:pointer; }
-#links a:hover{ color:var(--gold2); }
-#offline{ display:none; color:#e0a070; font-size:13px; margin-top:8px; }
-/* the side panel */
-#side{ background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; min-width:0; min-height:0; height:100vh; }
-nav{ display:flex; border-bottom:1px solid var(--line); }
-nav button{ flex:1; border:none; border-radius:0; background:none; padding:14px 0; color:var(--dim); border-bottom:2px solid transparent; }
-nav button.on{ color:var(--gold2); border-bottom-color:var(--gold); }
-.page{ display:none; padding:20px 24px; overflow:auto; flex:1; min-height:0; }
+/* PLAY: a wax seal */
+#play{ width:132px; height:132px; border-radius:50%; border:none; padding:0; font-size:22px; font-weight:700; letter-spacing:.12em; color:#f6dccb; text-shadow:0 -1px 0 #4a0c06;
+  background:radial-gradient(circle at 38% 32%,#d0563f,#a3301f 45%,#6e170d 78%); box-shadow:0 6px 10px #5a1a0c66, inset 0 0 0 6px #8a2416, inset 0 0 0 8px #c24a35aa, inset 0 -6px 10px #0005;
+  clip-path:polygon(50% 0,58% 3%,66% 2%,73% 6%,81% 7%,86% 13%,93% 18%,95% 26%,99% 33%,98% 41%,100% 50%,98% 59%,99% 67%,95% 74%,93% 82%,86% 87%,81% 93%,73% 94%,66% 98%,58% 97%,50% 100%,42% 97%,34% 98%,27% 94%,19% 93%,14% 87%,7% 82%,5% 74%,1% 67%,2% 59%,0 50%,2% 41%,1% 33%,5% 26%,7% 18%,14% 13%,19% 7%,27% 6%,34% 2%,42% 3%); transition:transform .12s; }
+#play:hover:not(:disabled){ background:radial-gradient(circle at 38% 32%,#de6248,#b03622 45%,#7a1a10 78%); transform:rotate(-4deg) scale(1.03); }
+#play:disabled{ filter:grayscale(.6); opacity:.6; }
+#update{ border-color:var(--red); color:var(--red); font-weight:700; background:#f6e7c6; }
+#bar{ height:7px; border-radius:4px; background:#d9c49a; border:1px solid #a7865a; margin-top:16px; overflow:hidden; display:none; }
+#bar i{ display:block; height:100%; width:0; background:linear-gradient(90deg,#6e170d,#b73a28); transition:width .2s; }
+#barTxt{ color:var(--ink2); font-size:13px; margin-top:6px; min-height:18px; font-style:italic; }
+#offline{ display:none; color:var(--red); font-size:13px; margin-top:8px; }
+#links{ display:flex; flex-wrap:wrap; gap:4px 16px; margin-top:16px; font-size:13px; }
+#links a{ color:var(--ink2); text-decoration:none; border-bottom:1px solid #a7865a; cursor:pointer; }
+#links a:hover{ color:var(--red); border-color:var(--red); }
+/* the right column: ribbon tabs and the pages, ruled like a ledger */
+nav{ display:flex; gap:6px; }
+nav button{ position:relative; flex:1; border:none; border-radius:0; padding:8px 0 13px; background:#c9a46a; color:#4a2a10; font-weight:700; box-shadow:none; letter-spacing:.04em;
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%); }
+nav button:hover:not(:disabled){ background:#d6b47c; }
+nav button.on, nav button.on:hover:not(:disabled){ background:linear-gradient(#a3301f,#7a1a10); color:#f6dccb; }
+.pages{ flex:1; min-height:0; position:relative; margin-top:10px; border-top:1px solid #a7865a; }
+.page{ display:none; height:100%; overflow:auto; padding:14px 6px 4px 2px; }
 .page.on{ display:block; }
-.rel{ margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid #222b45; }
-.rel h3{ margin:0 0 2px; font-size:17px; color:var(--ink); }
-.rel .meta{ color:var(--faint); font-size:12px; margin-bottom:6px; }
-.rel .meta .tag{ color:var(--gold); border:1px solid #6b5420; border-radius:10px; padding:0 7px; margin-left:6px; }
-.rel ul{ margin:0; padding-left:18px; color:#cfc8b4; } .rel li{ margin:3px 0; }
-.row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #222b45; }
-.row .grow{ flex:1; min-width:0; } .row small{ color:var(--faint); display:block; }
-.row button{ padding:6px 10px; font-size:13px; }
-.toolbar{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
-.empty{ color:var(--faint); padding:20px 0; }
-label.set{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid #222b45; }
-label.set small{ display:block; color:var(--faint); }
-select{ font:inherit; background:#0f1527; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
-input[type=checkbox]{ width:18px; height:18px; accent-color:var(--gold); }
-.path{ font-size:12px; color:var(--faint); word-break:break-all; }
-#toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#222c4a; border:1px solid #3a4670; padding:10px 16px; border-radius:8px; display:none; max-width:80%; }
-#toast.err{ border-color:#7a3a2c; background:#3a1d18; }
-.foot{ color:var(--faint); font-size:12px; padding:10px 24px; border-top:1px solid var(--line); }
+.page::-webkit-scrollbar{ width:9px; } .page::-webkit-scrollbar-thumb{ background:#b8986a; border-radius:5px; } .page::-webkit-scrollbar-track{ background:transparent; }
+.rel{ margin-bottom:16px; padding-bottom:12px; border-bottom:1px dashed #b39a72; }
+.rel h3{ margin:0 0 1px; font-size:18px; color:#4a2a10; font-variant:small-caps; }
+.rel .meta{ color:var(--faint); font-size:12px; margin-bottom:5px; font-style:italic; }
+.rel .meta .tag{ color:#f6dccb; background:var(--red); border-radius:2px; padding:0 6px; margin-left:6px; font-style:normal; font-size:11px; letter-spacing:.05em; }
+.rel .meta .tag.inst{ background:#6b5a3a; }
+.rel ul{ margin:0; padding-left:18px; color:var(--ink); } .rel li{ margin:3px 0; } .rel li::marker{ color:var(--red); content:'✦  '; font-size:10px; }
+.row{ display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px dashed #b39a72; }
+.row .grow{ flex:1; min-width:0; } .row small{ color:var(--faint); display:block; font-style:italic; }
+.row button{ padding:4px 9px; font-size:13px; }
+.toolbar{ display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.empty{ color:var(--faint); padding:16px 0; font-style:italic; }
+label.set{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:11px 0; border-bottom:1px dashed #b39a72; }
+label.set small{ display:block; color:var(--faint); font-style:italic; }
+select{ font:inherit; background:#f4e8c9; color:var(--ink); border:1px solid #a7865a; border-radius:4px; padding:5px 8px; }
+input[type=checkbox]{ width:18px; height:18px; accent-color:var(--red); }
+.path{ font-size:12px; color:var(--faint); word-break:break-all; font-family:ui-monospace,Consolas,monospace; }
+#toast{ position:fixed; left:50%; bottom:46px; transform:translateX(-50%); background:#f4e8c9; color:var(--ink); border:1px solid #7a5a32; padding:9px 16px; border-radius:4px; display:none; max-width:80%; box-shadow:0 8px 20px #0008; z-index:5; }
+#toast.err{ border-color:var(--red); color:var(--red); }
+.foot{ color:var(--faint); font-size:11px; text-align:right; margin-top:6px; font-style:italic; }
 </style></head>
 <body>
-<div id="app">
-  <section id="hero">
-    <div class="brand"><img src="crest.png" alt=""><div><small>Restful Knight Gaming</small><h1 class="serif">Kingdom's Last Knight</h1></div></div>
-    <p id="banner" class="serif">Ride out from Luminar, cleanse the ten chapels and free their generals.</p>
-    <div class="spacer"></div>
-    <div id="status">Checking for updates…</div>
-    <div class="actions"><button id="play" disabled>PLAY</button><button id="update" style="display:none">Update</button></div>
-    <div id="bar"><i></i></div><div id="barTxt"></div>
-    <div id="offline">Offline — you can still play the version you have.</div>
-    <div id="links"></div>
-  </section>
-  <section id="side">
-    <nav><button data-p="notes" class="on">Patch notes</button><button data-p="saves">Saves</button><button data-p="settings">Settings</button></nav>
-    <div class="page on" id="p-notes"></div>
-    <div class="page" id="p-saves">
-      <div class="toolbar"><button id="bkNow">Back up now</button><button id="bkImport">Import a backup…</button></div>
-      <div id="bkList"></div>
-    </div>
-    <div class="page" id="p-settings">
-      <label class="set"><span>Graphics<small>How much detail the game draws. Auto picks for this computer.</small></span>
-        <select id="sGfx"><option value="auto">Auto</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
-      <label class="set"><span>Full screen<small>Start the game full screen (F11 switches any time).</small></span><input type="checkbox" id="sFull"></label>
-      <label class="set"><span>Check for updates when the launcher opens<small>It only tells you — nothing updates until you click Update.</small></span><input type="checkbox" id="sCheck"></label>
-      <div class="set" style="display:block;padding:12px 0;border-bottom:1px solid #222b45"><div>Game files<small style="color:var(--faint);display:block">Where the downloaded game lives on this computer.</small></div>
-        <div class="path" id="sDir"></div><div style="margin-top:8px;display:flex;gap:8px"><button id="sMove">Move…</button><button id="sOpen">Open folder</button></div></div>
-    </div>
-    <div class="foot" id="foot"></div>
-  </section>
+<div id="scroll">
+  <div class="rod"></div>
+  <div class="paper">
+    <section class="col" id="hero">
+      <div class="brand"><img src="crest.png" alt=""><div><small>Restful Knight Gaming</small><h1>Kingdom's Last Knight</h1></div></div>
+      <div class="rule"></div>
+      <p id="banner">Ride out from Luminar, cleanse the ten chapels and free their generals.</p>
+      <div class="spacer"></div>
+      <div id="status">Checking for updates…</div>
+      <div class="actions"><button id="play" disabled>PLAY</button><button id="update" style="display:none">Update</button></div>
+      <div id="bar"><i></i></div><div id="barTxt"></div>
+      <div id="offline">Offline — you can still play the version you have.</div>
+      <div id="links"></div>
+    </section>
+    <section class="col" id="side">
+      <nav><button data-p="notes" class="on">Patch notes</button><button data-p="saves">Saves</button><button data-p="settings">Settings</button></nav>
+      <div class="pages">
+      <div class="page on" id="p-notes"></div>
+      <div class="page" id="p-saves">
+        <div class="toolbar"><button id="bkNow">Back up now</button><button id="bkImport">Import a backup…</button></div>
+        <div id="bkList"></div>
+      </div>
+      <div class="page" id="p-settings">
+        <label class="set"><span>Graphics<small>How much detail the game draws. Auto picks for this computer.</small></span>
+          <select id="sGfx"><option value="auto">Auto</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
+        <label class="set"><span>Full screen<small>Start the game full screen (F11 switches any time).</small></span><input type="checkbox" id="sFull"></label>
+        <label class="set"><span>Check for updates when the launcher opens<small>It only tells you — nothing updates until you click Update.</small></span><input type="checkbox" id="sCheck"></label>
+        <div style="padding:11px 0;border-bottom:1px dashed #b39a72"><div>Game files<small style="color:var(--faint);display:block;font-style:italic">Where the downloaded game lives on this computer.</small></div>
+          <div class="path" id="sDir"></div><div style="margin-top:8px;display:flex;gap:8px"><button id="sMove">Move…</button><button id="sOpen">Open folder</button></div></div>
+      </div>
+      </div>
+      <div class="foot" id="foot"></div>
+    </section>
+  </div>
+  <div class="rod"></div>
 </div>
 <div id="toast"></div>
 <script>
@@ -115,8 +142,8 @@ async function refresh(){
   $('foot').textContent=`Launcher ${S.version} · ${S.platform==='win32'?'Windows':S.platform==='darwin'?'Mac':'Linux'}`;
 }
 function notes(){ const inst=S.installedBuild||0;
-  $('p-notes').innerHTML=(S.notes||[]).map(n=>{ const b=parseInt(String(n.v).replace(/\D/g,''))||0, tag=S.installed&&n.v===S.installed?'<span class="tag">installed</span>':(b>inst&&S.installed?'<span class="tag">new</span>':'');
-    return `<div class="rel"><h3 class="serif">${esc(n.title)}</h3><div class="meta">${esc(n.v)} · ${esc(fmtDate(n.date))}${tag}</div><ul>${(n.notes||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`; }).join('')||'<div class="empty">No notes yet.</div>'; }
+  $('p-notes').innerHTML=(S.notes||[]).map(n=>{ const b=parseInt(String(n.v).replace(/\D/g,''))||0, tag=S.installed&&n.v===S.installed?'<span class="tag inst">installed</span>':(b>inst&&S.installed?'<span class="tag">new</span>':'');
+    return `<div class="rel"><h3>${esc(n.title)}</h3><div class="meta">${esc(n.v)} · ${esc(fmtDate(n.date))}${tag}</div><ul>${(n.notes||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`; }).join('')||'<div class="empty">No notes yet.</div>'; }
 function sets(){ $('sGfx').value=S.settings.gfx||'auto'; $('sFull').checked=!!S.settings.fullscreen; $('sCheck').checked=S.settings.checkOnLaunch!==false; $('sDir').textContent=S.gameDir; }
 $('sGfx').onchange=e=>KLK.settings({gfx:e.target.value}); $('sFull').onchange=e=>KLK.settings({fullscreen:e.target.checked}); $('sCheck').onchange=e=>KLK.settings({checkOnLaunch:e.target.checked});
 $('sOpen').onclick=()=>KLK.openFolder(); $('sMove').onclick=async()=>{ const r=await KLK.chooseFolder(); if(r.ok&&r.dir){ toast('Game files moved.'); refresh(); } else if(r.error) toast(r.error,true); };
