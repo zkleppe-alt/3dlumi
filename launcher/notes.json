@@ -1,5 +1,15 @@
 [
  {
+  "v": "V290",
+  "date": "2026-11-27",
+  "title": "The war table",
+  "notes": [
+   "The war table in Ironhold Keep is now a game: walk up to it and choose \"Plan\" to play Vanquish, a chess-like strategy game by theoriginalkarl, included with their permission.",
+   "Play against the AI, a friend on the same screen, the campaign, or online. Leave the table any time to step back into the keep.",
+   "Vanquish is a playtest: online, finished games are recorded on its maker's server to help balance it, and online matches have chat."
+  ]
+ },
+ {
   "v": "V289",
   "date": "2026-11-27",
   "title": "Home for supper",

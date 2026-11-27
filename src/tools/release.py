@@ -18,7 +18,7 @@ out = os.path.join(site, 'launcher'); os.makedirs(out, exist_ok=True)
 def want(rel):
     if rel in ('index.html', 'three.min.js', 'manifest.webmanifest'): return True
     if '/' not in rel and rel.endswith('.png'): return True
-    return rel.startswith('models/') or rel.startswith('music/')
+    return rel.startswith('models/') or rel.startswith('music/') or (rel.startswith('games/') and not rel.endswith('.md'))
 
 files, total = [], 0
 for root, dirs, names in os.walk(site):
