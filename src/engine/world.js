@@ -1600,7 +1600,11 @@ function buildWorld(WD,opt){
   signs.forEach(s=>{ const lines=s.v.split('\n'); lv.spots.push({key:s.x+','+s.y,x:s.wx,z:s.wz,r:0.9,label:'Read',who:lines[0].replace(/^[^A-Za-z—]+/,'').trim()||'Sign',lines:[lines.slice(1).filter(l=>!/Ⓐ/.test(l)).join('\n').trim()||lines[0]]}); });
   // ── townsfolk ──
   WD.villagers.forEach(v=>{ const vk='v:'+v.x+','+v.y+':'+v.outfit, dn=(typeof DIALOGUE!=='undefined'&&DIALOGUE.lines)?DIALOGUE.lines(vk):null;   /* V132: the story's name for him (Old Man Elijah) picks his look */
-    const f=addPerson(lv,chunkAt(v.x,v.y).g,v.outfit,v.x+0.5,v.y+0.5,lv.ground(v.x+0.5,v.y+0.5)+0.02,v.name||(dn&&dn.who)||OUTFIT_NAMES[v.outfit]||'Villager',cleanLines(v.lines),{rest:hsh(v.x,v.y)*6,lazy:typeof folkWake==='function'}); f.chunk=chunkAt(v.x,v.y); f.key='v:'+v.x+','+v.y+':'+v.outfit; });
+    const f=addPerson(lv,chunkAt(v.x,v.y).g,v.outfit,v.x+0.5,v.y+0.5,lv.ground(v.x+0.5,v.y+0.5)+0.02,v.name||(dn&&dn.who)||OUTFIT_NAMES[v.outfit]||'Villager',cleanLines(v.lines),{rest:hsh(v.x,v.y)*6,lazy:typeof folkWake==='function'}); f.chunk=chunkAt(v.x,v.y); f.key='v:'+v.x+','+v.y+':'+v.outfit;
+    /* V285: which village they belong to (their clothes, their stance, later their home) and how they stand about */
+    { let bt=null, bd=1e9; (WD.towns||[]).forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-v.x,ty-v.y); if(d<bd){ bd=d; bt=n; } }); f.town=bt; }
+    { const hh=hsh(v.x*3+1,v.y*7+2), guard=/soldier|guard|watcher/.test(v.outfit), kid=/child/.test(v.outfit);
+      f.idle=guard?'guard':kid?null:hh<0.22?null:hh<0.38?'behind':hh<0.52?'crossed':hh<0.64?'folded':hh<0.82?'clasped':'thumbs'; f.lookAbout=guard?0.6:0.45; f.breathe=true; } });
   // ── the forest hollows and anything else the wiring hangs off a tile ──
   for(let y=0;y<H;y++) for(let x=0;x<W;x++) if(T(x,y)===35){ const fn=opt.hollow&&opt.hollow(x,y); if(fn) lv.spots.push({x:x+0.5,z:y+1.2,r:1.3,label:'Enter',who:'The wood',action:fn}); }
   // ── Abaddon's barriers: a dome of dark power over every town still sealed ──

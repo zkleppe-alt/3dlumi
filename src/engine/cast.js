@@ -96,6 +96,14 @@ function faceLife(K,st,t,dt,ph,talking,P,f){ const FG=K.userData.face; if(!FG) r
   if(FG.jaw){ const p0=FG.jaw.userData.p0; FG.jaw.position.y=p0.y-st.mo*0.0042; } }
 // the cast at life: the hero's own idle (breathing, the weight shifting, glances) and walk; the head turns to you as
 //  you come near; in talk they gesture and nod; and some wave as you arrive
+// V285: the stances (shoulder x,y,z, elbow x, elbow y, wrist x) for each arm — right AR (out = −z), left AL (out = +z); forward = −x
+const IDLE_STANCE={
+  behind:{R:[0.4,0.9,0.1,-1.3],L:[0.4,-0.9,-0.1,-1.3],chest:-0.03,sway:0.012},          // hands clasped at the small of the back
+  crossed:{R:[-0.25,0.9,0.1,-1.6],L:[-0.25,-0.9,-0.1,-1.6],chest:0.02,sway:0.01},      // arms crossed
+  folded:{R:[-0.15,1.2,0.25,-1.7],L:[-0.15,-1.2,-0.25,-1.85],chest:0.02,sway:0.01},    // arms folded close, hands tucked
+  clasped:{R:[0,0.9,-0.45,-1.4],L:[0,-0.9,0.45,-1.4],sway:0.012},                       // hands folded before them
+  thumbs:{R:[0,0.9,-0.15,-0.7],L:[0,-0.9,0.15,-0.7],sway:0.015},                        // thumbs at the belt
+  guard:{R:[-0.12,0,-0.08,-0.3],L:[0.04,0,0.1,-0.15],chest:-0.04,sway:0.004} };         // at their post, square            // at their post, square
 function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hypot(f.x-P.x,f.z-P.z);
   const st=K.userData._cs||(K.userData._cs={hy:0,met:false,wave:0,tk:0});
   if(d<3.2&&!st.met){ st.met=true; if(((Math.floor(ph*100)*7)%10)/10<0.45) st.wave=1.6; } if(d>6) st.met=false;
@@ -116,7 +124,14 @@ function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hy
   if(f.sit&&K.userData.skirts&&K.userData.skirts.B.visible) K.userData.skirts.B.visible=false;   // seated: the back of the skirt is under him
   if(r.shM&&r.shM.visible&&K.userData.castD&&!K.userData.castD.knight) r.shM.visible=false;   // no knight's shield on the townsfolk (the seated pose would show it)
   if(f.pose) f.pose(r,t,dt,talking,K);   // a pose of its own laid over the idle (the minstrels at their instruments)
-  { const F=K.userData.b3; if(F&&F.sync&&F.hold&&F.hold.visible&&(f.pose||f.lookAbout||f.breathe)) F.sync(); }   // the new body takes up what was laid on the rig after its own update
+  /* V285: HOW THEY STAND. Standing about (not walking, not talking), townsfolk settle into a stance of their own — hands clasped
+     behind the back, arms folded, hands on the hips, thumbs in the belt — and the guards stand square with their weight set; each
+     eases in when they stop and out when they move off, laid over the idle clip so they still breathe and shift. */
+  if(f.idle){ const want=!f.walking&&!talking?1:0; st.iw=(st.iw||0)+(want-(st.iw||0))*Math.min(1,dt*2.5); const w=st.iw;
+    if(w>0.01){ const S=IDLE_STANCE[f.idle]; if(S){ const L=(o,ax,v)=>{ o.rotation[ax]+=(v-o.rotation[ax])*w; };
+      [['AR',S.R],['AL',S.L]].forEach(([k,A])=>{ if(!A) return; L(r[k].sh,'x',A[0]); L(r[k].sh,'y',A[1]); L(r[k].sh,'z',A[2]); L(r[k].el,'x',A[3]); if(A[4]!=null) L(r[k].el,'y',A[4]); if(A[5]!=null&&r[k].hand) L(r[k].hand,'x',A[5]); });
+      if(S.chest) r.torso.rotation.x+=S.chest*w; if(S.sway) r.torso.rotation.z+=Math.sin(t*0.5+ph*3)*S.sway*w; } } }
+  { const F=K.userData.b3; if(F&&F.sync&&F.hold&&F.hold.visible&&(f.pose||f.lookAbout||f.breathe||f.idle)) F.sync(); }   // the new body takes up what was laid on the rig after its own update
   faceLife(K,st,t,dt,ph,talking,d<4.5?P:null,f);
   if(st.wave>0&&!talking){ st.wave-=dt; const w=Math.min(1,st.wave*3,(1.6-st.wave)*4); r.AR.sh.rotation.z-=w*1.15; r.AR.sh.rotation.x+=w*-0.35; r.AR.el.rotation.x+=w*(-1.45+Math.sin(t*9)*0.25); }   /* V155: a friendly hand raised, elbow bent — not an arm thrust out */ }
 // ════════════════════════════════════════════════════════════════

@@ -232,6 +232,19 @@ const BODY3=(function(){
     const n=ix?ix.count:P.count; for(let t=0;t<n;t++){ const j=ix?ix.getX(t):t; if(seen.has(j)) continue; seen.add(j); let bi=0,bw=-1; for(let q=0;q<4;q++){ const w=SW.getComponent?SW.getComponent(j,q):[SW.getX(j),SW.getY(j),SW.getZ(j),SW.getW(j)][q]; if(w>bw){ bw=w; bi=[SI.getX(j),SI.getY(j),SI.getZ(j),SI.getW(j)][q]; } }
       const rg=regionOfPivot(r,bones[bi],P.getY(j)); if(rg) cnt[rg]=(cnt[rg]||0)+1; } return cnt; }
   const hex=c=>c&&c.isColor?c.getHex():c;
+  const TOWN_IX={Hearthvale:0,Homestead:0,Ironhold:1,Saltmere:2,Thornwood:3,Dusthaven:4,Crystalpeak:5,Ashfield:6,Stormgate:7,Shadowmere:8,Hellgate:9};
+  const VCLOTH={   // V285: each village's cloth (tops, breeches/skirts) and the hair you see most there
+    Hearthvale:{top:[0xb5833f,0x8a5a32,0x6f7a3a,0xa8452f,0xd8c39a,0x7a6a4a],bot:[0x5a4630,0x6b5a3a,0x4a3a2a,0x5e5a40],hair:[0x6a4422,0x4a3020,0x8a5a2a,0xb08040,0x2a1e16]},
+    Homestead:{top:[0xb5833f,0x8a5a32,0x6f7a3a,0xd8c39a],bot:[0x5a4630,0x4a3a2a],hair:[0x6a4422,0x4a3020,0xb08040]},
+    Ironhold:{top:[0x4a4e56,0x6a5040,0x3c4658,0x7a3a2a,0x5a5248],bot:[0x2e2e32,0x3e3a36,0x4a3e34],hair:[0x2a1e16,0x1e1a18,0x4a3020,0x6a4422]},
+    Saltmere:{top:[0xe8e4d8,0x2f4f7a,0x5b8bb0,0xc8b48a,0x9ab8c8],bot:[0x2a3a56,0xb8ab8a,0x3e4a5a],hair:[0xc8a060,0xa07840,0x6a4422,0xe0c890]},
+    Thornwood:{top:[0x4f6b34,0x6b7a3a,0x7a5a36,0x3e5a3a,0x8a6a3a],bot:[0x4a3a26,0x3a3a2a,0x4e4630],hair:[0x6a4422,0x8a4a22,0x4a3020,0x3a2818]},
+    Dusthaven:{top:[0xd8c28a,0xb5603a,0x3a4a7a,0xd89a2a,0xe8dcc0],bot:[0xc8b080,0x8a6a40,0x6a4a30],hair:[0x1e1a18,0x2a1e16,0x3a2818]},
+    Crystalpeak:{top:[0xe8e4dc,0x6a9ac8,0x8a2a3a,0x4a7a6a,0xc84a3a],bot:[0x5a4a3a,0x3a4a5a,0x4a3a3a],hair:[0x1e1a18,0x2a1e16,0x3a2818]},
+    Ashfield:{top:[0x5a5450,0x6e2a24,0xb0602a,0x8a8070,0x4a4440],bot:[0x3a3430,0x4a4038,0x2e2a28],hair:[0x2a1e16,0x4a3020,0x6a3a1e,0x1e1a18]},
+    Stormgate:{top:[0x2a4a8a,0xe0dccc,0xc8a040,0x8a2a2a,0x3a5a9a],bot:[0x2e3448,0x4a3a2a,0x3a3a42],hair:[0x4a3020,0x2a1e16,0x8a5a2a,0xc8a060]},
+    Shadowmere:{top:[0x4a3e5a,0x4a5a3e,0x5a5a62,0x2e3a3a,0x6a5a7a],bot:[0x2e2a30,0x3a3a32,0x2a2e2a],hair:[0x1e1a18,0x3a2818,0x5a5650]},
+    Hellgate:{top:[0x8a8070,0x6a5a4a,0x4a4440,0x7a6a5a],bot:[0x4a4038,0x3a342e],hair:[0x5a5650,0x3a2818,0x2a1e16]} };
   function folkSpec(K){ const D=K.userData.castD, base=K.userData.castBase||{}, r=K.rig; if(!D||!K.body||!K.body.body) return null;
     const total=coverage(K.body.body,r), dress={}, kind={};
     const best={}; (K.body.shells||[]).forEach((sh,i)=>{ const c=coverage(sh,r), nm=(D.shells&&D.shells[i]&&D.shells[i].mat)||''; for(const rg in c){ const f=c[rg]/Math.max(1,total[rg]||c[rg]); const kd=(base[nm]&&base[nm][0])||'cloth'; if(kd==='gold'&&dress[rg]!=null&&f<0.9) continue;   /* gold is trim: it doesn't take a region from the plate or cloth it edges */
@@ -243,8 +256,30 @@ const BODY3=(function(){
     const N=NAMED[(K.cast||'').replace(/^folk:/,'')]||{}, fem=D.body==='woman';
     const hairCol=N.hairCol!==undefined?N.hairCol:base.hair?base.hair[1]:0x4a3020, beard=N.beard!==undefined?N.beard:base.beard?base.beard[1]:null;
     let hair=N.hair||(base.hair?(fem?'Hair_Long':'Hair_SimpleParted'):null); if(hasHat.length&&hair&&!N.hair) hair=fem?'Hair_Buns':'Hair_Buzzed';   /* V283: under a hood, hair cut close so nothing pokes out of it */ { const hk=typeof KIT_HAT!=='undefined'?KIT_HAT[(K.cast||'').replace(/^folk:/,'')]:null; if(hk==='hood'&&!N.hair) hair=fem?'Hair_BuzzedFemale':'Hair_Buzzed'; }   /* the named keep their own hair under a tiara or circlet */
+    /* V285: THE VILLAGES' OWN CLOTHES, THEIR GUARDS' COLOURS, HAIR AND AGE. Each townsperson (not the named, who keep their own looks)
+       is dressed from their village's palette — a top, and breeches or a skirt — chosen by a seed of their own, so a village reads
+       as one place and no two neighbours match; the guards wear their town's steel and its tunic colour; hair styles and colours
+       vary, some are grey with age (and stoop a little), some men are bearded. */
+    const dress0=Object.assign({},dress);
+    let age=false; const town=K.userData.town, cast0=(K.cast||'').replace(/^folk:/,''), named=!!NAMED[cast0];
+    if(town&&!named){ const sd=String(K.userData.vseed||cast0), h=k=>{ let x=2166136261; const t=sd+'|'+k; for(let i=0;i<t.length;i++){ x^=t.charCodeAt(i); x=Math.imul(x,16777619); } return ((x>>>0)%10000)/10000; };
+      const TP=VCLOTH[town]||VCLOTH.Hearthvale, pick=(a,k)=>a[Math.floor(h(k)*a.length)%a.length];
+      const guard=/soldier|guard|watcher/.test(cast0), child=/child/.test(cast0);
+      if(guard){ const ti=TOWN_IX[town], pal=typeof ARMOR!=='undefined'&&ARMOR.TOWN_PAL&&ARMOR.TOWN_SETS&&ARMOR.TOWN_SETS[ti]?ARMOR.TOWN_PAL[ARMOR.TOWN_SETS[ti].id]:null;
+        const st=pal&&pal.steel?pal.steel.color.getHex():0x8b96a4, tun=pal&&pal.tunic?pal.tunic.color.getHex():TP.top[0];
+        for(const rg in dress){ if(kind[rg]==='steel'||kind[rg]==='gold') dress[rg]=kind[rg]==='gold'&&pal&&pal.gold?pal.gold.color.getHex():st; else if(/chest|belly|pelvis/.test(rg)) dress[rg]=tun; } }
+      else { const top=pick(TP.top,'top'), bot=pick(TP.bot,'bot'), shoe=pick([0x4a3020,0x3a2818,0x5a3e26],'shoe'), robe=dress.thigh!=null&&dress.thigh===dress.chest;
+        for(const rg in dress){ if(kind[rg]!=='cloth') continue; if(/chest|belly|upperarm|forearm/.test(rg)) dress[rg]=top; else if(/pelvis|thigh|calf/.test(rg)) dress[rg]=robe?top:bot; else if(/boot|foot/.test(rg)) dress[rg]=shoe; } }
+      if(!child&&base.hair){ age=h('age')<0.18; }
+      K.userData.vlook={town,guard,age}; K.userData._vh=h; K.userData._vTP=TP; K.userData._remap={}; for(const rg in dress) if(dress0[rg]!=null&&dress0[rg]!==dress[rg]) K.userData._remap[dress0[rg]]=dress[rg]; }
     const pat={}; if(N.pat) (K.body.shells||[]).forEach((sh,i)=>{ const nm=D.shells&&D.shells[i]&&D.shells[i].mat; if(N.pat[nm]!=null) pat[hex(sh.material.color)]=N.pat[nm]; });
-    return {fem,skin:base.skin?base.skin[1]:0xe0b080,dress,kind,hair,hairCol,beard,hats:hasHat,old:!!N.old,pat,hide:N.hide||[],bun:!!N.bun,crown:!!N.crown}; }
+    let hair2=hair, hc=hairCol, bd=beard, old=!!N.old; const vh=K.userData._vh;
+    if(vh&&!named&&base.hair){ const TP=K.userData._vTP, under=hasHat.length;
+      if(!under&&!N.hair){ hair2=fem?(vh('hs')<0.8?'Hair_Long':'Hair_BuzzedFemale'):(vh('hs')<0.55?'Hair_SimpleParted':vh('hs')<0.85?'Hair_Buzzed':'Hair_Long'); }
+      hc=age?(vh('gc')<0.5?0xc8c4bc:0x9a968e):TP.hair[Math.floor(vh('hc')*TP.hair.length)%TP.hair.length];
+      if(!fem&&!/child/.test(cast0)&&(bd!=null||vh('bd')<0.35)) bd=hc;
+      if(age) old=true; }
+    return {fem,skin:base.skin?base.skin[1]:0xe0b080,dress,kind,hair:hair2,hairCol:hc,beard:bd,hats:hasHat,old,pat,hide:N.hide||[],bun:!!N.bun,crown:!!N.crown}; }
   const HAIR={}; function hairSrc(f){ if(HAIR[f]) return HAIR[f]; return HAIR[f]=loadLibs().then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(DIR+f+'.gltf',res,undefined,rej))); }
   function folk(K,given){ if(!on()||!K||!K.rig||K.userData.b3||(!K.userData.castD&&!given)) return null; const sp=given||folkSpec(K); if(!sp) return null; K.userData.b3='loading';
     const want=[get(sp.fem?FILE.F:FILE.M)]; if(sp.hair) want.push(hairSrc(sp.hair)); if(sp.beard!=null&&!sp.fem) want.push(hairSrc('Hair_Beard'));
@@ -272,7 +307,13 @@ const BODY3=(function(){
       if(sp.hide.length) K.traverse(o=>{ if(o.isMesh&&sp.hide.includes(o.userData.mat)) o.visible=false; });   // pieces the new garment does itself (Elijah's flowers are on the shirt now)
       { const tw=toonify(K,F), s1=F.sync; F.sync=()=>{ s1(); for(const t of tw) if(!t.userData.fixed) t.color.copy(t.userData.src.color).multiplyScalar(t.userData.k||1); }; }   // hats, belts, aprons, skirts: the same cel shading
       if(sp.old){ const s0=F.sync, sp2=F.B.spine_02, nk=F.B.neck_01; F.sync=()=>{ s0(); if(sp2) sp2.rotateX(0.16); if(nk) nk.rotateX(-0.1); }; }   // the old stoop a little
-      K.userData.b3=F; hook(K,F); try{ fitHats(F,K,sp); }catch(e){ if(window.DEBUG_B3) console.error('fitHats',e); } return F; }).catch(e=>{ K.userData.b3=null; if(window.DEBUG_B3) console.error('BODY3 folk',e); return null; }); }
+      K.userData.b3=F; hook(K,F); try{ fitHats(F,K,sp); }catch(e){ if(window.DEBUG_B3) console.error('fitHats',e); } try{ recolorRigid(K); }catch(e){} return F; }).catch(e=>{ K.userData.b3=null; if(window.DEBUG_B3) console.error('BODY3 folk',e); return null; }); }
+  /* V285: the old figure's rigid clothes (tunic skirts, aprons cut from the same cloth, sleeves' cuffs) take the new colours of the
+     garment they were cut from, so a re-dressed villager isn't a new shirt over last year's skirt. */
+  function recolorRigid(K){ const M=K.userData._remap; if(!M||!Object.keys(M).length) return; const keys=Object.keys(M).map(Number), c=new THREE.Color(), c2=new THREE.Color();
+    const near=hx=>{ c.setHex(hx); let best=null, bd=0.012; keys.forEach(k=>{ c2.setHex(k); const d=(c.r-c2.r)**2+(c.g-c2.g)**2+(c.b-c2.b)**2; if(d<bd){ bd=d; best=k; } }); return best; };
+    K.traverse(o=>{ if(!o.isMesh||o.isSkinnedMesh||!o.material||!o.material.color) return; for(let q=o;q;q=q.parent) if(q===K.rig.head) return; const k=near(o.material.color.getHex()); if(k==null) return;
+      const was=o.material.color.getHex(); o.material=o.material.clone(); o.material.color.setHex(M[k]); if(o.material.emissive&&o.material.emissive.getHex()) o.material.emissive.multiplyScalar(1); }); }
   /* V283: HATS SEATED ON THE HEAD. The posed body's head is measured (its skinned vertices, through the head pivot) and each worn
      piece set on it: a crown or circlet (shallow) sits down round the crown of the head; a hat or hood (deep) is raised until its top
      clears the head and hair, and let out if it's narrower than the head. Before, a formula from the old figure's head left brims at
@@ -327,7 +368,7 @@ const BODY3=(function(){
   // the folk are dressed as you come near them, a few at a time (so a town doesn't stall loading)
   const _fp=new THREE.Vector3();
   setInterval(()=>{ if(!on()||typeof ENGINE==='undefined'||!ENGINE.level||!ENGINE.P||window.NO_FOLK3) return; const lv=ENGINE.level, P=ENGINE.P; let n=0;
-    (lv.folk||[]).forEach(f=>{ if(n>=2) return; const K=f.g; if(!K||!K.userData||K.userData.b3||K.userData.b3swap) return; if(!K.userData.castD&&!K.userData.b3spec) return; if(Math.hypot(f.x-P.x,f.z-P.z)>40) return; n++; if(K.userData.castD) folk(K); else swapIn(f); }); },400);
+    (lv.folk||[]).forEach(f=>{ if(n>=2) return; const K=f.g; if(!K||!K.userData||K.userData.b3||K.userData.b3swap) return; if(!K.userData.castD&&!K.userData.b3spec) return; if(Math.hypot(f.x-P.x,f.z-P.z)>40) return; n++; if(f.town) K.userData.town=f.town; K.userData.vseed=f.key||((f.x*73856093)^(f.z*19349663)); if(K.userData.castD) folk(K); else swapIn(f); }); },400);
   // the hero is dressed as soon as he stands in the world (and again if he is ever rebuilt)
   setInterval(()=>{ if(typeof ENGINE==='undefined'||!ENGINE.K) return; const K=ENGINE.K; if(K.sculpted&&!K.bare&&!K.userData.b3) hero(K); },500);
   return { toonify, hero, folk, folkSpec, swapIn, specOf, get on(){ return on(); }, get, build, shell, paint, cut, unitOf, hook, mat, REG };
