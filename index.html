@@ -6,7 +6,7 @@
 <link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>/* V229: an installable web app — play offline, in its own window (sw.js); only where it is served over the web.
    V282: installed (its own window), it keeps the version you have until you choose to update, like the desktop launcher. */
-window.KLK_VER='V285';
+window.KLK_VER='V286';
 try{ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(!/localhost|127\.0\.0\.1/.test(location.hostname)||/[?&]sw=1/.test(location.search))) addEventListener('load',async()=>{
   try{ const reg=await navigator.serviceWorker.register('sw.js'); const app=/[?&]app=1/.test(location.search)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone;
     if(!app) return; await navigator.serviceWorker.ready; const sw=navigator.serviceWorker.controller||reg.active; if(!sw) return; sw.postMessage({pin:true});
@@ -4998,7 +4998,7 @@ const ENGINE=(function(){
     K.fp=fpMix>0.5;
     K.animate(dt,hold&&holdMode?holdMode:l>0.08?'walk':'idle',Math.min(1,l)/ps);
     if(typeof ARMOR!=='undefined'&&ARMOR.tick) ARMOR.tick(K);   /* V245: cloth kept out of the body */ K.position.set(P.x,P.y+J.h+(typeof COMBAT!=='undefined'?COMBAT.pl.jumpY*ps:0),P.z); K.falling=J.on&&J.fall?J.fallT:0; if(J.on) K.air=Math.max(K.air||0,J.fall?1:Math.min(1,J.h*1.4+0.25)); else if(!L.combat) K.air=0; K.rotation.y=P.face+(K.spinA||0);   // (small legs step faster to cover the same ground)
-    if(typeof DIALOGUE!=='undefined'&&(++presT%20)===0) L.folk.forEach(f=>{ if(!f.key) return; const on=DIALOGUE.present(f.key);   // who the story has here now
+    if(typeof DIALOGUE!=='undefined'&&(++presT%20)===0) L.folk.forEach(f=>{ if(!f.key||f.R) return; const on=DIALOGUE.present(f.key);   /* V286: the day's routine (routine.js) shows and hides the townsfolk it walks home */   // who the story has here now
       if(!on&&!f._phide){ f._phide=true; f.g.visible=false; f.mute=true; f.ghost=true; } else if(on&&f._phide){ f._phide=false; f.g.visible=true; f.mute=false; f.ghost=false; } });
     L.folk.forEach(f=>{ const u=f.g.userData, fs=ps*ACTOR_S(L); if(u.vs!==fs){ if(u.s0===undefined) u.s0=f.g.scale.x; f.g.scale.setScalar(u.s0*fs); u.vs=fs; } if(f.still){ if(f.near&&typeof folkPose==='function'&&Math.hypot(f.x-P.x,f.z-P.z)<f.near) folkPose(f,t,dt,P,!!(convo&&convo.f===f)); return; }   /* V283: held in place, but alive (f.near: the throne hall's king, guards and minstrels) */ f.g.position.y=f.y+Math.abs(Math.sin(t*1.3+(f.ph||0)))*0.02;
       const want=(convo&&convo.f===f)||Math.hypot(f.x-P.x,f.z-P.z)<2.5 ? Math.atan2(P.x-f.x,P.z-f.z) : (f.rest||0);
@@ -5053,7 +5053,7 @@ const ENGINE=(function(){
     if(window.__view){ cam.position.set(...window.__view.p); cam.lookAt(...window.__view.l); }
     { const PO=window.KLK_POST; if(PO&&PO.on) PO.render(L.scene,cam); else R.render(L.scene,cam); } requestAnimationFrame(frame); }   /* V135: High/Ultra draw through post.js */
 
-  return { pace:PACE, add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get pitch(){ return pitch; }, set pitch(v){ pitch=v; }, get fp(){ return FP; }, set fp(v){ FP=!!v; try{ localStorage.setItem('klk3d_fp',FP?'1':'0'); }catch(e){} if(FP) pitch=0.45; }, get fpMix(){ return fpMix; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, knock(fx,fz){ if(J.on||(L&&L.mounted&&L.mounted())) return false; const dx=P.x-fx, dz=P.z-fz, d=Math.hypot(dx,dz)||1; P.face=Math.atan2(-dx,-dz); holdT=2.65; holdMode='knock'; K._kn=0; K._kmode=false; J.kx=dx/d; J.kz=dz/d; J.kt=0.55; if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('knock'); }catch(_){} return true; },   /* V165: shoved over (Dylan): he faces the shove and goes down backwards */ get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
+  return { pace:PACE, add, get, go, start, speak, P, K, cam, renderer:R, moveInput:()=>moveDir()||{x:0,z:0}, levels, hud, dressKnight, get level(){ return L; }, unstick:(q)=>unstick(L,q), talking:()=>convo&&convo.f, get yaw(){ return yaw; }, set yaw(v){ yaw=v; }, get pitch(){ return pitch; }, set pitch(v){ pitch=v; }, get fp(){ return FP; }, set fp(v){ FP=!!v; try{ localStorage.setItem('klk3d_fp',FP?'1':'0'); }catch(e){} if(FP) pitch=0.45; }, get fpMix(){ return fpMix; }, get busy(){ return busy; }, hold(s,mode){ holdT=s; holdMode=mode||null; }, knock(fx,fz){ if(J.on||(L&&L.mounted&&L.mounted())) return false; const dx=P.x-fx, dz=P.z-fz, d=Math.hypot(dx,dz)||1; P.face=Math.atan2(-dx,-dz); holdT=2.65; holdMode='knock'; K._kn=0; K._kmode=false; J.kx=dx/d; J.kz=dz/d; J.kt=0.55; if(typeof SFX!=='undefined'&&SFX.play) try{ SFX.play('knock'); }catch(_){} return true; },   /* V165: shoved over (Dylan): he faces the shove and goes down backwards */ get holding(){ return holdT>0; }, calm, get ps(){ return ps; }, get airH(){ return J.h; }, pad:PAD, get airborne(){ return J.on; }, jump, plunge(){ if(J.on&&J.h>0.15){ J.v=Math.min(J.v,-10); return true; } return false; } };
 })();
 
 // ── engine/pets.js ──
@@ -6431,6 +6431,8 @@ function roomShell(spec,G){
   const frame0=room.children.length;
   const inner=[]; for(let x=1;x<W-1;x++){ if(isWall(x,0)) inner.push([x+0.5,1.0,0]); if(isWall(x,H-1)) inner.push([x+0.5,H-1,Math.PI]); }
   for(let y=1;y<H-1;y++){ if(isWall(0,y)) inner.push([1.0,y+0.5,Math.PI/2]); if(isWall(W-1,y)) inner.push([W-1,y+0.5,-Math.PI/2]); }
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++) if(isWall(x,y)){ const fl=(i,j)=>!isWall(i,j)&&G[j]&&G[j][i]!==undefined;   /* V287: partitions get the same wainscot, posts and beam on both faces */
+    if(fl(x+1,y)) inner.push([x+1.0,y+0.5,Math.PI/2]); if(fl(x-1,y)) inner.push([x,y+0.5,-Math.PI/2]); if(fl(x,y+1)) inner.push([x+0.5,y+1.0,0]); if(fl(x,y-1)) inner.push([x+0.5,y,Math.PI]); }
   const FR=pal.frame, wains=!TT||TT.fin==='plaster'||TT.fin==='adobe';
   inner.forEach(([x,z,ry],i)=>{ const g=group(x,0,z,room); g.rotation.y=ry; if(wains){ B(1.0,0.6,0.04,TT&&TT.fin==='adobe'?0xc4a272:FR,0,0,0.02,g); B(1.0,0.06,0.07,FR,0,0.6,0.03,g); }
     if(i%3===0&&(!TT||TT.fin!=='log')){ B(0.14,WALL_H,0.1,FR,0.5,0,0.05,g); } B(1.0,0.16,0.12,FR,0,WALL_H-0.16,0.06,g); });
@@ -6510,11 +6512,31 @@ function placeNpcs(lv,npcs,floor){ (npcs||[]).filter(n=>(n.floor||0)===floor).fo
   f.rest=faceTo(f.x,f.z,lv.W/2,lv.H-1); }); }
 
 // ── tile-coded rooms ──
-function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(spec);   // the farmhouse, furnished for real
+/* V287: A HOME OF ROOMS. The village homes were one room each with a single bed. A home (theme 'home', the stock one-room plan)
+   is now laid out as a house: a hall with the hearth, the table and its chairs, the dresser and the barrel; a partition wall with a
+   doorway; and a bedchamber with a bed for everyone who lives there (the folk inside by day, and those who come home at night —
+   ROUTINE.residents), a chest at each bed's foot, a dresser, a rug, a window. The layout varies a little from house to house. */
+function homePlan(spec){ const G0=spec.grid; if(!G0||spec.theme!=='home'||spec.planned||!/^(in:)?[a-z]+_home\d+|^(in:)?(tobias|mira|bram|home\d)/.test(spec.id||'')) return spec;
+  if(G0.length!==7||G0[0].length!==11) return spec;
+  const id=(spec.id||'').replace(/^in:/,'').replace(/:\d+$/,''), res=typeof ROUTINE!=='undefined'?ROUTINE.residents(id):[], n=Math.max(1,Math.min(4,res.length+(spec.npcs||[]).filter(q=>!/cat|dog|hound|goat|hen/i.test(q.name||'')).length));
+  const W=14, H=9, flip=hsh(id.length*7,id.charCodeAt(0)||1)<0.5, G=[]; for(let y=0;y<H;y++){ const r=[]; for(let x=0;x<W;x++) r.push(x===0||y===0||x===W-1||y===H-1?5:12); G.push(r); }
+  const X=x=>flip?W-1-x:x, set=(x,y,t)=>{ G[y][X(x)]=t; };
+  for(let y=1;y<H-1;y++) set(8,y,5); set(8,5,12);                                   // the partition and its doorway
+  set(3,0,45); set(1,0,51); set(6,0,51); set(11,0,51);                               // hearth, windows
+  set(3,8,9); set(4,8,9);                                                            // the front door
+  [[2,1],[3,1],[4,1],[2,2],[3,2],[4,2]].forEach(([x,y])=>set(x,y,13));                 // a hearth rug
+  set(4,4,40); set(3,4,41); set(5,4,41); set(4,5,41);                                // the table and its chairs
+  set(7,1,47); set(1,1,44); set(1,6,48); set(7,6,49); set(1,4,50);
+  const beds=[[9,1],[11,1],[9,5],[11,5]].slice(0,n);                                  // beds along the chamber's walls
+  beds.forEach(([x,y])=>{ set(x,y,42); set(x,y+1,43); if(y===1) set(x,3,66); else set(x,4,66); });
+  set(12,1,50); for(let y=1;y<=6;y++) if(G[y][X(10)]===12) set(10,y,13); if(n<4) set(12,6,49);   // a runner between the beds
+  const npcs=(spec.npcs||[]).map((q,i)=>Object.assign({},q,{x:X(5+(i%2)),y:6-(i>1?1:0)}));
+  return Object.assign({},spec,{grid:G,npcs,planned:true}); }
+function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(spec); spec=homePlan(spec);   // the farmhouse, furnished for real; the village homes laid out as houses
   const G=spec.grid, lv=roomShell(spec,G), {W,H,room,pal}=lv, at=(x,y)=>G[y]&&G[y][x];
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=G[y][x], cx=x+0.5, cz=y+0.5;
     switch(t){
-      case 13: B(0.98,0.015,0.98,pal.cloth,cx,0,cz,room); if(at(x,y-1)!==13) B(0.98,0.018,0.06,pal.trim,cx,0,y+0.04,room); if(at(x,y+1)!==13) B(0.98,0.018,0.06,pal.trim,cx,0,y+0.96,room); break;
+      case 13: { const K_=m=>{ m.userData.keepScale=true; return m; }; K_(B(1.0,0.015,1.0,pal.cloth,cx,0,cz,room)); if(at(x,y-1)!==13) K_(B(1.0,0.018,0.06,pal.trim,cx,0,y+0.04,room)); if(at(x,y+1)!==13) K_(B(1.0,0.018,0.06,pal.trim,cx,0,y+0.96,room)); if(at(x-1,y)!==13) K_(B(0.06,0.018,1.0,pal.trim,x+0.04,0,cz,room)); if(at(x+1,y)!==13) K_(B(0.06,0.018,1.0,pal.trim,x+0.96,0,cz,room)); break; }   /* V287: one rug, not tiles: full size, edged all round */
       case 40: PROP.table(room,cx,cz,1,1,pal); break;
       case 41: { const tt=[[1,0],[-1,0],[0,1],[0,-1]].find(([a,b])=>at(x+a,y+b)===40)||[0,-1]; PROP.chair(room,cx,cz,Math.atan2(tt[0],tt[1]),pal); break; }
       case 42: PROP.bed(room,cx,y+(at(x,y+1)===43?1:0.5),at(x,y+1)===43?1.9:0.95,pal,spec.blanket); break;
@@ -6555,6 +6577,13 @@ function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(s
       else if(t===44) items.push({k:'shelf',x:cx,z:y+0.3});
       else if(K[t]) items.push({k:K[t],x:cx,z:cz}); }
     try{ if(typeof HOMESTEAD!=='undefined') items.push(...HOMESTEAD.post(lv,spec)); ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } }
+  /* V287: at night the people who live here are in (ROUTINE): by the hearth, at the table, by their beds; by day they're out */
+  if(spec.theme==='home'&&typeof ROUTINE!=='undefined'&&/:0$|^[^:]*$/.test(spec.id||'')){ const id=(spec.id||'').replace(/^in:/,'').replace(/:\d+$/,''), res=ROUTINE.residents(id); if(res.length){
+    const flip=spec.planned&&hsh(id.length*7,id.charCodeAt(0)||1)<0.5, spotsIn=[[4.5,6.5],[2.5,5.5],[6.5,4.5],[5.5,6.2]].map(([x,z])=>[flip?W-x:x,z]);
+    const night=[]; res.forEach((v,i)=>{ const out=(v.key||'').split(':').pop(), sp=spotsIn[i%spotsIn.length]; const f=addPerson(lv,lv.room,out,sp[0],sp[1],0,v.who,(typeof DIALOGUE!=='undefined'&&DIALOGUE.homeLines)?DIALOGUE.homeLines(v):['Come in out of the dark, Sir Knight. There\'s a seat by the fire.','We bar the door at night now. Old habit, these days.'],{rest:0});
+      f.key=v.key; f.town=v.town; f.idle=v.idle||'clasped'; f.lookAbout=0.4; f.breathe=true; f.rest=faceTo(f.x,f.z,W/2,H-1); night.push(f); });
+    const show=()=>{ const on=ROUTINE.night(); night.forEach(f=>{ f.g.visible=on; f.mute=!on; f.ghost=!on; }); };
+    show(); const oe=lv.onEnter; lv.onEnter=sp=>{ show(); if(oe) oe(sp); }; lv.anim.push((t)=>{ if(((t*2)|0)%2===0) show(); }); } }
   return lv; }
 // a stair's landing must be floor you can stand on: the nearest open cell to the stair, in front of it if it can be
 function landings(lv){ ['upAt','downAt'].forEach(k=>{ const p=lv[k]; if(!p||lv.canMove(p.x,p.z,p.x,p.z)) return; const sx=Math.floor(p.x), sy=Math.floor(p.z-1.6); let best=null, bd=99;
@@ -15091,6 +15120,91 @@ const WILDWAYS=(function(){
       if(S()[id+'K']&&lid) lid.rotation.x=-1.1; });
   }
   return {attach};
+})();
+
+// ── engine/routine.js ──
+// ════════════════════════════════════════════════════════════════
+//  ROUTINE (V286) — the villages' day: at dusk the townsfolk walk home along the lanes and go in at their own doors (the
+//  children first); at dawn they come out again and walk back to where they spend the day. The guards keep their posts
+//  through the night, but at dusk and dawn the watch changes: the day guard walks off to the barracks (the town's keep or
+//  hall, else its inn) and a night guard with a lantern walks out to the post, and back again in the morning.
+//  Who lives where: each villager is given a house of their own village (house or cottage, nearest first, a few to a house):
+//  f.home = building id. Rooms (rooms.js) read ROUTINE.residents(id) at night to have them indoors.
+//    ROUTINE.attach(lv)       — after the overworld is built (luminar.js)
+//    ROUTINE.night()          — is it the townsfolk's night (indoors)?
+//    ROUTINE.residents(id)    — the villagers who live in that building, for its interior at night
+// ════════════════════════════════════════════════════════════════
+const ROUTINE=(()=>{ const API={spd:1};
+  const S=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
+  const frac=()=>{ const f=S().dayFrac; return typeof f==='number'?((f%1)+1)%1:0.4; };
+  // the night window, by dayFrac: a little before dusk (0.848) to a little after dawn (0.268)
+  const inNight=(f,go,back)=>go>back?(f>=go||f<back):(f>=go&&f<back);
+  const night=()=>inNight(frac(),0.845,0.285);
+  const RES={};   // building id → [villager]
+  let LV=null;
+  const hh=(s,k)=>{ let x=2166136261; const t=String(s)+'|'+k; for(let i=0;i<t.length;i++){ x^=t.charCodeAt(i); x=Math.imul(x,16777619); } return ((x>>>0)%10000)/10000; };
+  // a walking route between two points, over the tiles you could walk yourself (4-way and safe diagonals), within a box round both
+  function route(lv,ax,az,bx,bz){ const x0=Math.floor(Math.min(ax,bx))-22, z0=Math.floor(Math.min(az,bz))-22, x1=Math.floor(Math.max(ax,bx))+22, z1=Math.floor(Math.max(az,bz))+22, W=x1-x0+1, H=z1-z0+1;
+    if(W*H>40000) return null; const prev=new Int32Array(W*H).fill(-1), seen=new Uint8Array(W*H), q=[]; const sx=Math.floor(ax), sz=Math.floor(az), ex=Math.floor(bx), ez=Math.floor(bz);
+    const id=(x,z)=>(z-z0)*W+(x-x0), ok=(x,z,fx,fz)=>x>=x0&&x<=x1&&z>=z0&&z<=z1&&!(lv.barrierAt&&lv.barrierAt(x,z)>=0)&&lv.canMove(fx+0.5,fz+0.5,x+0.5,z+0.5);
+    seen[id(sx,sz)]=1; q.push(sx,sz); let h=0, found=false;
+    while(h<q.length){ const x=q[h++], z=q[h++]; if(x===ex&&z===ez){ found=true; break; }
+      for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]]){ const nx=x+dx, nz=z+dz; if(nx<x0||nx>x1||nz<z0||nz>z1||seen[id(nx,nz)]) continue;
+        if(dx&&dz&&!(ok(x+dx,z,x,z)&&ok(x,z+dz,x,z))) continue; if(!ok(nx,nz,x,z)) continue; seen[id(nx,nz)]=1; prev[id(nx,nz)]=id(x,z); q.push(nx,nz); } }
+    if(!found) return null; const pts=[]; let k=id(ex,ez); while(k>=0){ pts.push([x0+k%W+0.5,z0+Math.floor(k/W)+0.5]); k=prev[k]; } pts.reverse(); pts[0]=[ax,az]; pts.push([bx,bz]);
+    // string-pull: skip a corner where the straight walk past it is clear
+    const clear=(p,q2)=>{ const d=Math.hypot(q2[0]-p[0],q2[1]-p[1]), n=Math.ceil(d*3); let px=p[0], pz=p[1]; for(let i=1;i<=n;i++){ const x=p[0]+(q2[0]-p[0])*i/n, z=p[1]+(q2[1]-p[1])*i/n; if(Math.floor(x)!==Math.floor(px)||Math.floor(z)!==Math.floor(pz)){ if(lv.barrierAt&&lv.barrierAt(Math.floor(x),Math.floor(z))>=0) return false; if(!lv.canMove(px,pz,x,z)) return false; } px=x; pz=z; } return true; };
+    const out=[pts[0]]; let i=0; while(i<pts.length-1){ let j=Math.min(pts.length-1,i+8); while(j>i+1&&!clear(pts[i],pts[j])) j--; out.push(pts[j]); i=j; } return out; }
+  function attach(lv){ if(!lv||typeof WORLD_DATA==='undefined') return; LV=lv; const WD=WORLD_DATA, towns=WD.towns||[];
+    const townOf=(x,y)=>{ let bt=null, bd=1e9; towns.forEach(([n,tx,ty])=>{ const d=Math.hypot(tx-x,ty-y); if(d<bd){ bd=d; bt=n; } }); return [bt,bd]; };
+    const houses={}; (WD.buildings||[]).forEach(b=>{ if(!/house|cottage/.test(b.style||'')||b.deck!==undefined||!b.interior) return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; (houses[t]=houses[t]||[]).push(b); });
+    const halls={}; (WD.buildings||[]).forEach(b=>{ if(!/keep|inn/.test(b.style||'')) return; const [t,d]=townOf(b.x+b.w/2,b.y+b.h/2); if(d>48) return; const cur=halls[t]; if(!cur||(b.style==='keep'&&cur.style!=='keep')) halls[t]=b; });
+    const folk=(lv.folk||[]).filter(f=>f.town&&f.key&&/^v:/.test(f.key));
+    const load={}; folk.forEach(f=>{ const guard=/soldier|guard|watcher/.test(f.key.split(':').pop()); f.R={x0:f.x,z0:f.z,rest0:f.rest||0,ph:'out',path:null,i:0,guard,kid:/child/.test(f.key)};
+      const H=houses[f.town]||[]; if(guard){ const hb=halls[f.town]||H[0]; f.R.hall=hb; return; }
+      const cand=H.map(b=>({b,d:Math.hypot(b.x+b.w/2-f.x,b.y+b.h/2-f.z)})).sort((a,c)=>a.d-c.d); const pick=cand.find(c=>(load[c.b.id]||0)<3)||cand[0]; if(!pick) return;
+      f.home=pick.b.id; f.R.house=pick.b; load[pick.b.id]=(load[pick.b.id]||0)+1; (RES[pick.b.id]=RES[pick.b.id]||[]).push(f);
+      f.R.go=(f.R.kid?0.80:0.832)+hh(f.key,'go')*0.026; f.R.back=0.272+hh(f.key,'back')*0.04; });
+    // the night watch: a second guard for every post, out from the barracks at dusk with a lantern
+    folk.filter(f=>f.R&&f.R.guard&&f.R.hall).forEach(f=>{ const D=lv.doorAt(f.R.hall), out=f.key.split(':').pop();
+      const n=addPerson(lv,f.chunk?f.chunk.g:lv.scene,out,D.sx,D.sz,lv.ground(D.sx,D.sz)+0.02,'Night Watch',['Night watch, Sir Knight. Keep to the lit streets — the dark has teeth yet.','The day lads are abed. I\'ve the post till dawn.'],{rest:f.rest||0,lazy:typeof folkWake==='function'});
+      n.key=f.key+':night'; n.town=f.town; n.idle='guard'; n.lookAbout=0.6; n.breathe=true; n.night=true; n.chunk=f.chunk; n.g.visible=false; n.mute=true; n.ghost=true; n.lantern=true;
+      n.R={x0:f.x,z0:f.z,rest0:f.rest||0,ph:'barracks',guard:true,hall:f.R.hall,night:true}; f.R.mate=n; n.R.mate=f;
+      f.R.go=0.836+hh(f.key,'go')*0.012; f.R.back=0.27+hh(f.key,'back')*0.012; n.R.go=f.R.go; n.R.back=f.R.back; });
+    const all=()=>(lv.folk||[]).filter(f=>f.R);
+    const hide=(f,h)=>{ f.atHome=h; f.g.visible=!h; f.mute=h; f.ghost=h; };
+    const place=(f,x,z)=>{ f.x=x; f.z=z; f.g.position.set(x,lv.ground(x,z)+0.02,z); };
+    const startWalk=(f,tx,tz,then)=>{ const p=route(lv,f.x,f.z,tx,tz); if(!p){ then(true); return; } f.R.path=p; f.R.i=1; f.R.then=then; f.walking=true; f.R.spd=0.95+hh(f.key,'spd')*0.25; };
+    const doorOf=b=>lv.doorAt(b);
+    // dusk: home (or off duty); dawn: out again (or relieved)
+    function goIn(f,far){ const b=f.R.house||f.R.hall; if(!b){ hide(f,true); f.R.ph='home'; return; } const D=doorOf(b);
+      if(far){ place(f,D.sx,D.sz); hide(f,true); f.R.ph='home'; return; } f.R.ph='going'; startWalk(f,D.sx,D.sz,(failed)=>{ if(failed) place(f,D.sx,D.sz); f.R.ph='home'; f.walking=false; f.R.fade=1; }); }
+    function comeOut(f,far){ const b=f.R.house||f.R.hall; const D=b?doorOf(b):{sx:f.R.x0,sz:f.R.z0};
+      if(far){ f.R.fade=0; place(f,f.R.x0,f.R.z0); hide(f,false); f.rest=f.R.rest0; f.R.ph='out'; return; } f.R.fade=0; place(f,D.sx,D.sz); hide(f,false); f.R.ph='coming';
+      startWalk(f,f.R.x0,f.R.z0,(failed)=>{ if(failed) place(f,f.R.x0,f.R.z0); f.R.ph='out'; f.walking=false; f.rest=f.R.rest0; }); }
+    let acc=0;
+    lv.anim.push((t,dt)=>{ dt=Math.min(dt||0.016,0.1); const P=typeof ENGINE!=='undefined'&&ENGINE.P; if(!P) return; const fr=frac();
+      // walking
+      all().forEach(f=>{ try{ if(f.R.path&&f.walking){ if(typeof ENGINE!=='undefined'&&ENGINE.talking&&ENGINE.talking()===f) return;
+          const p=f.R.path[f.R.i]; if(!p){ f.walking=false; const th=f.R.then; f.R.path=null; if(th) th(false); return; }
+          const dx=p[0]-f.x, dz=p[1]-f.z, d=Math.hypot(dx,dz), st=f.R.spd*dt*1.4*API.spd;
+          if(d<=st){ place(f,p[0],p[1]); f.R.i++; } else { place(f,f.x+dx/d*st,f.z+dz/d*st); f.rest=Math.atan2(dx,dz); } }
+        if(f.R.fade){ f.R.fade-=dt*2.5; if(f.R.fade<=0){ f.R.fade=0; hide(f,true); } } }catch(e){ if(!API.err){ API.err='walk '+String(e&&e.stack||e); } } });
+      if((acc+=dt)<0.5) return; acc=0; API.ticks=(API.ticks||0)+1; API.fr=fr;
+      all().forEach(f=>{ try{ const R=f.R, far=Math.hypot(f.x-P.x,f.z-P.z)>60&&Math.hypot(R.x0-P.x,R.z0-P.z)>60, nt=inNight(fr,R.go||0.84,R.back||0.28);
+        if(R.night){   // the night watch
+          if(nt&&R.ph==='barracks'){ comeOut(f,far); }
+          else if(!nt&&(R.ph==='out'||R.ph==='coming')&&!R.path){ goIn(f,far); R.ph=far?'barracks':R.ph; }
+          if(R.ph==='home') R.ph='barracks'; return; }
+        if(nt&&R.ph==='out'&&!R.path) goIn(f,far);
+        else if(!nt&&R.ph==='home') comeOut(f,far); }catch(e){ if(!API.err){ API.err=String(e&&e.stack||e); console.warn('[routine]',f.who,e); } } });
+      // the lanterns of the night watch
+      all().forEach(f=>{ if(f.lantern&&f.g&&!f.g.userData.lantern&&f.g.rig){ const r=f.g.rig, l=new THREE.Group(); const c=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.1,0.07),new THREE.MeshBasicMaterial({color:0xffd27a}));
+          const top=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.05,4),new THREE.MeshLambertMaterial({color:0x2a2420})); top.position.y=0.075; top.rotation.y=Math.PI/4; l.add(c,top); l.position.set(0,-0.12,0.02); (r.AL&&r.AL.hand||r.torso).add(l);
+          const pl=new THREE.PointLight(0xffc070,0.5,4.5,1.8); pl.position.y=-0.02; l.add(pl); f.g.userData.lantern=l; } });
+    });
+    lv.routine=true; }
+  return Object.assign(API,{attach,night,residents:id=>(RES[id]||[]),inNight});
 })();
 
 // ── engine/guardians.js ──
@@ -27115,7 +27229,7 @@ const VILLAGE3=(function(){
   if(typeof SIDEQ!=='undefined') SIDEQ.world(world,{cleansed:q=>cleansed(q)});
   if(typeof WILDS!=='undefined') WILDS.attach(world,WD);   // V175: the heights, the rivers' crossings, the wayside shrines   /* V173: the villagers' errands and hints about the catacombs */   /* V147: Hearthvale's churchyard mausoleum and the catacombs under it */   /* V144: the sleeping demon camps */   /* V132: travellers, shepherds and wildlife on the roads between the towns */   /* V131: rain, snow, sand, ash and mist by the land */
   if(typeof LANDMARKS!=='undefined') LANDMARKS.attach(world);
-  if(typeof TREETOPS!=='undefined') TREETOPS.attach(world,WD); if(typeof WILDWAYS!=='undefined') WILDWAYS.attach(world,WD);   // V222: hidden islets — mossy logs, stepping stones, and what waits on them   // V202: Thornwood up in the trees — decks, rope bridges, ladders   // V127: watchtowers to climb, camps, the mill, the drowned chapel, a shrine, a spring   // V121: the Pilgrim's Pass — the mountain trek from Shadowmere to Hellgate   // V115: the high roads: the long journeys between distant towns   // V114: the Scholar's Way, the old road north to Mario's tower school
+  if(typeof TREETOPS!=='undefined') TREETOPS.attach(world,WD); if(typeof WILDWAYS!=='undefined') WILDWAYS.attach(world,WD); if(typeof ROUTINE!=='undefined') ROUTINE.attach(world);   // V286: home at dusk, out at dawn; the watch changes   // V222: hidden islets — mossy logs, stepping stones, and what waits on them   // V202: Thornwood up in the trees — decks, rope bridges, ladders   // V127: watchtowers to climb, camps, the mill, the drowned chapel, a shrine, a spring   // V121: the Pilgrim's Pass — the mountain trek from Shadowmere to Hellgate   // V115: the high roads: the long journeys between distant towns   // V114: the Scholar's Way, the old road north to Mario's tower school
   if(typeof GREEK!=='undefined'){ const gx=SX(46.5), gz=SY(20.5); GREEK.place(world,world.scene,world.anim,gx,gz,'john14_6',{y:world.ground?world.ground(gx,gz):0}); }   // a scrap of John by Hearthvale's chapel door
   if(typeof PASTIME_DATA!=='undefined') pastimes(world,PASTIME_DATA);   // fishing, the farm stand, the fields, the surf, the regatta
   if(typeof PASTIME_DATA!=='undefined') world._sailing=sailing(world,PASTIME_DATA);    // your boat on the open sea, the southern isles, the realm's secrets

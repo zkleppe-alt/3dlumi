@@ -89,6 +89,8 @@ function roomShell(spec,G){
   const frame0=room.children.length;
   const inner=[]; for(let x=1;x<W-1;x++){ if(isWall(x,0)) inner.push([x+0.5,1.0,0]); if(isWall(x,H-1)) inner.push([x+0.5,H-1,Math.PI]); }
   for(let y=1;y<H-1;y++){ if(isWall(0,y)) inner.push([1.0,y+0.5,Math.PI/2]); if(isWall(W-1,y)) inner.push([W-1,y+0.5,-Math.PI/2]); }
+  for(let y=1;y<H-1;y++) for(let x=1;x<W-1;x++) if(isWall(x,y)){ const fl=(i,j)=>!isWall(i,j)&&G[j]&&G[j][i]!==undefined;   /* V287: partitions get the same wainscot, posts and beam on both faces */
+    if(fl(x+1,y)) inner.push([x+1.0,y+0.5,Math.PI/2]); if(fl(x-1,y)) inner.push([x,y+0.5,-Math.PI/2]); if(fl(x,y+1)) inner.push([x+0.5,y+1.0,0]); if(fl(x,y-1)) inner.push([x+0.5,y,Math.PI]); }
   const FR=pal.frame, wains=!TT||TT.fin==='plaster'||TT.fin==='adobe';
   inner.forEach(([x,z,ry],i)=>{ const g=group(x,0,z,room); g.rotation.y=ry; if(wains){ B(1.0,0.6,0.04,TT&&TT.fin==='adobe'?0xc4a272:FR,0,0,0.02,g); B(1.0,0.06,0.07,FR,0,0.6,0.03,g); }
     if(i%3===0&&(!TT||TT.fin!=='log')){ B(0.14,WALL_H,0.1,FR,0.5,0,0.05,g); } B(1.0,0.16,0.12,FR,0,WALL_H-0.16,0.06,g); });
@@ -168,11 +170,31 @@ function placeNpcs(lv,npcs,floor){ (npcs||[]).filter(n=>(n.floor||0)===floor).fo
   f.rest=faceTo(f.x,f.z,lv.W/2,lv.H-1); }); }
 
 // ── tile-coded rooms ──
-function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(spec);   // the farmhouse, furnished for real
+/* V287: A HOME OF ROOMS. The village homes were one room each with a single bed. A home (theme 'home', the stock one-room plan)
+   is now laid out as a house: a hall with the hearth, the table and its chairs, the dresser and the barrel; a partition wall with a
+   doorway; and a bedchamber with a bed for everyone who lives there (the folk inside by day, and those who come home at night —
+   ROUTINE.residents), a chest at each bed's foot, a dresser, a rug, a window. The layout varies a little from house to house. */
+function homePlan(spec){ const G0=spec.grid; if(!G0||spec.theme!=='home'||spec.planned||!/^(in:)?[a-z]+_home\d+|^(in:)?(tobias|mira|bram|home\d)/.test(spec.id||'')) return spec;
+  if(G0.length!==7||G0[0].length!==11) return spec;
+  const id=(spec.id||'').replace(/^in:/,'').replace(/:\d+$/,''), res=typeof ROUTINE!=='undefined'?ROUTINE.residents(id):[], n=Math.max(1,Math.min(4,res.length+(spec.npcs||[]).filter(q=>!/cat|dog|hound|goat|hen/i.test(q.name||'')).length));
+  const W=14, H=9, flip=hsh(id.length*7,id.charCodeAt(0)||1)<0.5, G=[]; for(let y=0;y<H;y++){ const r=[]; for(let x=0;x<W;x++) r.push(x===0||y===0||x===W-1||y===H-1?5:12); G.push(r); }
+  const X=x=>flip?W-1-x:x, set=(x,y,t)=>{ G[y][X(x)]=t; };
+  for(let y=1;y<H-1;y++) set(8,y,5); set(8,5,12);                                   // the partition and its doorway
+  set(3,0,45); set(1,0,51); set(6,0,51); set(11,0,51);                               // hearth, windows
+  set(3,8,9); set(4,8,9);                                                            // the front door
+  [[2,1],[3,1],[4,1],[2,2],[3,2],[4,2]].forEach(([x,y])=>set(x,y,13));                 // a hearth rug
+  set(4,4,40); set(3,4,41); set(5,4,41); set(4,5,41);                                // the table and its chairs
+  set(7,1,47); set(1,1,44); set(1,6,48); set(7,6,49); set(1,4,50);
+  const beds=[[9,1],[11,1],[9,5],[11,5]].slice(0,n);                                  // beds along the chamber's walls
+  beds.forEach(([x,y])=>{ set(x,y,42); set(x,y+1,43); if(y===1) set(x,3,66); else set(x,4,66); });
+  set(12,1,50); for(let y=1;y<=6;y++) if(G[y][X(10)]===12) set(10,y,13); if(n<4) set(12,6,49);   // a runner between the beds
+  const npcs=(spec.npcs||[]).map((q,i)=>Object.assign({},q,{x:X(5+(i%2)),y:6-(i>1?1:0)}));
+  return Object.assign({},spec,{grid:G,npcs,planned:true}); }
+function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(spec); spec=homePlan(spec);   // the farmhouse, furnished for real; the village homes laid out as houses
   const G=spec.grid, lv=roomShell(spec,G), {W,H,room,pal}=lv, at=(x,y)=>G[y]&&G[y][x];
   for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=G[y][x], cx=x+0.5, cz=y+0.5;
     switch(t){
-      case 13: B(0.98,0.015,0.98,pal.cloth,cx,0,cz,room); if(at(x,y-1)!==13) B(0.98,0.018,0.06,pal.trim,cx,0,y+0.04,room); if(at(x,y+1)!==13) B(0.98,0.018,0.06,pal.trim,cx,0,y+0.96,room); break;
+      case 13: { const K_=m=>{ m.userData.keepScale=true; return m; }; K_(B(1.0,0.015,1.0,pal.cloth,cx,0,cz,room)); if(at(x,y-1)!==13) K_(B(1.0,0.018,0.06,pal.trim,cx,0,y+0.04,room)); if(at(x,y+1)!==13) K_(B(1.0,0.018,0.06,pal.trim,cx,0,y+0.96,room)); if(at(x-1,y)!==13) K_(B(0.06,0.018,1.0,pal.trim,x+0.04,0,cz,room)); if(at(x+1,y)!==13) K_(B(0.06,0.018,1.0,pal.trim,x+0.96,0,cz,room)); break; }   /* V287: one rug, not tiles: full size, edged all round */
       case 40: PROP.table(room,cx,cz,1,1,pal); break;
       case 41: { const tt=[[1,0],[-1,0],[0,1],[0,-1]].find(([a,b])=>at(x+a,y+b)===40)||[0,-1]; PROP.chair(room,cx,cz,Math.atan2(tt[0],tt[1]),pal); break; }
       case 42: PROP.bed(room,cx,y+(at(x,y+1)===43?1:0.5),at(x,y+1)===43?1.9:0.95,pal,spec.blanket); break;
@@ -213,6 +235,13 @@ function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(s
       else if(t===44) items.push({k:'shelf',x:cx,z:y+0.3});
       else if(K[t]) items.push({k:K[t],x:cx,z:cz}); }
     try{ if(typeof HOMESTEAD!=='undefined') items.push(...HOMESTEAD.post(lv,spec)); ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } }
+  /* V287: at night the people who live here are in (ROUTINE): by the hearth, at the table, by their beds; by day they're out */
+  if(spec.theme==='home'&&typeof ROUTINE!=='undefined'&&/:0$|^[^:]*$/.test(spec.id||'')){ const id=(spec.id||'').replace(/^in:/,'').replace(/:\d+$/,''), res=ROUTINE.residents(id); if(res.length){
+    const flip=spec.planned&&hsh(id.length*7,id.charCodeAt(0)||1)<0.5, spotsIn=[[4.5,6.5],[2.5,5.5],[6.5,4.5],[5.5,6.2]].map(([x,z])=>[flip?W-x:x,z]);
+    const night=[]; res.forEach((v,i)=>{ const out=(v.key||'').split(':').pop(), sp=spotsIn[i%spotsIn.length]; const own=(typeof DIALOGUE!=='undefined'&&DIALOGUE.lines(v.key))||null; const f=addPerson(lv,lv.room,out,sp[0],sp[1],0,v.who,(own&&own.lines)||v.lines||['God keep you, knight.'],{rest:0}); f.atHomeIn=true;
+      f.key=v.key; f.town=v.town; f.idle=v.idle||'clasped'; f.lookAbout=0.4; f.breathe=true; f.rest=faceTo(f.x,f.z,W/2,H-1); night.push(f); });
+    const show=()=>{ const on=ROUTINE.night(); night.forEach(f=>{ f.g.visible=on; f.mute=!on; f.ghost=!on; }); };
+    show(); const oe=lv.onEnter; lv.onEnter=sp=>{ show(); if(oe) oe(sp); }; lv.anim.push((t)=>{ if(((t*2)|0)%2===0) show(); }); } }
   return lv; }
 // a stair's landing must be floor you can stand on: the nearest open cell to the stair, in front of it if it can be
 function landings(lv){ ['upAt','downAt'].forEach(k=>{ const p=lv[k]; if(!p||lv.canMove(p.x,p.z,p.x,p.z)) return; const sx=Math.floor(p.x), sy=Math.floor(p.z-1.6); let best=null, bd=99;

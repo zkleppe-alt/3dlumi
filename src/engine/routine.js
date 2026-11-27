@@ -9,7 +9,7 @@
 //    ROUTINE.night()          — is it the townsfolk's night (indoors)?
 //    ROUTINE.residents(id)    — the villagers who live in that building, for its interior at night
 // ════════════════════════════════════════════════════════════════
-const ROUTINE=(()=>{
+const ROUTINE=(()=>{ const API={spd:1};
   const S=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
   const frac=()=>{ const f=S().dayFrac; return typeof f==='number'?((f%1)+1)%1:0.4; };
   // the night window, by dayFrac: a little before dusk (0.848) to a little after dawn (0.268)
@@ -55,29 +55,29 @@ const ROUTINE=(()=>{
     function goIn(f,far){ const b=f.R.house||f.R.hall; if(!b){ hide(f,true); f.R.ph='home'; return; } const D=doorOf(b);
       if(far){ place(f,D.sx,D.sz); hide(f,true); f.R.ph='home'; return; } f.R.ph='going'; startWalk(f,D.sx,D.sz,(failed)=>{ if(failed) place(f,D.sx,D.sz); f.R.ph='home'; f.walking=false; f.R.fade=1; }); }
     function comeOut(f,far){ const b=f.R.house||f.R.hall; const D=b?doorOf(b):{sx:f.R.x0,sz:f.R.z0};
-      if(far){ place(f,f.R.x0,f.R.z0); hide(f,false); f.rest=f.R.rest0; f.R.ph='out'; return; } place(f,D.sx,D.sz); hide(f,false); f.R.ph='coming';
+      if(far){ f.R.fade=0; place(f,f.R.x0,f.R.z0); hide(f,false); f.rest=f.R.rest0; f.R.ph='out'; return; } f.R.fade=0; place(f,D.sx,D.sz); hide(f,false); f.R.ph='coming';
       startWalk(f,f.R.x0,f.R.z0,(failed)=>{ if(failed) place(f,f.R.x0,f.R.z0); f.R.ph='out'; f.walking=false; f.rest=f.R.rest0; }); }
     let acc=0;
     lv.anim.push((t,dt)=>{ dt=Math.min(dt||0.016,0.1); const P=typeof ENGINE!=='undefined'&&ENGINE.P; if(!P) return; const fr=frac();
       // walking
-      all().forEach(f=>{ if(f.R.path&&f.walking){ if(typeof ENGINE!=='undefined'&&ENGINE.talking&&ENGINE.talking()===f) return;
+      all().forEach(f=>{ try{ if(f.R.path&&f.walking){ if(typeof ENGINE!=='undefined'&&ENGINE.talking&&ENGINE.talking()===f) return;
           const p=f.R.path[f.R.i]; if(!p){ f.walking=false; const th=f.R.then; f.R.path=null; if(th) th(false); return; }
-          const dx=p[0]-f.x, dz=p[1]-f.z, d=Math.hypot(dx,dz), st=f.R.spd*dt*1.15;
+          const dx=p[0]-f.x, dz=p[1]-f.z, d=Math.hypot(dx,dz), st=f.R.spd*dt*1.4*API.spd;
           if(d<=st){ place(f,p[0],p[1]); f.R.i++; } else { place(f,f.x+dx/d*st,f.z+dz/d*st); f.rest=Math.atan2(dx,dz); } }
-        if(f.R.fade){ f.R.fade-=dt*2.5; if(f.R.fade<=0){ f.R.fade=0; hide(f,true); } } });
-      if((acc+=dt)<0.5) return; acc=0;
-      all().forEach(f=>{ const R=f.R, far=Math.hypot(f.x-P.x,f.z-P.z)>60&&Math.hypot(R.x0-P.x,R.z0-P.z)>60, nt=inNight(fr,R.go||0.84,R.back||0.28);
+        if(f.R.fade){ f.R.fade-=dt*2.5; if(f.R.fade<=0){ f.R.fade=0; hide(f,true); } } }catch(e){ if(!API.err){ API.err='walk '+String(e&&e.stack||e); } } });
+      if((acc+=dt)<0.5) return; acc=0; API.ticks=(API.ticks||0)+1; API.fr=fr;
+      all().forEach(f=>{ try{ const R=f.R, far=Math.hypot(f.x-P.x,f.z-P.z)>60&&Math.hypot(R.x0-P.x,R.z0-P.z)>60, nt=inNight(fr,R.go||0.84,R.back||0.28);
         if(R.night){   // the night watch
           if(nt&&R.ph==='barracks'){ comeOut(f,far); }
           else if(!nt&&(R.ph==='out'||R.ph==='coming')&&!R.path){ goIn(f,far); R.ph=far?'barracks':R.ph; }
           if(R.ph==='home') R.ph='barracks'; return; }
         if(nt&&R.ph==='out'&&!R.path) goIn(f,far);
-        else if(!nt&&R.ph==='home') comeOut(f,far); });
+        else if(!nt&&R.ph==='home') comeOut(f,far); }catch(e){ if(!API.err){ API.err=String(e&&e.stack||e); console.warn('[routine]',f.who,e); } } });
       // the lanterns of the night watch
       all().forEach(f=>{ if(f.lantern&&f.g&&!f.g.userData.lantern&&f.g.rig){ const r=f.g.rig, l=new THREE.Group(); const c=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.1,0.07),new THREE.MeshBasicMaterial({color:0xffd27a}));
           const top=new THREE.Mesh(new THREE.ConeGeometry(0.06,0.05,4),new THREE.MeshLambertMaterial({color:0x2a2420})); top.position.y=0.075; top.rotation.y=Math.PI/4; l.add(c,top); l.position.set(0,-0.12,0.02); (r.AL&&r.AL.hand||r.torso).add(l);
           const pl=new THREE.PointLight(0xffc070,0.5,4.5,1.8); pl.position.y=-0.02; l.add(pl); f.g.userData.lantern=l; } });
     });
     lv.routine=true; }
-  return {attach,night,residents:id=>(RES[id]||[]),inNight};
+  return Object.assign(API,{attach,night,residents:id=>(RES[id]||[]),inNight});
 })();

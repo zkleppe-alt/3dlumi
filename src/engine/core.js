@@ -80,8 +80,9 @@ const ENGINE=(function(){
     if(near.f&&near.f.action){ near.f.action(near.f); return; }
     // the story's own words for this person or sign, as it stands now (engine/dialogue.js)
     const key=near.f?near.f.key:near.key; if(key&&typeof DIALOGUE!=='undefined'&&!(near.f&&near.f.next)){ if(near.key&&!near.f){ const t=DIALOGUE.sign(key); if(t){ const ls=t.split('\n'); speak(near.who,[ls.slice(1).join('\n').trim()||ls[0]]); return; } }
-      else { const d=DIALOGUE.lines(key); if(d){ speak(near.who,d.lines,near.f); return; } } }
-    speak(near.who, near.lines||near.next(), near.f); }
+      else { const d=DIALOGUE.lines(key); if(d){ speak(near.who,RX(near.f,d.lines),near.f); return; } } }
+    speak(near.who, RX(near.f,near.lines||near.next()), near.f); }
+  const RX=(f,ls)=>typeof REACT!=='undefined'&&f&&f.town&&Array.isArray(ls)?REACT.wrap(f,ls):ls;   /* V287: the townsfolk answer to what the Knight has done (reactions.js) */
   // the time of day by the gold, as the 2D HUD has it: the hour, and the sun, the dusk or the moon
   let clockS=''; function clock(){ const S=GAME.S, f=((S.dayFrac%1)+1)%1, h=Math.floor(f*24), m=Math.floor((f*24-h)*60), ap=h<12?'AM':'PM', hh=((h+11)%12)+1;
     const ic=f>=0.25&&f<0.292?'🌅':f>=0.292&&f<0.833?'☀️':f>=0.833&&f<0.875?'🌇':'🌙', s=ic+' '+hh+':'+String(m).padStart(2,'0')+ap; if(s!==clockS){ clockS=s; const e=$('clockTxt'); if(e) e.textContent=s; } }
