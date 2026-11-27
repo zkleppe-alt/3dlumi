@@ -256,7 +256,7 @@ function throneLevel(spec){
     const SET=(o,x,y,z)=>o.rotation.set(x,y,z);
     MUS.forEach((m,i)=>{ const f=addPerson(lv,R,m.look,m.x,m.z,0.22,m.who,['…'],{mute:true,rest:m.rest}); f.still=true; f.near=40; f.lookAbout=0.35; f.breathe=true;
       const g=f.g; let h=null, cr=null;
-      if(m.inst==='harp'){ h=group(0.06,0.62,0.3,g); h.rotation.y=Math.PI/2-0.45;
+      if(m.inst==='harp'){ h=group(0.1,0.5,0.32,g); h.rotation.y=Math.PI/2-0.45; h.scale.setScalar(0.82);
         const pil=Cy(0.03,0.04,0.95,6,OK,-0.22,0,0,h); pil.rotation.z=0.12; const sb=Cy(0.05,0.07,0.85,6,OK,0.18,0,0,h); sb.rotation.z=-0.35;
         const nk=new THREE.Mesh(new THREE.TorusGeometry(0.24,0.03,5,10,Math.PI*0.8),OK); nk.position.set(0.0,0.86,0); nk.rotation.z=0.25; h.add(nk);
         for(let k=0;k<9;k++) Cy(0.003,0.003,0.32+k*0.055,3,STR,-0.18+k*0.042,0.88-(0.32+k*0.055),0,h);
@@ -272,7 +272,7 @@ function throneLevel(spec){
           r.head.rotation.x+=0.16; holdOn(K,r.torso,h); }; }
       if(m.inst==='recorder'){ h=group(0,1.4,0.13,g); Cy(0.018,0.024,0.36,8,tm(0xd8a868),0,-0.36,0,h); Cy(0.026,0.026,0.03,8,tm(0x6a4426),0,-0.38,0,h); h.rotation.x=-0.72;
         f.pose=(r,t,dt,talk,K)=>{ const b=BEAT(t);
-          SET(r.AR.sh,-1.0,0.25,0.42); r.AR.el.rotation.x=-1.6; SET(r.AL.sh,-1.05,-0.25,-0.42); r.AL.el.rotation.x=-1.75;
+          SET(r.AR.sh,-0.8,0.2,0.32); r.AR.el.rotation.x=-1.5; SET(r.AL.sh,-0.85,-0.2,-0.32); r.AL.el.rotation.x=-1.62;
           r.AR.hand.rotation.x=0.25; r.AL.hand.rotation.x=0.25; r.head.rotation.x+=0.12+(b==null?0:0.03*Math.sin(b*Math.PI)); r.head.rotation.y*=0.3; holdOn(K,r.head,h); }; }
       if(m.inst==='drum'){ h=group(0.26,1.08,0.2,g); h.rotation.y=-0.6; const rim=Cy(0.2,0.2,0.07,16,OK,0,-0.035,0,h); rim.rotation.x=Math.PI/2; const sk=new THREE.Mesh(new THREE.CircleGeometry(0.19,16),tm(0xe6d2a8,null,{ds:true})); sk.position.z=0.036; h.add(sk);
         f.pose=(r,t,dt,talk,K)=>{ const b=BEAT(t), k=b==null?0:hit(b*(m.drumDiv||1));

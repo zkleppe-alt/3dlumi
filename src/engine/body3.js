@@ -225,7 +225,7 @@ const BODY3=(function(){
   const FACE=new Set(['mouthD','teeth','eyeW','pupil','glint','lash','irisD','irisL','crease','blush','skin','iris','brow','lip','hair','beard']);   /* V194: not 'white' — Sir Aldric's helm is white */
   // the named, where their written design asks for more than their colours say (heroes.js, people.js)
   const NAMED={ elijah:{hair:'Hair_Buzzed',hairCol:0xf0eee8,beard:0xf0eee8,old:true,pat:{shirt:0xfdfdf6},hide:['flower']},   /* …and the white flowers on his orange shirt */   // Old Man Elijah: white hair, a big white beard
-    king:{old:true,hair:'Hair_Buns'},   /* King Karl's man-bun */
+    king:{old:true,hair:'Hair_SimpleParted',bun:true,crown:true,hide:['tie']},   /* King Karl: parted hair drawn back into a man-bun under the crown (V283: the pack's buns sat at his ears and left him bald on top) */
     madison:{hair:'Hair_Long',hairCol:0xf0c860,gold:['chest']},   /* Princess Madison: long golden hair, the gold bodice */ sage:{old:true}, librarian:{old:true}, priest:{old:true} };
   const regionOfPivot=(r,o,y)=>o===r.torso?(y<0.98?'belly':'chest'):o===r.hips?'pelvis':(o===r.L.hip||o===r.R.hip)?'thigh':(o===r.L.knee||o===r.R.knee)?(y<0.1?'foot':y<0.3?'boot':'calf'):(o===r.AL.sh||o===r.AR.sh)?'upperarm':(o===r.AL.el||o===r.AR.el)?'forearm':(o===r.AL.hand||o===r.AR.hand)?'hand':o===r.head?'head':null;
   function coverage(mesh,r){ const g=mesh.geometry, ix=g.index, SI=g.attributes.skinIndex, SW=g.attributes.skinWeight, P=g.attributes.position, bones=mesh.skeleton.bones, cnt={}, seen=new Set();
@@ -242,9 +242,9 @@ const BODY3=(function(){
     const hasHat=[]; r.head.traverse(o=>{ if(o.isMesh&&!o.isSkinnedMesh&&o.userData.mat&&!FACE.has(o.userData.mat)) hasHat.push(o); });
     const N=NAMED[(K.cast||'').replace(/^folk:/,'')]||{}, fem=D.body==='woman';
     const hairCol=N.hairCol!==undefined?N.hairCol:base.hair?base.hair[1]:0x4a3020, beard=N.beard!==undefined?N.beard:base.beard?base.beard[1]:null;
-    let hair=N.hair||(base.hair?(fem?'Hair_Long':'Hair_SimpleParted'):null); if(hasHat.length&&hair&&!N.hair) hair=fem?'Hair_Buns':'Hair_Buzzed';   /* the named keep their own hair under a tiara or circlet */
+    let hair=N.hair||(base.hair?(fem?'Hair_Long':'Hair_SimpleParted'):null); if(hasHat.length&&hair&&!N.hair) hair=fem?'Hair_Buns':'Hair_Buzzed';   /* V283: under a hood, hair cut close so nothing pokes out of it */ { const hk=typeof KIT_HAT!=='undefined'?KIT_HAT[(K.cast||'').replace(/^folk:/,'')]:null; if(hk==='hood'&&!N.hair) hair=fem?'Hair_BuzzedFemale':'Hair_Buzzed'; }   /* the named keep their own hair under a tiara or circlet */
     const pat={}; if(N.pat) (K.body.shells||[]).forEach((sh,i)=>{ const nm=D.shells&&D.shells[i]&&D.shells[i].mat; if(N.pat[nm]!=null) pat[hex(sh.material.color)]=N.pat[nm]; });
-    return {fem,skin:base.skin?base.skin[1]:0xe0b080,dress,kind,hair,hairCol,beard,hats:hasHat,old:!!N.old,pat,hide:N.hide||[]}; }
+    return {fem,skin:base.skin?base.skin[1]:0xe0b080,dress,kind,hair,hairCol,beard,hats:hasHat,old:!!N.old,pat,hide:N.hide||[],bun:!!N.bun,crown:!!N.crown}; }
   const HAIR={}; function hairSrc(f){ if(HAIR[f]) return HAIR[f]; return HAIR[f]=loadLibs().then(()=>new Promise((res,rej)=>new THREE.GLTFLoader().load(DIR+f+'.gltf',res,undefined,rej))); }
   function folk(K,given){ if(!on()||!K||!K.rig||K.userData.b3||(!K.userData.castD&&!given)) return null; const sp=given||folkSpec(K); if(!sp) return null; K.userData.b3='loading';
     const want=[get(sp.fem?FILE.F:FILE.M)]; if(sp.hair) want.push(hairSrc(sp.hair)); if(sp.beard!=null&&!sp.fem) want.push(hairSrc('Hair_Beard'));
@@ -268,12 +268,42 @@ const BODY3=(function(){
       const r=K.rig; r.head.traverse(o=>{ if(o.isMesh&&!o.isSkinnedMesh&&(!o.userData.mat||FACE.has(o.userData.mat))) o.visible=false; });
       K.traverse(o=>{ if(o.isMesh&&!o.isSkinnedMesh&&o.userData.mat&&FACE.has(o.userData.mat)) o.visible=false; });
       // hats, crowns and hoods were made for the old head: set them on the new one (its crown is where the old one's was, give or take)
-      if(sp.hats.length&&K.body){ const gb=K.body.body.geometry; gb.computeBoundingBox(); const dTop=F.top-gb.boundingBox.max.y, ws=V(); r.head.getWorldScale(ws); const ks=V(); K.getWorldScale(ks); const hsc=(ws.y/ks.y)||1;
-        sp.hats.forEach(o=>{ o.position.y+=(dTop-F.dHead.y)/hsc+(sp.hair&&sp.hair!=='Hair_Buzzed'?0.012:0.004); }); }
+      /* V283: hats, crowns and hoods are seated on the new head after the body is posed (fitHats, below) */
       if(sp.hide.length) K.traverse(o=>{ if(o.isMesh&&sp.hide.includes(o.userData.mat)) o.visible=false; });   // pieces the new garment does itself (Elijah's flowers are on the shirt now)
       { const tw=toonify(K,F), s1=F.sync; F.sync=()=>{ s1(); for(const t of tw) if(!t.userData.fixed) t.color.copy(t.userData.src.color).multiplyScalar(t.userData.k||1); }; }   // hats, belts, aprons, skirts: the same cel shading
       if(sp.old){ const s0=F.sync, sp2=F.B.spine_02, nk=F.B.neck_01; F.sync=()=>{ s0(); if(sp2) sp2.rotateX(0.16); if(nk) nk.rotateX(-0.1); }; }   // the old stoop a little
-      K.userData.b3=F; hook(K,F); return F; }).catch(e=>{ K.userData.b3=null; if(window.DEBUG_B3) console.error('BODY3 folk',e); return null; }); }
+      K.userData.b3=F; hook(K,F); try{ fitHats(F,K,sp); }catch(e){ if(window.DEBUG_B3) console.error('fitHats',e); } return F; }).catch(e=>{ K.userData.b3=null; if(window.DEBUG_B3) console.error('BODY3 folk',e); return null; }); }
+  /* V283: HATS SEATED ON THE HEAD. The posed body's head is measured (its skinned vertices, through the head pivot) and each worn
+     piece set on it: a crown or circlet (shallow) sits down round the crown of the head; a hat or hood (deep) is raised until its top
+     clears the head and hair, and let out if it's narrower than the head. Before, a formula from the old figure's head left brims at
+     the mouth and hoods round the face (and King Karl's crown inside his head). */
+  function fitHats(F,K,sp){ const r=K.rig, m=F.body, H=F.B&&F.B.Head; if(!m||!H||!sp) return; const hats=(sp.hats||[]).filter(o=>o.visible!==false||true); 
+    K.updateMatrixWorld(true); m.skeleton.update(); const g=m.geometry, P=g.attributes.position, SI=g.attributes.skinIndex, SW=g.attributes.skinWeight, hi=m.skeleton.bones.indexOf(H); if(hi<0) return;
+    const inv=new THREE.Matrix4().copy(r.head.matrixWorld).invert(), v=V(), pts=[];
+    for(let i=0;i<P.count;i++){ const ws=[SW.getX(i),SW.getY(i),SW.getZ(i),SW.getW(i)], is=[SI.getX(i),SI.getY(i),SI.getZ(i),SI.getW(i)]; let bi=-1,bw=0; for(let q=0;q<4;q++) if(ws[q]>bw){ bw=ws[q]; bi=is[q]; } if(bi!==hi||bw<0.6) continue;
+      m.boneTransform(i,v); v.applyMatrix4(m.matrixWorld).applyMatrix4(inv); pts.push(v.clone()); }
+    if(pts.length<20) return; let top=-1e9, cx=0, cz=0; pts.forEach(p=>{ if(p.y>top) top=p.y; }); const crownPts=pts.filter(p=>p.y>top-0.1); crownPts.forEach(p=>{ cx+=p.x; cz+=p.z; }); cx/=crownPts.length; cz/=crownPts.length;
+    let rad=0, back=1e9; pts.filter(p=>p.y>top-0.12).forEach(p=>{ rad=Math.max(rad,Math.hypot(p.x-cx,(p.z-cz)*0.9)); back=Math.min(back,p.z); });
+    const hair=sp.hair&&sp.hair!=='Hair_Buzzed'?0.02:0.006;
+    const main=hats.filter(o=>o.parent===r.head&&!/feather|plume|tie/.test(o.userData.mat||'')), all=hats.filter(o=>o.parent===r.head);
+    if(main.length){ const bb=new THREE.Box3(), tmp=new THREE.Box3(); main.forEach(o=>{ o.geometry.computeBoundingBox(); tmp.copy(o.geometry.boundingBox).applyMatrix4(o.matrix); bb.union(tmp); });
+      const hgt=bb.max.y-bb.min.y, crown=hgt<0.06;
+      const half=Math.max(bb.max.x-bb.min.x,(bb.max.z-bb.min.z)*0.95)/2, need=rad*(crown?1.04:1.1)+hair, k=half<need?need/half:1;
+      const c=new THREE.Vector3((bb.min.x+bb.max.x)/2,bb.max.y,(bb.min.z+bb.max.z)/2);
+      const dy=crown?(top+hair*0.5-0.03)-bb.min.y*k-(1-k)*c.y:(top+hair+0.028)-c.y, dz=cz-c.z;
+      all.forEach(o=>{ if(k!==1){ o.position.sub(c).multiplyScalar(k).add(c); o.scale.multiplyScalar(k); } o.position.y+=dy; o.position.z+=dz*0.7; });
+      if(!crown&&typeof KIT_HAT!=='undefined'&&KIT_HAT[(K.cast||'').replace(/^folk:/,'')]==='hood') all.forEach(o=>{ if(o.userData.mat==='hatD') o.visible=false; });   // a hood's dark rim hung before the new, larger face
+      K.userData.hatFit={top,rad,k,dy,crown}; }
+    if(sp.crown){   // a king's crown: a gilt band set with stones, eight points with pearls, a cross before, over a red velvet cap
+      main.forEach(o=>o.visible=false); const G=mat('steel',0xd8a838,{skinning:false}), Gd=mat('steel',0xa87a22,{skinning:false}), Rv=mat('cloth',0x8a1a22,{skinning:false}), R0=rad*1.08+0.012, y0=top-0.05, cr=new THREE.Group(); cr.position.set(cx,y0,cz); r.head.add(cr);
+      const band=new THREE.Mesh(new THREE.CylinderGeometry(R0,R0*0.97,0.045,24,1,true),G); band.material.side=THREE.DoubleSide; band.position.y=0.0225; cr.add(band);
+      [0,0.045].forEach(y=>{ const t=new THREE.Mesh(new THREE.TorusGeometry(R0,0.005,5,28),Gd); t.rotation.x=Math.PI/2; t.position.y=y; cr.add(t); });
+      for(let k=0;k<8;k++){ const a=k/8*Math.PI*2, x=Math.sin(a)*R0, z=Math.cos(a)*R0; const p=new THREE.Mesh(new THREE.ConeGeometry(0.016,0.05,4),G); p.position.set(x,0.07,z); cr.add(p); const pe=new THREE.Mesh(new THREE.SphereGeometry(0.009,6,4),mat('cloth',0xf4efe4,{skinning:false})); pe.position.set(x,0.1,z); cr.add(pe);
+        const gm=new THREE.Mesh(new THREE.SphereGeometry(0.008,6,4),mat('cloth',k%2?0x2a50c8:0xc82a3a,{skinning:false})); gm.position.set(Math.sin(a+Math.PI/8)*(R0+0.003),0.022,Math.cos(a+Math.PI/8)*(R0+0.003)); cr.add(gm); }
+      const cap=new THREE.Mesh(new THREE.SphereGeometry(R0*0.96,16,8,0,Math.PI*2,0,Math.PI/2),Rv); cap.scale.y=0.55; cap.position.y=0.03; cr.add(cap);
+      const cx1=new THREE.Mesh(new THREE.BoxGeometry(0.01,0.045,0.01),G); cx1.position.set(0,0.135,R0*0.2); const cx2=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.01,0.01),G); cx2.position.set(0,0.14,R0*0.2); const orb=new THREE.Mesh(new THREE.SphereGeometry(0.014,8,6),G); orb.position.set(0,0.105,R0*0.2); cr.add(cx1,cx2,orb);
+      cr.traverse(o=>{ if(o.isMesh) o.castShadow=true; }); }
+    if(sp.bun){ const b=new THREE.Mesh(new THREE.SphereGeometry(0.05,10,8),mat('fur',sp.hairCol,{skinning:false})); b.scale.set(1,0.85,0.9); b.position.set(cx,top-0.05,back+0.01); r.head.add(b); const t=new THREE.Mesh(new THREE.TorusGeometry(0.03,0.008,5,12),mat('steel',0xd4a840,{skinning:false})); t.position.set(cx,top-0.05,back+0.035); r.head.add(t); } }
   // ── the older-built folk (heroes.js: some fishers, sailors, roadside folk, the generals): no rig of their own, only
   //  painted parts. As you come near, a bare rig is made for them, dressed on the new body from the colours they were
   //  built with (g.userData.b3spec), and swapped in where they stand — the old figure stays wherever the bodies can't load ──
