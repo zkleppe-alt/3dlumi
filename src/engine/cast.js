@@ -111,14 +111,16 @@ function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hy
      and their feet on the slope; each gets its rig the first time you come near (none on the Low graphics tier) */
   if(K.mocap===undefined){ K.npc=true; K.footIK=true; K._tph=ph*3; K.mocap=(typeof RIG!=='undefined'&&RIG.ok&&!(typeof HUD!=='undefined'&&HUD.tier==='low')&&d<(f.near||18))?RIG.make({only:['idleCalm','walk','agree']}):undefined; }
   K._talk=st.tk;
-  K.animate(Math.min(dt,0.05),f.sit?'sit':f.walking?'walk':'idle',0.5);   // V283: f.sit — seated (the king on his throne)
+  K.animate(Math.min(dt,0.05),f.lie?'lie':f.sit?'sit':f.walking?'walk':'idle',0.5);   // V283: f.sit — seated (the king on his throne)
   let hy=0; if(d<2.6){ let a=Math.atan2(P.x-f.x,P.z-f.z)-K.rotation.y; a=Math.atan2(Math.sin(a),Math.cos(a)); hy=Math.max(-0.75,Math.min(0.75,a)); }
   st.hy+=(hy-st.hy)*Math.min(1,dt*5); r.head.rotation.y+=st.hy*0.8; r.torso.rotation.y+=st.hy*0.2;
   st.tk+=((talking?1:0)-st.tk)*Math.min(1,dt*5);
   if(st.tk>0.01){ const g=Math.max(0,Math.sin(t*2.2+ph)), g2=Math.sin(t*1.4+ph); r.AR.sh.rotation.x+=st.tk*(-0.45-0.35*g); r.AR.el.rotation.x+=st.tk*(-0.7-0.2*g); r.AR.sh.rotation.z+=st.tk*0.15*g2;
     r.AL.sh.rotation.x+=st.tk*(-0.2-0.2*Math.max(0,Math.sin(t*1.9+ph+1.7))); r.AL.el.rotation.x+=st.tk*-0.5; r.head.rotation.x+=st.tk*0.06*Math.sin(t*3.1+ph); }
   /* V283: looking about — a guard at his post, the king on his throne: every few seconds the gaze moves somewhere else, slowly */
-  if(f.lookAbout&&!talking&&d>=2.6){ st.gT=(st.gT||0)-dt; if(st.gT<=0){ const h=Math.sin(t*12.9898+ph*78.233)*43758.5453, u=h-Math.floor(h); st.gT=2.5+u*4.5; st.gA=(u<0.35?0:(u-0.5)*1.5)*(f.lookAbout===true?1:f.lookAbout); st.gP=(u-0.5)*0.12; }
+  { const hs=K.userData.hats; if(hs&&(!!f.lie)!==!!K.userData.hatOff){ K.userData.hatOff=!!f.lie; hs.forEach(o=>o.visible=!f.lie); } }   // hats off in bed
+  if(f.lie){ r.AL.sh.rotation.set(0.05,0,0.14); r.AL.el.rotation.x=-0.3; r.AR.sh.rotation.set(-0.35,0.9,0.1); r.AR.el.rotation.x=-1.2; r.head.rotation.set(0.15,0.25,0); }   /* V288: asleep — one hand at the side, one on the chest, head on the pillow */
+  if(f.lookAbout&&!talking&&d>=2.6&&!f.lie){ st.gT=(st.gT||0)-dt; if(st.gT<=0){ const h=Math.sin(t*12.9898+ph*78.233)*43758.5453, u=h-Math.floor(h); st.gT=2.5+u*4.5; st.gA=(u<0.35?0:(u-0.5)*1.5)*(f.lookAbout===true?1:f.lookAbout); st.gP=(u-0.5)*0.12; }
     st.gy=(st.gy||0)+((st.gA||0)-(st.gy||0))*Math.min(1,dt*1.6); st.gp=(st.gp||0)+((st.gP||0)-(st.gp||0))*Math.min(1,dt*1.6); r.head.rotation.y+=st.gy; r.head.rotation.x+=st.gp; r.torso.rotation.y+=st.gy*0.12; }
   if(f.breathe) r.torso.rotation.x+=0.018*Math.sin(t*1.6+ph);
   if(f.sit&&K.userData.skirts&&K.userData.skirts.B.visible) K.userData.skirts.B.visible=false;   // seated: the back of the skirt is under him
@@ -127,7 +129,7 @@ function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hy
   /* V285: HOW THEY STAND. Standing about (not walking, not talking), townsfolk settle into a stance of their own — hands clasped
      behind the back, arms folded, hands on the hips, thumbs in the belt — and the guards stand square with their weight set; each
      eases in when they stop and out when they move off, laid over the idle clip so they still breathe and shift. */
-  if(f.idle){ const want=!f.walking&&!talking?1:0; st.iw=(st.iw||0)+(want-(st.iw||0))*Math.min(1,dt*2.5); const w=st.iw;
+  if(f.idle){ const want=!f.walking&&!talking&&!f.sit&&!f.lie?1:0; st.iw=(st.iw||0)+(want-(st.iw||0))*Math.min(1,dt*2.5); const w=st.iw;
     if(w>0.01){ const S=IDLE_STANCE[f.idle]; if(S){ const L=(o,ax,v)=>{ o.rotation[ax]+=(v-o.rotation[ax])*w; };
       [['AR',S.R],['AL',S.L]].forEach(([k,A])=>{ if(!A) return; L(r[k].sh,'x',A[0]); L(r[k].sh,'y',A[1]); L(r[k].sh,'z',A[2]); L(r[k].el,'x',A[3]); if(A[4]!=null) L(r[k].el,'y',A[4]); if(A[5]!=null&&r[k].hand) L(r[k].hand,'x',A[5]); });
       if(S.chest) r.torso.rotation.x+=S.chest*w; if(S.sway) r.torso.rotation.z+=Math.sin(t*0.5+ph*3)*S.sway*w; } } }

@@ -6,7 +6,7 @@
 <link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
 <script>/* V229: an installable web app — play offline, in its own window (sw.js); only where it is served over the web.
    V282: installed (its own window), it keeps the version you have until you choose to update, like the desktop launcher. */
-window.KLK_VER='V287';
+window.KLK_VER='V288';
 try{ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(!/localhost|127\.0\.0\.1/.test(location.hostname)||/[?&]sw=1/.test(location.search))) addEventListener('load',async()=>{
   try{ const reg=await navigator.serviceWorker.register('sw.js'); const app=/[?&]app=1/.test(location.search)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone;
     if(!app) return; await navigator.serviceWorker.ready; const sw=navigator.serviceWorker.controller||reg.active; if(!sw) return; sw.postMessage({pin:true});
@@ -4524,14 +4524,16 @@ function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hy
      and their feet on the slope; each gets its rig the first time you come near (none on the Low graphics tier) */
   if(K.mocap===undefined){ K.npc=true; K.footIK=true; K._tph=ph*3; K.mocap=(typeof RIG!=='undefined'&&RIG.ok&&!(typeof HUD!=='undefined'&&HUD.tier==='low')&&d<(f.near||18))?RIG.make({only:['idleCalm','walk','agree']}):undefined; }
   K._talk=st.tk;
-  K.animate(Math.min(dt,0.05),f.sit?'sit':f.walking?'walk':'idle',0.5);   // V283: f.sit — seated (the king on his throne)
+  K.animate(Math.min(dt,0.05),f.lie?'lie':f.sit?'sit':f.walking?'walk':'idle',0.5);   // V283: f.sit — seated (the king on his throne)
   let hy=0; if(d<2.6){ let a=Math.atan2(P.x-f.x,P.z-f.z)-K.rotation.y; a=Math.atan2(Math.sin(a),Math.cos(a)); hy=Math.max(-0.75,Math.min(0.75,a)); }
   st.hy+=(hy-st.hy)*Math.min(1,dt*5); r.head.rotation.y+=st.hy*0.8; r.torso.rotation.y+=st.hy*0.2;
   st.tk+=((talking?1:0)-st.tk)*Math.min(1,dt*5);
   if(st.tk>0.01){ const g=Math.max(0,Math.sin(t*2.2+ph)), g2=Math.sin(t*1.4+ph); r.AR.sh.rotation.x+=st.tk*(-0.45-0.35*g); r.AR.el.rotation.x+=st.tk*(-0.7-0.2*g); r.AR.sh.rotation.z+=st.tk*0.15*g2;
     r.AL.sh.rotation.x+=st.tk*(-0.2-0.2*Math.max(0,Math.sin(t*1.9+ph+1.7))); r.AL.el.rotation.x+=st.tk*-0.5; r.head.rotation.x+=st.tk*0.06*Math.sin(t*3.1+ph); }
   /* V283: looking about — a guard at his post, the king on his throne: every few seconds the gaze moves somewhere else, slowly */
-  if(f.lookAbout&&!talking&&d>=2.6){ st.gT=(st.gT||0)-dt; if(st.gT<=0){ const h=Math.sin(t*12.9898+ph*78.233)*43758.5453, u=h-Math.floor(h); st.gT=2.5+u*4.5; st.gA=(u<0.35?0:(u-0.5)*1.5)*(f.lookAbout===true?1:f.lookAbout); st.gP=(u-0.5)*0.12; }
+  { const hs=K.userData.hats; if(hs&&(!!f.lie)!==!!K.userData.hatOff){ K.userData.hatOff=!!f.lie; hs.forEach(o=>o.visible=!f.lie); } }   // hats off in bed
+  if(f.lie){ r.AL.sh.rotation.set(0.05,0,0.14); r.AL.el.rotation.x=-0.3; r.AR.sh.rotation.set(-0.35,0.9,0.1); r.AR.el.rotation.x=-1.2; r.head.rotation.set(0.15,0.25,0); }   /* V288: asleep — one hand at the side, one on the chest, head on the pillow */
+  if(f.lookAbout&&!talking&&d>=2.6&&!f.lie){ st.gT=(st.gT||0)-dt; if(st.gT<=0){ const h=Math.sin(t*12.9898+ph*78.233)*43758.5453, u=h-Math.floor(h); st.gT=2.5+u*4.5; st.gA=(u<0.35?0:(u-0.5)*1.5)*(f.lookAbout===true?1:f.lookAbout); st.gP=(u-0.5)*0.12; }
     st.gy=(st.gy||0)+((st.gA||0)-(st.gy||0))*Math.min(1,dt*1.6); st.gp=(st.gp||0)+((st.gP||0)-(st.gp||0))*Math.min(1,dt*1.6); r.head.rotation.y+=st.gy; r.head.rotation.x+=st.gp; r.torso.rotation.y+=st.gy*0.12; }
   if(f.breathe) r.torso.rotation.x+=0.018*Math.sin(t*1.6+ph);
   if(f.sit&&K.userData.skirts&&K.userData.skirts.B.visible) K.userData.skirts.B.visible=false;   // seated: the back of the skirt is under him
@@ -4540,7 +4542,7 @@ function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hy
   /* V285: HOW THEY STAND. Standing about (not walking, not talking), townsfolk settle into a stance of their own — hands clasped
      behind the back, arms folded, hands on the hips, thumbs in the belt — and the guards stand square with their weight set; each
      eases in when they stop and out when they move off, laid over the idle clip so they still breathe and shift. */
-  if(f.idle){ const want=!f.walking&&!talking?1:0; st.iw=(st.iw||0)+(want-(st.iw||0))*Math.min(1,dt*2.5); const w=st.iw;
+  if(f.idle){ const want=!f.walking&&!talking&&!f.sit&&!f.lie?1:0; st.iw=(st.iw||0)+(want-(st.iw||0))*Math.min(1,dt*2.5); const w=st.iw;
     if(w>0.01){ const S=IDLE_STANCE[f.idle]; if(S){ const L=(o,ax,v)=>{ o.rotation[ax]+=(v-o.rotation[ax])*w; };
       [['AR',S.R],['AL',S.L]].forEach(([k,A])=>{ if(!A) return; L(r[k].sh,'x',A[0]); L(r[k].sh,'y',A[1]); L(r[k].sh,'z',A[2]); L(r[k].el,'x',A[3]); if(A[4]!=null) L(r[k].el,'y',A[4]); if(A[5]!=null&&r[k].hand) L(r[k].hand,'x',A[5]); });
       if(S.chest) r.torso.rotation.x+=S.chest*w; if(S.sway) r.torso.rotation.z+=Math.sin(t*0.5+ph*3)*S.sway*w; } } }
@@ -6572,19 +6574,19 @@ function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(s
   if(typeof ROOMLIFE!=='undefined'){ const items=[], K={40:'table',44:'shelf',45:'hearth',47:'cabinet',48:'barrel',49:'plant',50:'dresser',51:'window',55:'rack',56:'armour',66:'chest',59:'crate'};
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=G[y][x], cx=x+0.5, cz=y+0.5;
       if(t===41){ const tt=[[1,0],[-1,0],[0,1],[0,-1]].find(([a,b])=>at(x+a,y+b)===40)||[0,-1]; items.push({k:'chair',x:cx,z:cz,face:Math.atan2(tt[0],tt[1])}); }
-      else if(t===42) items.push({k:'bed',x:cx,z:y+(at(x,y+1)===43?1:0.5)});
+      else if(t===42||(t===61&&at(x,y+1)===62)) items.push({k:'bed',x:cx,z:y+(at(x,y+1)===43||at(x,y+1)===62?1:0.5)});
       else if(t===51) items.push({k:'window',x:cx,z:y===0?y+1.0:cz});
       else if(t===45) items.push({k:'hearth',x:cx,z:y+0.6});
       else if(t===44) items.push({k:'shelf',x:cx,z:y+0.3});
       else if(K[t]) items.push({k:K[t],x:cx,z:cz}); }
-    try{ if(typeof HOMESTEAD!=='undefined') items.push(...HOMESTEAD.post(lv,spec)); ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } }
+    try{ if(typeof HOMESTEAD!=='undefined') items.push(...HOMESTEAD.post(lv,spec)); ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } lv._items=items; }
   /* V287: at night the people who live here are in (ROUTINE): by the hearth, at the table, by their beds; by day they're out */
   if(spec.theme==='home'&&typeof ROUTINE!=='undefined'&&/:0$|^[^:]*$/.test(spec.id||'')){ const id=(spec.id||'').replace(/^in:/,'').replace(/:\d+$/,''), res=ROUTINE.residents(id); if(res.length){
     const flip=spec.planned&&hsh(id.length*7,id.charCodeAt(0)||1)<0.5, spotsIn=[[4.5,6.5],[2.5,5.5],[6.5,4.5],[5.5,6.2]].map(([x,z])=>[flip?W-x:x,z]);
     const night=[]; res.forEach((v,i)=>{ const out=(v.key||'').split(':').pop(), sp=spotsIn[i%spotsIn.length]; const own=(typeof DIALOGUE!=='undefined'&&DIALOGUE.lines(v.key))||null; const f=addPerson(lv,lv.room,out,sp[0],sp[1],0,v.who,(own&&own.lines)||v.lines||['God keep you, knight.'],{rest:0}); f.atHomeIn=true;
       f.key=v.key; f.town=v.town; f.idle=v.idle||'clasped'; f.lookAbout=0.4; f.breathe=true; f.rest=faceTo(f.x,f.z,W/2,H-1); night.push(f); });
-    const show=()=>{ const on=ROUTINE.night(); night.forEach(f=>{ f.g.visible=on; f.mute=!on; f.ghost=!on; }); };
-    show(); const oe=lv.onEnter; lv.onEnter=sp=>{ show(); if(oe) oe(sp); }; lv.anim.push((t)=>{ if(((t*2)|0)%2===0) show(); }); } }
+    night.forEach(f=>{ f.sleeper=true; f.nightOnly=true; f.g.visible=false; f.mute=true; f.ghost=true; }); } }   /* V288: SLEEP brings them in for the evening and puts them to bed */
+  if(typeof SLEEP!=='undefined'&&!/^in:home_house/.test(spec.id||'')) SLEEP.room(lv,spec,lv._items||[]);
   return lv; }
 // a stair's landing must be floor you can stand on: the nearest open cell to the stair, in front of it if it can be
 function landings(lv){ ['upAt','downAt'].forEach(k=>{ const p=lv[k]; if(!p||lv.canMove(p.x,p.z,p.x,p.z)) return; const sx=Math.floor(p.x), sy=Math.floor(p.z-1.6); let best=null, bd=99;
@@ -6595,8 +6597,12 @@ function landings(lv){ ['upAt','downAt'].forEach(k=>{ const p=lv[k]; if(!p||lv.c
 function siGrid(R){ const g=[]; for(let y=0;y<R.H;y++){ g.push([]); for(let x=0;x<R.W;x++) g[y].push(y===0||y===R.H-1||x===0||x===R.W-1?5:12); }
   (R.door||[]).forEach(x=>g[R.H-1][x]=9); (R.stairs||[]).forEach(([x,y,t])=>g[y][x]=t);
   if(R.rooms){ for(let y=1;y<=4;y++) for(const x of [5,10,13]) g[y][x]=5; for(let x=1;x<=13;x++) if(![2,7,11].includes(x)) g[5][x]=5; }
+  if(R.part){ for(let y=1;y<R.H-1;y++) g[y][R.part.x]=y===R.part.door?12:5; }   // V288: the keeper's bedroom behind its partition
   return g; }
+/* V288: a shop and an inn's common room get a small bedroom for the keeper, through a doorway in the side wall: a bed, a chest, a window, a plant */
+function addBedroom(R){ if(R.part||!R.W) return R; const W0=R.W; return Object.assign({},R,{W:W0+4,part:{x:W0-1,door:R.H-3},objs:R.objs.concat([['bed',W0,1,1,2],['chest',W0+2,1,1,1],['plant',W0+2,R.H-2,1,1],['crate',W0,R.H-2,1,1]]),wall:(R.wall||[]).concat([['window',W0+1,1]])}); }
 function objectRoom(spec){ if(typeof ROOMSTYLE_EXTRA!=='undefined') spec=ROOMSTYLE_EXTRA(spec);   // the shared templates, filled out for 3D
+  if(spec.room&&(spec.theme==='shop'||(spec.theme==='inn'&&!spec.floor))) spec=Object.assign({},spec,{room:addBedroom(spec.room)});
   const R=spec.room, G=siGrid(R), lv=roomShell(spec,G), {room,pal}=lv, solid=G.map(r=>r.map(t=>t===5));
   const tables=R.objs.filter(o=>o[0]==='table'||o[0]==='btable').map(([k,x,y,w,h])=>({x:x+(w||1)/2,z:y+(h||1)/2}));
   R.objs.forEach(([k,x,y,w,h,s])=>{ w=w||1; h=h||1; const cx=x+w/2, cz=y+h/2;
@@ -6613,7 +6619,7 @@ function objectRoom(spec){ if(typeof ROOMSTYLE_EXTRA!=='undefined') spec=ROOMSTY
       if(m==='chair'){ let best=null,bd=9; tables.forEach(t=>{ const d=Math.hypot(t.x-cx,t.z-cz); if(d<bd){bd=d;best=t;} }); face=best?faceTo(cx,cz,best.x,best.z):0; } if(m==='armchair') face=Math.PI;
       items.push({k:m,x:cx,z:cz,face,w,h}); });
     (R.wall||[]).forEach(([k,x,w])=>{ w=w||1; if(k==='window') for(let i=0;i<w;i++) items.push({k:'window',x:x+i+0.5,z:1.0}); else if(k==='hearth') items.push({k:'hearth',x:x+w/2,z:0.75}); else if(k==='clock') items.push({k:'clock',x:x+w/2,z:1.05}); else if(k==='goods') items.push({k:'goods',x:x+w/2,z:1.2}); });
-    try{ ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } }
+    try{ ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } if(typeof SLEEP!=='undefined'&&(spec.theme==='shop'||(spec.theme==='inn'&&!spec.floor))) SLEEP.room(lv,spec,items); }
   return lv; }
 const OBJECTS={
   counter:(p,o)=>PROP.counter(p,o.cx,o.cz,o.w,o.pal), bar:(p,o)=>PROP.counter(p,o.cx,o.cz,o.w,o.pal,0x6b4426),
@@ -15276,6 +15282,72 @@ const REACT=(()=>{
   return {wrap,greet,TIX};
 })();
 
+// ── engine/sleep.js ──
+// ════════════════════════════════════════════════════════════════
+//  SLEEP (V288) — the households' evening and night, indoors. Through the day the people of a house, a shop or an inn are
+//  about their business. From early evening (about 19:50) those who live there are in: they sit at the table, or stand by
+//  the hearth (the innkeeper comes round from the bar and sits by the fire). From about half past eight they are in bed —
+//  lying down under the covers, breathing slow — until dawn. Wake one (talk to them) and they sit up, grumble, and then
+//  help you as they would by day (a shopkeeper opens up, the innkeeper finds you a room); after a while they lie down again.
+//  People in dungeons and the like are never touched: only rooms built by rooms.js that call SLEEP.room.
+//    SLEEP.room(lv, spec, items)   — after the room's furniture is known (rooms.js); items: [{k:'bed'|'chair'|'hearth', x, z, face}]
+//    SLEEP.phase()                  — 'day' | 'evening' | 'night'
+// ════════════════════════════════════════════════════════════════
+const SLEEP=(()=>{
+  const S=()=>(typeof GAME!=='undefined'&&GAME.S)||{};
+  const frac=()=>{ const f=S().dayFrac; return typeof f==='number'?((f%1)+1)%1:0.4; };
+  const EVE=0.83, BED=0.854, DAWN=0.272;   // ~19:55, 20:30, 06:30
+  const phase=()=>{ const f=frac(); return f>=BED||f<DAWN?'night':f>=EVE?'evening':'day'; };
+  const GRUMP={
+    any:['Mmph… whuh? Is it morning? …It is NOT morning.','Knight? At this hour? …Fine. What is it?','Can\'t a body sleep in this realm? …Oh. It\'s you. Go on, then.','Hnn— who\'s there? …Sir Knight. Of course it is.','*yawns* This had better be important.'],
+    shop:['Shop\'s shut! …Oh. You. Fine — but be quick about it, I\'ve an early start.','Mmph. Wares? Now? …All right, all right. Let me find my spectacles.','Do you know what hour it is? …Never mind. Coin\'s coin. What d\'you need?'],
+    inn:['A room? At this hour? …Ach, come on then, I\'ll not turn a knight out into the night.','Hnn? Oh — a traveller. There\'s always a bed for the weary. Mind the stairs in the dark.'],
+    king:['Who disturbs— ah. Sir Knight. Even kings must sleep, you know. Speak, then.'],
+    madison:['Mm…? Oh! You startled me. Is something wrong?'] };
+  const pick=(a,k)=>a[(Math.abs(Math.floor(k))>>>0)%a.length];
+  let LIST=[];
+  // how high the bed's mattress stands where its middle is: cast a ray down onto the furniture
+  const RC=new THREE.Raycaster(), DN=new THREE.Vector3(0,-1,0);
+  function topAt(lv,x,z){ RC.set(new THREE.Vector3(x,1.5,z),DN); RC.far=2; const ms=[]; lv.room.traverse(o=>{ if(o.isMesh&&!o.isSkinnedMesh&&!o.isSprite&&!o.isInstancedMesh&&o.geometry) ms.push(o); }); lv.room.updateMatrixWorld(true); const hits=RC.intersectObjects(ms,false).filter(h=>h.object.visible&&h.point.y<0.9&&!(h.object.material&&(h.object.material.transparent||h.object.material.isMeshBasicMaterial))&&!(h.object.userData&&h.object.userData.castK)&&!h.object.isSkinnedMesh); return hits.length?hits[0].point.y:0.33; }
+  function cover(lv,b,col){ const g=new THREE.Group(); const m=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.09,0.98,4,1,6),new THREE.MeshLambertMaterial({color:col||0x8a3a3a}));
+    const p=m.geometry.attributes.position; for(let i=0;i<p.count;i++){ if(p.getY(i)>0){ const x=p.getX(i)/0.31, z=p.getZ(i)/0.49; p.setY(i,p.getY(i)+0.05*(1-x*x)*(1-Math.abs(z)*0.5)); } else p.setX(i,p.getX(i)*1.08); }
+    m.geometry.computeVertexNormals(); m.castShadow=m.receiveShadow=true; g.add(m); const fold=new THREE.Mesh(new THREE.BoxGeometry(0.66,0.04,0.12),new THREE.MeshLambertMaterial({color:0xf4eee0})); fold.position.set(0,0.06,-0.5); g.add(fold);
+    g.position.set(b.x,b.top+0.01,b.z+0.22); g.visible=false; lv.room.add(g); return g; }
+  function room(lv,spec,items){ try{
+    const kind=spec.theme||'home', beds=(items||[]).filter(i=>i.k==='bed').map(b=>({x:b.x,z:b.z,used:null})), chairs=(items||[]).filter(i=>i.k==='chair'||i.k==='armchair').map(c=>({x:c.x,z:c.z,face:c.face||0,used:null}));
+    const hearth=(items||[]).find(i=>i.k==='hearth');
+    // who lives here and sleeps here: the people of a home, the shopkeeper, the innkeeper (not patrons, bards, strangers, pets)
+    const sleepers=lv.folk.filter(f=>!f.Z&&f.who&&!/Patron|Bard|Stranger|cat|dog|hound|Guard|Royal Guard|Traveller|Pilgrim/i.test(f.who)&&(kind==='home'||kind==='keep'||f.label==='Shop'||f.label==='Rest'||f.who===spec.keeper||f.who==='Innkeeper'||f.sleeper));
+    if(!sleepers.length) return;
+    beds.forEach(b=>{ b.top=topAt(lv,b.x,b.z); b.cov=cover(lv,b,spec.blanket||(lv.pal&&lv.pal.cloth)); });
+    sleepers.forEach((f,i)=>{ const bed=beds.find(b=>!b.used); if(bed) bed.used=f;
+      const isInn=f.who==='Innkeeper'||f.label==='Rest', cs=isInn&&hearth?chairs.slice().sort((a,b)=>Math.hypot(a.x-hearth.x,a.z-hearth.z)-Math.hypot(b.x-hearth.x,b.z-hearth.z)):chairs, ch=cs.find(c=>!c.used); if(ch&&kind!=='shop') ch.used=f;
+      const role=f.who===spec.keeper||f.label==='Shop'?'shop':f.who==='Innkeeper'||f.label==='Rest'?'inn':/King Karl/.test(f.who)?'king':/Madison/.test(f.who)?'madison':'any';
+      f.Z={bed,chair:ch&&ch.used===f?ch:null,role,day:{x:f.x,z:f.z,rest:f.rest||0,y:f.g.position.y},dayVis:f.Z0dayVis!==undefined?f.Z0dayVis:(f.g.visible!==false&&!f.nightOnly),ph:null,awake:0,k:i*7+(f.who||'').length,
+        stand:hearth?{x:hearth.x+(i%2?0.7:-0.7),z:hearth.z+0.9,face:Math.atan2(hearth.x-(hearth.x+(i%2?0.7:-0.7)),hearth.z-(hearth.z+0.9))}:null,act0:null,wakeFn:null};
+      f.still=true; f.near=f.near||30; f.lookAbout=f.lookAbout||0.35; f.breathe=true; });
+    const set=(f,x,z,rest,y)=>{ f.x=x; f.z=z; f.rest=rest; f.g.position.set(x,y!=null?y:0,z); f.g.rotation.y=rest; };
+    const apply=(f,ph)=>{ const Z=f.Z; if(f.action!==Z.wakeFn) Z.act0=f.action||null; Z.ph=ph; f.lie=false; f.sit=false; if(Z.bed&&Z.bed.cov) Z.bed.cov.visible=false; f.action=Z.act0;
+      if(ph==='day'){ set(f,Z.day.x,Z.day.z,Z.day.rest,Z.day.y); const v=Z.dayVis; f.g.visible=v; f.mute=!v; f.ghost=!v; return; }
+      f.g.visible=true; f.mute=false; f.ghost=false;
+      if(ph==='evening'){ if(Z.chair){ set(f,Z.chair.x,Z.chair.z,Z.chair.face,0.02); f.sit=true; } else if(Z.role==='shop') set(f,Z.day.x,Z.day.z,Z.day.rest,Z.day.y); else if(Z.stand) set(f,Z.stand.x,Z.stand.z,Z.stand.face,0); return; }
+      // night: abed
+      if(!Z.bed){ apply(f,'evening'); Z.ph='night'; return; }
+      const s=f.g.scale.x||0.6; set(f,Z.bed.x,Z.bed.z+0.08,0,Z.bed.top-0.14*s); f.lie=true; if(Z.bed.cov) Z.bed.cov.visible=true;
+      Z.wakeFn=Z.wakeFn||(()=>wake(f)); f.action=Z.wakeFn; };
+    function wake(f){ const Z=f.Z; f.lie=false; if(Z.bed&&Z.bed.cov) Z.bed.cov.visible=false; f.sit=true; set(f,Z.bed.x+0.55,Z.bed.z+0.2,Math.PI/2,Z.bed.top-0.36); Z.awake=30;
+      const line=pick(GRUMP[Z.role]||GRUMP.any,Z.k+(Z.wakes=(Z.wakes||0)+1));
+      ENGINE.speak(f.who,[line],f,()=>{ f.sit=false; set(f,Z.bed.x+0.75,Z.bed.z+0.4,Math.PI/2,0); if(Z.act0) Z.act0(f); else if(f.lines) ENGINE.speak(f.who,f.lines,f); }); f.action=Z.act0; }
+    const mine=sleepers.slice();
+    const tick=(t,dt)=>{ const ph=phase(); mine.forEach(f=>{ const Z=f.Z; if(!Z) return;
+        if(Z.awake>0){ Z.awake-=Math.min(dt||0.016,0.1); if(Z.awake<=0&&ph==='night'&&!(ENGINE.talking&&ENGINE.talking()===f)) apply(f,'night'); return; }
+        if(Z.ph!==ph) apply(f,ph); }); };
+    lv.anim.push(tick); const oe=lv.onEnter; lv.onEnter=sp=>{ mine.forEach(f=>{ if(f.Z) f.Z.ph=null; f.Z&&(f.Z.awake=0); }); tick(0,0); if(oe) oe(sp); };
+    tick(0,0); LIST.push(lv.id);
+  }catch(e){ console.warn('[sleep]',e); } }
+  return {room,phase,EVE,BED,DAWN};
+})();
+
 // ── engine/guardians.js ──
 // ════════════════════════════════════════════════════════════════
 //  GUARDIANS — what makes each sanctum its own fight, from the game's own ticks:
@@ -19915,16 +19987,61 @@ function throneLevel(spec){
 
   lv.spots.push({x:cx,z:8.7,r:1.2,label:'Kneel',who:'Before the throne',action:()=>{ ENGINE.hold(1.8,'sit'); ENGINE.speak(spec.king.name||'The King',['Rise, knight. Luminar is in your debt — and it is not to me that you owe your strength.','“Fear God. Honour the king.” — 1 Peter 2:17']); }});
   // King Karl on his throne; the halberd guards
-  const king=addPerson(lv,R,'king',cx,2.34,0.63,spec.king.name,spec.king.lines,{rest:0,reach:4.4}); king.still=true; king.sit=true; king.near=40; king.lookAbout=0.5; king.breathe=true; king.key='king'; if(king.g.animate) try{ king.g.animate(0.016,'sit',0.5); }catch(e){} king.reach=5.6; king.g.scale.setScalar(1.06);
+  const king=addPerson(lv,R,'king',cx,2.34,0.63,spec.king.name,spec.king.lines,{rest:0,reach:4.4}); king.still=true; an.push(()=>{ const on=typeof SLEEP==='undefined'||SLEEP.phase()!=='night'; if(king.g.visible!==on){ king.g.visible=on; king.mute=!on; king.ghost=!on; } });   // abed at night
+  { const mad=addPerson(lv,R,'madison',cx+1.9,5.2,0.6,'Princess Madison',['Welcome, Sir Knight. My father speaks of you every evening at supper.','“The Lord is my light and my salvation; whom shall I fear?” — Psalm 27:1'],{rest:-0.35});
+    mad.still=true; mad.near=40; mad.lookAbout=0.45; mad.breathe=true; mad.idle='clasped';
+    an.push(()=>{ const b=(GAME.S&&GAME.S.bounties)||{}, here=(!b.madisonTaken||(b.madisonRescued&&!GAME.S.homecoming))&&(typeof SLEEP==='undefined'||SLEEP.phase()!=='night'); if(mad.g.visible!==here){ mad.g.visible=here; mad.mute=!here; mad.ghost=!here; } }); }
+  if(!ENGINE.levels['keep_chambers']) ENGINE.add({id:'keep_chambers',lazy:()=>chambersLevel({back:{level:spec.id,spawn:{x:13.75,z:2.4,face:0}}})}); king.sit=true; king.near=40; king.lookAbout=0.5; king.breathe=true; king.key='king'; if(king.g.animate) try{ king.g.animate(0.016,'sit',0.5); }catch(e){} king.reach=5.6; king.g.scale.setScalar(1.06);
   [[cx-2,8,0],[cx+2,8,1],[cx-2,14,0],[cx+2,14,1]].forEach(([x,y,s])=>addPerson(lv,R,'royalguard',x,y+0.5,0,'Royal Guard',[spec.guardLines[s]],{rest:s?-Math.PI/2:Math.PI/2}));
   lv.folk.forEach(f=>{ if(f.who==='Royal Guard'){ f.still=true; f.near=40; f.lookAbout=0.55; f.breathe=true; } });   // at their posts: they shift a little and look about the hall
   // walking: buildKeepGrid — floor everywhere except the pillar/wall edges, the dais rows and the minstrels' platform
   lv.ground=()=>0;
-  lv.canMove=(fx,fz,tx,tz)=>tx>=3.25&&tx<=W-3.25&&tz>=8.2&&tz<=H-0.4&&!(tx<5.35&&tz<10.05);
+  lv.canMove=(fx,fz,tx,tz)=>(tx>=3.25&&tx<=W-3.25&&tz>=8.2&&tz<=H-0.4&&!(tx<5.35&&tz<10.05))||(tx>=13.3&&tx<=14.25&&tz>=1.5&&tz<=8.4);   // V288: and the way past the dais to the royal chambers
+  /* V288: THE ROYAL CHAMBERS — an oak door in the back wall beside the dais, under a round arch with the royal arms over it; through it the
+     King's bedchamber and the Princess's. By night the throne stands empty: King Karl is abed, and Madison too (sleep.js). */
+  { const dx=13.75, D=group(dx,0,1.02,R); const dr=new THREE.Shape(); dr.moveTo(-0.55,0); dr.lineTo(0.55,0); dr.lineTo(0.55,1.9); dr.absarc(0,1.9,0.55,0,Math.PI,false); dr.lineTo(-0.55,0);
+    const dm=new THREE.Mesh(new THREE.ShapeGeometry(dr,12),tm(0x5a3820,OAK)); dm.position.z=0.005; D.add(dm); [0.5,1.3,2.0].forEach(y=>TB(1.0,0.06,0.03,tm(iron),0,y,0.02,D));
+    const ar=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.09,6,16,Math.PI),STONED); ar.position.set(0,1.9,0.04); D.add(ar); [-1,1].forEach(sx=>TB(0.16,1.9,0.16,STONED,sx*0.62,0,0.04,D));
+    Sp(0.035,tm(gold),0.32,1.0,0.05,D); const cr=new THREE.Mesh(new THREE.CircleGeometry(0.2,16),tm(0x22336a)); cr.position.set(0,2.75,0.03); D.add(cr); TB(0.04,0.22,0.01,tm(gold),0,2.64,0.04,D); TB(0.14,0.04,0.01,tm(gold),0,2.72,0.04,D);
+    lv.spots.push({x:dx,z:1.9,r:0.9,label:'Enter',who:'The royal chambers',action:()=>ENGINE.go('keep_chambers',{x:4.5,z:7.6,face:Math.PI})}); }
+
   lv.clamp=v=>{ v.x=Math.min(W-1.3,Math.max(1.3,v.x)); v.z=Math.min(H-1.2,Math.max(1.5,v.z)); v.y=Math.min(NH-0.6,Math.max(0.8,v.y)); };
   lv.camBlock=(x,z,y)=>y>NH-0.7||x<1.1||x>W-1.1||z>H-1.05||((Math.abs(x-2)<0.7||Math.abs(x-(W-2))<0.7)&&(y>SP-0.2||((z-0.5)%4+4)%4>1.3&&((z-0.5)%4+4)%4<2.7));   // the walls, the roof, the pillars and the clerestory over the arches
   lv.spawn={x:cx,z:H-2.5,face:Math.PI,yaw:0};
   lv.spots.push({x:cx,z:H-1.2,r:1.4,label:'Leave',who:'Leave',auto:[0,1],ar:0.8,action:()=>ENGINE.go(spec.exit.level,spec.exit.spawn)});
+  return lv; }
+
+// ════════════════════════════════════════════════════════════════
+//  THE ROYAL CHAMBERS (V288) — behind the throne hall: a passage with a guard at the door, King Karl's bedchamber (a canopied bed
+//  hung in royal blue, his armour on its stand, his sword on the rack, the hearth, his banner) and Princess Madison's (a canopied bed
+//  in rose, her dresser, books, flowers, a window over the city). They are here by night and in the hall by day (sleep.js).
+// ════════════════════════════════════════════════════════════════
+function chambersLevel(o){
+  const G=[
+    '5 5 51 5 54 5 51 5 5 5 51 5 44 5 51 5 5',
+    '5 13 13 13 13 45 13 13 5 49 13 13 13 13 13 50 5',
+    '5 56 13 61 13 13 13 47 5 13 13 61 13 13 13 49 5',
+    '5 12 13 62 13 13 13 12 5 47 13 62 13 13 13 12 5',
+    '5 55 13 13 13 13 13 12 5 12 13 13 13 13 13 44 5',
+    '5 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 5',
+    '5 12 12 12 12 12 12 12 5 12 12 12 12 12 12 12 5',
+    '5 12 12 12 12 12 12 12 5 12 12 12 12 12 12 12 5',
+    '5 5 5 5 9 5 5 5 5 5 5 5 5 5 5 5 5'].map(r=>r.trim().split(/\s+/).map(Number));
+  const lv=gridRoom({id:'keep_chambers',name:'The Royal Chambers',theme:'keep',grid:G,npcs:[],floor:0,blanket:0x22336a,zone:'The Royal Chambers',pal:{cloth:0x22336a,accent:0x22336a,trim:0xe8c766},exit:o.back});
+  const R=lv.room, gold=0xe8c766;
+  // canopies over the two great beds: posts, a tester and hangings (blue and gold for the King, rose and gold for the Princess)
+  [[3.5,4,0x22336a],[11.5,4,0xc86a8a]].forEach(([x,z,c])=>{ const g=group(x,0,z,R); [[-0.55,-1.05],[0.55,-1.05],[-0.55,1.0],[0.55,1.0]].forEach(([a,b])=>{ Cy(0.035,0.04,2.05,8,0x4a2c16,a,0,b,g); Sp(0.05,gold,a,2.1,b,g); });
+    const top=B(1.3,0.06,2.25,c,0,2.02,0,g); const hang=(w,ang,px,pz)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,0.32,10,1),new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide})); const p=m.geometry.attributes.position; for(let i=0;i<p.count;i++) if(p.getY(i)<0) p.setY(i,p.getY(i)-0.04*Math.abs(Math.sin(p.getX(i)*8))); m.position.set(px,1.86,pz); m.rotation.y=ang; g.add(m); B(w,0.03,0.02,gold,px,1.7,pz,g).rotation.y=ang; };
+    hang(1.3,0,0,1.12); hang(1.3,0,0,-1.12); hang(2.25,Math.PI/2,0.65,0); hang(2.25,Math.PI/2,-0.65,0);
+    // curtains drawn back along the sides at the head, tied with a gold cord, so the sleeper can be seen from the room
+    [[-0.6,-0.72],[0.6,-0.72]].forEach(([a,b])=>{ const cu=new THREE.Mesh(new THREE.PlaneGeometry(0.5,1.7,4,6),new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide})); const p=cu.geometry.attributes.position; for(let i=0;i<p.count;i++){ const y=p.getY(i), pinch=1-0.55*Math.exp(-((y+0.1)*(y+0.1))*6); p.setX(i,p.getX(i)*pinch); p.setZ(i,0.04*Math.sin(p.getX(i)*24+y*3)); } cu.position.set(a,1.0,b); cu.rotation.y=Math.PI/2; g.add(cu); Cy(0.03,0.03,0.18,6,gold,a,0.82,b,g).rotation.x=Math.PI/2; }); });
+  // the King's guard at the passage door; the two sleepers, who are here only by night
+  const gd=addPerson(lv,R,'royalguard',4.5,6.3,0,'Royal Guard',['The King sleeps, Sir Knight. Speak softly, if you must speak at all.'],{rest:Math.PI}); gd.still=true; gd.near=30; gd.lookAbout=0.5; gd.breathe=true; gd.idle='guard';
+  const king=addPerson(lv,R,'king',3.5,4.0,0,'King Karl',['Mm. Even a king must rest, knight.'],{rest:0}); king.sleeper=true; king.Z0dayVis=false; king.g.scale.setScalar(1.0);
+  const mad=addPerson(lv,R,'madison',11.5,4.0,0,'Princess Madison',['Goodnight, Sir Knight. God keep you.'],{rest:0}); mad.sleeper=true; mad.Z0dayVis=false;
+  const isHere=()=>{ const b=(GAME.S&&GAME.S.bounties)||{}; return !b.madisonTaken||(b.madisonRescued&&!GAME.S.homecoming); };
+  if(typeof SLEEP!=='undefined') SLEEP.room(lv,{theme:'keep',blanket:0x22336a},lv._items||[]);
+  lv.anim.push(()=>{ if(!isHere()&&mad.g.visible){ mad.g.visible=false; mad.mute=true; mad.ghost=true; } });
   return lv; }
 
 // ── engine/race.js ──
@@ -24592,7 +24709,7 @@ const BODY3=(function(){
       const dy=crown?(top+hair*0.5-0.03)-bb.min.y*k-(1-k)*c.y:(top+hair+0.028)-c.y, dz=cz-c.z;
       all.forEach(o=>{ if(k!==1){ o.position.sub(c).multiplyScalar(k).add(c); o.scale.multiplyScalar(k); } o.position.y+=dy; o.position.z+=dz*0.7; });
       if(!crown&&typeof KIT_HAT!=='undefined'&&KIT_HAT[(K.cast||'').replace(/^folk:/,'')]==='hood') all.forEach(o=>{ if(o.userData.mat==='hatD') o.visible=false; });   // a hood's dark rim hung before the new, larger face
-      K.userData.hatFit={top,rad,k,dy,crown}; }
+      K.userData.hatFit={top,rad,k,dy,crown}; K.userData.hats=all; }
     if(sp.crown){   // a king's crown: a gilt band set with stones, eight points with pearls, a cross before, over a red velvet cap
       main.forEach(o=>o.visible=false); const G=mat('steel',0xd8a838,{skinning:false}), Gd=mat('steel',0xa87a22,{skinning:false}), Rv=mat('cloth',0x8a1a22,{skinning:false}), R0=rad*1.08+0.012, y0=top-0.05, cr=new THREE.Group(); cr.position.set(cx,y0,cz); r.head.add(cr);
       const band=new THREE.Mesh(new THREE.CylinderGeometry(R0,R0*0.97,0.045,24,1,true),G); band.material.side=THREE.DoubleSide; band.position.y=0.0225; cr.add(band);

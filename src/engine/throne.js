@@ -289,14 +289,59 @@ function throneLevel(spec){
 
   lv.spots.push({x:cx,z:8.7,r:1.2,label:'Kneel',who:'Before the throne',action:()=>{ ENGINE.hold(1.8,'sit'); ENGINE.speak(spec.king.name||'The King',['Rise, knight. Luminar is in your debt — and it is not to me that you owe your strength.','“Fear God. Honour the king.” — 1 Peter 2:17']); }});
   // King Karl on his throne; the halberd guards
-  const king=addPerson(lv,R,'king',cx,2.34,0.63,spec.king.name,spec.king.lines,{rest:0,reach:4.4}); king.still=true; king.sit=true; king.near=40; king.lookAbout=0.5; king.breathe=true; king.key='king'; if(king.g.animate) try{ king.g.animate(0.016,'sit',0.5); }catch(e){} king.reach=5.6; king.g.scale.setScalar(1.06);
+  const king=addPerson(lv,R,'king',cx,2.34,0.63,spec.king.name,spec.king.lines,{rest:0,reach:4.4}); king.still=true; an.push(()=>{ const on=typeof SLEEP==='undefined'||SLEEP.phase()!=='night'; if(king.g.visible!==on){ king.g.visible=on; king.mute=!on; king.ghost=!on; } });   // abed at night
+  { const mad=addPerson(lv,R,'madison',cx+1.9,5.2,0.6,'Princess Madison',['Welcome, Sir Knight. My father speaks of you every evening at supper.','“The Lord is my light and my salvation; whom shall I fear?” — Psalm 27:1'],{rest:-0.35});
+    mad.still=true; mad.near=40; mad.lookAbout=0.45; mad.breathe=true; mad.idle='clasped';
+    an.push(()=>{ const b=(GAME.S&&GAME.S.bounties)||{}, here=(!b.madisonTaken||(b.madisonRescued&&!GAME.S.homecoming))&&(typeof SLEEP==='undefined'||SLEEP.phase()!=='night'); if(mad.g.visible!==here){ mad.g.visible=here; mad.mute=!here; mad.ghost=!here; } }); }
+  if(!ENGINE.levels['keep_chambers']) ENGINE.add({id:'keep_chambers',lazy:()=>chambersLevel({back:{level:spec.id,spawn:{x:13.75,z:2.4,face:0}}})}); king.sit=true; king.near=40; king.lookAbout=0.5; king.breathe=true; king.key='king'; if(king.g.animate) try{ king.g.animate(0.016,'sit',0.5); }catch(e){} king.reach=5.6; king.g.scale.setScalar(1.06);
   [[cx-2,8,0],[cx+2,8,1],[cx-2,14,0],[cx+2,14,1]].forEach(([x,y,s])=>addPerson(lv,R,'royalguard',x,y+0.5,0,'Royal Guard',[spec.guardLines[s]],{rest:s?-Math.PI/2:Math.PI/2}));
   lv.folk.forEach(f=>{ if(f.who==='Royal Guard'){ f.still=true; f.near=40; f.lookAbout=0.55; f.breathe=true; } });   // at their posts: they shift a little and look about the hall
   // walking: buildKeepGrid — floor everywhere except the pillar/wall edges, the dais rows and the minstrels' platform
   lv.ground=()=>0;
-  lv.canMove=(fx,fz,tx,tz)=>tx>=3.25&&tx<=W-3.25&&tz>=8.2&&tz<=H-0.4&&!(tx<5.35&&tz<10.05);
+  lv.canMove=(fx,fz,tx,tz)=>(tx>=3.25&&tx<=W-3.25&&tz>=8.2&&tz<=H-0.4&&!(tx<5.35&&tz<10.05))||(tx>=13.3&&tx<=14.25&&tz>=1.5&&tz<=8.4);   // V288: and the way past the dais to the royal chambers
+  /* V288: THE ROYAL CHAMBERS — an oak door in the back wall beside the dais, under a round arch with the royal arms over it; through it the
+     King's bedchamber and the Princess's. By night the throne stands empty: King Karl is abed, and Madison too (sleep.js). */
+  { const dx=13.75, D=group(dx,0,1.02,R); const dr=new THREE.Shape(); dr.moveTo(-0.55,0); dr.lineTo(0.55,0); dr.lineTo(0.55,1.9); dr.absarc(0,1.9,0.55,0,Math.PI,false); dr.lineTo(-0.55,0);
+    const dm=new THREE.Mesh(new THREE.ShapeGeometry(dr,12),tm(0x5a3820,OAK)); dm.position.z=0.005; D.add(dm); [0.5,1.3,2.0].forEach(y=>TB(1.0,0.06,0.03,tm(iron),0,y,0.02,D));
+    const ar=new THREE.Mesh(new THREE.TorusGeometry(0.62,0.09,6,16,Math.PI),STONED); ar.position.set(0,1.9,0.04); D.add(ar); [-1,1].forEach(sx=>TB(0.16,1.9,0.16,STONED,sx*0.62,0,0.04,D));
+    Sp(0.035,tm(gold),0.32,1.0,0.05,D); const cr=new THREE.Mesh(new THREE.CircleGeometry(0.2,16),tm(0x22336a)); cr.position.set(0,2.75,0.03); D.add(cr); TB(0.04,0.22,0.01,tm(gold),0,2.64,0.04,D); TB(0.14,0.04,0.01,tm(gold),0,2.72,0.04,D);
+    lv.spots.push({x:dx,z:1.9,r:0.9,label:'Enter',who:'The royal chambers',action:()=>ENGINE.go('keep_chambers',{x:4.5,z:7.6,face:Math.PI})}); }
+
   lv.clamp=v=>{ v.x=Math.min(W-1.3,Math.max(1.3,v.x)); v.z=Math.min(H-1.2,Math.max(1.5,v.z)); v.y=Math.min(NH-0.6,Math.max(0.8,v.y)); };
   lv.camBlock=(x,z,y)=>y>NH-0.7||x<1.1||x>W-1.1||z>H-1.05||((Math.abs(x-2)<0.7||Math.abs(x-(W-2))<0.7)&&(y>SP-0.2||((z-0.5)%4+4)%4>1.3&&((z-0.5)%4+4)%4<2.7));   // the walls, the roof, the pillars and the clerestory over the arches
   lv.spawn={x:cx,z:H-2.5,face:Math.PI,yaw:0};
   lv.spots.push({x:cx,z:H-1.2,r:1.4,label:'Leave',who:'Leave',auto:[0,1],ar:0.8,action:()=>ENGINE.go(spec.exit.level,spec.exit.spawn)});
+  return lv; }
+
+// ════════════════════════════════════════════════════════════════
+//  THE ROYAL CHAMBERS (V288) — behind the throne hall: a passage with a guard at the door, King Karl's bedchamber (a canopied bed
+//  hung in royal blue, his armour on its stand, his sword on the rack, the hearth, his banner) and Princess Madison's (a canopied bed
+//  in rose, her dresser, books, flowers, a window over the city). They are here by night and in the hall by day (sleep.js).
+// ════════════════════════════════════════════════════════════════
+function chambersLevel(o){
+  const G=[
+    '5 5 51 5 54 5 51 5 5 5 51 5 44 5 51 5 5',
+    '5 13 13 13 13 45 13 13 5 49 13 13 13 13 13 50 5',
+    '5 56 13 61 13 13 13 47 5 13 13 61 13 13 13 49 5',
+    '5 12 13 62 13 13 13 12 5 47 13 62 13 13 13 12 5',
+    '5 55 13 13 13 13 13 12 5 12 13 13 13 13 13 44 5',
+    '5 12 12 12 12 12 12 12 12 12 12 12 12 12 12 12 5',
+    '5 12 12 12 12 12 12 12 5 12 12 12 12 12 12 12 5',
+    '5 12 12 12 12 12 12 12 5 12 12 12 12 12 12 12 5',
+    '5 5 5 5 9 5 5 5 5 5 5 5 5 5 5 5 5'].map(r=>r.trim().split(/\s+/).map(Number));
+  const lv=gridRoom({id:'keep_chambers',name:'The Royal Chambers',theme:'keep',grid:G,npcs:[],floor:0,blanket:0x22336a,zone:'The Royal Chambers',pal:{cloth:0x22336a,accent:0x22336a,trim:0xe8c766},exit:o.back});
+  const R=lv.room, gold=0xe8c766;
+  // canopies over the two great beds: posts, a tester and hangings (blue and gold for the King, rose and gold for the Princess)
+  [[3.5,4,0x22336a],[11.5,4,0xc86a8a]].forEach(([x,z,c])=>{ const g=group(x,0,z,R); [[-0.55,-1.05],[0.55,-1.05],[-0.55,1.0],[0.55,1.0]].forEach(([a,b])=>{ Cy(0.035,0.04,2.05,8,0x4a2c16,a,0,b,g); Sp(0.05,gold,a,2.1,b,g); });
+    const top=B(1.3,0.06,2.25,c,0,2.02,0,g); const hang=(w,ang,px,pz)=>{ const m=new THREE.Mesh(new THREE.PlaneGeometry(w,0.32,10,1),new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide})); const p=m.geometry.attributes.position; for(let i=0;i<p.count;i++) if(p.getY(i)<0) p.setY(i,p.getY(i)-0.04*Math.abs(Math.sin(p.getX(i)*8))); m.position.set(px,1.86,pz); m.rotation.y=ang; g.add(m); B(w,0.03,0.02,gold,px,1.7,pz,g).rotation.y=ang; };
+    hang(1.3,0,0,1.12); hang(1.3,0,0,-1.12); hang(2.25,Math.PI/2,0.65,0); hang(2.25,Math.PI/2,-0.65,0);
+    // curtains drawn back along the sides at the head, tied with a gold cord, so the sleeper can be seen from the room
+    [[-0.6,-0.72],[0.6,-0.72]].forEach(([a,b])=>{ const cu=new THREE.Mesh(new THREE.PlaneGeometry(0.5,1.7,4,6),new THREE.MeshLambertMaterial({color:c,side:THREE.DoubleSide})); const p=cu.geometry.attributes.position; for(let i=0;i<p.count;i++){ const y=p.getY(i), pinch=1-0.55*Math.exp(-((y+0.1)*(y+0.1))*6); p.setX(i,p.getX(i)*pinch); p.setZ(i,0.04*Math.sin(p.getX(i)*24+y*3)); } cu.position.set(a,1.0,b); cu.rotation.y=Math.PI/2; g.add(cu); Cy(0.03,0.03,0.18,6,gold,a,0.82,b,g).rotation.x=Math.PI/2; }); });
+  // the King's guard at the passage door; the two sleepers, who are here only by night
+  const gd=addPerson(lv,R,'royalguard',4.5,6.3,0,'Royal Guard',['The King sleeps, Sir Knight. Speak softly, if you must speak at all.'],{rest:Math.PI}); gd.still=true; gd.near=30; gd.lookAbout=0.5; gd.breathe=true; gd.idle='guard';
+  const king=addPerson(lv,R,'king',3.5,4.0,0,'King Karl',['Mm. Even a king must rest, knight.'],{rest:0}); king.sleeper=true; king.Z0dayVis=false; king.g.scale.setScalar(1.0);
+  const mad=addPerson(lv,R,'madison',11.5,4.0,0,'Princess Madison',['Goodnight, Sir Knight. God keep you.'],{rest:0}); mad.sleeper=true; mad.Z0dayVis=false;
+  const isHere=()=>{ const b=(GAME.S&&GAME.S.bounties)||{}; return !b.madisonTaken||(b.madisonRescued&&!GAME.S.homecoming); };
+  if(typeof SLEEP!=='undefined') SLEEP.room(lv,{theme:'keep',blanket:0x22336a},lv._items||[]);
+  lv.anim.push(()=>{ if(!isHere()&&mad.g.visible){ mad.g.visible=false; mad.mute=true; mad.ghost=true; } });
   return lv; }

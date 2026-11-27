@@ -334,7 +334,7 @@ const BODY3=(function(){
       const dy=crown?(top+hair*0.5-0.03)-bb.min.y*k-(1-k)*c.y:(top+hair+0.028)-c.y, dz=cz-c.z;
       all.forEach(o=>{ if(k!==1){ o.position.sub(c).multiplyScalar(k).add(c); o.scale.multiplyScalar(k); } o.position.y+=dy; o.position.z+=dz*0.7; });
       if(!crown&&typeof KIT_HAT!=='undefined'&&KIT_HAT[(K.cast||'').replace(/^folk:/,'')]==='hood') all.forEach(o=>{ if(o.userData.mat==='hatD') o.visible=false; });   // a hood's dark rim hung before the new, larger face
-      K.userData.hatFit={top,rad,k,dy,crown}; }
+      K.userData.hatFit={top,rad,k,dy,crown}; K.userData.hats=all; }
     if(sp.crown){   // a king's crown: a gilt band set with stones, eight points with pearls, a cross before, over a red velvet cap
       main.forEach(o=>o.visible=false); const G=mat('steel',0xd8a838,{skinning:false}), Gd=mat('steel',0xa87a22,{skinning:false}), Rv=mat('cloth',0x8a1a22,{skinning:false}), R0=rad*1.08+0.012, y0=top-0.05, cr=new THREE.Group(); cr.position.set(cx,y0,cz); r.head.add(cr);
       const band=new THREE.Mesh(new THREE.CylinderGeometry(R0,R0*0.97,0.045,24,1,true),G); band.material.side=THREE.DoubleSide; band.position.y=0.0225; cr.add(band);

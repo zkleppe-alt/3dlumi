@@ -229,19 +229,20 @@ function gridRoom(spec){ if(typeof HOMESTEAD!=='undefined') spec=HOMESTEAD.pre(s
   if(typeof ROOMLIFE!=='undefined'){ const items=[], K={40:'table',44:'shelf',45:'hearth',47:'cabinet',48:'barrel',49:'plant',50:'dresser',51:'window',55:'rack',56:'armour',66:'chest',59:'crate'};
     for(let y=0;y<H;y++) for(let x=0;x<W;x++){ const t=G[y][x], cx=x+0.5, cz=y+0.5;
       if(t===41){ const tt=[[1,0],[-1,0],[0,1],[0,-1]].find(([a,b])=>at(x+a,y+b)===40)||[0,-1]; items.push({k:'chair',x:cx,z:cz,face:Math.atan2(tt[0],tt[1])}); }
-      else if(t===42) items.push({k:'bed',x:cx,z:y+(at(x,y+1)===43?1:0.5)});
+      else if(t===42||(t===61&&at(x,y+1)===62)) items.push({k:'bed',x:cx,z:y+(at(x,y+1)===43||at(x,y+1)===62?1:0.5)});
       else if(t===51) items.push({k:'window',x:cx,z:y===0?y+1.0:cz});
       else if(t===45) items.push({k:'hearth',x:cx,z:y+0.6});
       else if(t===44) items.push({k:'shelf',x:cx,z:y+0.3});
       else if(K[t]) items.push({k:K[t],x:cx,z:cz}); }
-    try{ if(typeof HOMESTEAD!=='undefined') items.push(...HOMESTEAD.post(lv,spec)); ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } }
+    try{ if(typeof HOMESTEAD!=='undefined') items.push(...HOMESTEAD.post(lv,spec)); ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } lv._items=items; }
   /* V287: at night the people who live here are in (ROUTINE): by the hearth, at the table, by their beds; by day they're out */
   if(spec.theme==='home'&&typeof ROUTINE!=='undefined'&&/:0$|^[^:]*$/.test(spec.id||'')){ const id=(spec.id||'').replace(/^in:/,'').replace(/:\d+$/,''), res=ROUTINE.residents(id); if(res.length){
     const flip=spec.planned&&hsh(id.length*7,id.charCodeAt(0)||1)<0.5, spotsIn=[[4.5,6.5],[2.5,5.5],[6.5,4.5],[5.5,6.2]].map(([x,z])=>[flip?W-x:x,z]);
     const night=[]; res.forEach((v,i)=>{ const out=(v.key||'').split(':').pop(), sp=spotsIn[i%spotsIn.length]; const own=(typeof DIALOGUE!=='undefined'&&DIALOGUE.lines(v.key))||null; const f=addPerson(lv,lv.room,out,sp[0],sp[1],0,v.who,(own&&own.lines)||v.lines||['God keep you, knight.'],{rest:0}); f.atHomeIn=true;
       f.key=v.key; f.town=v.town; f.idle=v.idle||'clasped'; f.lookAbout=0.4; f.breathe=true; f.rest=faceTo(f.x,f.z,W/2,H-1); night.push(f); });
-    const show=()=>{ const on=ROUTINE.night(); night.forEach(f=>{ f.g.visible=on; f.mute=!on; f.ghost=!on; }); };
-    show(); const oe=lv.onEnter; lv.onEnter=sp=>{ show(); if(oe) oe(sp); }; lv.anim.push((t)=>{ if(((t*2)|0)%2===0) show(); }); } }
+    night.forEach(f=>{ f.sleeper=true; f.nightOnly=true; f.g.visible=false; f.mute=true; f.ghost=true; }); } }   /* V288: SLEEP brings them in for the evening and puts them to bed */
+  if(/^in:home_(house|barn):/.test(spec.id||'')){ if(typeof HOMEHOLD!=='undefined') HOMEHOLD.attach(lv,spec,lv._items||[]); }   /* V289: the Homestead keeps its own hours (homehold.js) */
+  else if(typeof SLEEP!=='undefined') SLEEP.room(lv,spec,lv._items||[]);
   return lv; }
 // a stair's landing must be floor you can stand on: the nearest open cell to the stair, in front of it if it can be
 function landings(lv){ ['upAt','downAt'].forEach(k=>{ const p=lv[k]; if(!p||lv.canMove(p.x,p.z,p.x,p.z)) return; const sx=Math.floor(p.x), sy=Math.floor(p.z-1.6); let best=null, bd=99;
@@ -252,8 +253,12 @@ function landings(lv){ ['upAt','downAt'].forEach(k=>{ const p=lv[k]; if(!p||lv.c
 function siGrid(R){ const g=[]; for(let y=0;y<R.H;y++){ g.push([]); for(let x=0;x<R.W;x++) g[y].push(y===0||y===R.H-1||x===0||x===R.W-1?5:12); }
   (R.door||[]).forEach(x=>g[R.H-1][x]=9); (R.stairs||[]).forEach(([x,y,t])=>g[y][x]=t);
   if(R.rooms){ for(let y=1;y<=4;y++) for(const x of [5,10,13]) g[y][x]=5; for(let x=1;x<=13;x++) if(![2,7,11].includes(x)) g[5][x]=5; }
+  if(R.part){ for(let y=1;y<R.H-1;y++) g[y][R.part.x]=y===R.part.door?12:5; }   // V288: the keeper's bedroom behind its partition
   return g; }
+/* V288: a shop and an inn's common room get a small bedroom for the keeper, through a doorway in the side wall: a bed, a chest, a window, a plant */
+function addBedroom(R){ if(R.part||!R.W) return R; const W0=R.W; return Object.assign({},R,{W:W0+4,part:{x:W0-1,door:R.H-3},objs:R.objs.concat([['bed',W0,1,1,2],['chest',W0+2,1,1,1],['plant',W0+2,R.H-2,1,1],['crate',W0,R.H-2,1,1]]),wall:(R.wall||[]).concat([['window',W0+1,1]])}); }
 function objectRoom(spec){ if(typeof ROOMSTYLE_EXTRA!=='undefined') spec=ROOMSTYLE_EXTRA(spec);   // the shared templates, filled out for 3D
+  if(spec.room&&(spec.theme==='shop'||(spec.theme==='inn'&&!spec.floor))) spec=Object.assign({},spec,{room:addBedroom(spec.room)});
   const R=spec.room, G=siGrid(R), lv=roomShell(spec,G), {room,pal}=lv, solid=G.map(r=>r.map(t=>t===5));
   const tables=R.objs.filter(o=>o[0]==='table'||o[0]==='btable').map(([k,x,y,w,h])=>({x:x+(w||1)/2,z:y+(h||1)/2}));
   R.objs.forEach(([k,x,y,w,h,s])=>{ w=w||1; h=h||1; const cx=x+w/2, cz=y+h/2;
@@ -270,7 +275,7 @@ function objectRoom(spec){ if(typeof ROOMSTYLE_EXTRA!=='undefined') spec=ROOMSTY
       if(m==='chair'){ let best=null,bd=9; tables.forEach(t=>{ const d=Math.hypot(t.x-cx,t.z-cz); if(d<bd){bd=d;best=t;} }); face=best?faceTo(cx,cz,best.x,best.z):0; } if(m==='armchair') face=Math.PI;
       items.push({k:m,x:cx,z:cz,face,w,h}); });
     (R.wall||[]).forEach(([k,x,w])=>{ w=w||1; if(k==='window') for(let i=0;i<w;i++) items.push({k:'window',x:x+i+0.5,z:1.0}); else if(k==='hearth') items.push({k:'hearth',x:x+w/2,z:0.75}); else if(k==='clock') items.push({k:'clock',x:x+w/2,z:1.05}); else if(k==='goods') items.push({k:'goods',x:x+w/2,z:1.2}); });
-    try{ ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } }
+    try{ ROOMLIFE(lv,spec,items); }catch(e){ console.warn('roomlife',e); } if(typeof SLEEP!=='undefined'&&(spec.theme==='shop'||(spec.theme==='inn'&&!spec.floor))) SLEEP.room(lv,spec,items); }
   return lv; }
 const OBJECTS={
   counter:(p,o)=>PROP.counter(p,o.cx,o.cz,o.w,o.pal), bar:(p,o)=>PROP.counter(p,o.cx,o.cz,o.w,o.pal,0x6b4426),

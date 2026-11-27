@@ -1,5 +1,18 @@
 [
  {
+  "v": "V288",
+  "date": "2026-11-27",
+  "title": "Lights out",
+  "notes": [
+   "Shops and inns now have a small bedroom at the back. After dark the shopkeeper is tucked up in bed — wake them and they'll grumble, then sell to you anyway.",
+   "In the evening the innkeeper comes round from the bar and sits by the fire; from about half past eight everyone who lives there is in bed until morning.",
+   "Families at home sit at the table or stand by the hearth in the evening, then sleep in their own beds.",
+   "A door behind the throne now leads to the Royal Chambers: a bedchamber for King Karl and one for Princess Madison, with a guard at the door. At night you'll find them asleep there.",
+   "By day Princess Madison stands beside the throne in the great hall (until she's taken, and again once she's home).",
+   "People in dungeons stay where they are."
+  ]
+ },
+ {
   "v": "V287",
   "date": "2026-11-27",
   "title": "Word spreads",
