@@ -59,5 +59,11 @@ details ol{ padding-left:18px; margin:6px 0 0; } details li{ margin:3px 0; }
 (()=>{ const ua=navigator.userAgent, p=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
   const os=/CrOS/.test(ua)||/Chrome OS/i.test(p)?'cros':/Win/i.test(p)||/Windows/.test(ua)?'win':/Mac/i.test(p)||/Macintosh/.test(ua)?'mac':/Linux/i.test(p)||/Linux/.test(ua)?'linux':'';
   const c=document.querySelector('.card[data-os="'+os+'"]'); if(c){ c.classList.add('you'); c.parentNode.prepend(c); } })();
+/* until a launcher release exists, its buttons say so instead of leading to GitHub's 404 */
+(async()=>{ const btns=[...document.querySelectorAll('a.btn[href*="/releases/latest/download/"]')]; let names=null;
+  try{ const r=await fetch('https://api.github.com/repos/zkleppe-alt/3dlumi/releases/latest',{headers:{Accept:'application/vnd.github+json'}}); if(r.ok){ const j=await r.json(); names=(j.assets||[]).map(a=>a.name); } else if(r.status===404) names=[]; }catch(e){}
+  if(!names) return;   // couldn't ask (offline, rate limit): leave the links alone
+  btns.forEach(b=>{ const file=b.getAttribute('href').split('/').pop(); if(names.includes(file)) return;
+    b.removeAttribute('href'); b.textContent='Coming soon'; b.style.cssText+=';opacity:.55;cursor:default;filter:grayscale(.4)'; b.title='This launcher is being built — check back soon.'; }); })();
 </script>
 </body></html>

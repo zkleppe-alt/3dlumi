@@ -1249,3 +1249,4 @@ Zak: make the launcher page more game-themed, like a rolled-out scroll. He held 
   - Left side: the crest, the title in small caps over a ruled line, and the banner in italics. Play is a red wax seal (it tilts when hovered); Update is a red-inked button. The progress bar is drawn in red ink.
   - Right side: Patch notes, Saves and Settings are ribbon bookmarks (the open one in red). The pages are ruled like a ledger, with red ✦ bullets and "installed" / "new" stamps.
 - It ships with the launcher build (tag `launcher-v…`); the game itself is unchanged.
+- **Zak's new Restful Knight Gaming badge** (the embroidered shield: the tree, the wheel in the crown of thorns, the knight resting with his book): sewn onto the scroll as a patch beside "Restful Knight Gaming presents · Kingdom's Last Knight" (launcher/app/ui/rkg.jpg, 360 px), and in the download page's header (pwa/rkg-logo.jpg, 180 px). The app icons stay the shield-and-cross, which reads better small.
