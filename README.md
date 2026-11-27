@@ -2,6 +2,8 @@
 
 **▶ Play: https://zkleppe-alt.github.io/3dlumi/**
 
+**⬇ Download the launcher (Windows · Mac · Linux · Chromebook): https://zkleppe-alt.github.io/3dlumi/download.html** — play offline, saves on your computer, update when you choose.
+
 Ride out from Luminar, cleanse the ten chapels and free their generals. Runs in the browser — no install.
 
 **Controls**

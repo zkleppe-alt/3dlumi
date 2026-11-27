@@ -21,6 +21,8 @@ head = read("data", "built", "head.js").replace("{{SYS}}", "const SYS=" + cj("sy
 scripts = "\n".join(["(function(){", head] + ["// ── engine/%s ──\n%s" % (m, read("engine", m)) for m in ENGINE if os.path.exists(os.path.join(ROOT, "engine", m))]
                     + ["// ── cities/%s.js ──\n%s" % (name, read("cities", name + ".js")), "})();"])
 page = read("engine", "shell.html").replace("{{SCRIPTS}}", scripts)
+VER = open(os.path.join(ROOT, "VERSION")).read().strip() if os.path.exists(os.path.join(ROOT, "VERSION")) else "dev"   # V282: the version, for the launcher and the installed web app
+page = page.replace("{{KLK_VER}}", VER)
 MD = os.path.join(ROOT, "dist", "models"); os.makedirs(MD, exist_ok=True)
 for f in sorted(os.listdir(os.path.join(ROOT, "pwa"))):   # V229: the installable web app — manifest, offline worker, icons
     shutil.copy(os.path.join(ROOT, "pwa", f), os.path.join(ROOT, "dist", f))

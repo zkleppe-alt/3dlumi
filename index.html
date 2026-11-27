@@ -4,8 +4,22 @@
 <meta name="theme-color" content="#162240">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Last Knight">
 <link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>/* V229: an installable web app — play offline, in its own window (sw.js); only where it is served over the web */
-try{ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(!/localhost|127\.0\.0\.1/.test(location.hostname)||/[?&]sw=1/.test(location.search))) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }catch(e){}</script>
+<script>/* V229: an installable web app — play offline, in its own window (sw.js); only where it is served over the web.
+   V282: installed (its own window), it keeps the version you have until you choose to update, like the desktop launcher. */
+window.KLK_VER='V282';
+try{ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(!/localhost|127\.0\.0\.1/.test(location.hostname)||/[?&]sw=1/.test(location.search))) addEventListener('load',async()=>{
+  try{ const reg=await navigator.serviceWorker.register('sw.js'); const app=/[?&]app=1/.test(location.search)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone;
+    if(!app) return; await navigator.serviceWorker.ready; const sw=navigator.serviceWorker.controller||reg.active; if(!sw) return; sw.postMessage({pin:true});
+    const r=await fetch('launcher/version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json(); const mine=parseInt(String(window.KLK_VER).replace(/\D/g,''))||0;
+    if(!(v.build>mine)) return; try{ if(sessionStorage.getItem('klkLater')===v.version) return; }catch(e){}
+    const b=document.createElement('div'); b.id='klkUpd'; b.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:99999;background:#151c2ef2;color:#e9e2cf;border:1px solid #6b5420;border-radius:10px;padding:10px 14px;font:14px system-ui,sans-serif;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px #0008;max-width:92vw';
+    const t=document.createElement('div'); t.innerHTML='<b style="color:#f0c766">Update available: '+String(v.version).replace(/[<>&]/g,'')+'</b><br><span style="opacity:.8">'+String(v.title||'').replace(/[<>&]/g,'')+'</span>';
+    const go=document.createElement('button'), later=document.createElement('button'); go.textContent='Update now'; later.textContent='Later';
+    [go,later].forEach(x=>x.style.cssText='font:inherit;cursor:pointer;border-radius:7px;padding:7px 12px;border:1px solid #3a4670;background:#222c4a;color:#e9e2cf');
+    go.style.background='linear-gradient(#f2cd6c,#c9922c)'; go.style.color='#1d1505'; go.style.border='none'; go.style.fontWeight='700';
+    later.onclick=()=>{ b.remove(); try{ sessionStorage.setItem('klkLater',v.version); }catch(e){} };
+    go.onclick=()=>{ go.disabled=true; go.textContent='Updating…'; navigator.serviceWorker.addEventListener('message',e=>{ if(e.data&&e.data.updated) location.reload(); }); sw.postMessage({update:true}); setTimeout(()=>location.reload(),15000); };
+    b.append(t,go,later); document.body.appendChild(b); }catch(e){} }); }catch(e){}</script>
 <meta property="og:title" content="Luminar 3D — Kingdom's Last Knight">
 <meta property="og:description" content="A Christian RPG in 3D: ride out from Luminar, cleanse the ten chapels, free the generals. Free to play in your browser.">
 <meta property="og:type" content="website">
@@ -5472,6 +5486,9 @@ const MENU=(function(){
         +`<button class="gm-item ${ENGINE.fp?'worn':''}" data-act="fpcam"><span>👁 Camera: ${ENGINE.fp?'first person — through his eyes':'third person — behind him'} <span class="ds">tap to switch · takes effect at once</span></span><i>${ENGINE.fp?'1st':'3rd'}</i></button>`
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
+        /* V282: move saves between the browser, the installed app and the desktop launcher (the same file the launcher's Saves page backs up and imports) */
+        +`<button class="gm-item" data-act="saveExport"><span>💾 Export saves <span class="ds">a file with every save slot and setting — import it in the launcher or another browser</span></span><i>export</i></button>`
+        +`<button class="gm-item" data-act="saveImport"><span>📥 Import saves <span class="ds">from an exported file or a launcher backup — replaces this browser’s saves</span></span><i>import</i></button>`
         +sec('Controls')+`<button class="gm-item" data-act="keys"><span>⌨ Keyboard Controls <span class="ds">see and change every key · 🧪 potion is ${typeof KEYS!=='undefined'?KEYS.keysFor('potion'):'P'}</span></span></button>`
           +(typeof SFX!=='undefined'?sec('Sound')+`<button class="gm-item" data-act="vol:music"><span>🎵 Music ${SFX.volBar(SFX.musicVol)} ${Math.round(SFX.musicVol*100)}% <span class="ds">tap to change · the 2D game's own themes</span></span></button>`
             +`<button class="gm-item" data-act="vol:sfx"><span>🔊 Sound effects ${SFX.volBar(SFX.sfxVol)} ${Math.round(SFX.sfxVol*100)}% <span class="ds">tap to change · blows, footsteps, wind and weather</span></span></button>`:'')
@@ -5572,6 +5589,14 @@ const MENU=(function(){
     else if(k==='view'){ VIEWMODE.set(v); note=v==='grand'?'Grand view: rebuilding the realm…':'Classic view: rebuilding the realm…'; render(true); setTimeout(()=>location.reload(),600); return; }
     else if(k==='decor'){ if(BOUNTY_API.cur){ toggle(false); BOUNTY_API.cur.place(v); } return; }
     else if(k==='travel'){ const t=SYS.MAP.towns.find(q=>q[0]===v); if(!t) return; toggle(false); ENGINE.go('world',{x:t[1]+0.5,z:t[2]+1.5,face:Math.PI}); setTimeout(()=>{ ENGINE.unstick(true); UI.toast(`🕊 You travel the roads to ${v}.`,1600); },900); return; }
+    else if(k==='saveExport'){ try{ GAME.save&&GAME.save(); }catch(e){} const d={}; for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i); if(/^(klk|restfulKnight)/.test(kk)) d[kk]=localStorage.getItem(kk); }
+      const when=new Date(), doc={kind:'klk-saves',id:when.toISOString().replace(/[:.]/g,'-'),label:'Exported from the game',date:when.toISOString(),version:window.KLK_VER||null,data:d};
+      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(doc)],{type:'application/json'})); a.download='LastKnight-saves-'+when.toISOString().slice(0,10)+'.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); UI.toast('Saves exported.',1600); return; }
+    else if(k==='saveImport'){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+      inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return; if(f.size>50e6){ UI.toast('That file is too big to be a save backup.',2200); return; } f.text().then(t=>{ let doc; try{ doc=JSON.parse(t); }catch(e){ doc=null; }
+        if(!doc||doc.kind!=='klk-saves'||typeof doc.data!=='object'||!Object.entries(doc.data).every(([a,b])=>typeof a==='string'&&typeof b==='string'&&/^(klk|restfulKnight)/.test(a))){ UI.toast('That file isn’t a Last Knight save backup.',2400); return; }
+        if(!confirm('Replace this browser’s saves with the ones in this file?')) return; Object.keys(localStorage).filter(x=>/^(klk|restfulKnight)/.test(x)).forEach(x=>localStorage.removeItem(x)); for(const x in doc.data) localStorage.setItem(x,doc.data[x]); location.reload(); }); };
+      inp.click(); return; }
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
     else if(k==='pk'){ invPick=invPick===v?null:v; render(true); return; }
     else if(k==='arpick'&&typeof ARMOR!=='undefined'){ const [sl,id]=v.split('.'); S.armorPick=S.armorPick||{}; S.armorPick[sl]=id; if(S.armorOff) delete S.armorOff[sl]; ARMOR.apply(); GAME.save(); render(true); return; }

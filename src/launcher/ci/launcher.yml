@@ -1,0 +1,52 @@
+# Builds the launcher for Windows, Mac and Linux. Push a tag like launcher-v1.0.0 to build all three and publish them as a
+# Release (the download page links to the latest one), or run it by hand from the Actions tab ("Launcher build").
+# The launcher holds no game files: it downloads the game from this site on first run and updates it when the player chooses.
+name: Launcher build
+on:
+  workflow_dispatch:
+  push:
+    tags: ['launcher-v*']
+permissions:
+  contents: write
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: --win nsis
+          - os: macos-latest
+            target: --mac dmg --universal
+          - os: ubuntu-latest
+            target: --linux AppImage
+    runs-on: ${{ matrix.os }}
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build
+        shell: bash
+        working-directory: src/launcher/app
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/launcher-v* ]]; then npm pkg set version="${GITHUB_REF#refs/tags/launcher-v}"; fi
+          npm install --no-audit --no-fund
+          npx electron-builder ${{ matrix.target }} --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LastKnight-Launcher-${{ matrix.os }}
+          path: |
+            src/launcher/app/dist/*.exe
+            src/launcher/app/dist/*.dmg
+            src/launcher/app/dist/*.AppImage
+      - if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          make_latest: 'true'
+          files: |
+            src/launcher/app/dist/*.exe
+            src/launcher/app/dist/*.dmg
+            src/launcher/app/dist/*.AppImage

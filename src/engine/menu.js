@@ -121,6 +121,9 @@ const MENU=(function(){
         +`<button class="gm-item ${ENGINE.fp?'worn':''}" data-act="fpcam"><span>👁 Camera: ${ENGINE.fp?'first person — through his eyes':'third person — behind him'} <span class="ds">tap to switch · takes effect at once</span></span><i>${ENGINE.fp?'1st':'3rd'}</i></button>`
         +`<button class="gm-item ${S.goalOff?'':'worn'}" data-act="goal"><span>➤ Show the next goal <span class="ds">a line under the place name, and a gold star on the minimap</span></span><i>${S.goalOff?'off':'on'}</i></button>`
         +`<button class="gm-item" data-act="unstick"><span>🧭 Unstick me <span class="ds">step out to the nearest open ground</span></span></button>`
+        /* V282: move saves between the browser, the installed app and the desktop launcher (the same file the launcher's Saves page backs up and imports) */
+        +`<button class="gm-item" data-act="saveExport"><span>💾 Export saves <span class="ds">a file with every save slot and setting — import it in the launcher or another browser</span></span><i>export</i></button>`
+        +`<button class="gm-item" data-act="saveImport"><span>📥 Import saves <span class="ds">from an exported file or a launcher backup — replaces this browser’s saves</span></span><i>import</i></button>`
         +sec('Controls')+`<button class="gm-item" data-act="keys"><span>⌨ Keyboard Controls <span class="ds">see and change every key · 🧪 potion is ${typeof KEYS!=='undefined'?KEYS.keysFor('potion'):'P'}</span></span></button>`
           +(typeof SFX!=='undefined'?sec('Sound')+`<button class="gm-item" data-act="vol:music"><span>🎵 Music ${SFX.volBar(SFX.musicVol)} ${Math.round(SFX.musicVol*100)}% <span class="ds">tap to change · the 2D game's own themes</span></span></button>`
             +`<button class="gm-item" data-act="vol:sfx"><span>🔊 Sound effects ${SFX.volBar(SFX.sfxVol)} ${Math.round(SFX.sfxVol*100)}% <span class="ds">tap to change · blows, footsteps, wind and weather</span></span></button>`:'')
@@ -221,6 +224,14 @@ const MENU=(function(){
     else if(k==='view'){ VIEWMODE.set(v); note=v==='grand'?'Grand view: rebuilding the realm…':'Classic view: rebuilding the realm…'; render(true); setTimeout(()=>location.reload(),600); return; }
     else if(k==='decor'){ if(BOUNTY_API.cur){ toggle(false); BOUNTY_API.cur.place(v); } return; }
     else if(k==='travel'){ const t=SYS.MAP.towns.find(q=>q[0]===v); if(!t) return; toggle(false); ENGINE.go('world',{x:t[1]+0.5,z:t[2]+1.5,face:Math.PI}); setTimeout(()=>{ ENGINE.unstick(true); UI.toast(`🕊 You travel the roads to ${v}.`,1600); },900); return; }
+    else if(k==='saveExport'){ try{ GAME.save&&GAME.save(); }catch(e){} const d={}; for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i); if(/^(klk|restfulKnight)/.test(kk)) d[kk]=localStorage.getItem(kk); }
+      const when=new Date(), doc={kind:'klk-saves',id:when.toISOString().replace(/[:.]/g,'-'),label:'Exported from the game',date:when.toISOString(),version:window.KLK_VER||null,data:d};
+      const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify(doc)],{type:'application/json'})); a.download='LastKnight-saves-'+when.toISOString().slice(0,10)+'.json'; document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000); UI.toast('Saves exported.',1600); return; }
+    else if(k==='saveImport'){ const inp=document.createElement('input'); inp.type='file'; inp.accept='.json,application/json';
+      inp.onchange=()=>{ const f=inp.files&&inp.files[0]; if(!f) return; if(f.size>50e6){ UI.toast('That file is too big to be a save backup.',2200); return; } f.text().then(t=>{ let doc; try{ doc=JSON.parse(t); }catch(e){ doc=null; }
+        if(!doc||doc.kind!=='klk-saves'||typeof doc.data!=='object'||!Object.entries(doc.data).every(([a,b])=>typeof a==='string'&&typeof b==='string'&&/^(klk|restfulKnight)/.test(a))){ UI.toast('That file isn’t a Last Knight save backup.',2400); return; }
+        if(!confirm('Replace this browser’s saves with the ones in this file?')) return; Object.keys(localStorage).filter(x=>/^(klk|restfulKnight)/.test(x)).forEach(x=>localStorage.removeItem(x)); for(const x in doc.data) localStorage.setItem(x,doc.data[x]); location.reload(); }); };
+      inp.click(); return; }
     else if(k==='unstick'){ toggle(false); setTimeout(()=>{ if(!ENGINE.unstick()) UI.toast('You can already move from here.',1200); },60); return; }
     else if(k==='pk'){ invPick=invPick===v?null:v; render(true); return; }
     else if(k==='arpick'&&typeof ARMOR!=='undefined'){ const [sl,id]=v.split('.'); S.armorPick=S.armorPick||{}; S.armorPick[sl]=id; if(S.armorOff) delete S.armorOff[sl]; ARMOR.apply(); GAME.save(); render(true); return; }

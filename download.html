@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Download — Kingdom's Last Knight</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{ --ink:#e9e2cf; --dim:#a79f8b; --faint:#6d6758; --gold:#d6a640; --gold2:#f0c766; --navy:#0d1220; --panel:#151c2e; --line:#2a3350; }
+*{ box-sizing:border-box; }
+html{ background:#0b0f1b; }
+body{ margin:0; min-height:100vh; color:var(--ink); font:16px/1.5 "Segoe UI",system-ui,-apple-system,Ubuntu,sans-serif;
+  background: radial-gradient(1000px 600px at 15% 110%, #2a3a66 0%, transparent 55%), radial-gradient(700px 500px at 95% -10%, #4a3a1a 0%, transparent 60%), linear-gradient(160deg,#121a30,#0b0f1b); background-attachment:fixed; }
+.serif{ font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif; }
+main{ max-width:1040px; margin:0 auto; padding:40px 16px 60px; }
+.brand{ display:flex; align-items:center; gap:14px; }
+.brand img{ width:60px; height:60px; }
+.brand small{ display:block; color:var(--dim); letter-spacing:.18em; text-transform:uppercase; font-size:11px; }
+h1{ margin:0; font-size:clamp(26px,5vw,38px); color:var(--gold2); font-weight:600; }
+.lead{ font-size:18px; max-width:60ch; color:#d8d0bb; margin:22px 0 30px; }
+.grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:16px; }
+.card{ background:#151c2ee6; border:1px solid var(--line); border-radius:12px; padding:20px; display:flex; flex-direction:column; gap:10px; position:relative; }
+.card.you{ border-color:#7c5716; box-shadow:0 0 0 1px #7c5716, 0 10px 30px #d6a64022; }
+.card.you::before{ content:'This computer'; position:absolute; top:-11px; left:16px; background:#7c5716; color:#fff3d6; font-size:12px; padding:1px 9px; border-radius:10px; }
+.card h2{ margin:0; font-size:21px; } .card .os{ font-size:30px; line-height:1; }
+.card p{ margin:0; color:var(--dim); font-size:14px; flex:1; }
+.btn{ display:inline-block; text-align:center; text-decoration:none; font-weight:700; letter-spacing:.04em; padding:11px 16px; border-radius:9px; color:#1d1505; background:linear-gradient(#f2cd6c,#c9922c); box-shadow:0 3px 0 #7c5716; }
+.btn:hover{ background:linear-gradient(#ffd97a,#d69d33); }
+.btn.alt{ background:#1b2440; color:var(--ink); box-shadow:none; border:1px solid var(--line); font-weight:600; }
+details{ font-size:13px; color:var(--dim); } summary{ cursor:pointer; color:#c9c0aa; }
+details ol{ padding-left:18px; margin:6px 0 0; } details li{ margin:3px 0; }
+.how{ margin-top:36px; display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; }
+.how div{ background:#121829cc; border:1px solid var(--line); border-radius:12px; padding:18px; }
+.how h3{ margin:0 0 6px; font-size:17px; color:var(--gold2); } .how p{ margin:0; color:var(--dim); font-size:14px; }
+.foot{ margin-top:40px; color:var(--faint); font-size:13px; } .foot a{ color:var(--dim); }
+</style></head>
+<body><main>
+  <div class="brand"><img src="icon-192.png" alt=""><div><small>Restful Knight Gaming</small><h1 class="serif">Kingdom's Last Knight</h1></div></div>
+  <p class="lead serif">Download the launcher to play offline on your own computer. Your saves stay on your computer, and the game only updates when you click <b>Update</b>.</p>
+  <div class="grid">
+    <div class="card" data-os="win"><div class="os">🪟</div><h2>Windows</h2><p>Windows 10 or 11. Run the installer; if SmartScreen says "Windows protected your PC", click <i>More info → Run anyway</i>.</p>
+      <a class="btn" href="https://github.com/zkleppe-alt/3dlumi/releases/latest/download/LastKnight-Launcher-win.exe">Download for Windows</a></div>
+    <div class="card" data-os="mac"><div class="os">🍎</div><h2>Mac</h2><p>macOS 11 or later, Intel or Apple silicon. Open the .dmg and drag the launcher to Applications.</p>
+      <a class="btn" href="https://github.com/zkleppe-alt/3dlumi/releases/latest/download/LastKnight-Launcher-mac.dmg">Download for Mac</a>
+      <details><summary>"Can't be opened" the first time?</summary><ol><li>In Applications, right-click (or Control-click) Last Knight Launcher.</li><li>Choose <b>Open</b>, then <b>Open</b> again. You only need to do this once.</li></ol></details></div>
+    <div class="card" data-os="linux"><div class="os">🐧</div><h2>Linux</h2><p>An AppImage for most desktops, Steam Deck desktop mode included.</p>
+      <a class="btn" href="https://github.com/zkleppe-alt/3dlumi/releases/latest/download/LastKnight-Launcher-linux.AppImage">Download for Linux</a>
+      <details><summary>How to run it</summary><ol><li>Right-click the file → Properties → allow running as a program (or <code>chmod +x</code>).</li><li>Double-click to start.</li></ol></details></div>
+    <div class="card" data-os="cros"><div class="os">💻</div><h2>Chromebook</h2><p>Chromebooks install the game as an app from Chrome. Installed, it plays offline and keeps your version until you tap <b>Update now</b>.</p>
+      <a class="btn alt" href="./">Open the game</a>
+      <details open><summary>How to install</summary><ol><li>Open the game in Chrome.</li><li>Click the install icon at the right of the address bar, or ⋮ → <b>Cast, save and share → Install page as app</b>.</li><li>Open <b>Last Knight</b> from your app launcher from then on.</li></ol></details></div>
+  </div>
+  <div class="how">
+    <div><h3>Update when you choose</h3><p>When a new version is out, the launcher shows what's new and the size of the download. Nothing changes until you click Update, and only the changed files come down.</p></div>
+    <div><h3>Your saves are safe</h3><p>Your saves are backed up before every update. Back them up, restore them or export them to a file from the launcher's Saves page.</p></div>
+    <div><h3>Bring your browser saves</h3><p>In the game in your browser: ☰ → System → <b>Export saves</b>. Then in the launcher: Saves → <b>Import a backup</b>.</p></div>
+  </div>
+  <p class="foot">Prefer not to install? <a href="./">Play in the browser</a> · <a href="https://github.com/zkleppe-alt/3dlumi/releases">All releases</a></p>
+</main>
+<script>
+(()=>{ const ua=navigator.userAgent, p=(navigator.userAgentData&&navigator.userAgentData.platform)||navigator.platform||'';
+  const os=/CrOS/.test(ua)||/Chrome OS/i.test(p)?'cros':/Win/i.test(p)||/Windows/.test(ua)?'win':/Mac/i.test(p)||/Macintosh/.test(ua)?'mac':/Linux/i.test(p)||/Linux/.test(ua)?'linux':'';
+  const c=document.querySelector('.card[data-os="'+os+'"]'); if(c){ c.classList.add('you'); c.parentNode.prepend(c); } })();
+</script>
+</body></html>

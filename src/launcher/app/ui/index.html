@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Kingdom's Last Knight</title>
+<style>
+:root{ --ink:#e9e2cf; --dim:#a79f8b; --faint:#6d6758; --gold:#d6a640; --gold2:#f0c766; --navy:#0d1220; --panel:#151c2e; --line:#2a3350; --red:#c0503a; --green:#6fae6a; }
+*{ box-sizing:border-box; }
+html,body{ margin:0; height:100%; background:var(--navy); color:var(--ink); font:15px/1.45 "Segoe UI",system-ui,-apple-system,Ubuntu,sans-serif; user-select:none; }
+.serif{ font-family:"Palatino Linotype","Book Antiqua",Palatino,Georgia,serif; }
+#app{ display:grid; grid-template-columns:1.15fr 1fr; height:100vh; overflow:hidden; }
+body{ overflow:hidden; }
+/* the hero side */
+#hero{ position:relative; padding:40px 44px 28px; display:flex; flex-direction:column; overflow:hidden;
+  background: radial-gradient(1200px 700px at 20% 110%, #2a3a66 0%, transparent 55%), radial-gradient(700px 500px at 90% -10%, #4a3a1a 0%, transparent 60%), linear-gradient(160deg,#121a30,#0b0f1b); }
+#hero::after{ content:''; position:absolute; inset:auto -60px -80px auto; width:380px; height:380px; background:url(crest.png) center/contain no-repeat; opacity:0.07; transform:rotate(-8deg); pointer-events:none; }
+.brand{ display:flex; align-items:center; gap:14px; }
+.brand img{ width:56px; height:56px; filter:drop-shadow(0 2px 6px #000a); }
+.brand small{ display:block; color:var(--dim); letter-spacing:.18em; text-transform:uppercase; font-size:11px; }
+h1{ margin:0; font-size:34px; font-weight:600; letter-spacing:.02em; color:var(--gold2); text-shadow:0 2px 0 #0008; }
+#banner{ margin:26px 0 0; font-size:19px; color:var(--ink); max-width:30ch; }
+.spacer{ flex:1; }
+#status{ color:var(--dim); margin-bottom:10px; min-height:22px; }
+#status b{ color:var(--ink); font-weight:600; }
+#status .new{ color:var(--gold2); }
+.actions{ display:flex; gap:12px; align-items:center; }
+button{ font:inherit; cursor:pointer; border:1px solid var(--line); background:#1b2440; color:var(--ink); padding:9px 16px; border-radius:8px; }
+button:hover:not(:disabled){ border-color:#46557f; background:#212c4e; }
+button:disabled{ opacity:.45; cursor:default; }
+#play{ font-size:22px; font-weight:700; letter-spacing:.08em; padding:14px 46px; border:none; border-radius:10px; color:#1d1505;
+  background:linear-gradient(#f2cd6c,#c9922c); box-shadow:0 3px 0 #7c5716, 0 10px 30px #d6a64033; }
+#play:hover:not(:disabled){ background:linear-gradient(#ffd97a,#d69d33); }
+#update{ border-color:#7c5716; color:var(--gold2); }
+#bar{ height:8px; border-radius:4px; background:#0a0e19; border:1px solid var(--line); margin-top:14px; overflow:hidden; display:none; }
+#bar i{ display:block; height:100%; width:0; background:linear-gradient(90deg,#c9922c,#f2cd6c); transition:width .2s; }
+#barTxt{ color:var(--dim); font-size:13px; margin-top:6px; min-height:18px; }
+#links{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:22px; font-size:13px; }
+#links a{ color:var(--dim); text-decoration:none; border-bottom:1px dotted var(--faint); cursor:pointer; }
+#links a:hover{ color:var(--gold2); }
+#offline{ display:none; color:#e0a070; font-size:13px; margin-top:8px; }
+/* the side panel */
+#side{ background:var(--panel); border-left:1px solid var(--line); display:flex; flex-direction:column; min-width:0; min-height:0; height:100vh; }
+nav{ display:flex; border-bottom:1px solid var(--line); }
+nav button{ flex:1; border:none; border-radius:0; background:none; padding:14px 0; color:var(--dim); border-bottom:2px solid transparent; }
+nav button.on{ color:var(--gold2); border-bottom-color:var(--gold); }
+.page{ display:none; padding:20px 24px; overflow:auto; flex:1; min-height:0; }
+.page.on{ display:block; }
+.rel{ margin-bottom:18px; padding-bottom:14px; border-bottom:1px solid #222b45; }
+.rel h3{ margin:0 0 2px; font-size:17px; color:var(--ink); }
+.rel .meta{ color:var(--faint); font-size:12px; margin-bottom:6px; }
+.rel .meta .tag{ color:var(--gold); border:1px solid #6b5420; border-radius:10px; padding:0 7px; margin-left:6px; }
+.rel ul{ margin:0; padding-left:18px; color:#cfc8b4; } .rel li{ margin:3px 0; }
+.row{ display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #222b45; }
+.row .grow{ flex:1; min-width:0; } .row small{ color:var(--faint); display:block; }
+.row button{ padding:6px 10px; font-size:13px; }
+.toolbar{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+.empty{ color:var(--faint); padding:20px 0; }
+label.set{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0; border-bottom:1px solid #222b45; }
+label.set small{ display:block; color:var(--faint); }
+select{ font:inherit; background:#0f1527; color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; }
+input[type=checkbox]{ width:18px; height:18px; accent-color:var(--gold); }
+.path{ font-size:12px; color:var(--faint); word-break:break-all; }
+#toast{ position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#222c4a; border:1px solid #3a4670; padding:10px 16px; border-radius:8px; display:none; max-width:80%; }
+#toast.err{ border-color:#7a3a2c; background:#3a1d18; }
+.foot{ color:var(--faint); font-size:12px; padding:10px 24px; border-top:1px solid var(--line); }
+</style></head>
+<body>
+<div id="app">
+  <section id="hero">
+    <div class="brand"><img src="crest.png" alt=""><div><small>Restful Knight Gaming</small><h1 class="serif">Kingdom's Last Knight</h1></div></div>
+    <p id="banner" class="serif">Ride out from Luminar, cleanse the ten chapels and free their generals.</p>
+    <div class="spacer"></div>
+    <div id="status">Checking for updates…</div>
+    <div class="actions"><button id="play" disabled>PLAY</button><button id="update" style="display:none">Update</button></div>
+    <div id="bar"><i></i></div><div id="barTxt"></div>
+    <div id="offline">Offline — you can still play the version you have.</div>
+    <div id="links"></div>
+  </section>
+  <section id="side">
+    <nav><button data-p="notes" class="on">Patch notes</button><button data-p="saves">Saves</button><button data-p="settings">Settings</button></nav>
+    <div class="page on" id="p-notes"></div>
+    <div class="page" id="p-saves">
+      <div class="toolbar"><button id="bkNow">Back up now</button><button id="bkImport">Import a backup…</button></div>
+      <div id="bkList"></div>
+    </div>
+    <div class="page" id="p-settings">
+      <label class="set"><span>Graphics<small>How much detail the game draws. Auto picks for this computer.</small></span>
+        <select id="sGfx"><option value="auto">Auto</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="ultra">Ultra</option></select></label>
+      <label class="set"><span>Full screen<small>Start the game full screen (F11 switches any time).</small></span><input type="checkbox" id="sFull"></label>
+      <label class="set"><span>Check for updates when the launcher opens<small>It only tells you — nothing updates until you click Update.</small></span><input type="checkbox" id="sCheck"></label>
+      <div class="set" style="display:block;padding:12px 0;border-bottom:1px solid #222b45"><div>Game files<small style="color:var(--faint);display:block">Where the downloaded game lives on this computer.</small></div>
+        <div class="path" id="sDir"></div><div style="margin-top:8px;display:flex;gap:8px"><button id="sMove">Move…</button><button id="sOpen">Open folder</button></div></div>
+    </div>
+    <div class="foot" id="foot"></div>
+  </section>
+</div>
+<div id="toast"></div>
+<script>
+const $=id=>document.getElementById(id); let S=null, working=false;
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtDate=d=>{ try{ return new Date(/^\d{4}-\d\d-\d\d$/.test(d)?d+'T12:00':d).toLocaleDateString(undefined,{year:'numeric',month:'short',day:'numeric'}); }catch(e){ return d||''; } };
+function toast(msg,err){ const t=$('toast'); t.textContent=msg; t.className=err?'err':''; t.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>t.style.display='none',err?6000:3200); }
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{ document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b)); document.querySelectorAll('.page').forEach(p=>p.classList.toggle('on',p.id==='p-'+b.dataset.p)); if(b.dataset.p==='saves') saves(); });
+
+async function refresh(){
+  S=await KLK.state(); const st=$('status'), up=$('update'), play=$('play');
+  if(S.news&&S.news.banner) $('banner').textContent=S.news.banner;
+  $('links').innerHTML=((S.news&&S.news.links)||[]).map(l=>`<a data-u="${esc(l.url)}">${esc(l.label)}</a>`).join('');
+  $('links').querySelectorAll('a').forEach(a=>a.onclick=()=>KLK.openLink(a.dataset.u));
+  $('offline').style.display=S.online?'none':'block';
+  if(!S.installed){ play.textContent='INSTALL'; play.disabled=!S.online||working; up.style.display='none';
+    st.innerHTML=S.online?`Ready to install <b>${esc(S.latest)}</b> — ${S.downloadMB} MB download.`:"Connect to the internet to install the game."; }
+  else { play.textContent='PLAY'; play.disabled=working; up.style.display=S.update?'':'none'; up.disabled=working||!S.online;
+    st.innerHTML=`<b>${esc(S.installed)}</b> installed`+(S.update?` · <span class="new">${esc(S.latest)} is out — ${esc(S.latestTitle)} (${S.downloadMB} MB)</span>`:(S.online?' · up to date':'')); }
+  notes(); sets();
+  $('foot').textContent=`Launcher ${S.version} · ${S.platform==='win32'?'Windows':S.platform==='darwin'?'Mac':'Linux'}`;
+}
+function notes(){ const inst=S.installedBuild||0;
+  $('p-notes').innerHTML=(S.notes||[]).map(n=>{ const b=parseInt(String(n.v).replace(/\D/g,''))||0, tag=S.installed&&n.v===S.installed?'<span class="tag">installed</span>':(b>inst&&S.installed?'<span class="tag">new</span>':'');
+    return `<div class="rel"><h3 class="serif">${esc(n.title)}</h3><div class="meta">${esc(n.v)} · ${esc(fmtDate(n.date))}${tag}</div><ul>${(n.notes||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`; }).join('')||'<div class="empty">No notes yet.</div>'; }
+function sets(){ $('sGfx').value=S.settings.gfx||'auto'; $('sFull').checked=!!S.settings.fullscreen; $('sCheck').checked=S.settings.checkOnLaunch!==false; $('sDir').textContent=S.gameDir; }
+$('sGfx').onchange=e=>KLK.settings({gfx:e.target.value}); $('sFull').onchange=e=>KLK.settings({fullscreen:e.target.checked}); $('sCheck').onchange=e=>KLK.settings({checkOnLaunch:e.target.checked});
+$('sOpen').onclick=()=>KLK.openFolder(); $('sMove').onclick=async()=>{ const r=await KLK.chooseFolder(); if(r.ok&&r.dir){ toast('Game files moved.'); refresh(); } else if(r.error) toast(r.error,true); };
+
+async function saves(){ const L=await KLK.backups(); $('bkList').innerHTML=L.length?L.map(b=>`<div class="row"><div class="grow"><div>${esc(b.label)}</div><small>${esc(new Date(b.date).toLocaleString())}${b.version?' · '+esc(b.version):''} · ${b.slots} save slot${b.slots===1?'':'s'}</small></div>
+  <button data-r="${esc(b.id)}">Restore</button><button data-e="${esc(b.id)}">Export…</button><button data-d="${esc(b.id)}" title="Delete">✕</button></div>`).join(''):'<div class="empty">No backups yet. One is made automatically before every update.</div>';
+  $('bkList').querySelectorAll('[data-r]').forEach(b=>b.onclick=async()=>{ if(!confirm('Restore this backup? Your current saves are backed up first.')) return; const r=await KLK.restore(b.dataset.r); r.ok?toast('Saves restored.'):toast(r.error,true); saves(); });
+  $('bkList').querySelectorAll('[data-e]').forEach(b=>b.onclick=async()=>{ const r=await KLK.exportBackup(b.dataset.e); if(r.ok) toast('Exported.'); });
+  $('bkList').querySelectorAll('[data-d]').forEach(b=>b.onclick=async()=>{ if(!confirm('Delete this backup?')) return; await KLK.deleteBackup(b.dataset.d); saves(); }); }
+$('bkNow').onclick=async()=>{ const r=await KLK.backup('Backup'); r.ok?toast('Saves backed up.'):toast(r.error,true); saves(); };
+$('bkImport').onclick=async()=>{ const r=await KLK.importBackup(); if(r.ok) toast('Saves imported.'); else if(r.error) toast(r.error,true); saves(); };
+
+async function doInstall(){ working=true; refresh(); const r=await KLK.install(); working=false; $('bar').style.display='none'; $('barTxt').textContent='';
+  if(r.ok) toast((S&&S.installed?'Updated to ':'Installed ')+r.version+'.'); else toast(r.error,true); refresh(); }
+$('play').onclick=async()=>{ if(!S.installed) return doInstall(); const r=await KLK.play(); if(!r.ok) toast(r.error,true); };
+$('update').onclick=()=>doInstall();
+KLK.onProgress(p=>{ const bar=$('bar'), t=$('barTxt');
+  if(p.phase==='idle'){ return; } bar.style.display='block';
+  if(p.phase==='backup'){ t.textContent='Backing up your saves…'; bar.firstChild.style.width='2%'; }
+  if(p.phase==='download'){ const pc=p.total?Math.round(p.done/p.total*100):100; bar.firstChild.style.width=pc+'%'; t.textContent=`Downloading ${(p.done/1e6).toFixed(1)} of ${(p.total/1e6).toFixed(1)} MB (${p.files} file${p.files===1?'':'s'})`; }
+  if(p.phase==='install'){ bar.firstChild.style.width='100%'; t.textContent='Installing…'; } });
+KLK.onState(()=>refresh());
+refresh();
+</script>
+</body></html>

@@ -4,8 +4,22 @@
 <meta name="theme-color" content="#162240">
 <meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Last Knight">
 <link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
-<script>/* V229: an installable web app — play offline, in its own window (sw.js); only where it is served over the web */
-try{ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(!/localhost|127\.0\.0\.1/.test(location.hostname)||/[?&]sw=1/.test(location.search))) addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }catch(e){}</script>
+<script>/* V229: an installable web app — play offline, in its own window (sw.js); only where it is served over the web.
+   V282: installed (its own window), it keeps the version you have until you choose to update, like the desktop launcher. */
+window.KLK_VER='{{KLK_VER}}';
+try{ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&(!/localhost|127\.0\.0\.1/.test(location.hostname)||/[?&]sw=1/.test(location.search))) addEventListener('load',async()=>{
+  try{ const reg=await navigator.serviceWorker.register('sw.js'); const app=/[?&]app=1/.test(location.search)||matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches||navigator.standalone;
+    if(!app) return; await navigator.serviceWorker.ready; const sw=navigator.serviceWorker.controller||reg.active; if(!sw) return; sw.postMessage({pin:true});
+    const r=await fetch('launcher/version.json?t='+Date.now(),{cache:'no-store'}); if(!r.ok) return; const v=await r.json(); const mine=parseInt(String(window.KLK_VER).replace(/\D/g,''))||0;
+    if(!(v.build>mine)) return; try{ if(sessionStorage.getItem('klkLater')===v.version) return; }catch(e){}
+    const b=document.createElement('div'); b.id='klkUpd'; b.style.cssText='position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:99999;background:#151c2ef2;color:#e9e2cf;border:1px solid #6b5420;border-radius:10px;padding:10px 14px;font:14px system-ui,sans-serif;display:flex;gap:12px;align-items:center;box-shadow:0 6px 24px #0008;max-width:92vw';
+    const t=document.createElement('div'); t.innerHTML='<b style="color:#f0c766">Update available: '+String(v.version).replace(/[<>&]/g,'')+'</b><br><span style="opacity:.8">'+String(v.title||'').replace(/[<>&]/g,'')+'</span>';
+    const go=document.createElement('button'), later=document.createElement('button'); go.textContent='Update now'; later.textContent='Later';
+    [go,later].forEach(x=>x.style.cssText='font:inherit;cursor:pointer;border-radius:7px;padding:7px 12px;border:1px solid #3a4670;background:#222c4a;color:#e9e2cf');
+    go.style.background='linear-gradient(#f2cd6c,#c9922c)'; go.style.color='#1d1505'; go.style.border='none'; go.style.fontWeight='700';
+    later.onclick=()=>{ b.remove(); try{ sessionStorage.setItem('klkLater',v.version); }catch(e){} };
+    go.onclick=()=>{ go.disabled=true; go.textContent='Updating…'; navigator.serviceWorker.addEventListener('message',e=>{ if(e.data&&e.data.updated) location.reload(); }); sw.postMessage({update:true}); setTimeout(()=>location.reload(),15000); };
+    b.append(t,go,later); document.body.appendChild(b); }catch(e){} }); }catch(e){}</script>
 <meta property="og:title" content="Luminar 3D — Kingdom's Last Knight">
 <meta property="og:description" content="A Christian RPG in 3D: ride out from Luminar, cleanse the ten chapels, free the generals. Free to play in your browser.">
 <meta property="og:type" content="website">
