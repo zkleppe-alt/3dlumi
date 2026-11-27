@@ -50,7 +50,8 @@ const SFX=(function(){
     if(i==='pw:mistral') return 'rt:mistral';
     if(i==='pw:tabor') return s.tabor&&s.tabor.thawed?'rt:taborclean':'rt:tabor';
     if(i==='pw:sunfall'||/^sunfall:/.test(i)) return 'rt:sunfall';
-    if(/^(keep|lists|petring|school:|marioHut|mistral:throne|sunfall:house)/.test(i)) return 'town';
+    if(i==='keep') return 'band';   /* V283: the king's minstrels (minstrels.js) */
+    if(/^(lists|petring|school:|marioHut|mistral:throne|sunfall:house)/.test(i)) return 'town';
     if(i==='world'){ if(s.boating) return 'sail'; const L=lv(), P=ENGINE.P; if(L.region&&L.region(Math.floor(P.x),Math.floor(P.z))==='homestead') return 'rt:home'; return 'rt:theme'; }
     return 'rt:theme'; }
   // ── playing it: the recordings fade across one another; the chiptunes start and stop on the beat ──
@@ -61,6 +62,7 @@ const SFX=(function(){
       else if(t.want){ t.fk=Math.max(0,t.fk-dt/1.1); if(t.fk<=0) AU.rtPause(t); }
       if(t.want){ AU.rtApplyVol(t); AU.rtTick(t); } }
     /* no recording (or the file's missing): the 2D game's chiptune for it (Luminar's theme falls back to the overworld tune) */
+    if(typeof MINSTRELS!=='undefined'){ const band=want==='band'&&au.musicOn, L=lv(), M=L&&L.band, P=ENGINE.P; let v=1; if(M&&P){ const d=Math.hypot(P.x-M.x,P.z-M.z); v=0.5+0.5*Math.max(0,Math.min(1,1-(d-2.5)/16)); } MINSTRELS.on(band,v); if(want==='band') want=null; }
     let seq=ok?null:(rk?({theme:'overworld',home:'overworld',dungeon:'dungeon',forest:'forest',inn:'town',chapel:'town'}[rk]||null):want);
     if(!au.musicOn) seq=null;
     if(seq!==au.trackId){ if(seq) AU.musicPlay(seq); else AU.musicStop(); }

@@ -40,7 +40,7 @@ const castPerson=(function(){
     }
     else if(BD) K.body=BODY.attach(K,BD,{material:skinned('skin'),keep:D.keep,keep32:D.keep32,keepI:D.keepI,keepKey:D.keepKey,shells:(D.shells||[]).map(sh=>Object.assign({},sh,{material:skinned(sh.mat),_src:sh}))});
     // the rigid pieces, each ridden by its joint; the skirts on their own hinges at the belt, moving as cloth
-    const skF=new THREE.Group(), skB=new THREE.Group(); skF.position.set(0,0.06,0); skB.position.set(0,0.06,0); r.torso.add(skF); r.torso.add(skB);
+    const skF=new THREE.Group(), skB=new THREE.Group(); skF.position.set(0,0.06,0); skB.position.set(0,0.06,0); r.torso.add(skF); r.torso.add(skB); K.userData.skirts={F:skF,B:skB};
     const U={F:{uBend:{value:0},uWave:{value:0},uT:{value:0},uSway:{value:0}},B:{uBend:{value:0},uWave:{value:0},uT:{value:0},uSway:{value:0}}};
     const seg={hip:{L:r.L.hip,R:r.R.hip},knee:{L:r.L.knee,R:r.R.knee},sh:{L:r.AL.sh,R:r.AR.sh},el:{L:r.AL.el,R:r.AR.el},hand:{L:r.AL.hand,R:r.AR.hand}};
     const clothM={};
@@ -69,6 +69,11 @@ const castPerson=(function(){
       U.F.uBend.value=sp(S.cf,Math.max(-0.2,Math.min(0.25,-lv*0.03)),90,14,dt); U.B.uBend.value=sp(S.cb,Math.max(-0.2,Math.min(0.25,lv*0.03))+0.06*rf,90,14,dt);
       U.F.uWave.value=U.B.uWave.value=0.004+0.008*a; U.F.uT.value=U.B.uT.value=t*(1+a); };
     if(D.headScale) r.head.scale.setScalar(D.headScale);
+    /* V283: a closed helm (one with a visor) is worn over the whole head: the sculpted face under it is hidden, and the helm let out
+       a little and set higher, so the head of the body inside never shows through it (the Royal Guard's helms sat at their necks) */
+    if(D.parts.some(pt=>pt.seg==='head'&&pt.mat==='visor')){ const FACEM=new Set(['mouthD','teeth','eyeW','pupil','glint','lash','irisD','irisL','crease','blush','skin','brow','lip','iris']);
+      r.head.traverse(o=>{ if(!o.isMesh||o.isSkinnedMesh) return; if(FACEM.has(o.userData.mat)) o.visible=false; else if(o.parent===r.head){ o.scale.multiplyScalar(1.2); o.position.y+=0.06; } });
+      if(K.userData.face) delete K.userData.face; }
     K.userData.castD=D; K.userData.castBase=base;   /* V193: body3.js reads what they wear */ K.scale.setScalar(D.scale||1); K.cast=D.name||name; K.userData.castK=K; K.userData.s0=K.scale.x; return K; };
 })();
 // the face at life: a blink every few seconds (now and then a double), the eyes drifting and settling, finding you when you
@@ -96,14 +101,22 @@ function castPose(f,t,dt,P,talking){ const K=f.g, r=K.rig, ph=f.ph||0, d=Math.hy
   if(d<3.2&&!st.met){ st.met=true; if(((Math.floor(ph*100)*7)%10)/10<0.45) st.wave=1.6; } if(d>6) st.met=false;
   /* V141: the townsfolk and the cast on the motion-capture rig too (rig.js) — a relaxed idle, a real walk, a nod as they talk —
      and their feet on the slope; each gets its rig the first time you come near (none on the Low graphics tier) */
-  if(K.mocap===undefined){ K.npc=true; K.footIK=true; K._tph=ph*3; K.mocap=(typeof RIG!=='undefined'&&RIG.ok&&!(typeof HUD!=='undefined'&&HUD.tier==='low')&&d<18)?RIG.make({only:['idleCalm','walk','agree']}):undefined; }
+  if(K.mocap===undefined){ K.npc=true; K.footIK=true; K._tph=ph*3; K.mocap=(typeof RIG!=='undefined'&&RIG.ok&&!(typeof HUD!=='undefined'&&HUD.tier==='low')&&d<(f.near||18))?RIG.make({only:['idleCalm','walk','agree']}):undefined; }
   K._talk=st.tk;
-  K.animate(Math.min(dt,0.05),f.walking?'walk':'idle',0.5);
+  K.animate(Math.min(dt,0.05),f.sit?'sit':f.walking?'walk':'idle',0.5);   // V283: f.sit — seated (the king on his throne)
   let hy=0; if(d<2.6){ let a=Math.atan2(P.x-f.x,P.z-f.z)-K.rotation.y; a=Math.atan2(Math.sin(a),Math.cos(a)); hy=Math.max(-0.75,Math.min(0.75,a)); }
   st.hy+=(hy-st.hy)*Math.min(1,dt*5); r.head.rotation.y+=st.hy*0.8; r.torso.rotation.y+=st.hy*0.2;
   st.tk+=((talking?1:0)-st.tk)*Math.min(1,dt*5);
   if(st.tk>0.01){ const g=Math.max(0,Math.sin(t*2.2+ph)), g2=Math.sin(t*1.4+ph); r.AR.sh.rotation.x+=st.tk*(-0.45-0.35*g); r.AR.el.rotation.x+=st.tk*(-0.7-0.2*g); r.AR.sh.rotation.z+=st.tk*0.15*g2;
     r.AL.sh.rotation.x+=st.tk*(-0.2-0.2*Math.max(0,Math.sin(t*1.9+ph+1.7))); r.AL.el.rotation.x+=st.tk*-0.5; r.head.rotation.x+=st.tk*0.06*Math.sin(t*3.1+ph); }
+  /* V283: looking about — a guard at his post, the king on his throne: every few seconds the gaze moves somewhere else, slowly */
+  if(f.lookAbout&&!talking&&d>=2.6){ st.gT=(st.gT||0)-dt; if(st.gT<=0){ const h=Math.sin(t*12.9898+ph*78.233)*43758.5453, u=h-Math.floor(h); st.gT=2.5+u*4.5; st.gA=(u<0.35?0:(u-0.5)*1.5)*(f.lookAbout===true?1:f.lookAbout); st.gP=(u-0.5)*0.12; }
+    st.gy=(st.gy||0)+((st.gA||0)-(st.gy||0))*Math.min(1,dt*1.6); st.gp=(st.gp||0)+((st.gP||0)-(st.gp||0))*Math.min(1,dt*1.6); r.head.rotation.y+=st.gy; r.head.rotation.x+=st.gp; r.torso.rotation.y+=st.gy*0.12; }
+  if(f.breathe) r.torso.rotation.x+=0.018*Math.sin(t*1.6+ph);
+  if(f.sit&&K.userData.skirts&&K.userData.skirts.B.visible) K.userData.skirts.B.visible=false;   // seated: the back of the skirt is under him
+  if(r.shM&&r.shM.visible&&K.userData.castD&&!K.userData.castD.knight) r.shM.visible=false;   // no knight's shield on the townsfolk (the seated pose would show it)
+  if(f.pose) f.pose(r,t,dt,talking,K);   // a pose of its own laid over the idle (the minstrels at their instruments)
+  { const F=K.userData.b3; if(F&&F.sync&&F.hold&&F.hold.visible&&(f.pose||f.lookAbout||f.breathe)) F.sync(); }   // the new body takes up what was laid on the rig after its own update
   faceLife(K,st,t,dt,ph,talking,d<4.5?P:null,f);
   if(st.wave>0&&!talking){ st.wave-=dt; const w=Math.min(1,st.wave*3,(1.6-st.wave)*4); r.AR.sh.rotation.z-=w*1.15; r.AR.sh.rotation.x+=w*-0.35; r.AR.el.rotation.x+=w*(-1.45+Math.sin(t*9)*0.25); }   /* V155: a friendly hand raised, elbow bent — not an arm thrust out */ }
 // ════════════════════════════════════════════════════════════════

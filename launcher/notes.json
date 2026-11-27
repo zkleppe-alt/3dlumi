@@ -1,25 +1,87 @@
 [
-  {"v":"V282","date":"2026-11-26","title":"The launcher","notes":[
-    "Kingdom's Last Knight now has a launcher for Windows, Mac and Linux: play offline, update when you choose.",
-    "Back up, restore and export your saves. A backup is made before every update.",
-    "Installed on a Chromebook, the game keeps your version until you tap Update."]},
-  {"v":"V281","date":"2026-11-26","title":"The beasts' heads","notes":[
-    "Every pelt's head is reshaped: bear, wolf, fox, lion, stag, ram and raven, with jaws, noses, eyes, ears, antlers and horns.",
-    "With the hood down, the head rests on top of a shield slung on your back."]},
-  {"v":"V280","date":"2026-11-26","title":"Pelts that move as one","notes":[
-    "Pelts and hoods are one soft piece that moves with your shoulders: no more coming apart when you run.",
-    "Animal hoods wear a short cape hung diagonally from the left shoulder.",
-    "With the hood down, the beast's head hangs behind your neck."]},
-  {"v":"V279","date":"2026-11-26","title":"A sturdier shield","notes":[
-    "The shield stays on your forearm in every pose, keeps its full shape on your back and faces square when you block.",
-    "You can walk while blocking."]},
-  {"v":"V277","date":"2026-11-26","title":"Boots and greaves","notes":[
-    "Thicker boots and shoes; trousers tuck in under greaves.",
-    "Capes and cloaks lie under a shield on your back."]},
-  {"v":"V276","date":"2026-11-25","title":"Legs & boots","notes":[
-    "One Legs & boots choice: each set brings its own, plus common kits — trousers and boots, barefoot, armoured legs with steel or leather boots."]},
-  {"v":"V275","date":"2026-11-25","title":"Gloves","notes":[
-    "Gloves come with your vambraces and bend with your fingers: plated, leather, fur-cuffed, decorative, fingerless and wraps."]},
-  {"v":"V274","date":"2026-11-25","title":"Armour that stays put","notes":[
-    "Armour no longer loads messy or comes loose when you move or attack."]}
+ {
+  "v": "V283",
+  "date": "2026-11-26",
+  "title": "The throne hall rebuilt",
+  "notes": [
+   "King Karl's throne hall is rebuilt in warm Romanesque stone: round arches on thick pillars, an open oak roof, amber glass, torches and iron wheels of candles.",
+   "The king's minstrels play old hymns beside the throne: harp, hurdy-gurdy, lute, recorder and frame drum.",
+   "King Karl now truly sits on his throne — a carved oak throne with velvet padding, gilt lions' heads and a footstool.",
+   "The Royal Guards' helms now sit properly over their heads.",
+   "The guards stand at their posts and look about the hall; the king shifts and looks around from his throne; the minstrels play their instruments in time with the music.",
+   "Each village's banner is now its own battle-worn shield on the pillars, in the village's colour with the crest of the realm in gold and its sign embroidered round the edge.",
+   "A shield stays under a dark cloth until you cleanse that village's chapel; the next time you enter the hall, the cloth falls away."
+  ]
+ },
+ {
+  "v": "V282",
+  "date": "2026-11-26",
+  "title": "The launcher",
+  "notes": [
+   "Kingdom's Last Knight now has a launcher for Windows, Mac and Linux: play offline, update when you choose.",
+   "Back up, restore and export your saves. A backup is made before every update.",
+   "Installed on a Chromebook, the game keeps your version until you tap Update."
+  ]
+ },
+ {
+  "v": "V281",
+  "date": "2026-11-26",
+  "title": "The beasts' heads",
+  "notes": [
+   "Every pelt's head is reshaped: bear, wolf, fox, lion, stag, ram and raven, with jaws, noses, eyes, ears, antlers and horns.",
+   "With the hood down, the head rests on top of a shield slung on your back."
+  ]
+ },
+ {
+  "v": "V280",
+  "date": "2026-11-26",
+  "title": "Pelts that move as one",
+  "notes": [
+   "Pelts and hoods are one soft piece that moves with your shoulders: no more coming apart when you run.",
+   "Animal hoods wear a short cape hung diagonally from the left shoulder.",
+   "With the hood down, the beast's head hangs behind your neck."
+  ]
+ },
+ {
+  "v": "V279",
+  "date": "2026-11-26",
+  "title": "A sturdier shield",
+  "notes": [
+   "The shield stays on your forearm in every pose, keeps its full shape on your back and faces square when you block.",
+   "You can walk while blocking."
+  ]
+ },
+ {
+  "v": "V277",
+  "date": "2026-11-26",
+  "title": "Boots and greaves",
+  "notes": [
+   "Thicker boots and shoes; trousers tuck in under greaves.",
+   "Capes and cloaks lie under a shield on your back."
+  ]
+ },
+ {
+  "v": "V276",
+  "date": "2026-11-25",
+  "title": "Legs & boots",
+  "notes": [
+   "One Legs & boots choice: each set brings its own, plus common kits — trousers and boots, barefoot, armoured legs with steel or leather boots."
+  ]
+ },
+ {
+  "v": "V275",
+  "date": "2026-11-25",
+  "title": "Gloves",
+  "notes": [
+   "Gloves come with your vambraces and bend with your fingers: plated, leather, fur-cuffed, decorative, fingerless and wraps."
+  ]
+ },
+ {
+  "v": "V274",
+  "date": "2026-11-25",
+  "title": "Armour that stays put",
+  "notes": [
+   "Armour no longer loads messy or comes loose when you move or attack."
+  ]
+ }
 ]
