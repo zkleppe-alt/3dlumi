@@ -16,6 +16,8 @@ self.addEventListener('fetch',e=>{ const r=e.request; if(r.method!=='GET') retur
   const same=u.origin===self.location.origin, font=/fonts\.(googleapis|gstatic)\.com$/.test(u.hostname), cdn=/cdnjs\.cloudflare\.com$/.test(u.hostname);
   if(!same&&!font&&!cdn) return;
   if(same&&/\/launcher\//.test(u.pathname)) return;   // the release feed: always the network
+  if(same&&/\.html$/.test(u.pathname)&&!/\/index\.html$/.test(u.pathname)){   // other pages (download.html): network first, never the game's kept page
+    e.respondWith(fetch(r,{cache:'no-cache'}).then(res=>{ if(res.ok){ const cp=res.clone(); caches.open(ASSETS).then(c=>c.put(r,cp)); } return res; }).catch(()=>caches.match(r))); return; }
   if(r.mode==='navigate'||(same&&/\/(index\.html)?$/.test(u.pathname))){
     e.respondWith((async()=>{ const kept=await caches.match('index.html',{cacheName:PAGE});
       if(kept&&await pinned()) return kept;   // installed: the version you have, until you update
